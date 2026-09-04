@@ -15,3 +15,13 @@ export const OFFICERS_WEBAPP_URL =
 
 // True when a backend is configured, drives live overrides + login.
 export const officersLiveEnabled = Boolean(OFFICERS_WEBAPP_URL)
+
+// The Open Calls feature (officer-published recruitment calls + applications)
+// is served by the SAME deployment, its actions live in officers.gs, because
+// only that script can validate the officer session tokens it issues.
+//
+// TEMPORARILY OFF. The campaign / small-working-group call cards are hidden
+// everywhere they appear (committee pages, and anywhere else reading
+// `useCalls`) until the joining flow is settled. Nothing else was removed,
+// restore the feature by putting this back to `officersLiveEnabled`.
+export const callsLiveEnabled = false

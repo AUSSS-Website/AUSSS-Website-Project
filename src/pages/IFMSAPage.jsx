@@ -32,7 +32,7 @@ function StatBand({ title, items }) {
 export default function IFMSAPage() {
   usePageTitle(
     'IFMSA',
-    'AUSSS in the International Federation of Medical Students’ Associations — standing committees, exchanges, and a worldwide network of medical students.',
+    'AUSSS in the International Federation of Medical Students’ Associations: standing committees, exchanges, and a worldwide network of medical students.',
   )
   useReveal()
 

@@ -2,7 +2,7 @@ import { SIGNUPS_WEBAPP_URL } from '../data/signupsConfig.js'
 
 // Lightweight sign-up capture for the recruitment waitlist and the newsletter.
 // Same fire-and-forget shape as src/lib/stories.js: Apps Script's POST → 302
-// redirect strips CORS headers, so we can't read the reply — but we don't need
+// redirect strips CORS headers, so we can't read the reply, but we don't need
 // to. `kind` distinguishes 'waitlist' from 'newsletter' in one sheet/endpoint.
 //
 // Returns { ok: true } on success, { ok: false, error } on a network failure.

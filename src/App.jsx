@@ -17,6 +17,10 @@ const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
 const MembersPage = lazy(() => import('./pages/MembersPage.jsx'))
 const ConstitutionPage = lazy(() => import('./pages/ConstitutionPage.jsx'))
 const ExchangePage = lazy(() => import('./pages/ExchangePage.jsx'))
+const ExchangeDirectionPage = lazy(
+  () => import('./pages/ExchangeDirectionPage.jsx'),
+)
+const ExchangeJoinPage = lazy(() => import('./pages/ExchangeJoinPage.jsx'))
 const ShareStoryPage = lazy(() => import('./pages/ShareStoryPage.jsx'))
 const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'))
 const GalleryAdminPage = lazy(() => import('./pages/GalleryAdminPage.jsx'))
@@ -46,6 +50,24 @@ export default function App() {
                 <Route path="/committees/:slug" element={<CommitteePage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/exchange" element={<ExchangePage />} />
+                <Route
+                  path="/exchange/outgoings"
+                  element={<ExchangeDirectionPage dir="outgoing" />}
+                />
+                <Route
+                  path="/exchange/incomings"
+                  element={<ExchangeDirectionPage dir="incoming" />}
+                />
+                {/* Singular forms people will type. */}
+                <Route
+                  path="/exchange/outgoing"
+                  element={<Navigate to="/exchange/outgoings" replace />}
+                />
+                <Route
+                  path="/exchange/incoming"
+                  element={<Navigate to="/exchange/incomings" replace />}
+                />
+                <Route path="/exchange/join" element={<ExchangeJoinPage />} />
                 <Route path="/exchange/share" element={<ShareStoryPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/gallery/admin" element={<GalleryAdminPage />} />

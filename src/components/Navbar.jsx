@@ -5,10 +5,21 @@ import CartButton from './CartButton.jsx'
 import { useSiteSettings } from '../hooks/useSiteSettings.js'
 
 // `to` may be a route ("/ifmsa") or a home-section hash ("/#about").
+// A `children` array turns the item into a menu instead of a link: Exchange
+// forks three ways and there's no single page worth landing on first, so
+// clicking it offers the three destinations rather than a page about them.
 const LINKS = [
   { to: '/', label: 'Home' },
   { to: '/ifmsa', label: 'IFMSA' },
-  { to: '/exchange', label: 'Exchange' },
+  {
+    to: '/exchange',
+    label: 'Exchange',
+    children: [
+      { to: '/exchange/outgoings', label: 'Going abroad', hint: 'Clerkship overseas' },
+      { to: '/exchange/incomings', label: 'Hosting in Cairo', hint: 'Students arriving at Ain Shams' },
+      { to: '/exchange/join', label: 'Join the exchange team', hint: 'Officer and assistant roles' },
+    ],
+  },
   { to: '/gallery', label: 'Gallery' },
   { to: '/merch', label: 'Merch' },
   { to: '/contact', label: 'Contact' },
@@ -20,6 +31,109 @@ const MAGAZINE_CTA = 'Read the latest issue of the AUSSS Magazine'
 function parseTo(to) {
   const [pathname, hash] = to.split('#')
   return { pathname: pathname || '/', hash: hash ? `#${hash}` : '' }
+}
+
+// A top-level nav item that forks. Opens on hover (pointer) and on click or
+// Enter (keyboard and touch, where hover never fires), closes on Escape, on an
+// outside click, and whenever the route changes.
+function NavMenu({ item, solid }) {
+  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const wrapRef = useRef(null)
+  const active = pathname.startsWith(item.to)
+
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    const onPointer = (e) => {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [open])
+
+  return (
+    <li
+      ref={wrapRef}
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`group relative flex items-center gap-1.5 text-sm font-medium transition-colors ${
+          solid
+            ? 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
+            : 'text-white hover:text-white'
+        }`}
+      >
+        {item.label}
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span
+          className={`absolute -bottom-1.5 left-0 h-px bg-medical transition-all duration-300 ${
+            active ? 'w-full' : 'w-0 group-hover:w-full'
+          }`}
+        />
+      </button>
+
+      {/* The gap between the trigger and the panel would drop the hover, so the
+          panel's wrapper starts flush against the header and pads inward. */}
+      <div
+        className={`absolute left-1/2 top-full z-50 w-[19rem] -translate-x-1/2 pt-4 transition-all duration-200 ${
+          open
+            ? 'visible translate-y-0 opacity-100'
+            : 'invisible -translate-y-1 opacity-0'
+        }`}
+      >
+        <ul className="overflow-hidden rounded-2xl border border-forest-600/15 bg-cream p-1.5 shadow-xl shadow-forest-950/10 dark:border-white/10 dark:bg-forest-800 dark:shadow-black/40">
+          {item.children.map((c) => (
+            <li key={c.to}>
+              <NavLink
+                to={c.to}
+                tabIndex={open ? undefined : -1}
+                className={({ isActive }) =>
+                  `block rounded-xl px-4 py-3 transition-colors ${
+                    isActive
+                      ? 'bg-medical/10 text-medical dark:text-medical-light'
+                      : 'text-forest-900 hover:bg-forest-600/5 dark:text-silver dark:hover:bg-white/5'
+                  }`
+                }
+              >
+                <span className="block text-sm font-semibold">{c.label}</span>
+                {c.hint && (
+                  <span className="mt-0.5 block text-xs text-forest-900/55 dark:text-silver/50">
+                    {c.hint}
+                  </span>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </li>
+  )
 }
 
 export default function Navbar() {
@@ -109,7 +223,10 @@ export default function Navbar() {
         </Link>
 
         <ul className="hidden items-center gap-6 md:flex lg:gap-7">
-          {LINKS.map((l) => (
+          {LINKS.map((l) =>
+            l.children ? (
+              <NavMenu key={l.to} item={l} solid={solid} />
+            ) : (
             <li key={l.to}>
               <NavLink
                 to={parseTo(l.to)}
@@ -133,7 +250,8 @@ export default function Navbar() {
                 )}
               </NavLink>
             </li>
-          ))}
+            ),
+          )}
           {showMagazine && (
             <li>
               <Link
@@ -199,7 +317,34 @@ export default function Navbar() {
         }`}
       >
         <ul className="container-prose flex max-h-[calc(100dvh-6rem)] flex-col overflow-y-auto overscroll-contain py-4">
-          {LINKS.map((l, i) => (
+          {LINKS.map((l, i) =>
+            l.children ? (
+              // No disclosure toggle here: the drawer is already a list, and
+              // hiding three links behind an extra tap helps nobody.
+              <li key={l.to} className="border-b border-forest-600/10 py-3 dark:border-white/10">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-forest-900/50 dark:text-silver/40">
+                  {l.label}
+                </p>
+                <ul>
+                  {l.children.map((c) => (
+                    <li key={c.to}>
+                      <NavLink
+                        to={c.to}
+                        className={({ isActive }) =>
+                          `block w-full py-2.5 text-left text-base ${
+                            isActive
+                              ? 'font-semibold text-medical dark:text-medical-light'
+                              : 'font-medium text-forest-900 dark:text-silver'
+                          }`
+                        }
+                      >
+                        {c.label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ) : (
             <li key={l.to}>
               <NavLink
                 to={parseTo(l.to)}
@@ -216,7 +361,8 @@ export default function Navbar() {
                 {l.label}
               </NavLink>
             </li>
-          ))}
+            ),
+          )}
           {showMagazine && (
             <li className="pt-4">
               <Link

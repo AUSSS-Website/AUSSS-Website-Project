@@ -14,6 +14,6 @@ export const NEWSLETTER_OPEN = true
 export const SIGNUPS_WEBAPP_URL =
   'https://script.google.com/macros/s/AKfycbyd738Fo_JZ_wd58Lx9jDhObYQ_HFvTZO-rokpfaO01FwLU6wTWG1r5ZYUQRUZ5X9BHvA/exec'
 
-// Sign-up notifications are emailed from inside apps-script/signups.gs; this
-// is documentation only. Change TEAM_EMAIL there and redeploy to reroute.
-export const TEAM_EMAIL = 'loreausss@gmail.com'
+// Sign-up notifications are emailed from inside apps-script/signups.gs,
+// currently to aussswebsite@gmail.com. Change TEAM_EMAIL there and redeploy to
+// reroute them.

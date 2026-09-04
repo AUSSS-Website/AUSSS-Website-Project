@@ -1,4 +1,4 @@
-// Accessible FAQ accordion built on native <details>/<summary> — keyboard- and
+// Accessible FAQ accordion built on native <details>/<summary>, keyboard- and
 // screen-reader-friendly with zero JS, and still works if scripts fail. Pass an
 // array of { q, a } items.
 export default function FAQ({ items, className = '' }) {

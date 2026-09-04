@@ -77,14 +77,14 @@ export default function Footer() {
               The AUSSS Digest
             </p>
             <p className="max-w-md text-sm text-silver/70">
-              Society news, magazine drops and recruitment alerts — straight to
-              your inbox, no spam.
+              Society news, magazine drops and recruitment alerts, straight to
+              your inbox. No spam.
             </p>
             <SignupForm
               kind="newsletter"
               layout="inline"
               submitLabel="Subscribe"
-              successText="Subscribed — watch your inbox."
+              successText="Subscribed. Watch your inbox."
             />
           </div>
         )}

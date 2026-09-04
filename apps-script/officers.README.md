@@ -112,6 +112,92 @@ login; an already-issued session lasts until it expires (7 days).
   The browser can't read a cross-origin POST reply, so the client re-fetches
   `?action=overrides` afterwards to confirm.
 
+## Open Calls (recruitment calls + applications)
+
+Officers publish "calls" — small working groups, campaigns, projects — from the
+**Open calls** tab at `/account`. Each one shows in an **Open Calls** section on
+their committee page with an **Apply** button, and every application emails the
+officer who created it.
+
+This lives in `officers.gs` rather than its own script for one reason: officer
+session tokens sit in **this** script project's Script Properties, so no other
+deployment can validate them. Adding it here reuses the existing login,
+`canEdit_` committee scoping, and Accounts lookup as-is.
+
+### Setup
+
+Nothing to create by hand — the two tabs appear on first use:
+
+- **Calls** — `id · slug · status · json · createdBy · createdByEmail · createdAt · updatedAt`
+- **Applications** — `Timestamp · Ref · Call ID · Call · Committee · Name · Email · Phone · Year · Position(s) · Motivation · Extra answers (JSON)`
+
+**Redeploy is required.** Manage deployments → edit the existing web app → *New
+version* → Deploy. Keep the same deployment so the `/exec` URL in
+`src/data/officersConfig.js` stays valid. Until you do, the Open Calls section
+simply never appears on the site and the officer tab says so — nothing else
+breaks.
+
+The first application will also prompt a **one-time authorisation** for sending
+mail (`MailApp`), since the script didn't need that scope before.
+
+### Notifications
+
+Each application emails the call's creator, plus the optional "also notify"
+address the officer typed when creating it. `replyTo` is set to the applicant,
+so replying from the inbox reaches them directly. Mail is best-effort — if it
+fails (quota), it's logged and the sheet row is still written. Consumer Gmail
+allows ~100 recipients/day; Workspace ~1500.
+
+`SITE_URL` at the top of `officers.gs` is the link in that email — update it
+when the real domain replaces the `www.ausss.org` placeholder.
+
+**If an application arrives but no email does**, read the **Notified** column on
+that row in the `Applications` tab. It records one of three things:
+
+- `sent to …` — mail went out; check spam, and check *which* address (it goes to
+  the officer's address in the `Accounts` tab, which may not be the one you read).
+- `FAILED — …` — usually a missing authorisation. A new version deployed with
+  the `MailApp` scope needs the owner to approve it: open the script editor, Run
+  any function once, accept the prompt, then redeploy.
+- `NOT SENT — …` — the committee has no officer account in the `Accounts` tab
+  and the call has no "also notify" address, so there was nobody to write to.
+
+Recipients are resolved when the application arrives, not when the call was
+created: if a call has no stored creator (it was made with a session predating
+this feature) the officer account for its committee is used instead, so an old
+call still notifies without being edited.
+
+### Deadlines close calls by themselves
+
+A call is live when its status is `open` **and** its deadline hasn't gone by.
+That's derived on every read, so there's no trigger to break: an expired call
+drops off the site on its own. The deadline day itself still counts, evaluated
+in the **script's timezone** (File → Project settings → Time zone — set it to
+Africa/Cairo). Leave the deadline blank for an open-ended call. Extending or
+clearing the date reopens it; applications are never lost.
+
+Officers can also **Close now** at any time (reversible — the call and its
+applications stay) or **Remove** a call outright. Removing deletes the call row
+but *deliberately keeps* the `Applications` rows, which carry the call title and
+reference and read fine on their own — tidying up a call must never destroy what
+people submitted to it.
+
+### Actions
+
+- `GET ?action=calls` → `{ slug: [call, …] }`, live calls only, notify
+  addresses stripped. Public, and doubles as the client's availability probe.
+- `POST {action:'apply', callId, ref, name, email, phone, year, positions[], motivation, answers{}, nonce}`
+  → appends the row and sends the email. Public, but body-carried so the
+  applicant's details never appear in a URL; re-checks the deadline server-side
+  because a stale page could still have the form open.
+- `POST {action:'callsave'|'callstatus'|'calldelete'|'officercalls'|'applications', token, …, nonce}`
+  → officer-only, scope-gated by `canEdit_`. All POST + claim: `applications`
+  returns personal data, so it is never a GET with a token in the query string.
+
+Abuse guards mirror `signups.gs`: the same applicant on the same call is ignored
+for 24h (reported back as a success), a global cap of 20 applications/minute,
+plus a honeypot field and hard length caps on every text field.
+
 ## Security notes
 
 Appropriate for ~10 officers editing their own bios — **not** bank-grade. A

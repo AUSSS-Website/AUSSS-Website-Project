@@ -135,7 +135,7 @@ function SizeChartModal({ product, onClose }) {
 export default function MerchPage() {
   usePageTitle(
     'Merch',
-    'Official AUSSS 55th-edition merch — tees, the varsity jacket, bucket hats and notebooks. Pre-order to support the society.',
+    'Official AUSSS 55th-edition merch: tees, the varsity jacket, bucket hats and notebooks. Pre-order to support the society.',
   )
   useReveal()
   const [openPage, setOpenPage] = useState(null)

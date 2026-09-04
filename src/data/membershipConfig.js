@@ -17,6 +17,3 @@
 export const SOURCE = 'excel' // 'excel' | 'webapp'
 
 export const WEBAPP_URL = '' // e.g. 'https://script.google.com/macros/s/AKfy.../exec'
-
-// Shown to members so they know how current the data is.
-export const DATA_NOTE = 'interim records'

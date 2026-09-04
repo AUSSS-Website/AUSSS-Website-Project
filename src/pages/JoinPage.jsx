@@ -38,7 +38,7 @@ const WHY = [
 export default function JoinPage() {
   usePageTitle(
     'Join us',
-    'Become part of AUSSS — Ain Shams University Students’ Scientific Society. Join our committees for research, public health, and global student exchange.',
+    'Become part of AUSSS, the Ain Shams University Students’ Scientific Society. Join our committees for research, public health, and global student exchange.',
   )
   useReveal()
   const standing = committees.filter((c) => c.group === 'Standing Committee')
@@ -174,7 +174,7 @@ export default function JoinPage() {
             </p>
             <p className="relative mx-auto mt-4 max-w-xl text-base leading-relaxed text-silver/75">
               Recruitment isn’t open right now. Leave your email and we’ll let
-              you know the moment the next registration window opens — no spam,
+              you know the moment the next registration window opens. No spam,
               just the one heads-up.
             </p>
             {WAITLIST_OPEN && (
@@ -183,7 +183,7 @@ export default function JoinPage() {
                   kind="waitlist"
                   withName
                   submitLabel="Notify me when it opens"
-                  successText="You’re on the list — we’ll email you when registration opens."
+                  successText="You’re on the list. We’ll email you when registration opens."
                 />
               </div>
             )}

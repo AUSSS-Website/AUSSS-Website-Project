@@ -15,7 +15,7 @@
 
 var SPREADSHEET_ID = '' // leave '' if this script is bound to the sheet
 var SHEET_NAME = 'Signups'
-var TEAM_EMAIL = 'loreausss@gmail.com' // '' to disable email notifications
+var TEAM_EMAIL = 'aussswebsite@gmail.com' // '' to disable email notifications
 
 var HEADERS = ['Timestamp', 'Kind', 'Name', 'Email', 'Phone', 'Submitted At (client)']
 

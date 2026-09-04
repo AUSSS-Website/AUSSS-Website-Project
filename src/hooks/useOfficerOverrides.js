@@ -4,6 +4,7 @@ import {
   officersLiveEnabled,
 } from '../data/officersConfig.js'
 import { appsScriptGet } from '../lib/appsScriptGet.js'
+import { readJson } from '../lib/localCache.js'
 
 // Live officer overrides, keyed by committee slug.
 //
@@ -14,16 +15,6 @@ import { appsScriptGet } from '../lib/appsScriptGet.js'
 // fetch + localStorage-cache shape of useGalleryRemovals.
 
 const CACHE_KEY = 'ausss-officer-overrides-cache'
-
-function readCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY)
-    const parsed = raw ? JSON.parse(raw) : {}
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}
 
 // One GET to the backend; throws on a non-ok payload or after a timeout so a
 // hung Apps Script can't leave the login button spinning forever.
@@ -53,7 +44,7 @@ export async function fetchOverrides() {
 
 export function useOfficerOverrides() {
   const [overrides, setOverrides] = useState(() =>
-    officersLiveEnabled ? readCache() : {},
+    officersLiveEnabled ? readJson(CACHE_KEY, {}) : {},
   )
   const [loading, setLoading] = useState(officersLiveEnabled)
 

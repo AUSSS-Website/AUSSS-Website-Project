@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Navigate, Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
@@ -5,13 +6,19 @@ import { committeeBySlug, slugFor } from '../data/society.js'
 import { readableAccent, rgba } from '../lib/color.js'
 import { driveImg } from '../lib/img.js'
 import { useOfficerOverrides } from '../hooks/useOfficerOverrides.js'
+import { useCalls } from '../hooks/useCalls.js'
 import { PersonCard, SectionLabel } from '../components/committeeUi.jsx'
+import CallCard from '../components/CallCard.jsx'
+import ApplyModal from '../components/ApplyModal.jsx'
 
 export default function CommitteePage() {
   const { slug } = useParams()
   const c = committeeBySlug(slug)
   usePageTitle(c?.name || 'Committees')
   const { overrides } = useOfficerOverrides()
+  const { calls } = useCalls()
+  // The call whose application form is open, if any.
+  const [applyingTo, setApplyingTo] = useState(null)
   useReveal()
 
   if (!c) return <Navigate to="/" replace />
@@ -22,6 +29,10 @@ export default function CommitteePage() {
   const ov = overrides[slugFor(c)] || {}
 
   const accent = readableAccent(c.color)
+  // Live recruitment calls for this committee. The backend only ever returns
+  // ones that are open and inside their deadline, so there's nothing to filter
+  // here, and an empty list simply hides the section.
+  const openCalls = calls[slugFor(c)] || []
   const tagline = ov.tagline || c.tagline
   const baseOfficers =
     Array.isArray(c.officers) && c.officers.length > 0
@@ -138,6 +149,30 @@ export default function CommitteePage() {
                 <p key={idx}>{p}</p>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Open Calls, officer-published recruitment (small working groups,
+            campaigns, …). Sits above the static material because it's the
+            time-sensitive, actionable part of the page, and disappears
+            entirely once a committee has nothing open. */}
+        {openCalls.length > 0 && (
+          <section className="reveal mx-auto max-w-5xl">
+            <SectionLabel accent={accent}>Open Calls</SectionLabel>
+            <p className="mt-6 max-w-2xl text-sm leading-relaxed text-silver/60">
+              Opportunities {c.abbr} is recruiting for right now. Applications go
+              straight to the team running them.
+            </p>
+            <ul className="mt-8 grid gap-5 lg:grid-cols-2">
+              {openCalls.map((call) => (
+                <CallCard
+                  key={call.id}
+                  call={call}
+                  color={c.color}
+                  onApply={setApplyingTo}
+                />
+              ))}
+            </ul>
           </section>
         )}
 
@@ -313,6 +348,14 @@ export default function CommitteePage() {
           </Link>
         </div>
       </div>
+
+      {applyingTo && (
+        <ApplyModal
+          call={applyingTo}
+          color={c.color}
+          onClose={() => setApplyingTo(null)}
+        />
+      )}
     </article>
   )
 }

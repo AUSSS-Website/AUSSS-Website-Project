@@ -4,15 +4,15 @@
 // ── Multiple issues ──────────────────────────────────────────────────────────
 // Issues live in the `issues` array below, NEWEST FIRST. /magazine opens on the
 // latest published edition and shows a switcher listing every edition. Adding a
-// new one = prepend an object here (and build its page images — see below).
+// new one = prepend an object here (and build its page images, see below).
 //
 // Publishing an edition:
 //   1. Rasterise the source PDF to web-sized page images by running
 //        node _source/build-magazine.mjs <issue-id> "<path-to.pdf>"
 //      (writes public/assets/magazine/<issue-id>/pages/NNN.jpg). Set
 //      `pages.count` to the number it reports; `base` to that folder.
-//   2. (Optional) `download` — a full-quality copy hosted off-repo (Drive link).
-//   3. (Optional) `canva` — an "Open on Canva" link to the live design.
+//   2. (Optional) `download`: a full-quality copy hosted off-repo (Drive link).
+//   3. (Optional) `canva`: an "Open on Canva" link to the live design.
 //   4. The header thumbnail is page 1 automatically; no cover file needed.
 //
 // ── Missing back-issues ──────────────────────────────────────────────────────
@@ -24,7 +24,7 @@
 // A "draft" issue (no pages, no canva, not missing) is UNPUBLISHED: it never
 // appears and never renders, so it's safe to scaffold before its images exist.
 
-// Who to reach about missing editions — shown on the placeholder for any
+// Who to reach about missing editions, shown on the placeholder for any
 // `missing` edition. CBSD produces the magazine, so its inbox owns archive
 // requests (matches aussscbsdd in src/data/society.js).
 export const ARCHIVE_CONTACT = {
@@ -46,7 +46,7 @@ const issueOne = {
   aspect: null,
 }
 
-// ── Vol 2 — MISSING ──────────────────────────────────────────────────────────
+// ── Vol 2, MISSING ──────────────────────────────────────────────────────────
 const issueTwo = {
   id: 'vol-2',
   title: 'Volume 2',
@@ -72,7 +72,7 @@ const issueThree = {
   aspect: null,
 }
 
-// ── Vol 4 — MISSING ──────────────────────────────────────────────────────────
+// ── Vol 4, MISSING ──────────────────────────────────────────────────────────
 const issueFour = {
   id: 'vol-4',
   title: 'Volume 4',
@@ -97,7 +97,7 @@ const issueFive = {
   aspect: null,
 }
 
-// ── Vol 6 — "The Story of Origin" ───────────────────────────────────────────
+// ── Vol 6, "The Story of Origin" ───────────────────────────────────────────
 const issueSix = {
   id: 'vol-6',
   title: 'The Story of Origin, Vol. 6',
@@ -120,7 +120,7 @@ const issueSix = {
   aspect: null,
 }
 
-// ── Vol 7 — "Summer" ─────────────────────────────────────────────────────────
+// ── Vol 7, "Summer" ─────────────────────────────────────────────────────────
 const issueSeven = {
   id: 'vol-7',
   title: 'Summer',
@@ -144,7 +144,7 @@ const issueSeven = {
   aspect: null,
 }
 
-// Newest first — this is the shelf order shown in the switcher.
+// Newest first, this is the shelf order shown in the switcher.
 export const issues = [
   issueSeven,
   issueSix,
@@ -170,11 +170,6 @@ export const publishedIssues = issues.filter(isPublished)
 // Everything that gets a slot on the shelf / switcher: real editions plus the
 // known-missing ones (so readers can see the gaps). Excludes bare drafts.
 export const shelfIssues = issues.filter((i) => isPublished(i) || isMissing(i))
-
-// Look up one issue by id (e.g. for the engagement counters / deep links).
-export function getIssue(id) {
-  return issues.find((i) => i.id === id) || null
-}
 
 // Back-compat default: the latest published edition. MagazinePage opens here.
 export const magazine = publishedIssues[0] || null

@@ -38,7 +38,7 @@ var SHEET_NAME = 'Exchange Stories'
 
 // Where story-notification emails go. Set to '' to disable email sending
 // (the story still lands in the sheet).
-var TEAM_EMAIL = 'loreausss@gmail.com'
+var TEAM_EMAIL = 'aussswebsite@gmail.com'
 
 // ── Column layout — change here and re-add headers if you reshape it ─────
 var HEADERS = [

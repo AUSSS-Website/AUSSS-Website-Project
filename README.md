@@ -53,3 +53,11 @@ npm run preview  # serve the production build
 - Background density/speed: `src/components/NetworkBackground.jsx`
 
 Names are placeholders, replace them in `src/data/society.js`.
+
+## Backends
+
+The live features (officer editor, gallery takedown, merch orders, signups,
+exchange stories, magazine counters) are Google Apps Script web apps whose
+URLs live in `src/data/*Config.js`. They currently run under the rotating
+`loreausss@gmail.com` role account and are being moved to a permanent
+`aussswebsite@gmail.com` — see [`apps-script/MIGRATION.md`](./apps-script/MIGRATION.md).

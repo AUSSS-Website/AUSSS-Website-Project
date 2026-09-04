@@ -47,7 +47,7 @@ var RECEIPTS_FOLDER = 'AUSSS Orders Receipts'
 
 // Where order-notification emails go. Set to '' to disable email sending
 // (the order still lands in the sheet).
-var TEAM_EMAIL = 'loreausss@gmail.com'
+var TEAM_EMAIL = 'aussswebsite@gmail.com'
 
 // ── Column layout — change here and re-add headers if you reshape it ─────
 var HEADERS = [

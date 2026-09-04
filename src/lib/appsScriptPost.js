@@ -2,14 +2,14 @@
 //
 // Apps Script POST replies aren't readable cross-origin (the 302 → google
 // usercontent redirect drops the CORS headers on POST), which is the whole
-// reason the older flows smuggled secrets — passwords, the gallery admin key,
-// session tokens — through the GET *query string*, where they leak into
+// reason the older flows smuggled secrets, passwords, the gallery admin key,
+// session tokens, through the GET *query string*, where they leak into
 // browser history, devtools, and Google's request logs.
 //
 // This helper fixes that without losing the reply: the secret travels in the
 // POST *body* (unlogged), and the backend stashes its JSON result under a
 // client-chosen one-time `nonce`. We then read the result with a follow-up
-// GET ?action=claim&nonce=… — the only thing in that URL is a single-use,
+// GET ?action=claim&nonce=…, the only thing in that URL is a single-use,
 // ~2-minute-lived random value that is worthless to anyone reading the logs.
 //
 // Requires the matching `claim` support in the .gs backends (officers.gs /
@@ -84,7 +84,7 @@ export async function appsScriptPostClaim(baseUrl, payload, { timeoutMs = 15000 
       }
     } catch (err) {
       if (err.rejected) throw err
-      lastTransient = err // network blip — keep polling until the deadline
+      lastTransient = err // network blip, keep polling until the deadline
     }
     delay = Math.min(Math.round(delay * 1.4), 2000)
   }

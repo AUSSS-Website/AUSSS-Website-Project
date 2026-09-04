@@ -3,15 +3,15 @@ import { submitSignup } from '../lib/signups.js'
 
 // Reusable email-capture form for the recruitment waitlist and the newsletter.
 // Variants:
-//   layout="stacked"  — full card (name + email [+ phone]), used on /join
-//   layout="inline"   — single email row, used in the footer/magazine
+//   layout="stacked": full card (name + email [+ phone]), used on /join
+//   layout="inline": single email row, used in the footer/magazine
 export default function SignupForm({
   kind,
   layout = 'stacked',
   withName = layout === 'stacked',
   withPhone = false,
   submitLabel = 'Notify me',
-  successText = 'You’re on the list — we’ll be in touch.',
+  successText = 'You’re on the list. We’ll be in touch.',
 }) {
   const uid = useId()
   const [name, setName] = useState('')
@@ -33,7 +33,7 @@ export default function SignupForm({
       setState('done')
     } else {
       setState('error')
-      setError(res.error || 'Something went wrong — please try again.')
+      setError(res.error || 'Something went wrong. Please try again.')
     }
   }
 

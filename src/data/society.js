@@ -880,10 +880,24 @@ export const exchange = {
         'A four-to-eight-week research project under an international mentor.',
     },
   ],
-  // Two directions, toggled in the UI.
+  // The two directions exchange runs in. Each one is its own page,
+  // /exchange/<slug>, rendered by src/pages/ExchangeDirectionPage.jsx, with
+  // /exchange itself as the hub that sends you to one of them. `tab` is the
+  // short label for the switcher that sits on both pages.
   directions: {
     outgoing: {
+      slug: 'outgoings',
+      tab: 'Going abroad',
+      cta: 'How to apply',
+      blurb:
+        'A four-week clinical or research clerkship somewhere else in the world, arranged through IFMSA.',
+      eyebrow: 'Outgoing exchange',
+      title: 'Going Abroad',
       label: 'Going abroad (outgoing)',
+      intro:
+        'Four weeks in a hospital or a lab somewhere else in the world, arranged through IFMSA. You pick the country, apply through AUSSS and IFMSA-Egypt, and arrive to lodging, a meal a day and a doctor or mentor expecting you.',
+      meta:
+        'Go abroad with AUSSS: a four-week SCOPE clinical clerkship or a SCORE research project, from picking a country to earning your certificate.',
       points: [
         'Pick a country and project from the IFMSA exchange portal.',
         'Apply through AUSSS and IFMSA-Egypt with the required documents.',
@@ -891,18 +905,141 @@ export const exchange = {
         'Get lodging, at least one meal a day, and a supervising doctor or mentor.',
         'Earn an official certificate with ≥80% attendance.',
       ],
+      links: [{ label: 'IFMSA exchange portal', href: 'https://exchange.ifmsa.org' }],
     },
     incoming: {
+      slug: 'incomings',
+      tab: 'Hosting in Cairo',
+      cta: 'How hosting works',
+      blurb:
+        'Students arrive at Ain Shams for their clerkship and AUSSS looks after them for the month.',
+      eyebrow: 'Incoming exchange',
+      title: 'Hosting in Cairo',
       label: 'Hosting in Cairo (incoming)',
+      intro:
+        'Every year students from around the world come to Ain Shams for their clerkship, and AUSSS hosts them: a placement at the Specialized Hospital, a contact person each, and a month of social programme across Cairo and the rest of Egypt.',
+      meta:
+        'Coming to Ain Shams on a SCOPE or SCORE exchange, or hosting someone who is? Read the AUSSS incomings booklet and see how the month works.',
       points: [
         'Welcome students from around the world to Ain Shams hospitals.',
         'Buddy up as a contact person and run the social programme.',
         'Join IFMSA-Egypt National Weekends (Cairo, Alexandria, Dahab).',
         'Share Egyptian medicine and culture with future colleagues abroad.',
       ],
+      links: [
+        {
+          label: 'Egypt explore page',
+          href: 'https://exchange.ifmsa.org/explore-pages/national/view/6',
+        },
+      ],
     },
   },
-  // AUSSS application process (per the society's own exchange flow).
+  // The third thing people arrive at /exchange looking for: not a direction,
+  // but a place on the team that runs both of them (LEOs, assistants, CBDA).
+  // Exchange spans two committees, SCOPE and SCORE, so this points at the
+  // society's own join page, which lists both and leads to their open calls.
+  // Repoint `to` if recruitment ever gets its own destination.
+  joinTeam: {
+    to: '/exchange/join',
+    eyebrow: 'Get involved',
+    title: 'Join the Exchange Team',
+    blurb:
+      'Run the programme rather than travel on it: three officers, three assistants, and how you get one of those seats.',
+    cta: 'See the roles',
+  },
+  // ── The exchange team ─────────────────────────────────────────────────────
+  // Two tiers, and the structure is the point: three officers own the three
+  // halves of the programme (incoming clinical, outgoing clinical, research),
+  // and each has an assistant working the season alongside them, except the
+  // CBDA, who trains the whole team rather than serving one direction.
+  //
+  // Drives /exchange/join. `about` is what appears in the card on hover/focus,
+  // so keep it to a couple of sentences describing the remit, not the person.
+  // Colours track the committee each role sits under, matching `tracks` above.
+  team: {
+    officers: [
+      {
+        abbr: 'LEO-In',
+        title: 'Local Exchange Officer for Incomings',
+        committee: 'SCOPE',
+        slug: 'scope',
+        color: '#0181c1',
+        email: 'leolore.in.ausss@gmail.com',
+        about:
+          'Owns the incoming half of the programme: placing arriving students in departments at the Ain Shams Specialized Hospital, pairing each of them with a contact person, and making sure the month works end to end, from landing to certificate.',
+      },
+      {
+        abbr: 'LEO-Out',
+        title: 'Local Exchange Officer for Outgoings',
+        committee: 'SCOPE',
+        slug: 'scope',
+        color: '#0181c1',
+        email: 'leolore.out.ausss@gmail.com',
+        about:
+          'Owns the outgoing half: running the exchange exam and interviews, matching selected students to their contracts, and preparing them (documents, pre-departure orientation) for the clerkship abroad.',
+      },
+      {
+        abbr: 'LORE',
+        title: 'Local Officer on Research Exchange',
+        committee: 'SCORE',
+        slug: 'score',
+        color: '#2e4a9c',
+        email: 'loreausss@gmail.com',
+        about:
+          'The research side of exchange. Handles SCORE rather than clinical placements, matching students to laboratories and mentors abroad, and hosting incoming research students here at Ain Shams.',
+      },
+    ],
+    // The bottom tier, and the widest one: a contact person is assigned to
+     // each incoming student rather than to the committee, so there are as many
+     // of them in a season as there are arrivals. One role, many holders, it
+     // renders as a single full-width node rather than a row.
+    contactPersons: {
+      abbr: 'Contact Persons',
+      title: 'One paired with every incoming student',
+      // Incomings arrive through both committees, clinical via SCOPE, research
+      // via SCORE, so contact persons answer to the LEO-In and the LORE alike.
+      reportsTo: 'the LEO-In & LORE',
+      // Not a committee colour: this role spans both, so it takes the site
+      // accent rather than implying it belongs to one of them.
+      color: '#5B8DB8',
+      about:
+        'Every student arriving at Ain Shams, clinical through SCOPE or research through SCORE, is paired with a contact person for their month here: the one who meets them, keeps them oriented around the hospital and the city, and makes the social programme actually happen. Recruited fresh each exchange season, and the most common first role in exchange.',
+    },
+    // None of the assistants belong to a single committee: the LORE runs
+     // research exchange in both directions, so every one of them works to the
+     // LORE as well as to their clinical counterpart. Hence the site accent
+     // rather than a committee colour, only the three officers carry those.
+    assistants: [
+      {
+        abbr: 'Incomings Assistant',
+        title: 'Assistant to the LEO-In and LORE',
+        reportsTo: 'the LEO-In & LORE',
+        color: '#5B8DB8',
+        about:
+          'Works the season alongside the LEO-In, and the LORE for research arrivals: hospital and laboratory paperwork, arrival logistics, and keeping the social programme moving while incomings are in Cairo.',
+      },
+      {
+        abbr: 'Outgoings Assistant',
+        title: 'Assistant to the LEO-Out and LORE',
+        reportsTo: 'the LEO-Out & LORE',
+        color: '#5B8DB8',
+        about:
+          'Works alongside the LEO-Out, and the LORE for research placements: supporting applicants through the process, checking documents, and keeping outgoing students on track between selection and departure.',
+      },
+      {
+        abbr: 'CBDA',
+        title: 'Capacity Building Development Assistant',
+        reportsTo: 'the whole team',
+        // Cross-cutting like the contact persons, so it takes the site accent
+        // rather than one committee's colour.
+        color: '#5B8DB8',
+        about:
+          'Builds the team’s own capacity rather than serving one direction: the trainings and workshops that prepare officers, assistants and contact persons for the work.',
+      },
+    ],
+  },
+  // How you apply to go abroad, the outgoing flow, so it renders on
+  // /exchange/outgoings rather than the hub.
   timeline: [
     { step: 'Exchange Exam Registration', body: 'Wait for the Exchange Exam registration to open, then apply.' },
     { step: 'Interview', body: 'Attend your exchange interview.' },

@@ -41,7 +41,7 @@ export default function CheckoutPage() {
   const cart = useCart()
   const count = cartCount(cart)
   const subtotal = cartSubtotal(cart)
-  // Lines the cart store dropped because their product left the catalogue —
+  // Lines the cart store dropped because their product left the catalogue,
   // surfaced once so the user isn't surprised by a smaller order.
   const [droppedCount] = useState(() => takeDroppedLines().length)
 
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
   const onSubmit = async (e) => {
     e.preventDefault()
     // The button is disabled while submitting, but an Enter-key implicit
-    // submission can still fire — guard against double orders.
+    // submission can still fire, guard against double orders.
     if (submitting) return
     const invalid = validate()
     if (Object.keys(invalid).length > 0) {

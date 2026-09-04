@@ -1,5 +1,5 @@
 // FAQ content. Plain data so officers can edit copy without touching the UI.
-// NOTE: written from the society's public framing — review/adjust the specifics
+// NOTE: written from the society's public framing, review/adjust the specifics
 // (fees, exact timing) before relying on them publicly.
 
 export const joinFaqs = [
@@ -9,7 +9,7 @@ export const joinFaqs = [
   },
   {
     q: 'When does recruitment open?',
-    a: 'Membership opens each intake. There isn’t always an open window — add your email to the waitlist above and we’ll notify you the moment the next one opens.',
+    a: 'Membership opens each intake. There isn’t always an open window, so add your email to the waitlist above and we’ll notify you the moment the next one opens.',
   },
   {
     q: 'Is there a membership fee?',
@@ -17,7 +17,7 @@ export const joinFaqs = [
   },
   {
     q: 'Do I have to pick a committee right away?',
-    a: 'No — explore the six standing committees and four support divisions first. If you’re unsure where you fit, the Sorting Quiz gives you a starting point.',
+    a: 'No. Explore the six standing committees and four support divisions first. If you’re unsure where you fit, the Sorting Quiz gives you a starting point.',
   },
   {
     q: 'What is the exchange programme?',
@@ -25,6 +25,6 @@ export const joinFaqs = [
   },
   {
     q: 'How much time does membership take?',
-    a: 'It’s flexible. Members get involved in campaigns, trainings and projects at the level that fits their schedule — there’s room to do a little or to lead.',
+    a: 'It’s flexible. Members get involved in campaigns, trainings and projects at the level that fits their schedule. There’s room to do a little or to lead.',
   },
 ]

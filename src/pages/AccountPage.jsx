@@ -10,6 +10,7 @@ import {
 } from '../hooks/useOfficerOverrides.js'
 import { useSiteSettings, saveSiteSettings } from '../hooks/useSiteSettings.js'
 import CommitteePreview from '../components/CommitteePreview.jsx'
+import { CallsPanel } from '../components/officerCalls.jsx'
 
 const MAX_MEMBERS = 10
 
@@ -283,6 +284,10 @@ function SiteSettingsPanel({ token }) {
 }
 
 function Editor({ auth, committee, targetSlug, override, refresh, onBack, onLogout }) {
+  // Two things an officer manages for their committee: the page itself, and
+  // the recruitment calls running on it. Same login, same scope, just a tab.
+  const [tab, setTab] = useState('page') // page | calls
+
   // Defaults from society.js, so the form starts pre-filled with what's live.
   const committeeAbout = Array.isArray(committee.about)
     ? committee.about
@@ -441,9 +446,36 @@ function Editor({ auth, committee, targetSlug, override, refresh, onBack, onLogo
             Log out
           </button>
         </div>
+
+        <div className="mt-8 flex gap-2 border-b border-white/10">
+          {[
+            ['page', 'Committee page'],
+            ['calls', 'Open calls'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTab(value)}
+              aria-current={tab === value ? 'page' : undefined}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                tab === value
+                  ? 'border-medical text-white'
+                  : 'border-transparent text-silver/55 hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </header>
 
-      <div className="container-prose">
+      {tab === 'calls' && (
+        <div className="container-prose">
+          <CallsPanel auth={auth} committee={committee} targetSlug={targetSlug} />
+        </div>
+      )}
+
+      <div className={`container-prose ${tab === 'page' ? '' : 'hidden'}`}>
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="space-y-8">
         {/* Officer photo */}
@@ -626,19 +658,22 @@ function Editor({ auth, committee, targetSlug, override, refresh, onBack, onLogo
         </div>
       </div>
 
-      {/* Sticky save bar */}
-      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-white/15 bg-forest-950/95 px-4 py-3 backdrop-blur-md">
-        <div className="container-prose flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-silver/70">{msg}</p>
-          <button
-            onClick={save}
-            disabled={busy}
-            className="rounded-full bg-medical px-6 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light disabled:opacity-40"
-          >
-            {busy ? 'Saving…' : 'Save changes'}
-          </button>
+      {/* Sticky save bar, committee-page tab only; the calls editor has
+          its own, so two would otherwise stack. */}
+      {tab === 'page' && (
+        <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-white/15 bg-forest-950/95 px-4 py-3 backdrop-blur-md">
+          <div className="container-prose flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-silver/70">{msg}</p>
+            <button
+              onClick={save}
+              disabled={busy}
+              className="rounded-full bg-medical px-6 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light disabled:opacity-40"
+            >
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </article>
   )
 }

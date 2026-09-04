@@ -15,7 +15,7 @@ export default function Hero() {
       // select-none + no touch callout: tapping/holding to play with the ECG
       // shouldn't select text or pop the long-press image menu on mobile.
       // min-h-svh (not screen/100vh): on phones 100vh changes as the URL bar
-      // collapses, reflowing the whole page on scroll — svh stays stable.
+      // collapses, reflowing the whole page on scroll, svh stays stable.
       className="relative flex min-h-svh select-none items-center overflow-hidden bg-black"
       style={{ WebkitTouchCallout: 'none' }}
     >
@@ -45,7 +45,7 @@ export default function Hero() {
           ref={logoRef}
           src="/assets/brand/ausss-vertical-white.png"
           alt="AUSSS"
-          // This is the LCP element — hint the browser to fetch it first.
+          // This is the LCP element, hint the browser to fetch it first.
           fetchPriority="high"
           decoding="async"
           draggable={false}

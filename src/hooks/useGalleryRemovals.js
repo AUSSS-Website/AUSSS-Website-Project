@@ -6,6 +6,7 @@ import {
 } from '../data/galleryConfig.js'
 import { appsScriptGet } from '../lib/appsScriptGet.js'
 import { appsScriptPostClaim, UNKNOWN_ACTION } from '../lib/appsScriptPost.js'
+import { readJson } from '../lib/localCache.js'
 
 // Shared gallery-removal state for both the inline admin mode
 // (/gallery?admin=1) and the dedicated admin page (/gallery/admin).
@@ -22,18 +23,8 @@ export const LS_KEY = 'ausss-gallery-removals' // pending marks (no-backend fall
 const CACHE_KEY = 'ausss-gallery-live-cache' // last-known live list, for instant hide
 const KEY_SS = 'ausss-gallery-adminkey' // admin key, sessionStorage only
 
-function readJSON(storage, key) {
-  try {
-    const raw = storage.getItem(key)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
 export function readLocalMarks() {
-  return readJSON(localStorage, LS_KEY)
+  return readJson(LS_KEY, [])
 }
 
 // One GET to the backend; throws on a non-ok payload or after a timeout.
@@ -55,7 +46,7 @@ export async function fetchLiveList() {
  */
 export function useGalleryRemovals(write = 'none') {
   const [live, setLive] = useState(() =>
-    galleryLiveEnabled ? readJSON(localStorage, CACHE_KEY) : [],
+    galleryLiveEnabled ? readJson(CACHE_KEY, []) : [],
   )
   const [localMarks, setLocalMarks] = useState(() =>
     write === 'local' ? readLocalMarks() : [],
@@ -91,7 +82,7 @@ export function useGalleryRemovals(write = 'none') {
         // Keep the cached/empty list, but tell the admin UI the live sync
         // failed so stale data isn't mistaken for the real list. The public
         // gallery never renders `error`, so visitors are unaffected.
-        if (alive) setError('Could not load the live removal list — showing cached data.')
+        if (alive) setError('Could not load the live removal list. Showing cached data.')
       })
       .finally(() => alive && setLoading(false))
     return () => {
@@ -222,7 +213,7 @@ export function useGalleryRemovals(write = 'none') {
         /* cache write is best-effort */
       }
     } catch {
-      setError('Could not refresh the live removal list — showing cached data.')
+      setError('Could not refresh the live removal list. Showing cached data.')
     } finally {
       setLoading(false)
     }

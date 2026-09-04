@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { OFFICERS_WEBAPP_URL, officersLiveEnabled } from '../data/officersConfig.js'
 import { officersApiGet } from './useOfficerOverrides.js'
 import { appsScriptPostClaim, UNKNOWN_ACTION } from '../lib/appsScriptPost.js'
+import { readJson } from '../lib/localCache.js'
 
 // Global site settings, flipped by dev/EB officers and read by every visitor.
 // Backed by apps-script/officers.gs (Script Properties). Currently a single
@@ -13,18 +14,6 @@ import { appsScriptPostClaim, UNKNOWN_ACTION } from '../lib/appsScriptPost.js'
 
 const CACHE_KEY = 'ausss-site-settings'
 const DEFAULTS = { magazineInHeader: true }
-
-function readCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY)
-    const parsed = raw ? JSON.parse(raw) : null
-    return parsed && typeof parsed === 'object'
-      ? { ...DEFAULTS, ...parsed }
-      : { ...DEFAULTS }
-  } catch {
-    return { ...DEFAULTS }
-  }
-}
 
 export async function fetchSiteSettings() {
   if (!officersLiveEnabled) return { ...DEFAULTS }
@@ -59,13 +48,16 @@ export async function saveSiteSettings(token, patch) {
     typeof patch.magazineInHeader === 'boolean' &&
     confirmed.magazineInHeader !== patch.magazineInHeader
   ) {
-    throw new Error('Setting did not save — check your session and try again.')
+    throw new Error('Setting did not save. Check your session and try again.')
   }
   return confirmed
 }
 
 export function useSiteSettings() {
-  const [settings, setSettings] = useState(readCache)
+  const [settings, setSettings] = useState(() => ({
+    ...DEFAULTS,
+    ...readJson(CACHE_KEY, {}),
+  }))
 
   const refresh = useCallback(async () => {
     if (!officersLiveEnabled) return

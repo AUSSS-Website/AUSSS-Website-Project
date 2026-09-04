@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 // left→right with a fading history trail, like a real monitor, on a black
 // stage under a faint field of twinkling stars.
 //
-// Logo sync: twice per sweep the beat anchors to the AUSSS logo — tall spikes
+// Logo sync: twice per sweep the beat anchors to the AUSSS logo, tall spikes
 // fire exactly under the logo's own printed ECG spikes (at ~31% and ~68% of
 // the logo's width) and reach up to its ECG line (~50% of its height), so the
 // animated waveform overlaps the brand mark's.
@@ -18,7 +18,7 @@ import { useEffect, useRef } from 'react'
 //     the resting rate. iOS needs motion permission, requested on first tap.
 //
 // Perf: canvas 2D, no deps, no shadowBlur (per-frame Gaussian blur is slow on
-// mobile — glow is layered strokes instead). The trail draws at two alpha
+// mobile, glow is layered strokes instead). The trail draws at two alpha
 // levels (bright head, one faded tail step) so the stroke count stays flat
 // regardless of trail length. The RAF loop pauses when the tab is hidden or
 // the hero is scrolled out of view.
@@ -33,7 +33,7 @@ const PQRST = [
   [0.28, 0.6, 0.045], // T
 ]
 const R_CENTER = 0.385
-const SNAP_PHASE = 0.34 // "just before the QRS" — used by taps + logo anchors
+const SNAP_PHASE = 0.34 // "just before the QRS": used by taps + logo anchors
 
 function waveY(t) {
   let y = 0
@@ -50,7 +50,7 @@ const LAYERS = [
   ['#EEF2F5', 1.6, 0.50], // silver-light
 ]
 // Two-level trail: full brightness for the newest ~75% of its life, then one
-// short faded step until it expires — exactly one visible fade.
+// short faded step until it expires, exactly one visible fade.
 const BUCKET_ALPHAS = [0.2, 1] // faded tail, full-bright head
 const FULL_LIFE = 0.74 // fraction of trailLife at full brightness
 
@@ -105,8 +105,8 @@ export default function ECGBackground({
     let trailLife = 0.1 // trail fade duration (ms)
 
     // Faint star field, kept to the truly black upper stage (above the trace
-    // and the gradient at the bottom). Each star lives briefly — fading in,
-    // peaking, fading out — then respawns somewhere new.
+    // and the gradient at the bottom). Each star lives briefly, fading in,
+    // peaking, fading out, then respawns somewhere new.
     let stars = []
     let starMaxY = 0
 
@@ -141,7 +141,7 @@ export default function ECGBackground({
     function resize() {
       const newW = canvas.offsetWidth
       const newH = canvas.offsetHeight
-      // Ignore height-only wobble (mobile URL bar collapsing on scroll) —
+      // Ignore height-only wobble (mobile URL bar collapsing on scroll),
       // re-measuring mid-sweep resets the trace and reads as jitter.
       if (points.length && newW === width && Math.abs(newH - height) < 100) {
         return
@@ -204,7 +204,7 @@ export default function ECGBackground({
     }
 
     // Stroke the whole trail as one pass of `color`. Points are time-ordered,
-    // so alpha buckets form contiguous runs — one beginPath per bucket, with
+    // so alpha buckets form contiguous runs, one beginPath per bucket, with
     // a 1-point overlap bridging segments so there are no gaps.
     function strokeTrace(now, color, widthPx, alphaFactor, dx = 0, dy = 0) {
       ctx.strokeStyle = color
@@ -297,7 +297,7 @@ export default function ECGBackground({
       ctx.clearRect(0, 0, width, height)
       drawStars(now)
       for (const [color, w, a] of LAYERS) strokeTrace(now, color, w, a)
-      // The newest entry can be the wrap's path-break marker (null) — the
+      // The newest entry can be the wrap's path-break marker (null), the
       // pen head is the last REAL point. Never blank the whole frame for it:
       // that one-frame flash read as the page "reloading" at each wrap.
       let head = null
@@ -320,7 +320,7 @@ export default function ECGBackground({
     let pageVisible = !document.hidden
     let inView = true
     // The sweep only starts once the hero's entrance animations have settled
-    // and the final measurements are locked in — measuring mid-sweep would
+    // and the final measurements are locked in, measuring mid-sweep would
     // reset the trace and read as jitter.
     let measured = false
 
@@ -344,7 +344,7 @@ export default function ECGBackground({
       while (remaining > 0) {
         // Finer sub-steps through the QRS: on phones a beat is ~100px wide,
         // so 2px sampling can straddle the razor-thin R-peak and randomly
-        // clip its height — 0.5px steps there keep every spike full-size.
+        // clip its height, 0.5px steps there keep every spike full-size.
         const nearQRS = !flat && phase > 0.3 && phase < 0.46
         const step = Math.min(nearQRS ? 0.5 : 2, remaining)
         remaining -= step
@@ -470,7 +470,7 @@ export default function ECGBackground({
     }
 
     // iOS 13+ gates devicemotion behind a permission that must be requested
-    // from a user gesture — so the first tap doubles as the request.
+    // from a user gesture, so the first tap doubles as the request.
     function enableMotion(fromGesture) {
       if (motionAttached) return
       const DME = window.DeviceMotionEvent
@@ -519,7 +519,7 @@ export default function ECGBackground({
       if (e.pointerType !== 'touch') fireTapBeat()
     }
 
-    // A touch that starts moving is a scroll, not a hold — cancel the
+    // A touch that starts moving is a scroll, not a hold, cancel the
     // flatline timer so casual scrolling doesn't trigger asystole. The
     // browser's own pointercancel covers most scrolls; this catches slow
     // drags it hasn't claimed yet. Touch-only, so mouse holds keep working.
@@ -564,7 +564,7 @@ export default function ECGBackground({
     if (!reduced) drawStars(null)
     window.addEventListener('resize', resize)
     // The hero content fades/slides in on mount, so the anchor measurements
-    // can catch it mid-animation — and on slower connections the logo image
+    // can catch it mid-animation, and on slower connections the logo image
     // (whose width the spike anchors derive from) may not have loaded yet.
     // Take the final measurement once both have settled; only then start.
     function startWhenReady() {

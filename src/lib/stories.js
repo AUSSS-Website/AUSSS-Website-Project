@@ -1,4 +1,5 @@
 import { STORIES_WEBAPP_URL } from '../data/storiesConfig.js'
+import { makeReference } from './reference.js'
 
 // ── Exchange-story submission ──────────────────────────────────────────────
 //
@@ -12,15 +13,6 @@ import { STORIES_WEBAPP_URL } from '../data/storiesConfig.js'
 
 const REFERENCE_PREFIX = 'STORY'
 
-function generateReference() {
-  // Short, human-readable: STORY-XXXXXX (base36 timestamp + 3-digit random)
-  const t = Date.now().toString(36).toUpperCase().slice(-5)
-  const r = Math.floor(Math.random() * 1000)
-    .toString()
-    .padStart(3, '0')
-  return `${REFERENCE_PREFIX}-${t}${r}`
-}
-
 export async function submitStory(payload) {
   // payload shape:
   //   { name, email, phone, destination, programme, year, story }
@@ -29,7 +21,7 @@ export async function submitStory(payload) {
   // the same reason as orders.js: Apps Script's POST → 302 redirect strips
   // CORS headers, so the browser can't read the response across the hop.
   // Generating it here keeps the success page, sheet row, and email aligned.
-  const reference = generateReference()
+  const reference = makeReference(REFERENCE_PREFIX)
 
   const enriched = {
     ...payload,

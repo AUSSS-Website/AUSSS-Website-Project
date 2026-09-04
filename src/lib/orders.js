@@ -1,5 +1,6 @@
 import { ORDERS_WEBAPP_URL } from '../data/merchConfig.js'
 import { productById } from '../data/merchProducts.js'
+import { makeReference } from './reference.js'
 
 // ── Order submission ─────────────────────────────────────────────────────
 //
@@ -13,15 +14,6 @@ import { productById } from '../data/merchProducts.js'
 //          { ok: false, error }    on failure
 
 const REFERENCE_PREFIX = 'AUSSS'
-
-function generateReference() {
-  // Short, human-readable: AUSSS-XXXXXX (base36 of timestamp + 3-digit random)
-  const t = Date.now().toString(36).toUpperCase().slice(-5)
-  const r = Math.floor(Math.random() * 1000)
-    .toString()
-    .padStart(3, '0')
-  return `${REFERENCE_PREFIX}-${t}${r}`
-}
 
 // Serializes a cart line into something the Apps Script + spreadsheet can
 // store as a single readable cell.
@@ -55,7 +47,7 @@ export async function submitOrder(payload) {
   // response body even though the script ran successfully. By generating
   // the reference here and sending it in the payload, the sheet/email/UI
   // all show the same number, and the fetch can be fire-and-forget.
-  const reference = generateReference()
+  const reference = makeReference(REFERENCE_PREFIX)
 
   const enriched = {
     ...payload,

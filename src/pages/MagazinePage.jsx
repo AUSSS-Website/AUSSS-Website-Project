@@ -28,7 +28,7 @@ export default function MagazinePage() {
   )
 }
 
-// Compact edition switcher — only rendered when 2+ editions are published.
+// Compact edition switcher, only rendered when 2+ editions are published.
 function IssueSwitcher({ issues, currentId, onSelect }) {
   if (!issues || issues.length < 2) return null
   return (
@@ -237,13 +237,13 @@ function MissingPanel({ issue }) {
       </h3>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-silver/60">
         We haven’t tracked down a copy of {issue.title} of the AUSSS Magazine
-        yet. If you have it — or know who might — please help us complete the
+        yet. If you have it, or know who might, please help us complete the
         archive.
       </p>
       {email && (
         <a
           href={`mailto:${email}?subject=${encodeURIComponent(
-            `AUSSS Magazine — ${issue.title}`,
+            `AUSSS Magazine: ${issue.title}`,
           )}`}
           className="mt-5 inline-flex items-center gap-2 rounded-full bg-medical px-5 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light"
         >

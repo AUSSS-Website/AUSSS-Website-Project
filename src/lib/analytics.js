@@ -45,11 +45,3 @@ export function trackPageview(path) {
     page_title: document.title,
   })
 }
-
-// Send a custom event. No-op when disabled or gtag isn't available yet.
-export function trackEvent(name, params = {}) {
-  if (!analyticsEnabled) return
-  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return
-
-  window.gtag('event', name, params)
-}

@@ -10,16 +10,16 @@ import { Link } from 'react-router-dom'
 //   <Button as="button" variant="outline" onClick={…}>Cancel</Button>
 
 const VARIANTS = {
-  // White pill, forest text — the primary site CTA (hero, product add).
+  // White pill, forest text, the primary site CTA (hero, product add).
   primary:
     'bg-white text-forest hover:bg-silver-light focus-visible:ring-white/70',
-  // Scientific-blue pill — secondary emphasis (magazine, auth, quiz).
+  // Scientific-blue pill, secondary emphasis (magazine, auth, quiz).
   accent:
     'bg-medical text-forest-950 hover:bg-medical-light focus-visible:ring-medical/60',
-  // Forest pill — used on light surfaces (cart checkout, footer).
+  // Forest pill, used on light surfaces (cart checkout, footer).
   forest:
     'bg-forest text-white hover:bg-forest-600 focus-visible:ring-forest/50 dark:bg-medical dark:text-forest-950 dark:hover:bg-medical-light',
-  // Hairline outline — tertiary action over dark/hero backgrounds.
+  // Hairline outline, tertiary action over dark/hero backgrounds.
   outline:
     'border border-white/25 text-white hover:bg-white/10 focus-visible:ring-white/50',
 }

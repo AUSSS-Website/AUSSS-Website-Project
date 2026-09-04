@@ -40,7 +40,7 @@ export default function Flipbook({ pages, title }) {
     }
   }, [pages])
 
-  // Left/right arrow keys flip the book — but not while the user is typing in a
+  // Left/right arrow keys flip the book, but not while the user is typing in a
   // field elsewhere on the page.
   useEffect(() => {
     if (!ratio) return

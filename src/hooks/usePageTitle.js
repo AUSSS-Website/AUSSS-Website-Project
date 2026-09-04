@@ -28,7 +28,7 @@ function canonicalEl() {
 
 export default function usePageTitle(title, description) {
   useEffect(() => {
-    document.title = title ? `${title} — AUSSS` : BASE_TITLE
+    document.title = title ? `${title} · AUSSS` : BASE_TITLE
 
     const descEl = metaDescriptionEl()
     const baseDesc = descEl ? descEl.getAttribute('content') : null
