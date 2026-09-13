@@ -27,3 +27,6 @@ supabase/.branches/
 
 # Duplicate skills cache written by `npx skills add` (canonical copy is .claude/skills/)
 .agents/
+
+.vercel
+.env*
