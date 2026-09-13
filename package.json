@@ -8,10 +8,22 @@
     "dev:host": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "preview:host": "vite preview --host"
+    "preview:host": "vite preview --host",
+    "db": "node scripts/db/supa.mjs",
+    "db:new": "node scripts/db/supa.mjs migration new",
+    "db:link": "node scripts/db/supa.mjs link --project-ref wjijkqrdaakiwbtdssio",
+    "db:push": "node scripts/db/supa.mjs db push",
+    "db:push:dry": "node scripts/db/supa.mjs db push --dry-run",
+    "db:list": "node scripts/db/supa.mjs migration list",
+    "db:config-push": "node scripts/db/supa.mjs config push",
+    "db:gen-reference": "node scripts/db/gen-reference-data.mjs",
+    "db:import-roster": "node --env-file-if-exists=.env.local scripts/db/import-roster.mjs",
+    "db:import-roster:dry": "node --env-file-if-exists=.env.local scripts/db/import-roster.mjs --dry-run"
   },
   "dependencies": {
     "@rive-app/react-canvas": "^4.29.0",
+    "@supabase/supabase-js": "2.116.0",
+    "@tanstack/react-query": "5.102.8",
     "@vercel/analytics": "^2.0.1",
     "gsap": "^3.15.0",
     "ogl": "^1.0.11",
@@ -25,7 +37,9 @@
     "autoprefixer": "^10.4.20",
     "netlify-cli": "^26.0.2",
     "postcss": "^8.4.49",
+    "supabase": "2.117.0",
     "tailwindcss": "^3.4.17",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "xlsx": "0.18.5"
   }
 }
