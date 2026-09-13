@@ -26,6 +26,9 @@ const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'))
 const GalleryAdminPage = lazy(() => import('./pages/GalleryAdminPage.jsx'))
 const JoinPage = lazy(() => import('./pages/JoinPage.jsx'))
 const SortingPage = lazy(() => import('./pages/SortingPage.jsx'))
+// The members portal (Supabase auth + react-query) is its own tree with its
+// own chrome. Lazy so supabase-js never lands in the public bundle.
+const PortalRoot = lazy(() => import('./portal/PortalRoot.jsx'))
 
 // Brand-coloured placeholder shown while a lazy chunk is in flight. Matches
 // the dark hero so there's no white flash on inner-page navigation.
@@ -40,6 +43,16 @@ function RouteFallback() {
 export default function App() {
   return (
     <Routes>
+      {/* Sibling of the public Layout route: the portal renders its own header
+          and footer and must not inherit the marketing navbar. */}
+      <Route
+        path="/portal/*"
+        element={
+          <Suspense fallback={<RouteFallback />}>
+            <PortalRoot />
+          </Suspense>
+        }
+      />
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route

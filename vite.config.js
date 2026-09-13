@@ -30,6 +30,14 @@ export default defineConfig({
           ) {
             return 'vendor-react'
           }
+          // Portal-only vendors. Split so the public site never downloads
+          // them and the portal chunk stays small when only app code changes.
+          if (
+            id.includes('node_modules/@supabase/') ||
+            id.includes('node_modules/@tanstack/')
+          ) {
+            return 'vendor-supabase'
+          }
         },
       },
     },

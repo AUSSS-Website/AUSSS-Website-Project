@@ -68,6 +68,9 @@ export default function Footer() {
             <Link to="/join" className="transition-colors hover:text-white">Join</Link>
             <Link to="/sorting" className="transition-colors hover:text-white">Sorting Quiz</Link>
             <Link to="/login" className="transition-colors hover:text-white">Officer login</Link>
+            <Link to="/portal/sign-in" className="transition-colors hover:text-white">
+              Members portal
+            </Link>
           </nav>
         </div>
 

@@ -6,5 +6,6 @@ Allow: /
 Disallow: /gallery/admin
 Disallow: /login
 Disallow: /account
+Disallow: /portal
 
 Sitemap: https://www.ausss.org/sitemap.xml

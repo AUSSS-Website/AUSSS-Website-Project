@@ -90,9 +90,16 @@ export default function LoginPage() {
           </form>
         )}
 
+        <p className="mt-6 text-center text-xs text-silver/50">
+          Looking for the members portal?{' '}
+          <Link to="/portal/sign-in" className="font-semibold text-silver/70 hover:text-white">
+            Sign in here
+          </Link>
+        </p>
+
         <Link
           to="/"
-          className="mt-6 inline-block w-full text-center text-xs font-semibold text-silver/60 transition-colors hover:text-white"
+          className="mt-4 inline-block w-full text-center text-xs font-semibold text-silver/60 transition-colors hover:text-white"
         >
           ← Back to AUSSS home
         </Link>
