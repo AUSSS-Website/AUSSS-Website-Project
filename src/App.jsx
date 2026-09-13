@@ -26,6 +26,7 @@ const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'))
 const GalleryAdminPage = lazy(() => import('./pages/GalleryAdminPage.jsx'))
 const JoinPage = lazy(() => import('./pages/JoinPage.jsx'))
 const SortingPage = lazy(() => import('./pages/SortingPage.jsx'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'))
 // The members portal (Supabase auth + react-query) is its own tree with its
 // own chrome. Lazy so supabase-js never lands in the public bundle.
 const PortalRoot = lazy(() => import('./portal/PortalRoot.jsx'))
@@ -96,6 +97,7 @@ export default function App() {
                 <Route path="/merch/checkout" element={<CheckoutPage />} />
                 <Route path="/members" element={<MembersPage />} />
                 <Route path="/constitution" element={<ConstitutionPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/account" element={<AccountPage />} />
                 {/* Social merged into Contact, keep the old URL working. */}

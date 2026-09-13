@@ -12,4 +12,5 @@
   <url><loc>https://www.ausss.org/sorting</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
   <url><loc>https://www.ausss.org/contact</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
   <url><loc>https://www.ausss.org/constitution</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://www.ausss.org/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

@@ -71,6 +71,7 @@ export default function Footer() {
             <Link to="/portal/sign-in" className="transition-colors hover:text-white">
               Members portal
             </Link>
+            <Link to="/privacy" className="transition-colors hover:text-white">Privacy</Link>
           </nav>
         </div>
 
