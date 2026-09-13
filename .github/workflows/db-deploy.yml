@@ -1,0 +1,67 @@
+# Applies new migrations to the hosted Supabase project after they land on main.
+# Only migration files trigger it; config.toml changes are pushed by hand because
+# `config push` overwrites hosted settings the file does not declare.
+name: db-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+
+permissions:
+  contents: read
+
+# Never let two pushes race against the same database.
+concurrency: db-deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      # `link` and `db push` load config.toml, which enables Google sign-in via env()
+      # placeholders; the CLI rejects an enabled provider with an empty client_id.
+      # These values are never sent anywhere (only `config push` syncs auth settings).
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Keep in sync with the "supabase" devDependency in package.json.
+          version: 2.117.0
+
+      # Until the three repo secrets exist (see docs/HANDOVER.md), skip with a warning
+      # instead of failing every push: the migrations are then applied by hand
+      # (docs/RUNBOOK.md, "Apply migrations").
+      - name: Check secrets
+        id: secrets
+        run: |
+          missing=""
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
+            test -n "${!v}" || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::warning::db-deploy skipped, repo secrets not set:$missing"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Link project
+        if: steps.secrets.outputs.ready == 'true'
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Preview pending migrations
+        if: steps.secrets.outputs.ready == 'true'
+        run: supabase db push --dry-run
+
+      # --yes: there is no TTY here, so never depend on the CLI's prompt default.
+      - name: Apply migrations
+        if: steps.secrets.outputs.ready == 'true'
+        run: supabase db push --yes

@@ -1,0 +1,54 @@
+# Database CI: applies every migration to a fresh local Postgres, runs the pgTAP
+# suite in supabase/tests, and lints the schema. Docker is only available here,
+# never on the maintainers' machines, so this is the one place migrations are
+# proven to apply in order on an empty database.
+name: db-ci
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/db-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/db-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # config.toml enables Google sign-in with env() placeholders. The CLI refuses to
+      # load a config whose enabled provider has an empty client_id, and the runner has
+      # no supabase/.env, so give it throwaway values. Nothing here reaches the hosted
+      # project: only `config push` sends auth settings, and CI never runs it.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Keep in sync with the "supabase" devDependency in package.json.
+          version: 2.117.0
+
+      # `start` on a fresh runner applies migrations + seed.sql, so no separate
+      # `db reset` is needed. Services the tests never touch are excluded to
+      # keep the job fast.
+      - name: Start local stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+      - name: Run pgTAP tests
+        run: supabase test db --local
+
+      - name: Lint schema
+        run: supabase db lint --local --level error
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop

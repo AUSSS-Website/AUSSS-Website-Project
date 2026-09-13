@@ -1,0 +1,33 @@
+# Free-tier Supabase projects pause after a week without API traffic. One tiny
+# read a day through the public Data API keeps the portal's database awake.
+#
+# GitHub disables scheduled workflows after 60 days with no repository activity;
+# a maintainer then re-enables it under Actions, or triggers it manually via
+# workflow_dispatch. A Vercel cron can replace this later.
+name: keepalive
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Secrets go through env rather than ${{ }} inside the script, so they are
+      # never part of the shell command line. A missing secret fails loudly instead
+      # of curl silently hitting "/rest/v1/terms" on an empty host.
+      - name: Read one row from terms
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$SUPABASE_URL" -a -n "$SUPABASE_PUBLISHABLE_KEY" || {
+            echo "SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY repo secrets are not set"; exit 1; }
+          curl -fsS "$SUPABASE_URL/rest/v1/terms?select=id&limit=1" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY"
