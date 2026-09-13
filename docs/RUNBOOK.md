@@ -1,0 +1,459 @@
+# AUSSS portal runbook
+
+Status: written 2026-09-13 for Phase 0 and Phase 1 (`docs/PORTAL_BACKEND_PLAN.md`).
+Every procedure below has been designed for a machine with Node 24 and no
+Docker, no psql and no global Supabase CLI: everything goes through `npm run`
+scripts that wrap the `supabase` devDependency, or through the Supabase MCP
+server / SQL editor. Who owns what is in `docs/HANDOVER.md`.
+
+## 0. Before anything else
+
+- Clone the repository and `npm ci` (do not `npm install`, the lockfile pins
+  the CLI version that CI also uses).
+- Copy `.env.example` to `.env.local` and fill `VITE_SUPABASE_ANON_KEY` with the
+  publishable key. Leave `SUPABASE_SECRET_KEY` blank unless you are about to
+  import the roster (section 4). `.env.local` is gitignored; never commit it.
+- Every `db:*` script goes through `scripts/db/supa.mjs`, which loads
+  `.env.local` into the process environment and then spawns the CLI. The CLI's
+  own `env(NAME)` substitution in `supabase/config.toml` reads from that
+  environment (or from `supabase/.env`, also gitignored), never from
+  `.env.local` directly.
+- The npm scripts:
+
+| Script | What it runs |
+| --- | --- |
+| `npm run db -- <args>` | Raw `supabase <args>` with `.env.local` loaded |
+| `npm run db:new -- <name>` | `supabase migration new <name>` (do not use this for the fixed Phase 1 files; they already exist) |
+| `npm run db:link` | `supabase link --project-ref wjijkqrdaakiwbtdssio` (asks for the database password) |
+| `npm run db:push` | `supabase db push` to the linked hosted project |
+| `npm run db:push:dry` | `supabase db push --dry-run`, lists what would be applied |
+| `npm run db:list` | `supabase migration list`, local files versus remote history |
+| `npm run db:config-push` | `supabase config push`, syncs `supabase/config.toml` auth settings to the hosted project |
+| `npm run db:gen-reference` | `node scripts/db/gen-reference-data.mjs`, writes a new `*_reference_data.sql` migration from `src/data/society.js` |
+| `npm run db:import-roster:dry` | Parses the roster spreadsheet and reports counts without writing |
+| `npm run db:import-roster` | Upserts `roster_entries` and links existing profiles (needs `SUPABASE_SECRET_KEY`) |
+
+- Two ways to run SQL against the hosted database: the **Supabase MCP server**
+  in Claude Code (`execute_sql`, `apply_migration`, `get_advisors`,
+  `query_logs`) once authenticated via `/mcp`, or the **SQL editor** in the
+  dashboard. Both run as `postgres`, so RLS does not apply; be deliberate.
+
+## 1. Apply migrations
+
+Migrations live in `supabase/migrations/` and are applied in filename order,
+one transaction each. Each file must be re-runnable on a fresh database, which
+CI (`.github/workflows/db-ci.yml`) verifies on every pull request touching
+`supabase/**`.
+
+### 1.1 Through the CLI (normal path)
+
+```sh
+npm run db:link          # once per machine; paste the database password
+npm run db:list          # see which files are not yet applied remotely
+npm run db:push:dry      # read the list; nothing is written
+npm run db:push          # applies the pending files in order
+npm run db:list          # confirm every local file now shows a remote version
+```
+
+`db:list` prints three columns: local timestamp, remote timestamp, name. A file
+present locally with an empty remote column is pending. A remote entry with no
+local file means someone applied SQL outside the repository; find it and commit
+it, or the next fresh-database run in CI will diverge from production.
+
+The `db-deploy` workflow does the same `db push --dry-run` then `db push` on
+every push to `main` that touches `supabase/migrations/**`, using the GitHub
+secrets in HANDOVER section 5. Pushing by hand is for the first apply and for
+emergencies; otherwise merge to `main` and let CI apply.
+
+### 1.2 Through the Supabase MCP server (no database password at hand)
+
+Call `apply_migration` once per file, in filename order, passing the file's
+contents as `query` and the filename stem (for example
+`20260913100002_core_tables`) as `name`. It records the migration in
+`supabase_migrations.schema_migrations` under that name, so `npm run db:list`
+afterwards shows it as applied. Do not paste the same SQL through
+`execute_sql`; that applies the change but records nothing, and the CLI will
+try to re-apply the file later.
+
+### 1.3 Afterwards
+
+- Run MCP `get_advisors` with `type: security` and `type: performance`. The
+  expected result is no findings about RLS being disabled, no
+  security-definer functions exposed in `public` other than the five documented
+  RPCs, and no missing indexes on foreign keys.
+- `select count(*) from public.committees` should be 10; `positions` at least
+  26; `terms` exactly 2 with one `is_current`.
+
+## 2. Add a new migration
+
+```sh
+npm run db:new -- short_snake_case_name
+```
+
+This creates `supabase/migrations/<timestamp>_short_snake_case_name.sql`.
+Rules that CI enforces or that bite in production:
+
+- No Postgres enums; use `text` plus a `check` constraint (adding an enum value
+  cannot be used in the same transaction, and each migration is one transaction).
+- `create ... if not exists` / `create or replace` wherever possible.
+- New tables: RLS on, explicit `grant` to `anon`/`authenticated` (the project
+  does not auto-expose tables), `app.set_updated_at()` and `app.audit()`
+  triggers, policies written `to authenticated` with `(select app.helper())`
+  wrapping and never an inline subselect on an RLS-protected table.
+- New functions in `app` or security-definer functions anywhere: `set
+  search_path = ''`, owned by `postgres`, `revoke execute from public` and
+  grant only what is needed.
+- Add or extend a pgTAP test in `supabase/tests/`.
+
+Open a pull request; `db-ci` must be green before merge; `db-deploy` applies it.
+
+## 3. Regenerate reference data (committees, positions, terms, officer invites)
+
+`src/data/society.js` is still the source of truth for committees and officer
+titles until Phase 2. When it changes in a way that affects the database (a new
+committee, a renamed officer title, a new term):
+
+```sh
+npm run db:gen-reference
+```
+
+The generator imports `src/data/society.js`, writes idempotent upserts keyed on
+`terms.label`, `committees.slug`, `positions.key`, `invites (email, position,
+term)`, and saves them as a new timestamped `supabase/migrations/
+<YYYYMMDDHHMMSS>_reference_data.sql`. If the output is identical to the last
+generated file it writes nothing and says so. Old generated files stay in place;
+they are history, not duplicates.
+
+Then review the diff, commit, and push through section 1. Note that officer
+emails in `society.js` are role mailboxes; invites to those mean the successor
+inherits the predecessor's profile. Prefer personal-email invites inserted by
+hand (section 8) and let the EB end the role-mailbox assignments at rollover.
+
+## 4. Import or refresh the membership roster
+
+The roster is `_source/records/membership/updated AUSSS Membership Database.xlsx`,
+tab `Database`, columns addressed by position (the "Year joined" header cell is
+blank). It contains personal data and is not committed; get the current copy
+from the Members Officer or the society Drive.
+
+1. Put the **secret** key into `.env.local`:
+
+   ```
+   SUPABASE_SECRET_KEY=sb_secret_...
+   ```
+
+   Only on the webmaster's machine, only for this job. The script refuses to run
+   with a clear message if it is blank.
+
+2. Dry run, read the counts:
+
+   ```sh
+   npm run db:import-roster:dry
+   ```
+
+   Expected: about 581 rows parsed, about 387 with an email address, a handful
+   of duplicate emails (the roster has 9), and the `import_batch` label taken
+   from the status header ("[As of dd/mm/yyyy]").
+
+3. Real run:
+
+   ```sh
+   npm run db:import-roster
+   ```
+
+   It upserts `roster_entries` on `source_key` (a hash of normalised name and
+   email) in batches of 500, then calls `public.admin_claim_unlinked()` so that
+   anyone who signed in before the import is linked to their roster row and
+   gets `candidate` or `active` membership.
+
+4. Verify in SQL:
+
+   ```sql
+   select count(*) from public.roster_entries;                         -- about 581
+   select count(*) from public.roster_entries where email_normalized is not null;  -- about 387
+   select count(*) from public.roster_entries where profile_id is not null;         -- linked so far
+   ```
+
+5. Blank `SUPABASE_SECRET_KEY` in `.env.local` again when done, or at least be
+   aware it is on that disk.
+
+Re-running with a newer spreadsheet is safe: same `source_key` rows are updated,
+new people are inserted, nobody is deleted. Removing someone is a manual SQL
+decision.
+
+## 5. Push auth configuration
+
+`supabase/config.toml` holds the auth settings (site URL, redirect allow-list,
+magic-link settings, Google provider, custom SMTP). Secrets are referenced as
+`env(NAME)` and read from `supabase/.env` (gitignored, template in
+`supabase/.env.example`): `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`,
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`, `RESEND_API_KEY`.
+
+```sh
+npm run db:config-push
+```
+
+Read the diff the CLI prints before confirming. Two caveats:
+
+- **Omitted sections revert.** `config push` treats `config.toml` as the whole
+  truth for every section it supports. If a section (for example
+  `[auth.email.smtp]`) is missing or commented out, the hosted value is reset to
+  default, which silently switches auth mail back to Supabase's rate-limited
+  SMTP. Keep every section that was ever set in the dashboard present in the
+  file. The first push after any dashboard change is done by hand, reading the
+  diff, never from CI.
+- The redirect allow-list must contain exact patterns:
+  `http://localhost:5173/**`, `https://*-ausss-website.vercel.app/**` and
+  `https://ausss-ainshams.vercel.app/**` (production until the ausss.org domain is
+  attached; then add `https://www.ausss.org/**`). Do not widen to
+  `https://*.vercel.app`; that is an open redirect.
+
+Settings not covered by `config.toml` (email templates on the free plan, some
+rate limits) are dashboard-only; note them in a comment in the file so the
+next person knows they exist.
+
+## 6. Wake a paused project
+
+Free-tier projects pause after seven days without any API traffic. Symptoms: the
+portal shows its "not configured / cannot reach" panel, `fetch` to
+`*.supabase.co` returns 5xx or a pause page, dashboard shows "Paused".
+
+To wake it: Supabase dashboard, open the project, click **Restore**. It takes a
+minute or two. Nothing is lost; data and auth users persist through a pause.
+
+To keep it from pausing: `.github/workflows/keepalive.yml` runs daily
+(`17 6 * * *` UTC) and requests one row from `terms` with the publishable key,
+using the GitHub secrets `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Two
+things stop it silently:
+
+- GitHub disables scheduled workflows in a repository with **no activity for
+  60 days**. Any commit re-enables them; a quiet summer will trip it. Check the
+  Actions tab at the start of each term (HANDOVER section 6.4) and after any
+  long gap. Re-enable from the workflow's page if it shows as disabled.
+- A rotated publishable key (section 7) without updating the GitHub secret;
+  the run fails with 401 and the project pauses a week later.
+
+If the project keeps pausing anyway, the long-term answer in the plan is the
+Pro plan or a Vercel cron; neither has been set up.
+
+## 7. Rotate the Supabase keys
+
+### 7.1 Publishable key (`sb_publishable_...`)
+
+Not a secret, but rotate if it has been abused (unexpected traffic in the logs).
+Dashboard: Project Settings, API Keys, create a new publishable key, then update
+in this order so nothing goes dark:
+
+1. Vercel: `VITE_SUPABASE_ANON_KEY` for Production and Preview, then redeploy
+   (Deployments, Redeploy, or push an empty commit).
+2. GitHub secret `SUPABASE_PUBLISHABLE_KEY` (keepalive).
+3. `.env.local` on each developer machine.
+4. Delete the old key in the dashboard once the new production deploy is live.
+
+### 7.2 Secret key (`sb_secret_...`)
+
+Rotate at every term rollover and whenever it has been seen by anyone who has
+left. Dashboard: Project Settings, API Keys, create a new secret key, update
+`.env.local` on the webmaster's machine (the only place it may live), delete
+the old key. Nothing in Vercel or GitHub uses it; if you find it there, that is
+a leak, remove it.
+
+### 7.3 Database password
+
+Dashboard: Project Settings, Database, Reset database password. Then update the
+GitHub secret `SUPABASE_DB_PASSWORD` and re-run `npm run db:link` locally with
+the new password. Check that the next `db-deploy` run is green.
+
+### 7.4 Personal access tokens
+
+`supabase.com/dashboard/account/tokens`. Revoke tokens belonging to departed
+people; create a new one for CI and update the GitHub secret
+`SUPABASE_ACCESS_TOKEN`.
+
+## 8. Give someone EB or webmaster (or any position) access
+
+Permissions are assignments in the current term, never a role column. The
+cleanest way is an **invite row**: the `app.handle_new_invite()` trigger
+assigns immediately if a profile with that email already exists; otherwise the
+assignment is created the first time that email signs in (`app.claim_for_profile`).
+
+In the SQL editor or MCP `execute_sql` (runs as `postgres`):
+
+```sql
+-- One invite: personal email, position key, current term.
+insert into public.invites (email, position_id, term_id)
+select 'person@example.com', p.id, app.current_term_id()
+from public.positions p
+where p.key = 'eb.vp-internal'
+on conflict (email_normalized, position_id, term_id) do nothing;
+```
+
+Position keys: `eb.president`, `eb.vp-internal`, `eb.vp-external`,
+`eb.secretary-general`, `society.webmaster`, officer keys such as `score.lore`
+or `scope.leo-out`, and `<committee-slug>.assistant` / `<committee-slug>.member`.
+List them with `select key, title, level from public.positions order by sort`.
+
+Check it took effect:
+
+```sql
+select i.email, i.accepted_at, a.status
+from public.invites i
+left join public.assignments a
+  on a.position_id = i.position_id and a.term_id = i.term_id
+ and a.profile_id = i.accepted_profile_id
+where i.email_normalized = app.norm_email('person@example.com');
+```
+
+`accepted_at` filled and `status = 'active'` means they already had a profile
+and are assigned now. `accepted_at` null means it will happen on their first
+sign-in with that exact email (Google account or magic link).
+
+EB members and committee officers can also do this from the portal in a later
+phase; in Phase 1 an EB user could insert the invite through the Data API
+(RLS `can_manage_position` allows it), but there is no page for it yet.
+
+To **remove** access, end the assignment rather than deleting it (history stays):
+
+```sql
+update public.assignments
+set status = 'ended', ended_on = current_date
+where profile_id = '<profile uuid>' and status = 'active'
+  and position_id = (select id from public.positions where key = 'eb.vp-internal');
+```
+
+## 9. Approve a membership verification
+
+Members who are not on the roster sign in as `unverified` and submit a request
+at `/portal/verify`. Two ways to decide:
+
+- **Portal** (preferred): sign in as an EB member, open
+  `/portal/admin/verification`, Approve or Decline. The page calls the
+  `decide_verification` RPC, which checks `app.is_eb()` inside the database.
+- **SQL**, as `postgres`, when the portal is unavailable:
+
+  ```sql
+  select id, profile_id, message, created_at
+  from public.verification_requests
+  where status = 'pending' order by created_at;
+
+  -- Approve (new_status defaults to 'active'; pass 'candidate' or 'alumni' if that fits)
+  select public.decide_verification('<request uuid>', 'approved', 'active');
+
+  -- Decline
+  select public.decide_verification('<request uuid>', 'declined');
+  ```
+
+  As `postgres` the `app.is_eb()` check sees no `auth.uid()` and the RPC will
+  raise; in that case update directly:
+
+  ```sql
+  update public.verification_requests
+  set status = 'approved', decided_at = now()
+  where id = '<request uuid>';
+  update public.profiles
+  set membership_status = 'active'
+  where id = '<profile uuid>';
+  ```
+
+Check the Members Officer agrees before approving anyone you cannot place. The
+EB-only RPC `public.set_membership_status(profile_id, status, tier)` changes a
+status without a request, for example to mark alumni.
+
+## 10. Term rollover (database part)
+
+Full checklist including seats and secrets is HANDOVER section 6. The SQL, run
+as `postgres` in the SQL editor or via MCP `execute_sql`, in this order:
+
+```sql
+-- 1. Create the next term (skip if the reference-data migration already did).
+insert into public.terms (label, starts_on, ends_on, is_current)
+values ('2027-28', '2027-09-01', '2028-08-31', false)
+on conflict (label) do nothing;
+
+-- 2. Switch the current term. Two-step inside the function, so the partial
+--    unique index terms_one_current is never violated.
+select public.set_current_term((select id from public.terms where label = '2027-28'));
+-- As postgres this bypasses the EB check; if it raises because auth.uid() is
+-- null, do the two steps by hand:
+--   update public.terms set is_current = false where is_current;
+--   update public.terms set is_current = true where label = '2027-28';
+
+-- 3. End every active assignment from the old term.
+update public.assignments
+set status = 'ended', ended_on = current_date
+where term_id = (select id from public.terms where label = '2026-27')
+  and status = 'active';
+
+-- 4. Invite the incoming officers and EB for the new term (section 8), one
+--    row per person and position. app.current_term_id() now returns the new term.
+insert into public.invites (email, position_id, term_id)
+select v.email, p.id, app.current_term_id()
+from (values
+  ('president@example.com',  'eb.president'),
+  ('webmaster@example.com',  'society.webmaster'),
+  ('lore@example.com',       'score.lore')
+) as v(email, key)
+join public.positions p on p.key = v.key
+on conflict (email_normalized, position_id, term_id) do nothing;
+
+-- 5. Verify.
+select label, is_current from public.terms order by starts_on;
+select count(*) from public.assignments a join public.terms t on t.id = a.term_id
+where t.is_current and a.status = 'active';
+```
+
+The portal, the assignment queries and every `app.*` helper read
+`app.current_term_id()`, so the switch is immediate for signed-in users on their
+next request. Until Phase 2, also update `src/data/society.js` and the
+`officers.gs` `Accounts` sheet for the public site.
+
+## 11. Debugging
+
+### Where to look
+
+- **Supabase logs**: dashboard, Logs, pick API (PostgREST), Auth, or Postgres;
+  or MCP `query_logs` with `service: api | auth | postgres`. Auth failures
+  (redirect not allowed, provider error) are in the Auth log with the exact
+  reason; the browser only sees `error_description` in the callback URL.
+- **Advisors**: MCP `get_advisors` (`security`, `performance`) after every
+  migration. Findings about `rls_disabled`, `function_search_path_mutable` or
+  `auth_rls_initplan` mean a migration broke a rule in section 2.
+- **Vercel**: Deployments, the failed build's log; runtime is static so there
+  are no server logs. CSP violations show in the browser console as blocked
+  `connect-src`; `vercel.json`, `netlify.toml` and `public/_headers` must all
+  list `https://wjijkqrdaakiwbtdssio.supabase.co` and `wss://...`.
+- **Browser**: DevTools Network filtered on `supabase.co`. Status and body of
+  the failing request tell you which case below you are in.
+
+### Common symptoms
+
+| Symptom | Meaning | Fix |
+| --- | --- | --- |
+| Query returns `[]` or `null` with HTTP 200 | RLS policy denied the row; PostgREST never errors on a select denial | Check the user's assignments in the current term (`select * from app.my_levels()` while impersonating, or compare against the policy in `20260913100005_rls.sql`). Often the invite email differs from the sign-in email by case or alias. |
+| HTTP 401/403 with `42501 permission denied for table X` | Missing `grant`, not a policy: the role cannot touch the table at all | Add the grant in a migration; the project does not auto-expose tables. Same code for `permission denied for function`: missing `grant execute`. |
+| `42501` on an update of `profiles` | Column-level grant: members may update only `full_name, phone, faculty_year, photo_path, avatar_url, directory_opt_in` | Use `set_membership_status` RPC (EB) or SQL as postgres for the other columns. |
+| `PGRST202` function not found | RPC name or argument names differ from the schema, or schema cache is stale | Check `decide_verification(request_id, decision, new_status)`, `claim_my_account()`; `notify pgrst, 'reload schema';` as postgres. |
+| `42P17` infinite recursion in policy | A policy queried an RLS-protected table inline | Route through an `app.*` security-definer helper. |
+| Sign-in succeeds but user lands on `unverified` despite being on the roster | Email mismatch between roster and account, or roster not imported | `select * from public.roster_entries where email_normalized = app.norm_email('...')`; re-run `select public.claim_my_account()` as that user, or fix the roster and `admin_claim_unlinked()`. |
+| Officer signs in and sees no position | Invite email is not the email they signed in with, or the invite is for another term | Section 8 check query; insert a new invite for the right email. |
+| Magic link never arrives | Default Supabase SMTP: only project team members, a few per hour | Configure Resend custom SMTP and push config (section 5). Google sign-in works meanwhile. |
+| Google button returns `redirect_uri_mismatch` or `access blocked` | OAuth client redirect URI missing, or consent screen back in Testing | Redirect URI `https://wjijkqrdaakiwbtdssio.supabase.co/auth/v1/callback`; publish the consent screen. |
+| Callback page times out after 8 s | Redirect URL not in the allow-list, so Auth bounced to the site URL without tokens | Add the exact origin pattern to `additional_redirect_urls`, push config. |
+| Everything 5xx or a Supabase pause page | Project paused | Section 6. |
+| `db-deploy` fails at `supabase link` | Wrong or rotated `SUPABASE_DB_PASSWORD` / `SUPABASE_ACCESS_TOKEN` | Section 7.3, 7.4. |
+| `npm run db:list` shows a remote migration with no local file | Someone used `execute_sql`/SQL editor for schema work | Reconstruct it as a migration file and commit; do not `db push` until reconciled (`supabase migration repair` if needed). |
+
+### Impersonating a user in SQL (as postgres)
+
+```sql
+begin;
+select set_config('request.jwt.claims',
+  json_build_object('sub', '<profile uuid>', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select * from app.my_levels();
+select id, full_name from public.profiles;   -- what this user can see
+rollback;
+```
+
+This is the same mechanism `supabase/seed.sql`'s `tests.authenticate_as()`
+uses in CI, so a case that fails here is a good candidate for a pgTAP test.
