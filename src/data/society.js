@@ -605,8 +605,8 @@ export const committees = [
   },
 ]
 
-// NOTE: the Hero's "Members" figure is dynamic, it reads MEMBERS_META.count
-// from src/data/members.generated.js (regenerated from the membership xlsx).
+// NOTE: the Hero's "Members" figure is dynamic, see useMemberCount in
+// src/data/membersMeta.js (the live roster count from Supabase).
 
 // --- Slug helpers (used by the per-committee routes) ---------------------
 // A committee may set an explicit `slug`; otherwise it's derived from abbr.

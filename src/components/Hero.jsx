@@ -2,13 +2,14 @@ import { useRef } from 'react'
 import ECGBackground from './ECGBackground.jsx'
 import CountUp from './CountUp.jsx'
 import Button from './ui/Button.jsx'
-import { MEMBERS_META } from '../data/membersMeta.js'
+import { useMemberCount } from '../data/membersMeta.js'
 
 export default function Hero() {
   // The ECG baseline anchors just below this CTA row on every viewport.
   const ctaRef = useRef(null)
   // The logo img: the trace's big spikes sync to its printed ECG spikes.
   const logoRef = useRef(null)
+  const memberCount = useMemberCount()
   return (
     <section
       id="home"
@@ -84,7 +85,7 @@ export default function Hero() {
           style={{ animationDelay: '0.5s' }}
         >
           {[
-            [MEMBERS_META.count.toLocaleString(), 'Members'],
+            [memberCount.toLocaleString(), 'Members'],
             ['10', 'Committees & Divisions'],
             ['300+', 'Exchange Students Served'],
             ['80+', 'Campaigns / yr'],

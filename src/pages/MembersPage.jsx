@@ -6,8 +6,6 @@ import {
   lookupMember,
   adviceFor,
   NOT_A_MEMBER,
-  preloadMembers,
-  findRecordByPosition,
   splitPositions,
 } from '../lib/membership.js'
 import SpecialResult from '../components/SpecialResult.jsx'
@@ -121,7 +119,6 @@ export default function MembersPage() {
   useReveal()
   usePageTitle('Members')
   useEffect(() => {
-    preloadMembers() // warm the dataset while the user types
     // Browsers try to restore scroll position on refresh, but here the
     // result card isn't restored, so the user lands on a half-scrolled
     // empty page. Disable restoration and snap to the top.
@@ -167,13 +164,13 @@ export default function MembersPage() {
     setBusy(true)
     setResult(null)
     setReveal(false)
-    // Heba's spreadsheet name spelling is not predictable, so if the typed
-    // name matches a known variant, find her by her unique Supervising
-    // Council position instead of relying on the hashed name lookup.
+    // Heba's roster name spelling is not predictable, so if the typed name
+    // matches a known variant, ask for the unique Supervising Council holder
+    // instead of relying on the exact-name lookup.
     if (isHebaIsmail({ typedName: form.name })) {
-      const heba = findRecordByPosition((p) => /\bsupervising\s+council\b/i.test(p))
-      if (heba) {
-        setResult({ state: 'heba', record: heba })
+      const heba = await lookupMember({ role: 'supervising-council' })
+      if (heba.state === 'found') {
+        setResult({ state: 'heba', record: heba.record })
         setBusy(false)
         return
       }

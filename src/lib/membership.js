@@ -1,12 +1,13 @@
-import { SOURCE, WEBAPP_URL } from '../data/membershipConfig.js'
-import {
-  MEMBERS_BY_NAME,
-  MEMBERS_BY_EMAIL,
-} from '../data/members.generated.js'
+import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
 
-// ── Normalisation ────────────────────────────────────────────────────────
-// MUST stay byte-identical to norm() in the data-generation script, or the
-// browser hash won't match the build-time hash.
+// The membership check reads the live roster in Supabase through
+// rpc/check_membership (supabase/migrations/20260919200001_live_roster.sql).
+// The matching (email first, then an exact normalised name) happens in the
+// database, which answers with one person's membership facts and never a name
+// or an email, so nothing about the roster ships in the bundle any more.
+
+// Mirror of app.normalize_text in the database; only used for local text
+// comparisons (classify below), never for matching.
 export function normalize(v) {
   return String(v ?? '')
     .normalize('NFKD')
@@ -16,33 +17,16 @@ export function normalize(v) {
     .trim()
 }
 
-async function sha256Hex(str) {
-  const buf = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(str),
-  )
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-const nameKey = (name) => sha256Hex(normalize(name))
-const emailKey = (email) => sha256Hex(normalize(email))
-
 const mapRecord = (raw) => ({
-  status: raw.s,
-  yearJoined: raw.y,
-  yearsSpent: raw.ys,
-  lgas: raw.l, // raw string, may be ">2", "2+", "" …
-  ngas: raw.n,
-  currentPosition: (raw.p || '').trim() || 'General Member',
+  status: raw.status,
+  yearJoined: raw.yearJoined,
+  yearsSpent: raw.yearsSpent,
+  lgas: raw.lgas, // raw string, may be ">2", "2+", "" …
+  ngas: raw.ngas,
+  currentPosition: (raw.currentPosition || '').trim() || 'General Member',
 })
 
-// No-op kept for backward compatibility (data is now a static import,
-// bundled with the app, nothing to preload).
-export function preloadMembers() {}
-
-// Position cells in the source sheet sometimes pack multiple roles separated
+// Position cells in the roster sometimes pack multiple roles separated
 // by a line break (e.g. "Supervising Council\r\nInternational TEDA"). Splits
 // the raw value into individual positions so the UI can render them as a
 // stacked list instead of one squashed string.
@@ -53,78 +37,25 @@ export function splitPositions(raw) {
     .filter(Boolean)
 }
 
-// The membership data is keyed by SHA-256 of name/email, so we can't look up
-// people by name spelling we don't already know. For "find the unique holder
-// of a known role" cases (currently: Heba Ismail → Supervising Council), we
-// scan the values once and cache the first match.
-const _byPositionCache = new Map()
-export function findRecordByPosition(test) {
-  const key = test.toString()
-  if (_byPositionCache.has(key)) return _byPositionCache.get(key)
-  let hit = null
-  for (const arr of Object.values(MEMBERS_BY_NAME)) {
-    for (const raw of arr) {
-      if (test(raw.p || '')) {
-        hit = mapRecord(raw)
-        break
-      }
-    }
-    if (hit) break
-  }
-  _byPositionCache.set(key, hit)
-  return hit
-}
-
 // ── Lookup (by name OR email) ────────────────────────────────────────────
 // Returns one of:
 //   { state: 'found', record }
 //   { state: 'ambiguous' }           name given matches >1 member
 //   { state: 'not-found' }
-//   { state: 'not-connected' }       webapp selected but URL not set
+//   { state: 'not-connected' }       build without the Supabase env vars
 //   { state: 'error', message }
-// Email is tried first (unique); name is the fallback.
-export async function lookupMember({ name = '', email = '' }) {
-  if (SOURCE === 'webapp') {
-    if (!WEBAPP_URL) return { state: 'not-connected' }
-    try {
-      const u = new URL(WEBAPP_URL)
-      if (name) u.searchParams.set('name', name)
-      if (email) u.searchParams.set('email', email)
-      const res = await fetch(u, { method: 'GET' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const d = await res.json()
-      if (d.multiple) return { state: 'ambiguous' }
-      if (d.found && d.record) {
-        return {
-          state: 'found',
-          record: {
-            ...d.record,
-            currentPosition:
-              (d.record.currentPosition || '').trim() || 'General Member',
-          },
-        }
-      }
-      return { state: 'not-found' }
-    } catch (e) {
-      return { state: 'error', message: e.message }
-    }
-  }
-
-  // ── Interim: in-browser hashed lookup ──
+// `role` is the one fixed value the RPC accepts ('supervising-council'), for
+// the holder whose name is spelt too many ways to match by name.
+export async function lookupMember({ name = '', email = '', role = null }) {
+  if (!supabaseRestEnabled) return { state: 'not-connected' }
   try {
-    // Email first, it's unique, so it never goes "ambiguous".
-    if (email.trim()) {
-      const eArr = MEMBERS_BY_EMAIL[await emailKey(email)]
-      if (eArr && eArr.length > 0)
-        return { state: 'found', record: mapRecord(eArr[0]) }
-      // email didn't match, fall through to name if one was given
+    const args = { name: name.trim(), email: email.trim() }
+    if (role) args.role = role
+    const d = await restRpc('check_membership', args)
+    if (d?.state === 'found' && d.record) {
+      return { state: 'found', record: mapRecord(d.record) }
     }
-    if (name.trim()) {
-      const nArr = MEMBERS_BY_NAME[await nameKey(name)]
-      if (!nArr || nArr.length === 0) return { state: 'not-found' }
-      if (nArr.length > 1) return { state: 'ambiguous' }
-      return { state: 'found', record: mapRecord(nArr[0]) }
-    }
+    if (d?.state === 'ambiguous') return { state: 'ambiguous' }
     return { state: 'not-found' }
   } catch (e) {
     return { state: 'error', message: e.message }
