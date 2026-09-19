@@ -13,6 +13,7 @@ import ProfilePage from './pages/ProfilePage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
 import VerificationQueuePage from './pages/admin/VerificationQueuePage.jsx'
 import SiteSettingsPage from './pages/admin/SiteSettingsPage.jsx'
+import RosterPage from './pages/admin/RosterPage.jsx'
 import CommitteesPage from './pages/committee/CommitteesPage.jsx'
 import CommitteeEditorPage from './pages/committee/CommitteeEditorPage.jsx'
 
@@ -61,6 +62,14 @@ export default function PortalRoot() {
               element={
                 <RequireEB>
                   <SiteSettingsPage />
+                </RequireEB>
+              }
+            />
+            <Route
+              path="admin/roster"
+              element={
+                <RequireEB>
+                  <RosterPage />
                 </RequireEB>
               }
             />

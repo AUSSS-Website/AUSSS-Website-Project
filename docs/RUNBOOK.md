@@ -31,7 +31,7 @@ server / SQL editor. Who owns what is in `docs/HANDOVER.md`.
 | `npm run db:config-push` | `supabase config push`, syncs `supabase/config.toml` auth settings to the hosted project |
 | `npm run db:gen-reference` | `node scripts/db/gen-reference-data.mjs`, writes a new `*_reference_data.sql` migration from `src/data/society.js` |
 | `npm run db:import-roster:dry` | Parses the roster spreadsheet and reports counts without writing |
-| `npm run db:import-roster` | Upserts `roster_entries` and links existing profiles (needs `SUPABASE_SECRET_KEY`) |
+| `npm run db:import-roster` | Merges the xlsx into `roster_entries` and links existing profiles (needs `SUPABASE_SECRET_KEY`; the portal's Roster page does the same without it) |
 
 - Two ways to run SQL against the hosted database: the **Supabase MCP server**
   in Claude Code (`execute_sql`, `apply_migration`, `get_advisors`,
@@ -138,57 +138,43 @@ emails in `society.js` are role mailboxes; invites to those mean the successor
 inherits the predecessor's profile. Prefer personal-email invites inserted by
 hand (section 8) and let the EB end the role-mailbox assignments at rollover.
 
-## 4. Import or refresh the membership roster
+## 4. The membership roster
 
-The roster is `_source/records/membership/updated AUSSS Membership Database.xlsx`,
-tab `Database`, columns addressed by position (the "Year joined" header cell is
-blank). It contains personal data and is not committed; get the current copy
-from the Members Officer or the society Drive.
+`public.roster_entries` is the live membership database. The public status check
+(`rpc/check_membership`), the home-page count (`rpc/roster_stats`), sign-in claiming and the
+portal's **Roster** page (`/portal/admin/roster`, EB only) all read it. Migration
+`20260919200001_live_roster` holds the rules; `apps-script/README.md` explains the sheet sync.
 
-1. Put the **secret** key into `.env.local`:
+**Day to day (no secret key needed):** the EB searches, edits, adds and removes members on the
+Roster page. A row edited there is stamped `portal_edited_at` and belongs to the portal from
+then on. A status change on a row whose member has signed in updates their profile too.
 
-   ```
-   SUPABASE_SECRET_KEY=sb_secret_...
-   ```
+**Bringing the spreadsheet in** (while the Secretary General still edits it), any of:
 
-   Only on the webmaster's machine, only for this job. The script refuses to run
-   with a clear message if it is blank.
+1. Portal → Roster → *Spreadsheet* → *Import an .xlsx or .csv*.
+2. The hourly Apps Script on the sheet (`apps-script/roster-sync.gs`), authenticated by the
+   token issued on the same panel.
+3. `npm run db:import-roster` with `SUPABASE_SECRET_KEY=sb_secret_...` in `.env.local` (reads
+   `_source/records/membership/updated AUSSS Membership Database.xlsx`; `:dry` parses only).
+   Blank the key again afterwards.
 
-2. Dry run, read the counts:
+All three call the same merge, `app.apply_roster_rows`: new rows are added, changed rows
+updated, portal-edited rows kept, rows missing from the file reported and **never deleted**,
+then `app.claim_unlinked()` links anyone who signed in earlier. Each run is logged in
+`public.roster_sync_runs` (shown on the Roster page as *Recent imports*).
 
-   ```sh
-   npm run db:import-roster:dry
-   ```
+Checks:
 
-   Expected: about 581 rows parsed, about 387 with an email address, a handful
-   of duplicate emails (the roster has 9), and the `import_batch` label taken
-   from the status header ("[As of dd/mm/yyyy]").
+```sql
+select count(*), count(email_normalized) as with_email, count(profile_id) as signed_in,
+       count(portal_edited_at) as portal_owned
+from public.roster_entries;
+select at, source, batch, result - 'missing_names' from public.roster_sync_runs order by at desc limit 5;
+```
 
-3. Real run:
-
-   ```sh
-   npm run db:import-roster
-   ```
-
-   It upserts `roster_entries` on `source_key` (a hash of normalised name and
-   email) in batches of 500, then calls `public.admin_claim_unlinked()` so that
-   anyone who signed in before the import is linked to their roster row and
-   gets `candidate` or `active` membership.
-
-4. Verify in SQL:
-
-   ```sql
-   select count(*) from public.roster_entries;                         -- about 581
-   select count(*) from public.roster_entries where email_normalized is not null;  -- about 387
-   select count(*) from public.roster_entries where profile_id is not null;         -- linked so far
-   ```
-
-5. Blank `SUPABASE_SECRET_KEY` in `.env.local` again when done, or at least be
-   aware it is on that disk.
-
-Re-running with a newer spreadsheet is safe: same `source_key` rows are updated,
-new people are inserted, nobody is deleted. Removing someone is a manual SQL
-decision.
+The sheet's columns are read by position; see the note in `apps-script/README.md` before anyone
+inserts a column. Public lookups are limited to 30 per 10 minutes per address and 300 per minute
+overall (`app.membership_lookup_hits`, kept for an hour, never records what was searched).
 
 ## 5. Push auth configuration
 

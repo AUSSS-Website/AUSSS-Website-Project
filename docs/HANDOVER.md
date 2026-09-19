@@ -148,10 +148,13 @@ referenced from `committees.page`). Phase 5 retires the remaining five.
   to delete once `netlify.toml` is retired.
 - Membership Google Form and its response sheet: owner TODO (see
   `apps-script/MIGRATION.md` section C).
-- Roster spreadsheet `_source/records/membership/updated AUSSS Membership
-  Database.xlsx`: the source for `roster_entries`; it contains personal data and
-  is not committed. TODO: record where the canonical copy lives (Drive folder
-  under `aussswebsite@gmail.com`).
+- Membership database: lives in Supabase (`public.roster_entries`, edited at
+  `/portal/admin/roster`). The Secretary General's Google Sheet
+  `[SHARED] AUSSS Membership Database` (owner `ausss.secgen@gmail.com`) feeds it
+  through `apps-script/roster-sync.gs` or a file upload until the EB retires the
+  sheet (RUNBOOK section 4). It holds personal data: keep its sharing on
+  Restricted, never "anyone with the link". The xlsx under
+  `_source/records/membership/` is an old export, not a source.
 
 ## 3. Access matrix
 

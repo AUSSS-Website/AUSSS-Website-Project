@@ -2,12 +2,14 @@
 //
 // WHY: the portal verifies members against the society's roster. Until membership
 // moves fully into the database, the spreadsheet in _source/records/membership is
-// the source of truth, so this script mirrors it (upsert on a stable source_key)
-// and then asks the database to link roster rows to already-signed-in profiles.
+// one way in, so this script hands its rows to rpc/admin_import_roster, the same
+// merge the portal upload and the sheet's Apps Script use. Day to day the portal
+// (Roster -> Spreadsheet) does this without a secret key; keep this for bulk or
+// scripted loads.
 //
 // Usage (secret key comes from .env.local via node --env-file, never from git):
 //   npm run db:import-roster:dry             parse only, print counts, no network
-//   npm run db:import-roster                 upsert + claim unlinked profiles
+//   npm run db:import-roster                 merge + claim unlinked profiles
 //   npm run db:import-roster -- --invites    also create invites from "Current Position"
 import { createRequire } from 'node:module'
 import crypto from 'node:crypto'
@@ -26,7 +28,6 @@ const XLSX_PATH = path.join(
   'membership',
   'updated AUSSS Membership Database.xlsx',
 )
-const BATCH = 500
 
 const args = new Set(process.argv.slice(2))
 const dryRun = args.has('--dry-run')
@@ -190,20 +191,33 @@ if (secret.startsWith('sb_publishable_')) {
 
 const supabase = createClient(url, secret, { auth: { persistSession: false } })
 
-const rowsToSend = unique.map(({ _email_norm, ...row }) => row)
-let upserted = 0
-for (let i = 0; i < rowsToSend.length; i += BATCH) {
-  const batch = rowsToSend.slice(i, i + BATCH)
-  const { error } = await supabase
-    .from('roster_entries')
-    .upsert(batch, { onConflict: 'source_key' })
-  if (error) {
-    console.error(`\nUpsert failed on batch starting at row ${i}: ${error.message}`)
-    if (error.details) console.error(error.details)
-    process.exit(1)
-  }
-  upserted += batch.length
-  console.log(`Upserted ${upserted}/${rowsToSend.length}`)
+// One merge routine for every route in (this script, the portal upload, the sheet's Apps
+// Script): app.apply_roster_rows. It keeps rows the EB edited in the portal, never deletes,
+// and links already-signed-in profiles at the end.
+const rowsToSend = unique.map((e) => ({
+  full_name: e.full_name,
+  email: e.email ?? '',
+  status: e.status ?? '',
+  joined_year: e.joined_year == null ? '' : String(e.joined_year),
+  years_spent: e.years_spent == null ? '' : String(e.years_spent),
+  lgas: e.lgas ?? '',
+  ngas: e.ngas ?? '',
+  current_position: e.current_position ?? '',
+}))
+const { data: result, error: importErr } = await supabase.rpc('admin_import_roster', {
+  rows: rowsToSend,
+  batch: importBatch,
+})
+if (importErr) {
+  console.error(`
+admin_import_roster failed: ${importErr.message}`)
+  if (importErr.details) console.error(importErr.details)
+  process.exit(1)
+}
+const { missing_names: missingNames = [], ...counts } = result
+console.log('Merged:', counts)
+if (missingNames.length) {
+  console.log(`On the roster but not in this file (kept): ${missingNames.join(', ')}`)
 }
 
 // ── Invites (opt-in) ─────────────────────────────────────────────────────
@@ -255,11 +269,3 @@ if (withInvites) {
     console.log(`Invites sent to the database: ${inviteRows.length} (existing ones untouched)`)
   }
 }
-
-// ── Link profiles that signed in before this import ──────────────────────
-const { data: claimed, error: claimErr } = await supabase.rpc('admin_claim_unlinked')
-if (claimErr) {
-  console.error(`\nadmin_claim_unlinked failed: ${claimErr.message}`)
-  process.exit(1)
-}
-console.log(`admin_claim_unlinked processed ${claimed} profile(s).`)

@@ -71,6 +71,11 @@ export default function PortalLayout() {
               </NavLink>
             )}
             {isEB && (
+              <NavLink to="/portal/admin/roster" className={navCls}>
+                Roster
+              </NavLink>
+            )}
+            {isEB && (
               <NavLink to="/portal/admin/verification" className={navCls}>
                 Verification
               </NavLink>

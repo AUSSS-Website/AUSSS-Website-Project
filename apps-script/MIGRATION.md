@@ -91,8 +91,9 @@ All are deployed and live. Sheet-bound ones move by transferring **the Sheet**
 | 5 | `stories.gs` | Sheet tab `Exchange Stories` | `src/data/storiesConfig.js` → `…AKfycbz-s7xWbh-UrPAWr_dRRJ0bRVsPecbcVFxeRmW7K51Ilp0EucthKaWSl5lPror3m5co_Q/exec` | — |
 | 6 | `magazine.gs` | bound **or** standalone — check | `src/data/magazineConfig.js` → `…AKfycbymoTD2Y6N6Z9XmmQKz2MZ_O41pcRCfczE8l6GQmrJCt3XXbT1IBJCT19QeSEd7iIN0/exec` | If standalone, Script Property `ENGAGEMENT_SHEET_ID` points at a separate "AUSSS Magazine Engagement" sheet that must move too |
 
-`Code.gs` (membership) is **not deployed** — `src/data/membershipConfig.js` has
-an empty `WEBAPP_URL`. Nothing to migrate; it is dormant source.
+The membership lookup no longer uses Apps Script: `Code.gs` was removed on 2026-09-19 when the
+roster moved to Supabase. `roster-sync.gs` is bound to the Secretary General's membership sheet
+(a different account, `ausss.secgen@gmail.com`) and only pushes to Supabase; see `README.md`.
 
 ### B. Drive files and folders
 
@@ -201,7 +202,6 @@ src/data/merchConfig.js:16      ORDERS_WEBAPP_URL
 src/data/signupsConfig.js:15    SIGNUPS_WEBAPP_URL
 src/data/storiesConfig.js:14    STORIES_WEBAPP_URL
 src/data/magazineConfig.js:8    MAGAZINE_WEBAPP_URL
-src/data/membershipConfig.js:19 WEBAPP_URL   (currently empty — dormant)
 ```
 
 Under the fallback you must also re-create Script Properties by hand:

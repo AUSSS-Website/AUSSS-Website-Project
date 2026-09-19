@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(14);
+select plan(19);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -22,6 +22,14 @@ select ok(has_table_privilege('anon', 'public.open_calls', 'select'), 'anon read
 select ok(not has_table_privilege('authenticated', 'public.applications', 'insert'), 'authenticated cannot insert applications directly');
 select ok(not has_table_privilege('authenticated', 'public.profiles', 'insert'), 'authenticated cannot insert profiles');
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'membership_status', 'update'), 'authenticated cannot update membership_status');
+
+-- live roster: the roster and its import log stay closed to anon; the token and the lookup
+-- counters live in `app`, which no API role can read
+select ok(not has_table_privilege('anon', 'public.roster_entries', 'select'), 'anon cannot read roster_entries');
+select ok(not has_table_privilege('anon', 'public.roster_sync_runs', 'select'), 'anon cannot read roster_sync_runs');
+select ok(not has_table_privilege('authenticated', 'public.roster_sync_runs', 'insert'), 'authenticated cannot write roster_sync_runs');
+select ok(not has_table_privilege('authenticated', 'app.roster_sync_token', 'select'), 'authenticated cannot read the sync token hash');
+select ok(not has_function_privilege('anon', 'public.import_roster(jsonb, text)', 'execute'), 'anon cannot call import_roster');
 
 select * from finish();
 rollback;
