@@ -91,6 +91,12 @@ values ((select id from public.committees where slug = 'score'), 'Expired', 'ope
        ((select id from public.committees where slug = 'score'), 'Draft', 'draft', null),
        ((select id from public.committees where slug = 'score'), 'Today', 'open', app.today_cairo());
 
+-- anon cannot see the expired call through RLS, so remember its id as postgres
+select tests.clear_auth();
+create temporary table pgtap_ids on commit drop as
+  select title, id from public.calls where title in ('Expired', 'Booklet SWG');
+grant select on pgtap_ids to anon, authenticated;
+
 -- ---- public reads ---------------------------------------------------------------------------
 select tests.clear_auth();
 select tests.authenticate_as_anon();
@@ -116,10 +122,11 @@ select is(
   (select count(*)::int from public.calls),
   2, 'a plain member sees live calls only'
 );
-select throws_ok(
-  $$ update public.calls set status = 'closed' where title = 'Today' $$,
-  '42501', null,
-  'a plain member cannot update a call'
+-- RLS filters the row out of the update (zero rows, no error), so assert the value
+update public.calls set status = 'closed' where title = 'Today';
+select is(
+  (select status from public.calls where title = 'Today'),
+  'open', 'a plain member cannot update a call'
 );
 
 -- the owning officer sees drafts and expired ones
@@ -156,7 +163,7 @@ select throws_ok(
 );
 select throws_ok(
   $$ select public.submit_application(
-       (select id from public.calls where title = 'Expired'),
+       (select id from pgtap_ids where title = 'Expired'),
        'CALL-1', 'Sara', 'sara@example.com', '', '', '{}', 'Because', '{}'::jsonb, '') $$,
   '22023', 'This call has closed.',
   'an expired call refuses applications'
@@ -168,7 +175,9 @@ select is(
     '{"q1":"https://x","q2":"Z","q3":"free text"}'::jsonb, 'http://spam') ->> 'ok',
   'true', 'the honeypot returns ok'
 );
+select tests.clear_auth();
 select is((select count(*)::int from public.applications), 0, '...but writes nothing');
+select tests.authenticate_as_anon();
 select is(
   public.submit_application(
     (select id from public.calls where title = 'Booklet SWG'),

@@ -101,12 +101,15 @@ select is(
   'Exchange the world',
   'the normalised page was stored on the committee row'
 );
+-- audit_log is readable by the webmaster only, so count it as postgres
+select tests.clear_auth();
 select is(
   (select count(*)::int from public.audit_log where table_name = 'committees' and action = 'UPDATE'
      and actor = tests.user_id('leo@pgtap.test')),
   1,
   'the edit is audited with the officer as actor'
 );
+select tests.authenticate_as('leo@pgtap.test');
 select throws_ok(
   $$ select public.save_committee_page('scope', '{"photo":"data:image/jpeg;base64,AAAA"}'::jsonb) $$,
   '22023', null,
