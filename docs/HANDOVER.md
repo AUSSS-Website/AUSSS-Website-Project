@@ -1,7 +1,8 @@
 # AUSSS website and portal: technical handover
 
 Status: first version written 2026-09-13 alongside Phase 0 and Phase 1 of
-`docs/PORTAL_BACKEND_PLAN.md`. Reviewed at every term rollover (section 6 below).
+`docs/PORTAL_BACKEND_PLAN.md`; updated 2026-09-19 for Phase 2 (officer editor on
+Supabase, `officers.gs` retired from production). Reviewed at every term rollover (section 6 below).
 Items marked TODO are facts the webmaster must confirm and fill in; they were
 not invented.
 
@@ -12,7 +13,7 @@ gone. Read it once when you take office and again when you hand over.
 Companion documents:
 
 - `docs/PORTAL_BACKEND_PLAN.md`: why the estate looks like this and what is
-  still to come (Phases 2 and later).
+  still to come (Phases 3 and later).
 - `docs/RUNBOOK.md`: exact commands for the routine operations named here.
 - `apps-script/MIGRATION.md`: the Google-side assets and how they were moved to
   the society account.
@@ -122,18 +123,24 @@ Supabase organisation. Requirements, from `apps-script/MIGRATION.md` step 0:
 - It is never handed to a single rotating officer. The password changes at every
   rollover and lands in the vault.
 
-### 2.8 Apps Script web apps (still live until Phase 2)
+### 2.8 Apps Script web apps (five still live until Phase 5)
 
-The six Google Apps Script web apps and their Sheets (`officers.gs`,
-`gallery.gs`, `orders.gs`, `signups.gs`, `stories.gs`, `magazine.gs`) still
-serve the public site. Their URLs are hard-coded in `src/data/*Config.js`; the
-inventory, Script Properties and Drive folders are in `apps-script/MIGRATION.md`
-section A and B. Ownership is moving to `aussswebsite@gmail.com`; check that
-document for what is still "pending owner".
+Five Google Apps Script web apps and their Sheets (`gallery.gs`, `orders.gs`,
+`signups.gs`, `stories.gs`, `magazine.gs`) still serve the public site. Their
+URLs are hard-coded in `src/data/*Config.js`; the inventory, Script Properties
+and Drive folders are in `apps-script/MIGRATION.md` section A and B. Ownership
+is moving to `aussswebsite@gmail.com`; check that document for what is still
+"pending owner".
 
-Phase 2 of the plan retires `officers.gs` (officer login, overrides, calls) in
-favour of the portal; Phase 5 retires the rest. Until then, both backends run
-and both need to be handed over.
+`officers.gs` (officer login, committee page overrides, site settings, Open
+Calls) was retired from production on 2026-09-19 (Phase 2): the site no longer
+calls its URL, officers sign in at `/portal` and the data lives in the
+`site_settings`, `committees.page`, `calls` and `applications` tables. Its Sheet
+(`AUSSS-officer-accounts`) is an archive: keep it read-only for a term in case
+an old application or override needs to be looked up, then delete it. The
+`AUSSS Officer Photos` Drive folder must stay shared anyone-with-link until every
+committee has re-uploaded its photos through the portal (old `lh3` URLs are still
+referenced from `committees.page`). Phase 5 retires the remaining five.
 
 ### 2.9 Other
 
@@ -184,7 +191,7 @@ seat. RUNBOOK section 8 covers that.
 | Resend API key | Supabase custom SMTP, `supabase/.env` | Webmaster |
 | Resend and registrar logins | Rare admin | President, webmaster |
 | Vercel account login (if not SSO via GitHub) | Hosting | President, webmaster |
-| Apps Script `ADMIN_KEY` (gallery) and `SITE_SETTINGS` officer accounts | Legacy backends until Phase 2/5 | Webmaster |
+| Apps Script `ADMIN_KEY` (gallery) | Legacy backend until Phase 5 | Webmaster |
 
 - When someone leaves a role, the secrets they could see are rotated (section 6),
   not merely "removed from the vault".
@@ -274,8 +281,10 @@ Exact SQL is in RUNBOOK section 9. In order:
 - [ ] Insert the `society.webmaster` invite for the incoming webmaster.
 - [ ] Verify: each incoming officer signs in at `/portal` and sees their
       position chip; the public committee pages show the right names.
-- [ ] Until Phase 2 ships, also update `src/data/society.js` and the
-      `officers.gs` `Accounts` sheet, which the public site still reads.
+- [ ] Also update the names, photos and role mailboxes in `src/data/society.js`:
+      the public site still renders it as the static fallback under the
+      officer-edited `committees.page` overrides, and `npm run db:gen-reference`
+      derives positions and invites from it (RUNBOOK section 3).
 
 ### 6.4 Confirm the machines are still alive
 

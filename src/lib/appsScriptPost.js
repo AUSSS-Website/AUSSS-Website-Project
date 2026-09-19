@@ -15,7 +15,7 @@
 // Requires the matching `claim` support in the .gs backends (officers.gs /
 // gallery.gs). Callers should fall back to the legacy GET path when the
 // backend reports an unknown action, so a new client keeps working against an
-// not-yet-redeployed backend (see useOfficerAuth / useGalleryRemovals).
+// not-yet-redeployed backend (see useGalleryRemovals).
 
 const UNKNOWN_ACTION = 'Unknown action'
 

@@ -1,33 +1,49 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import { formatDeadline } from '../../../hooks/useCalls.js'
 import {
-  callsBackendReady,
-  fetchOfficerCalls,
-  saveCall,
-  setCallStatus,
-  deleteCall,
-  fetchApplications,
-} from '../lib/calls.js'
-import { formatDeadline } from '../hooks/useCalls.js'
+  todayCairo,
+  useApplications,
+  useCallMutations,
+  useCommitteeCalls,
+  useUpdateApplication,
+} from '../../officerQueries.js'
+import {
+  ErrorText,
+  Field,
+  Spinner,
+  inputCls,
+  outlineBtnCls,
+  primaryBtnCls,
+} from '../../portalUi.jsx'
 
-// Officer-side Open Calls management, mounted as a tab in AccountPage.
+// Officer-side Open Calls management for the portal, ported from
+// src/components/officerCalls.jsx (the Apps-Script version) onto Supabase.
 //
-// Three views, one file, same convention as committeeUi.jsx:
+// Three views, one file, same convention as before:
 //   CallsPanel        list of this committee's calls (the entry point)
 //   CallEditor        create / edit a call, its positions and its questions
-//   ApplicationsList  who applied, and what they said
+//   ApplicationsList  who applied, what they said, and how triage is going
 //
-// Every write goes through src/lib/calls.js, which posts the token in the body
-// and claims the reply, so nothing sensitive is ever in a URL.
+// Every read and write goes through officerQueries.js; authorisation lives in
+// the database (RLS), so a failed write surfaces here as a thrown error with a
+// message, never as a silently ignored save.
 
 const MAX_POSITIONS = 8
 const MAX_QUESTIONS = 6
 
-const inputCls =
-  'w-full rounded-xl border border-white/15 bg-forest-900 px-4 py-2.5 text-sm text-white placeholder:text-silver/40 focus:border-medical focus:outline-none'
+const APPLICATION_STATUSES = [
+  ['new', 'New'],
+  ['shortlisted', 'Shortlisted'],
+  ['accepted', 'Accepted'],
+  ['declined', 'Declined'],
+]
 
 const smallInputCls =
   'w-full rounded-lg border border-white/15 bg-forest-950 px-3 py-2 text-sm text-white placeholder:text-silver/40 focus:border-medical focus:outline-none'
 
+// Client-side ids for new positions/questions. The database keeps whatever id
+// we send (falling back to p0/q0 when blank), and applications reference
+// positions by id, so an id must never change once the call is saved.
 function uid(prefix) {
   try {
     return prefix + crypto.randomUUID().slice(0, 8)
@@ -36,22 +52,32 @@ function uid(prefix) {
   }
 }
 
-function todayISO() {
-  const d = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-function Panel({ label, hint, children }) {
+// The old file's Panel was a labelled section, not a card; portalUi's Field is
+// the same label + hint pattern, so it is wrapped here to keep the old width.
+function Section({ label, hint, children }) {
   return (
     <section className="mx-auto max-w-3xl">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
-        {label}
-      </p>
-      {hint && <p className="mb-3 mt-1 text-xs text-silver/50">{hint}</p>}
-      {!hint && <div className="mt-3" />}
-      {children}
+      <Field label={label} hint={hint}>
+        {children}
+      </Field>
     </section>
+  )
+}
+
+function BackButton({ onClick }) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
+      >
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Back to calls
+      </button>
+    </div>
   )
 }
 
@@ -74,108 +100,84 @@ function StatusPill({ call }) {
 }
 
 // ── The list ────────────────────────────────────────────────────────────────
-export function CallsPanel({ auth, committee, targetSlug }) {
-  const [calls, setCalls] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+export default function CallsPanel({ committee }) {
+  const calls = useCommitteeCalls(committee.slug, committee.id)
+  const mutations = useCallMutations(committee.slug, committee.id)
   const [view, setView] = useState({ mode: 'list' }) // list | edit | applications
   const [confirming, setConfirming] = useState('') // id pending delete confirm
   const [busyId, setBusyId] = useState('')
+  const [actionError, setActionError] = useState('') // last failed status/remove
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    // Ask the readable GET first, so an un-redeployed backend gets named
-    // rather than silently timing out a POST that stores no claim.
-    if (!(await callsBackendReady())) {
-      setError(
-        'Open Calls needs the officer backend redeployed before it can be used. Nothing else on this page is affected.',
-      )
-      setLoading(false)
-      return
-    }
-    const res = await fetchOfficerCalls(auth.token, targetSlug)
-    if (res.ok) {
-      setCalls(res.calls || [])
-      setError('')
-    } else {
-      setError(res.error || 'Could not load your calls.')
-    }
-    setLoading(false)
-  }, [auth.token, targetSlug])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const rows = calls.data || []
 
   const changeStatus = async (id, status) => {
     setBusyId(id)
-    const res = await setCallStatus(auth.token, id, status)
-    if (!res.ok) setError(res.error || 'Could not update that call.')
-    await load()
-    setBusyId('')
+    setActionError('')
+    try {
+      await mutations.status.mutateAsync({ id, status })
+    } catch (e) {
+      setActionError(e?.message || 'Could not update that call.')
+    } finally {
+      setBusyId('')
+    }
   }
 
   const remove = async (id) => {
     setBusyId(id)
-    const res = await deleteCall(auth.token, id)
-    if (!res.ok) setError(res.error || 'Could not remove that call.')
-    setConfirming('')
-    await load()
-    setBusyId('')
+    setActionError('')
+    try {
+      await mutations.remove.mutateAsync(id)
+    } catch (e) {
+      setActionError(e?.message || 'Could not remove that call.')
+    } finally {
+      setConfirming('')
+      setBusyId('')
+    }
   }
 
   if (view.mode === 'edit') {
     return (
       <CallEditor
-        auth={auth}
         committee={committee}
-        targetSlug={targetSlug}
         call={view.call}
-        onDone={async () => {
-          setView({ mode: 'list' })
-          await load()
-        }}
+        onDone={() => setView({ mode: 'list' })}
         onCancel={() => setView({ mode: 'list' })}
       />
     )
   }
 
   if (view.mode === 'applications') {
-    return (
-      <ApplicationsList
-        auth={auth}
-        call={view.call}
-        onBack={() => setView({ mode: 'list' })}
-      />
-    )
+    return <ApplicationsList call={view.call} onBack={() => setView({ mode: 'list' })} />
   }
+
+  const loadError = calls.error?.message || ''
 
   return (
     <div className="space-y-8">
-      <Panel
+      <Section
         label="Open calls"
         hint={`Recruitment calls for ${committee.abbr}. Open ones show in an “Open Calls” section on your committee page.`}
       >
-        {!error && (
+        {!loadError && (
           <button
             type="button"
             onClick={() => setView({ mode: 'edit', call: null })}
-            className="rounded-full bg-medical px-5 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light"
+            className={`${primaryBtnCls} px-5`}
           >
             + New call
           </button>
         )}
 
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-red-300">
-            {error}
-          </p>
+        {(loadError || actionError) && (
+          <div className="mt-4">
+            <ErrorText>{loadError || actionError}</ErrorText>
+          </div>
         )}
 
         <div className="mt-6 space-y-4">
-          {loading && <p className="text-sm text-silver/50">Loading…</p>}
+          {calls.isPending && <Spinner />}
 
-          {!loading && calls.length === 0 && !error && (
+          {!calls.isPending && rows.length === 0 && !loadError && (
             <p className="rounded-2xl border border-white/10 bg-forest-800 p-6 text-sm text-silver/60">
               No calls yet. Create one and it appears on{' '}
               <span className="text-white">the {committee.abbr} page</span> straight
@@ -183,7 +185,7 @@ export function CallsPanel({ auth, committee, targetSlug }) {
             </p>
           )}
 
-          {calls.map((call) => (
+          {rows.map((call) => (
             <div
               key={call.id}
               className="rounded-2xl border border-white/10 bg-forest-800 p-5"
@@ -213,7 +215,7 @@ export function CallsPanel({ auth, committee, targetSlug }) {
                 <button
                   type="button"
                   onClick={() => setView({ mode: 'applications', call })}
-                  className="shrink-0 rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/10"
+                  className={`shrink-0 ${outlineBtnCls}`}
                 >
                   {call.applications} application
                   {call.applications === 1 ? '' : 's'}
@@ -288,24 +290,26 @@ export function CallsPanel({ auth, committee, targetSlug }) {
             </div>
           ))}
         </div>
-      </Panel>
+      </Section>
     </div>
   )
 }
 
 // ── Create / edit ───────────────────────────────────────────────────────────
-export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel }) {
+export function CallEditor({ committee, call, onDone, onCancel }) {
   const editing = Boolean(call)
+  const { create, update } = useCallMutations(committee.slug, committee.id)
   const [title, setTitle] = useState(call?.title || '')
   const [kind, setKind] = useState(call?.kind || 'Small Working Group')
   const [summary, setSummary] = useState(call?.summary || '')
   const [description, setDescription] = useState(call?.description || '')
   const [commitment, setCommitment] = useState(call?.commitment || '')
   const [deadline, setDeadline] = useState(call?.deadline || '')
-  const [notifyEmail, setNotifyEmail] = useState(call?.notifyEmail || '')
+  const [notifyEmail, setNotifyEmail] = useState(call?.notify_email || '')
   const [status, setStatus] = useState(call?.status || 'open')
+  // slots is free text in the form; coerce so an older row never trips .trim()
   const [positions, setPositions] = useState(() =>
-    (call?.positions || []).map((p) => ({ ...p })),
+    (call?.positions || []).map((p) => ({ ...p, slots: String(p.slots ?? '') })),
   )
   const [questions, setQuestions] = useState(() =>
     (call?.questions || []).map((q) => ({ ...q, options: [...(q.options || [])] })),
@@ -342,58 +346,49 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
     }
     setBusy(true)
     setMsg('')
-    const res = await saveCall(auth.token, {
-      id: call?.id || '',
-      slug: targetSlug,
+    const fields = {
+      title: title.trim(),
+      kind: kind.trim(),
+      summary: summary.trim(),
+      description: description.trim(),
+      commitment: commitment.trim(),
+      deadline,
+      notify_email: notifyEmail.trim(),
       status,
-      fields: {
-        title: title.trim(),
-        kind: kind.trim(),
-        summary: summary.trim(),
-        description: description.trim(),
-        commitment: commitment.trim(),
-        deadline,
-        notifyEmail: notifyEmail.trim(),
-        positions: positions
-          .map((p) => ({
-            id: p.id,
-            title: p.title.trim(),
-            blurb: p.blurb.trim(),
-            slots: p.slots.trim(),
-          }))
-          .filter((p) => p.title),
-        questions: questions
-          .map((q) => ({
-            id: q.id,
-            label: q.label.trim(),
-            type: q.type,
-            options: (q.options || []).map((o) => o.trim()).filter(Boolean),
-            required: Boolean(q.required),
-          }))
-          .filter((q) => q.label),
-      },
-    })
-    setBusy(false)
-    if (res.ok) onDone()
-    else setMsg(res.error || 'Could not save. Try again.')
+      positions: positions
+        .map((p) => ({
+          id: p.id,
+          title: p.title.trim(),
+          blurb: (p.blurb || '').trim(),
+          slots: (p.slots || '').trim(),
+        }))
+        .filter((p) => p.title),
+      questions: questions
+        .map((q) => ({
+          id: q.id,
+          label: q.label.trim(),
+          type: q.type,
+          options: (q.options || []).map((o) => o.trim()).filter(Boolean),
+          required: Boolean(q.required),
+        }))
+        .filter((q) => q.label),
+    }
+    try {
+      if (editing) await update.mutateAsync({ id: call.id, fields })
+      else await create.mutateAsync(fields)
+      onDone()
+    } catch (e) {
+      setMsg(e?.message || 'Could not save. Try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
     <div className="space-y-8 pb-28">
-      <div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
-        >
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to calls
-        </button>
-      </div>
+      <BackButton onClick={onCancel} />
 
-      <Panel
+      <Section
         label={editing ? 'Edit call' : 'New call'}
         hint={`This appears on the ${committee.abbr} page while it's open.`}
       >
@@ -453,9 +448,9 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
             />
           </div>
         </div>
-      </Panel>
+      </Section>
 
-      <Panel
+      <Section
         label="Deadline"
         hint="Leave blank for no deadline. Otherwise the call closes itself at the end of that day, so you don't have to remember to."
       >
@@ -463,7 +458,7 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
           <input
             type="date"
             value={deadline}
-            min={todayISO()}
+            min={todayCairo()}
             onChange={(e) => setDeadline(e.target.value)}
             className={`${inputCls} max-w-[14rem] [color-scheme:dark]`}
           />
@@ -477,9 +472,9 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
             </button>
           )}
         </div>
-      </Panel>
+      </Section>
 
-      <Panel
+      <Section
         label="Positions"
         hint={`What people can apply for, up to ${MAX_POSITIONS}. Applicants may pick more than one. Leave empty for a general call.`}
       >
@@ -529,9 +524,9 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
               : '+ Add position'}
           </button>
         </div>
-      </Panel>
+      </Section>
 
-      <Panel
+      <Section
         label="Extra questions"
         hint={`Asked on the application form, after name/email and “why do you want to join?”, up to ${MAX_QUESTIONS}.`}
       >
@@ -597,11 +592,13 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
               : '+ Add question'}
           </button>
         </div>
-      </Panel>
+      </Section>
 
-      <Panel
+      {/* Application emails are not sent in Phase 2; the address is kept so
+          switching them on later needs no re-entry. */}
+      <Section
         label="Notifications"
-        hint="Every application emails you. Add another address to copy in a committee inbox."
+        hint="Also notify (optional). Saved for when application emails are switched on."
       >
         <input
           type="email"
@@ -610,9 +607,9 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
           placeholder="Also notify (optional), e.g. scope@ausss.org"
           className={inputCls}
         />
-      </Panel>
+      </Section>
 
-      <Panel label="Visibility">
+      <Section label="Visibility">
         <div className="flex flex-wrap gap-3">
           {[
             ['open', 'Open: visible, accepting applications'],
@@ -638,7 +635,7 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
             </label>
           ))}
         </div>
-      </Panel>
+      </Section>
 
       <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-white/15 bg-forest-950/95 px-4 py-3 backdrop-blur-md">
         <div className="container-prose flex flex-wrap items-center justify-between gap-3">
@@ -655,7 +652,7 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
               type="button"
               onClick={save}
               disabled={busy}
-              className="rounded-full bg-medical px-6 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light disabled:opacity-40"
+              className={primaryBtnCls}
             >
               {busy ? 'Saving…' : editing ? 'Save call' : 'Publish call'}
             </button>
@@ -667,114 +664,157 @@ export function CallEditor({ auth, committee, targetSlug, call, onDone, onCancel
 }
 
 // ── Applications ────────────────────────────────────────────────────────────
-export function ApplicationsList({ auth, call, onBack }) {
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
+
+// One application card with its own triage controls. Notes are drafted
+// locally and only written on "Save notes", so typing never fires a request
+// per keystroke; the status select saves immediately since it is one click.
+function ApplicationRow({ app, onPatch }) {
+  const [notes, setNotes] = useState(app.notes || '')
+  const [busy, setBusy] = useState('') // 'status' | 'notes'
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    let alive = true
-    fetchApplications(auth.token, call.id).then((res) => {
-      if (!alive) return
-      if (res.ok) setRows(res.applications || [])
-      else setError(res.error || 'Could not load applications.')
-      setLoading(false)
-    })
-    return () => {
-      alive = false
+  const patch = async (what, body) => {
+    setBusy(what)
+    setError('')
+    try {
+      await onPatch(app.id, body)
+    } catch (e) {
+      setError(e?.message || 'Could not save that change.')
+    } finally {
+      setBusy('')
     }
-  }, [auth.token, call.id])
+  }
+
+  const positions = Array.isArray(app.positions) ? app.positions : []
+  const answers = Array.isArray(app.answers) ? app.answers : []
+  const notesDirty = notes !== (app.notes || '')
+
+  return (
+    <article className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-base font-semibold text-white">{app.name}</p>
+        <p className="text-xs text-silver/45">
+          {app.created_at ? new Date(app.created_at).toLocaleString() : ''}
+          {app.ref && ` · ${app.ref}`}
+        </p>
+      </div>
+
+      <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-silver/60">
+        <a href={`mailto:${app.email}`} className="text-medical-light hover:text-white">
+          {app.email}
+        </a>
+        {app.phone && <span>{app.phone}</span>}
+        {app.year && <span>{app.year}</span>}
+      </p>
+
+      {positions.length > 0 && (
+        <p className="mt-3 text-sm text-silver/80">
+          <span className="text-xs uppercase tracking-[0.16em] text-silver/45">
+            Applied for:{' '}
+          </span>
+          {positions.join(', ')}
+        </p>
+      )}
+
+      {app.motivation && (
+        <div className="mt-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">
+            Why they want to join
+          </p>
+          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">
+            {app.motivation}
+          </p>
+        </div>
+      )}
+
+      {answers.map((a, i) => (
+        <div key={a.id || i} className="mt-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">
+            {a.label}
+          </p>
+          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">
+            {a.value}
+          </p>
+        </div>
+      ))}
+
+      <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor={`status-${app.id}`} className="text-xs text-silver/60">
+            Status
+          </label>
+          <select
+            id={`status-${app.id}`}
+            value={app.status || 'new'}
+            disabled={Boolean(busy)}
+            onChange={(e) => patch('status', { status: e.target.value })}
+            className={`${smallInputCls} max-w-[11rem] disabled:opacity-40`}
+          >
+            {APPLICATION_STATUSES.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {busy === 'status' && <span className="text-xs text-silver/50">Saving…</span>}
+        </div>
+
+        <div>
+          <label htmlFor={`notes-${app.id}`} className="mb-1.5 block text-xs text-silver/60">
+            Notes <span className="text-silver/40">(only officers see these)</span>
+          </label>
+          <textarea
+            id={`notes-${app.id}`}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className={`${smallInputCls} resize-y`}
+          />
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={Boolean(busy) || !notesDirty}
+              onClick={() => patch('notes', { notes })}
+              className={outlineBtnCls}
+            >
+              {busy === 'notes' ? 'Saving…' : 'Save notes'}
+            </button>
+          </div>
+        </div>
+
+        <ErrorText>{error}</ErrorText>
+      </div>
+    </article>
+  )
+}
+
+export function ApplicationsList({ call, onBack }) {
+  const applications = useApplications(call.id)
+  const updateApplication = useUpdateApplication(call.id)
+  const rows = applications.data || []
+  const loadError = applications.error?.message || ''
+
+  const onPatch = (id, patch) => updateApplication.mutateAsync({ id, patch })
 
   return (
     <div className="space-y-8">
-      <div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
-        >
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to calls
-        </button>
-      </div>
+      <BackButton onClick={onBack} />
 
-      <Panel
-        label="Applications"
-        hint={`${call.title}, newest first. Every one of these also emailed you.`}
-      >
-        {loading && <p className="text-sm text-silver/50">Loading…</p>}
-        {error && (
-          <p role="alert" className="text-sm text-red-300">
-            {error}
-          </p>
-        )}
-        {!loading && !error && rows.length === 0 && (
+      <Section label="Applications" hint={`${call.title}, newest first.`}>
+        {applications.isPending && <Spinner />}
+        <ErrorText>{loadError}</ErrorText>
+        {!applications.isPending && !loadError && rows.length === 0 && (
           <p className="rounded-2xl border border-white/10 bg-forest-800 p-6 text-sm text-silver/60">
             Nobody has applied yet.
           </p>
         )}
 
         <div className="space-y-4">
-          {rows.map((r) => (
-            <article
-              key={r.ref || `${r.email}-${r.at}`}
-              className="rounded-2xl border border-white/10 bg-forest-800 p-5"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <p className="text-base font-semibold text-white">{r.name}</p>
-                <p className="text-xs text-silver/45">
-                  {r.at ? new Date(r.at).toLocaleString() : ''}
-                  {r.ref && ` · ${r.ref}`}
-                </p>
-              </div>
-
-              <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-silver/60">
-                <a
-                  href={`mailto:${r.email}`}
-                  className="text-medical-light hover:text-white"
-                >
-                  {r.email}
-                </a>
-                {r.phone && <span>{r.phone}</span>}
-                {r.year && <span>{r.year}</span>}
-              </p>
-
-              {r.positions && (
-                <p className="mt-3 text-sm text-silver/80">
-                  <span className="text-xs uppercase tracking-[0.16em] text-silver/45">
-                    Applied for:{' '}
-                  </span>
-                  {r.positions}
-                </p>
-              )}
-
-              {r.motivation && (
-                <div className="mt-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">
-                    Why they want to join
-                  </p>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">
-                    {r.motivation}
-                  </p>
-                </div>
-              )}
-
-              {Object.entries(r.answers || {}).map(([label, value]) => (
-                <div key={label} className="mt-3">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">
-                    {label}
-                  </p>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">
-                    {value}
-                  </p>
-                </div>
-              ))}
-            </article>
+          {rows.map((app) => (
+            <ApplicationRow key={app.id} app={app} onPatch={onPatch} />
           ))}
         </div>
-      </Panel>
+      </Section>
     </div>
   )
 }

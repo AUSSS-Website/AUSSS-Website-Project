@@ -52,6 +52,11 @@ function PositionChip({ assignment }) {
 export default function DashboardPage() {
   usePageTitle('Members portal')
   const { user, profile, assignments, isEB, profileError } = useAuth()
+  // Committees this person can edit: officers see theirs, the EB sees all.
+  const officerCommittees = assignments
+    .filter((a) => a.position?.level === 'officer' && a.position?.committee)
+    .map((a) => a.position.committee)
+  const canEditCommittees = isEB || officerCommittees.length > 0
   const myVer = useMyVerification(user.id)
   const pending = usePendingVerifications(isEB)
 
@@ -128,6 +133,26 @@ export default function DashboardPage() {
           </Link>
         </Panel>
 
+        {canEditCommittees && (
+          <Panel title="Your committees">
+            <p className="mt-4 text-sm text-silver/70">
+              {isEB
+                ? 'Edit any committee page, its open calls and applications.'
+                : `Edit the ${officerCommittees.map((c) => c.abbr).join(', ')} page, open calls and applications.`}
+            </p>
+            <Link
+              to={
+                !isEB && officerCommittees.length === 1
+                  ? `/portal/committees/${officerCommittees[0].slug}`
+                  : '/portal/committees'
+              }
+              className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+            >
+              Open the editor &rarr;
+            </Link>
+          </Panel>
+        )}
+
         {isEB && (
           <Panel title="Executive Board">
             <p className="mt-4 text-sm text-silver/70">
@@ -141,12 +166,20 @@ export default function DashboardPage() {
                         pending.data.length === 1 ? '' : 's'
                       } waiting for a decision.`}
             </p>
-            <Link
-              to="/portal/admin/verification"
-              className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
-            >
-              Open the queue &rarr;
-            </Link>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+              <Link
+                to="/portal/admin/verification"
+                className="text-sm font-semibold text-medical-light hover:text-white"
+              >
+                Open the queue &rarr;
+              </Link>
+              <Link
+                to="/portal/admin/settings"
+                className="text-sm font-semibold text-medical-light hover:text-white"
+              >
+                Site settings &rarr;
+              </Link>
+            </div>
           </Panel>
         )}
       </div>

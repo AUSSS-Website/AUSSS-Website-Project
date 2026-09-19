@@ -1,3 +1,10 @@
+> **Retired from production on 2026-09-19 (portal Phase 2).** The site no longer
+> calls this web app: committee page overrides, site settings and Open Calls now
+> live in Supabase (`committees.page`, `site_settings`, `calls`, `applications`)
+> and officers edit them at `/portal/committees/<slug>`. See `docs/RUNBOOK.md`
+> section 12. The text below is kept as a record of how the Sheet-backed editor
+> worked and how to read the archived `Overrides` / `Calls` / `Applications` tabs.
+
 # Officer self-service editor — setup
 
 `officers.gs` is the backend that lets each Team-of-Officials member log in and

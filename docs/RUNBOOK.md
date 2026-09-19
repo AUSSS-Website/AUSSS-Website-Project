@@ -79,8 +79,16 @@ try to re-apply the file later.
 
 - Run MCP `get_advisors` with `type: security` and `type: performance`. The
   expected result is no findings about RLS being disabled, no
-  security-definer functions exposed in `public` other than the five documented
-  RPCs, and no missing indexes on foreign keys.
+  security-definer functions exposed in `public` other than the seven documented
+  RPCs (`claim_my_account`, `decide_verification`, `set_membership_status`,
+  `set_current_term`, `admin_claim_unlinked`, `save_committee_page`, and
+  `submit_application`, the only one anon may execute), and no missing indexes
+  on foreign keys.
+- New table? Add its grants to the `090-grants.sql` test and check
+  `has_table_privilege('anon', ...)` in production: the hosted project used to
+  hand anon/authenticated ALL on every new table through default privileges
+  (fixed in migration `20260919160004_harden_table_grants`, which also removed
+  those defaults; section 12 has the background).
 - `select count(*) from public.committees` should be 10; `positions` at least
   26; `terms` exactly 2 with one `is_current`.
 
@@ -109,9 +117,10 @@ Open a pull request; `db-ci` must be green before merge; `db-deploy` applies it.
 
 ## 3. Regenerate reference data (committees, positions, terms, officer invites)
 
-`src/data/society.js` is still the source of truth for committees and officer
-titles until Phase 2. When it changes in a way that affects the database (a new
-committee, a renamed officer title, a new term):
+`src/data/society.js` is the source of truth for the list of committees,
+officer titles and role mailboxes (their editable page content lives in
+`committees.page`, section 12). When it changes in a way that affects the
+database (a new committee, a renamed officer title, a new term):
 
 ```sh
 npm run db:gen-reference
@@ -457,3 +466,58 @@ rollback;
 
 This is the same mechanism `supabase/seed.sql`'s `tests.authenticate_as()`
 uses in CI, so a case that fails here is a good candidate for a pgTAP test.
+
+## 12. Officer content: committee pages, Open Calls, site settings (Phase 2)
+
+Since 2026-09-19 the officer editor is the portal, not `apps-script/officers.gs`.
+Everything an officer used to do at `/account` is at `/portal/committees/<slug>`
+(EB: every committee; officers: the committees where they hold an
+officer-level assignment this term, via `app.is_officer_of`). `/login` and
+`/account` redirect there.
+
+Where the data lives:
+
+| What | Table / place | Who writes | Public read |
+| --- | --- | --- | --- |
+| Committee page overrides (tagline, about, what we do, lead photo, members) | `committees.page` (jsonb, `{}` = no override) | `rpc/save_committee_page` (officer of that committee or EB); normalises and caps the document | `GET /rest/v1/committees?select=slug,page` (anon) |
+| Officer and member photos | Storage bucket `committee-media`, path `<slug>/<hint>-<timestamp>.jpg`, public | officers of that slug (storage policies) | public URL stored in the page document |
+| Open Calls | `calls` (status `draft`/`open`/`closed`; "expired" is derived: open + deadline before today in Africa/Cairo) | officers via the table (RLS); `notify_email` is never readable by anon | view `open_calls` (live calls, public columns only) |
+| Applications | `applications` (snapshot of call title + committee; `status` new/shortlisted/accepted/declined, `notes`) | inserted only by `rpc/submit_application` (anon; validates, honeypot, 24h dedupe, 20/min cap); officers update status/notes; EB deletes | none |
+| Site settings | `site_settings` (key, jsonb value) | EB at `/portal/admin/settings` | `GET /rest/v1/site_settings` (anon) |
+
+The public site reads all of this over plain REST (`src/lib/supabaseRest.js`)
+with the publishable key, caches the last response in `localStorage`, and
+falls back to `src/data/society.js` when the env vars are absent. Open Calls
+cards are additionally gated by `callsLiveEnabled` in
+`src/data/officersConfig.js` (off while the joining flow is unsettled; officers
+can still prepare calls in the portal).
+
+Useful SQL (as `postgres`):
+
+```sql
+-- Clear one committee's override so the static society.js content shows again.
+update public.committees set page = '{}'::jsonb where slug = 'scope';
+
+-- Calls that are open but past their deadline (what visitors no longer see).
+select m.slug, c.title, c.deadline from public.calls c
+join public.committees m on m.id = c.committee_id
+where c.status = 'open' and c.deadline < app.today_cairo();
+
+-- Applications for a committee, newest first (personal data: EB/officers only).
+select a.created_at, a.ref, a.call_title, a.name, a.email, a.status
+from public.applications a join public.committees m on m.id = a.committee_id
+where m.slug = 'score' order by a.created_at desc;
+```
+
+Not yet done in Phase 2, by design:
+
+- No email is sent when an application arrives (`officers.gs` used MailApp).
+  `calls.notify_email` is stored for the Phase 3 notification digest through
+  Resend. Officers see new applications in the portal instead.
+- Old officer photos still point at `lh3.googleusercontent.com` (Drive). They
+  keep working while the Drive folder stays shared; each committee replaces
+  them by uploading through the editor.
+- The `Applications` sheet in the old workbook was not imported (it needs an
+  export from the Sheet; the two calls that were live on 2026-09-19 were
+  copied by hand into `calls`).
+

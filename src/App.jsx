@@ -10,8 +10,6 @@ const ContactPage = lazy(() => import('./pages/ContactPage.jsx'))
 const IFMSAPage = lazy(() => import('./pages/IFMSAPage.jsx'))
 const IFMSAHistoryPage = lazy(() => import('./pages/IFMSAHistoryPage.jsx'))
 const MagazinePage = lazy(() => import('./pages/MagazinePage.jsx'))
-const LoginPage = lazy(() => import('./pages/LoginPage.jsx'))
-const AccountPage = lazy(() => import('./pages/AccountPage.jsx'))
 const MerchPage = lazy(() => import('./pages/MerchPage.jsx'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
 const MembersPage = lazy(() => import('./pages/MembersPage.jsx'))
@@ -98,8 +96,10 @@ export default function App() {
                 <Route path="/members" element={<MembersPage />} />
                 <Route path="/constitution" element={<ConstitutionPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/account" element={<AccountPage />} />
+                {/* The Apps Script officer editor (/login, /account) retired
+                    in Phase 2; officers now sign in to the members portal. */}
+                <Route path="/login" element={<Navigate to="/portal/sign-in" replace />} />
+                <Route path="/account" element={<Navigate to="/portal/committees" replace />} />
                 {/* Social merged into Contact, keep the old URL working. */}
                 <Route path="/social" element={<Navigate to="/contact" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import Button from '../../components/ui/Button.jsx'
 import { useAuth } from '../../auth/AuthProvider.jsx'
@@ -147,10 +147,7 @@ export default function SignInPage() {
       )}
 
       <p className="mt-6 text-center text-xs text-silver/50">
-        Officer editing your committee page?{' '}
-        <Link to="/login" className="font-semibold text-silver/70 hover:text-white">
-          Officer login
-        </Link>
+        Officers: sign in here to edit your committee page and open calls.
       </p>
       <BackLink />
     </AuthCard>

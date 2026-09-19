@@ -12,6 +12,9 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
 import VerificationQueuePage from './pages/admin/VerificationQueuePage.jsx'
+import SiteSettingsPage from './pages/admin/SiteSettingsPage.jsx'
+import CommitteesPage from './pages/committee/CommitteesPage.jsx'
+import CommitteeEditorPage from './pages/committee/CommitteeEditorPage.jsx'
 
 // Lazy boundary for everything under /portal/*. This is the ONLY place the
 // public app touches the portal, so supabase-js and react-query stay out of
@@ -49,6 +52,18 @@ export default function PortalRoot() {
             <Route index element={<DashboardPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="verify" element={<VerifyPage />} />
+            {/* Officer surfaces: the page itself checks officerOf(slug) so a
+                member who types the URL gets a polite refusal. */}
+            <Route path="committees" element={<CommitteesPage />} />
+            <Route path="committees/:slug" element={<CommitteeEditorPage />} />
+            <Route
+              path="admin/settings"
+              element={
+                <RequireEB>
+                  <SiteSettingsPage />
+                </RequireEB>
+              }
+            />
             <Route
               path="admin/verification"
               element={

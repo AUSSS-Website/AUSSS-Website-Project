@@ -23,7 +23,10 @@ function displayName(profile, user) {
 }
 
 export default function PortalLayout() {
-  const { user, profile, isEB, signOut } = useAuth()
+  const { user, profile, isEB, assignments, signOut } = useAuth()
+  // Officers (and the EB) get the committee editor in the nav; members don't.
+  const canEditCommittees =
+    isEB || assignments.some((a) => a.position?.level === 'officer' && a.position?.committee)
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
 
@@ -62,9 +65,19 @@ export default function PortalLayout() {
             <NavLink to="/portal/profile" className={navCls}>
               Profile
             </NavLink>
+            {canEditCommittees && (
+              <NavLink to="/portal/committees" className={navCls}>
+                Committees
+              </NavLink>
+            )}
             {isEB && (
               <NavLink to="/portal/admin/verification" className={navCls}>
-                Admin
+                Verification
+              </NavLink>
+            )}
+            {isEB && (
+              <NavLink to="/portal/admin/settings" className={navCls}>
+                Site
               </NavLink>
             )}
           </nav>

@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { OFFICERS_WEBAPP_URL, officersLiveEnabled } from '../data/officersConfig.js'
-import { officersApiGet } from './useOfficerOverrides.js'
-import { appsScriptPostClaim, UNKNOWN_ACTION } from '../lib/appsScriptPost.js'
+import { restSelect, supabaseRestEnabled } from '../lib/supabaseRest.js'
 import { readJson } from '../lib/localCache.js'
 
-// Global site settings, flipped by dev/EB officers and read by every visitor.
-// Backed by apps-script/officers.gs (Script Properties). Currently a single
-// flag: `magazineInHeader`, whether the Magazine CTA shows in the navbar.
+// Global site settings, flipped by the EB in the portal (/portal/admin/settings)
+// and read by every visitor. Backed by the public.site_settings table (one row
+// per key, jsonb value). Currently a single flag: `magazineInHeader`, whether
+// the Magazine CTA shows in the navbar.
 //
 // Reads are cached in localStorage so the navbar can render the right state
 // instantly on repeat visits (no flash); the first-ever load falls back to the
@@ -16,41 +15,13 @@ const CACHE_KEY = 'ausss-site-settings'
 const DEFAULTS = { magazineInHeader: true }
 
 export async function fetchSiteSettings() {
-  if (!officersLiveEnabled) return { ...DEFAULTS }
-  const data = await officersApiGet({ action: 'settings' })
-  return { ...DEFAULTS, ...(data.settings || {}) }
-}
-
-// Dev/EB write. The session token travels in the POST body (not the URL), then
-// we re-read the public settings to confirm the change landed. Returns the
-// saved settings; throws if the confirm read shows the value didn't take.
-export async function saveSiteSettings(token, patch) {
-  const body = { action: 'setsettings', token }
-  if (typeof patch.magazineInHeader === 'boolean') {
-    body.magazineInHeader = patch.magazineInHeader
+  if (!supabaseRestEnabled) return { ...DEFAULTS }
+  const rows = await restSelect('site_settings', { select: 'key,value' })
+  const out = { ...DEFAULTS }
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (row && typeof row.key === 'string') out[row.key] = row.value
   }
-  try {
-    await appsScriptPostClaim(OFFICERS_WEBAPP_URL, body)
-  } catch (err) {
-    // Old backend without claim/POST support → fall back to the legacy GET.
-    if (err.code === UNKNOWN_ACTION) {
-      const params = { action: 'setsettings', token }
-      if (typeof patch.magazineInHeader === 'boolean') {
-        params.magazineInHeader = patch.magazineInHeader ? 'true' : 'false'
-      }
-      const data = await officersApiGet(params)
-      return { ...DEFAULTS, ...(data.settings || {}) }
-    }
-    throw err
-  }
-  const confirmed = await fetchSiteSettings()
-  if (
-    typeof patch.magazineInHeader === 'boolean' &&
-    confirmed.magazineInHeader !== patch.magazineInHeader
-  ) {
-    throw new Error('Setting did not save. Check your session and try again.')
-  }
-  return confirmed
+  return out
 }
 
 export function useSiteSettings() {
@@ -60,7 +31,7 @@ export function useSiteSettings() {
   }))
 
   const refresh = useCallback(async () => {
-    if (!officersLiveEnabled) return
+    if (!supabaseRestEnabled) return
     try {
       const s = await fetchSiteSettings()
       setSettings(s)

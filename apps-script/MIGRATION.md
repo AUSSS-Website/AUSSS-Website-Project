@@ -29,6 +29,12 @@
 > **Your next action:** sign in to `aussswebsite@gmail.com` and **accept** each
 > pending ownership transfer, then do Step 3 (redeploy) below.
 >
+> **2026-09-19:** `officers.gs` is retired from production (portal Phase 2, see
+> `docs/RUNBOOK.md` section 12). Still accept the `AUSSS-officer-accounts`
+> transfer so the archive is society-owned, but do **not** redeploy it; keep the
+> `AUSSS Officer Photos` folder shared anyone-with-link until every committee has
+> re-uploaded its photos through the portal.
+>
 > ### Discovered en route: the signups endpoint is dead
 >
 > `Website Sign Up's` is a **standalone** script whose live code still has
@@ -78,7 +84,7 @@ All are deployed and live. Sheet-bound ones move by transferring **the Sheet**
 
 | # | Script | Bound to | Live URL in repo | Also carries |
 |---|--------|----------|------------------|--------------|
-| 1 | `officers.gs` | Sheet with tabs `Accounts`, `Overrides`, `Calls`, `Applications` | `src/data/officersConfig.js` → `…AKfycbwmoWZHnubjubeIHAF1GV-eR8AiI2CR8brMO1E2v1V2U08m71NMdguG1sLnDNF9Q36ZXw/exec` | Script Properties: officer session tokens (`tok_*`), `SITE_SETTINGS`, login-throttle counters. Drive folder **"AUSSS Officer Photos"** |
+| 1 | `officers.gs` (**retired 2026-09-19**, archive only) | Sheet with tabs `Accounts`, `Overrides`, `Calls`, `Applications` | none since Phase 2 (was `…AKfycbwmoWZHnubjubeIHAF1GV-eR8AiI2CR8brMO1E2v1V2U08m71NMdguG1sLnDNF9Q36ZXw/exec`) | Script Properties: officer session tokens (`tok_*`), `SITE_SETTINGS`, login-throttle counters. Drive folder **"AUSSS Officer Photos"** |
 | 2 | `gallery.gs` | **standalone** (no sheet) | `src/data/galleryConfig.js` → `…AKfycbwep4pLHw6O9EqNmvQDYZmpldgKioWbUm2Er4geJPTiuC36SRNZNXfvTpxENTcNX5dXPg/exec` | Script Properties: `ADMIN_KEY`, `GALLERY_REMOVALS` (**the live hidden-photo list — irreplaceable on a copy**) |
 | 3 | `orders.gs` | Sheet tab `Orders` | `src/data/merchConfig.js` → `…AKfycbygftItgPl5_dOdQFlOllM8XzATj3SEgBoy4bVc1OIflJWmeBImzbWc5WkTDwEqmVJE/exec` | Drive folder **"AUSSS Orders Receipts"** |
 | 4 | `signups.gs` | Sheet tab `Signups` | `src/data/signupsConfig.js` → `…AKfycbyd738Fo_JZ_wd58Lx9jDhObYQ_HFvTZO-rokpfaO01FwLU6wTWG1r5ZYUQRUZ5X9BHvA/exec` | — |

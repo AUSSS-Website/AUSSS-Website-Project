@@ -1,6 +1,6 @@
 # AUSSS Member Portal: long-term backend plan
 
-Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`); Phases 2 and later pending. Companion documents: `apps-script/MIGRATION.md`
+Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phases 3 and later pending. Companion documents: `apps-script/MIGRATION.md`
 (the current backend and its account move) and `apps-script/officers.README.md`
 (the officer editor as it exists today).
 
