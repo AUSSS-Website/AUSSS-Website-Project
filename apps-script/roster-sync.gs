@@ -7,8 +7,7 @@
  * public.roster_entries (supabase/migrations/20260919200001_live_roster.sql).
  *
  * The website never reads this sheet: the public membership check and the
- * portal read Supabase. So the sheet can (and should) be shared with named
- * people only, not "anyone with the link".
+ * portal read Supabase. This push route also works when the sheet is private.
  *
  * What the merge does with a row is decided in the database, not here:
  *   - new name+email            -> added

@@ -152,8 +152,9 @@ referenced from `committees.page`). Phase 5 retires the remaining five.
   `/portal/admin/roster`). The Secretary General's Google Sheet
   `[SHARED] AUSSS Membership Database` (owner `ausss.secgen@gmail.com`) feeds it
   through `apps-script/roster-sync.gs` or a file upload until the EB retires the
-  sheet (RUNBOOK section 4). It holds personal data: keep its sharing on
-  Restricted, never "anyone with the link". The xlsx under
+  sheet (RUNBOOK section 4). The sheet stays on "anyone with the link can view"
+  by the society's decision (2026-09-19); the hourly pull relies on that link.
+  The xlsx under
   `_source/records/membership/` is an old export, not a source.
 
 ## 3. Access matrix

@@ -23,11 +23,12 @@ All three end in the same merge (`app.apply_roster_rows`):
 - a row that disappeared from the sheet is **reported, never deleted**;
 - people who already signed in are linked to their roster row at the end.
 
-## Keeping the pull working once the sheet is private
+## If the sheet is ever made private
 
-The sheet holds members' email addresses and must not stay on "anyone with the
-link". When its owner restricts it, the pull needs an identity Google can share
-the sheet with:
+The society keeps the sheet on "anyone with the link can view" (decided
+2026-09-19; the Constitution links to it), and the pull reads it through that
+link. Should its owner restrict it one day, the pull needs an identity Google
+can share the sheet with:
 
 1. Google Cloud project `ausss-website` → IAM → Service accounts → create one
    (no roles), add a JSON key, enable the **Google Drive API**.
@@ -55,10 +56,6 @@ Signed in as the sheet's owner (`ausss.secgen@gmail.com`):
    ("Google hasn't verified this app" → Advanced → Go to project → Allow), and
    read the execution log: it prints the added / updated / kept counts.
 5. Run `installTrigger` once. The portal's *Recent imports* list shows each run.
-
-Then set the sheet's sharing to **Restricted** (named people only). The script
-runs as the owner, so it keeps working; "anyone with the link" exposes every
-member's email address to whoever has the URL.
 
 ## Turning it off
 

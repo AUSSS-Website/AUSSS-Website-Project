@@ -12,9 +12,9 @@
 // signed-in EB member pressing "Sync now" in the portal.
 //
 // Reading the sheet:
-//   - today: the public export link, which works while the sheet is shared "anyone with the
-//     link";
-//   - once the sheet is restricted (it should be: it holds members' emails): set the secret
+//   - normally: the public export link. The society keeps the sheet on "anyone with the link
+//     can view";
+//   - if the sheet is ever restricted: set the secret
 //     GOOGLE_SERVICE_ACCOUNT to a service-account key JSON and have the sheet's owner share
 //     the sheet with that account's email as Viewer. Nothing else changes.
 import * as XLSX from 'npm:xlsx@0.18.5'
