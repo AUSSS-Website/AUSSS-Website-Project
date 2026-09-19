@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(25);
+select plan(27);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -38,6 +38,9 @@ select ok(not has_function_privilege('anon', 'public.search_roster(text, text, i
 select ok(not has_function_privilege('anon', 'public.bulk_update_roster(uuid[], text, text, text)', 'execute'), 'anon cannot bulk update');
 select ok(not has_table_privilege('authenticated', 'public.roster_bulk_updates', 'insert'), 'authenticated cannot write the bulk update log directly');
 select ok(has_function_privilege('anon', 'public.check_membership(text, text, text, boolean)', 'execute'), 'anon can check a membership');
+
+select ok(not has_function_privilege('anon', 'public.roster_upgrade_candidates()', 'execute'), 'anon cannot list upgrade candidates');
+select ok(not has_function_privilege('authenticated', 'app.refresh_years_spent()', 'execute'), 'only the scheduler runs the years-spent rollover');
 
 select * from finish();
 rollback;

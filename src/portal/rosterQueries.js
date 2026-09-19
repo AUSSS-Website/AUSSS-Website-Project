@@ -13,18 +13,19 @@ export const rosterKeys = {
   token: () => ['roster', 'token'],
   sheet: () => ['roster', 'sheet'],
   bulk: () => ['roster', 'bulk'],
+  upgrades: () => ['roster', 'upgrades'],
 }
 
 const COLUMNS =
   'id, full_name, email, status, joined_year, years_spent, lgas, ngas, current_position, origin, portal_edited_at, profile_id, import_batch, updated_at'
 
-// The columns an officer may type into; everything else is kept by the database.
+// The columns an officer may type into; everything else is kept by the database
+// (years_spent is counted from joined_year and the academic year).
 export const EDITABLE = [
   'full_name',
   'email',
   'status',
   'joined_year',
-  'years_spent',
   'lgas',
   'ngas',
   'current_position',
@@ -59,7 +60,7 @@ export async function saveRosterEntry({ id, values }) {
   for (const k of EDITABLE) {
     if (!(k in values)) continue
     const v = typeof values[k] === 'string' ? values[k].trim() : values[k]
-    if (k === 'joined_year' || k === 'years_spent') {
+    if (k === 'joined_year') {
       patch[k] = v === '' || v == null ? null : Number(v)
     } else {
       patch[k] = v === '' ? null : v
@@ -150,6 +151,41 @@ export async function fetchBulkUpdates() {
   )
 }
 
+// ---- status upgrades --------------------------------------------------------
+
+// Members whose GA counts reach the next tier: [{ id, full_name, email, status,
+// next, lgas, ngas }]. The database only proposes; the EB approves.
+export const fetchUpgradeCandidates = async () =>
+  unwrap(await supabase.rpc('roster_upgrade_candidates')) || []
+
+const byTarget = (rows) => {
+  const groups = new Map()
+  for (const r of rows) groups.set(r.next, [...(groups.get(r.next) || []), r.id])
+  return [...groups.entries()]
+}
+
+// One logged (and undoable) bulk update per target status. The minute in the
+// label keeps two approvals on the same day apart, since a label applies once.
+export async function approveUpgrades(rows) {
+  const stamp = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  for (const [next, ids] of byTarget(rows)) {
+    await bulkUpdateRoster({ ids, action: 'status', value: next, label: `Upgrade to ${next} · ${stamp}` })
+  }
+}
+
+// "Not now": remembered per target, for the academic year it was said in.
+export async function dismissUpgrades(rows) {
+  const at = new Date().toISOString()
+  for (const [next, ids] of byTarget(rows)) {
+    unwrap(
+      await supabase
+        .from('roster_entries')
+        .update({ upgrade_dismissed_for: next, upgrade_dismissed_at: at })
+        .in('id', ids),
+    )
+  }
+}
+
 // ---- hooks ----------------------------------------------------------------
 
 export function useRoster() {
@@ -162,6 +198,10 @@ export function useSyncRuns() {
 
 export function useSheetInfo() {
   return useQuery({ queryKey: rosterKeys.sheet(), queryFn: fetchSheetInfo })
+}
+
+export function useUpgradeCandidates() {
+  return useQuery({ queryKey: rosterKeys.upgrades(), queryFn: fetchUpgradeCandidates })
 }
 
 export function useBulkUpdates() {
@@ -193,5 +233,7 @@ export const useRotateToken = () => useRosterMutation(rotateToken)
 export const useRevokeToken = () => useRosterMutation(revokeToken)
 export const useBulkUpdateRoster = () => useRosterMutation(bulkUpdateRoster)
 export const useUndoBulkUpdate = () => useRosterMutation(undoBulkUpdate)
+export const useApproveUpgrades = () => useRosterMutation(approveUpgrades)
+export const useDismissUpgrades = () => useRosterMutation(dismissUpgrades)
 export const useSetSheet = () => useRosterMutation(setSheet)
 export const useSyncSheetNow = () => useRosterMutation(syncSheetNow)

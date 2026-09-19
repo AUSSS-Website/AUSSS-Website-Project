@@ -19,6 +19,7 @@ import { parseRosterFile } from '../../rosterFile.js'
 import { prepareRoster, searchRoster } from '../../rosterSearch.js'
 import { ROSTER_STATUSES as STATUSES } from '../../constants.js'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
+import RosterUpgradesPanel from './RosterUpgradesPanel.jsx'
 import {
   ErrorText,
   Field,
@@ -128,7 +129,13 @@ function Editor({ row, onClose }) {
             <input id="r-joined" type="number" min="1990" max="2100" value={form.joined_year} onChange={set('joined_year')} className={inputCls} />
           </Field>
           <Field label="Years spent" htmlFor="r-years">
-            <input id="r-years" type="number" min="0" max="60" value={form.years_spent} onChange={set('years_spent')} className={inputCls} />
+            <input
+              id="r-years"
+              readOnly
+              value={form.years_spent}
+              title="Counted from the year joined; goes up by itself every 1 September"
+              className={`${inputCls} cursor-default opacity-60`}
+            />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-5">
@@ -485,6 +492,8 @@ export default function RosterPage() {
           </div>
         }
       />
+
+      <RosterUpgradesPanel />
 
       {showGa && <RosterBulkPanel onClose={() => setShowGa(false)} />}
 

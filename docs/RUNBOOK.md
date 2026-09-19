@@ -163,6 +163,19 @@ on the same panel puts the old values back except where somebody edited the row 
 changed this way belong to the portal, so the spreadsheet will not overwrite the new counts.
 Log: `select at, action, label, jsonb_array_length(changes) from public.roster_bulk_updates order by at desc`.
 
+**Years spent** is not typed any more: it is the academic year's starting year (a year starts on
+1 September, Cairo time) minus the year joined. The database sets it on every save and the daily
+job `roster-years-spent` (22:15 UTC) rolls the whole roster over on 1 September. The sheet's own
+number is ignored; the field is read-only in the editor. To check or force it:
+`select app.academic_year_start(), app.refresh_years_spent();`
+
+**Status upgrades** are proposed, never applied, by the database. When GA counts reach the next
+tier (Candidate → Associate at 1 Local or 2 National GAs; Associate → Full at 2 Local and 3
+National) the Roster page shows *N members have the attendance for a higher status*. The EB ticks
+who also meets the activity score and approves (a logged bulk update, undoable under *Register a
+GA*), or presses *Not now*, which hides those members until next September. The rule is
+`app.next_status`; the list is `rpc/roster_upgrade_candidates`.
+
 **Who is verified at sign-in:** anyone whose email is on the roster (at least `candidate`, even
 with a blank status; archived/suspended rows change nothing) and anyone holding an active
 assignment, which covers every TO and EB invite (trigger `verify_position_holder`). Everyone
