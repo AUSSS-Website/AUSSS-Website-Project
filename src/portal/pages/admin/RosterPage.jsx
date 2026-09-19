@@ -444,6 +444,8 @@ export default function RosterPage() {
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(0)
   const [openId, setOpenId] = useState(null) // row id, or 'new'
+  // Its own switch: opening a member below must not close the panel and lose a pasted list.
+  const [showGa, setShowGa] = useState(false)
 
   // The whole roster is loaded once and searched in the browser
   // (rosterSearch.js), so the list follows every letter with no request and no
@@ -463,11 +465,28 @@ export default function RosterPage() {
         title="Membership roster"
         subtitle="The live membership database. The public status check and sign-in both read from here."
         action={
-          <button type="button" onClick={() => setOpenId(openId === 'new' ? null : 'new')} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
-            Add a member
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={showGa}
+              onClick={() => setShowGa((v) => !v)}
+              className={`${outlineBtnCls} px-5 py-2`}
+            >
+              Register a GA
+            </button>
+            <button
+              type="button"
+              aria-expanded={openId === 'new'}
+              onClick={() => setOpenId(openId === 'new' ? null : 'new')}
+              className={`${primaryBtnCls} px-5 py-2 text-xs`}
+            >
+              Add a member
+            </button>
+          </div>
         }
       />
+
+      {showGa && <RosterBulkPanel onClose={() => setShowGa(false)} />}
 
       {openId === 'new' && (
         <Panel title="New member" className="mb-6">
@@ -547,7 +566,6 @@ export default function RosterPage() {
         </>
       )}
 
-      <RosterBulkPanel />
       <SpreadsheetPanel />
     </>
   )

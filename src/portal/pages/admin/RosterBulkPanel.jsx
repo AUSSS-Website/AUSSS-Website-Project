@@ -9,9 +9,9 @@ import { parseCsv } from '../../rosterFile.js'
 import { ROSTER_STATUSES } from '../../constants.js'
 import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
-// Bulk updates on /portal/admin/roster: paste an attendance list (names and/or
-// emails, one person per line), review how each line was matched to the
-// roster, then apply ONE change to everyone confirmed: +1 Local GA, +1
+// "Register a GA" on /portal/admin/roster, opened from the page header: paste an
+// attendance list (names and/or emails, one person per line), review how each
+// line was matched to the roster, then apply ONE change to everyone confirmed: +1 Local GA, +1
 // National GA, or a new status.
 //
 // Nothing is written until the last button. The database does the matching
@@ -156,7 +156,7 @@ function History() {
   )
 }
 
-export default function RosterBulkPanel() {
+export default function RosterBulkPanel({ onClose }) {
   const fileRef = useRef(null)
   const apply = useBulkUpdateRoster()
   const [action, setAction] = useState('lga')
@@ -237,11 +237,17 @@ export default function RosterBulkPanel() {
   const certain = (items || []).map((it, i) => ({ it, i })).filter(({ it }) => it.state === 'matched')
 
   return (
-    <Panel title="Bulk update" className="mt-10">
-      <p className="mt-3 text-sm text-silver/65">
-        Paste an attendance list and update everyone on it at once. You review every match before
-        anything changes, and each update can be undone.
-      </p>
+    <Panel title="Register a GA" className="mb-6">
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-silver/65">
+          Paste the attendance list and everyone on it gets the GA added to their count. You review
+          every match before anything changes, and each update can be undone. The same list can
+          also set a membership status.
+        </p>
+        <button type="button" onClick={onClose} className={outlineBtnCls}>
+          Close
+        </button>
+      </div>
 
       {!items ? (
         <form onSubmit={onMatch} className="mt-5 space-y-5">
