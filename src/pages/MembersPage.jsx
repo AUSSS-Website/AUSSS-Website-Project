@@ -115,6 +115,46 @@ function GuidanceCard({ advice, accent }) {
   )
 }
 
+// Shown on a miss when the lookup thinks it knows what was meant. Names are
+// offered only for near-complete spellings (the database decides); a roster
+// email is never shown, only a masked hint the owner would recognise.
+function DidYouMean({ suggestions, form, busy, onRetry }) {
+  const btn =
+    'rounded-full border border-medical/50 px-4 py-1.5 text-sm font-semibold text-medical-light transition-colors hover:bg-medical/15 disabled:opacity-50'
+  return (
+    <div className="mt-4 rounded-2xl border border-medical/30 bg-medical/[0.07] p-5" role="status">
+      <p className="text-sm font-semibold text-white">Did you mean…</p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        {suggestions.names?.map((n) => (
+          <button key={n} type="button" disabled={busy} onClick={() => onRetry({ name: n, email: '' })} className={btn}>
+            {n}
+          </button>
+        ))}
+        {suggestions.fixedEmail && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onRetry({ ...form, email: suggestions.fixedEmail })}
+            className={btn}
+          >
+            {suggestions.fixedEmail}
+          </button>
+        )}
+        {suggestions.email && (
+          <button type="button" disabled={busy} onClick={() => onRetry(form, { acceptNear: true })} className={btn}>
+            {suggestions.email}
+          </button>
+        )}
+      </div>
+      {suggestions.email && (
+        <p className="mt-3 text-xs text-silver/55">
+          An address very close to the one you typed is registered. If that’s yours, tap it.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function MembersPage() {
   useReveal()
   usePageTitle('Members')
@@ -155,9 +195,20 @@ export default function MembersPage() {
     return () => window.cancelAnimationFrame(id)
   }, [result])
 
-  const submit = async (e) => {
+  const submit = (e) => {
     e.preventDefault()
-    if (!form.name.trim() && !form.email.trim()) return
+    run(form)
+  }
+
+  // A "did you mean" click: put the suggestion in the form, so what is on
+  // screen is what was looked up, and look again.
+  const retry = (next, opts) => {
+    setForm(next)
+    run(next, opts)
+  }
+
+  const run = async (query, { acceptNear = false } = {}) => {
+    if (!query.name.trim() && !query.email.trim()) return
     // Guard re-entry: an Enter-key submit can fire while a lookup is already
     // running, and two in-flight lookups could land out of order.
     if (busy) return
@@ -167,7 +218,7 @@ export default function MembersPage() {
     // Heba's roster name spelling is not predictable, so if the typed name
     // matches a known variant, ask for the unique Supervising Council holder
     // instead of relying on the exact-name lookup.
-    if (isHebaIsmail({ typedName: form.name })) {
+    if (isHebaIsmail({ typedName: query.name })) {
       const heba = await lookupMember({ role: 'supervising-council' })
       if (heba.state === 'found') {
         setResult({ state: 'heba', record: heba.record })
@@ -175,7 +226,7 @@ export default function MembersPage() {
         return
       }
     }
-    const r = await lookupMember({ name: form.name, email: form.email })
+    const r = await lookupMember({ name: query.name, email: query.email, acceptNear })
     if (r.state === 'found') {
       const pos = r.record.currentPosition
       const positions = splitPositions(pos)
@@ -377,6 +428,14 @@ export default function MembersPage() {
                   <p className="heading-serif text-2xl text-white">
                     No matching member found
                   </p>
+                  {result.suggestions && (
+                    <DidYouMean
+                      suggestions={result.suggestions}
+                      form={form}
+                      busy={busy}
+                      onRetry={retry}
+                    />
+                  )}
                   <p className="mt-2 text-sm text-silver/65">
                     Double-check the exact name you registered with. Not a
                     member yet? Here’s how to join:

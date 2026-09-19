@@ -149,6 +149,28 @@ portal's **Roster** page (`/portal/admin/roster`, EB only) all read it. Migratio
 Roster page. A row edited there is stamped `portal_edited_at` and belongs to the portal from
 then on. A status change on a row whose member has signed in updates their profile too.
 
+**Search.** The box on the Roster page goes through `rpc/search_roster`: every typed word must
+match (any order) in the name, email or position; transliteration variants (Mohamed/Muhammad,
+Abdelrahman/Abd El Rahman) and typos match too, ranked below exact hits and tagged *Similar
+spelling*. The rules live in `app.roster_match` and `app.name_skeleton`.
+
+**Bulk updates** (attendance after a GA, a batch of status upgrades): Roster → *Bulk update*.
+Paste names and/or emails, name the event, review the matches (*likely* ones are pre-selected,
+*pick one* and *not found* need a decision), apply. One event name can be applied once; *Undo*
+on the same panel puts the old values back except where somebody edited the row again. Rows
+changed this way belong to the portal, so the spreadsheet will not overwrite the new counts.
+Log: `select at, action, label, jsonb_array_length(changes) from public.roster_bulk_updates order by at desc`.
+
+**Who is verified at sign-in:** anyone whose email is on the roster (at least `candidate`, even
+with a blank status; archived/suspended rows change nothing) and anyone holding an active
+assignment, which covers every TO and EB invite (trigger `verify_position_holder`). Everyone
+else stays `unverified` and uses the verification queue (section 9).
+
+**Public "did you mean".** `rpc/check_membership` may answer a miss with suggestions: up to three
+member names, only when two or more near-complete words were typed, or a masked email hint
+(`s•••a@gmail.com`) when exactly one roster address is within two edits. Real addresses are
+never returned.
+
 **Bringing the spreadsheet in** (while the Secretary General still edits it), any of:
 
 0. **Nothing (the normal case):** the Edge Function `roster-sheet-sync` pulls the sheet connected

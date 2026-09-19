@@ -12,6 +12,7 @@ export const rosterKeys = {
   runs: () => ['roster', 'runs'],
   token: () => ['roster', 'token'],
   sheet: () => ['roster', 'sheet'],
+  bulk: () => ['roster', 'bulk'],
 }
 
 const COLUMNS =
@@ -34,25 +35,14 @@ function unwrap({ data, error }) {
   return data
 }
 
-// PostgREST reads , ( ) as syntax inside or=(); % and * are wildcards.
-const safeTerm = (q) => q.toLowerCase().replace(/[,()%*\\]/g, ' ').replace(/\s+/g, ' ').trim()
-
+// Search, filter and paging happen in rpc/search_roster: every typed word must
+// match (any order) in the name, email or position; spelling variants and typos
+// match too, ranked below exact hits and flagged `close`.
 export async function fetchRoster({ q = '', status = '', page = 0 }) {
-  let query = supabase
-    .from('roster_entries')
-    .select(COLUMNS, { count: 'exact' })
-    .order('full_name', { ascending: true })
-    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
-  const term = safeTerm(q)
-  if (term) {
-    query = query.or(`name_normalized.ilike.%${term}%,email_normalized.ilike.%${term}%`)
-  }
-  if (status === 'none') query = query.is('status', null)
-  else if (status === 'portal') query = query.not('portal_edited_at', 'is', null)
-  else if (status) query = query.ilike('status', `%${status}%`)
-  const { data, error, count } = await query
-  if (error) throw error
-  return { rows: data || [], total: count ?? 0 }
+  const data = unwrap(
+    await supabase.rpc('search_roster', { q, status, page, page_size: PAGE_SIZE }),
+  )
+  return { rows: data?.rows || [], total: data?.total ?? 0 }
 }
 
 export async function saveRosterEntry({ id, values }) {
@@ -126,6 +116,31 @@ export async function syncSheetNow() {
   return data.result
 }
 
+// ---- bulk updates ----------------------------------------------------------
+
+// lines: text[]. Resolves each to a roster row for review; writes nothing.
+export const matchRosterLines = async (lines) =>
+  unwrap(await supabase.rpc('match_roster_lines', { lines })) || []
+
+// action: 'lga' | 'nga' | 'status'; label names the event; value is the status.
+export const bulkUpdateRoster = async ({ ids, action, label, value }) =>
+  unwrap(await supabase.rpc('bulk_update_roster', { ids, action, label, value: value || null }))
+
+export const undoBulkUpdate = async (log_id) =>
+  unwrap(await supabase.rpc('undo_roster_bulk_update', { log_id }))
+
+export async function fetchBulkUpdates() {
+  return (
+    unwrap(
+      await supabase
+        .from('roster_bulk_updates')
+        .select('id, at, action, value, label, changes, undone_at')
+        .order('at', { ascending: false })
+        .limit(8),
+    ) || []
+  )
+}
+
 // ---- hooks ----------------------------------------------------------------
 
 export function useRoster(params) {
@@ -142,6 +157,10 @@ export function useSyncRuns() {
 
 export function useSheetInfo() {
   return useQuery({ queryKey: rosterKeys.sheet(), queryFn: fetchSheetInfo })
+}
+
+export function useBulkUpdates() {
+  return useQuery({ queryKey: rosterKeys.bulk(), queryFn: fetchBulkUpdates })
 }
 
 export function useTokenInfo() {
@@ -167,5 +186,7 @@ export const useReleaseRosterEntry = () => useRosterMutation(releaseRosterEntry)
 export const useImportRoster = () => useRosterMutation(importRoster)
 export const useRotateToken = () => useRosterMutation(rotateToken)
 export const useRevokeToken = () => useRosterMutation(revokeToken)
+export const useBulkUpdateRoster = () => useRosterMutation(bulkUpdateRoster)
+export const useUndoBulkUpdate = () => useRosterMutation(undoBulkUpdate)
 export const useSetSheet = () => useRosterMutation(setSheet)
 export const useSyncSheetNow = () => useRosterMutation(syncSheetNow)

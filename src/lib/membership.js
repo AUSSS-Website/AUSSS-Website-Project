@@ -37,26 +37,55 @@ export function splitPositions(raw) {
     .filter(Boolean)
 }
 
+// The mail domains members actually use, and the slips seen for them. Purely
+// about what was typed: "gmial.com" is wrong whoever you are.
+const DOMAIN_FIXES = {
+  'gmail.com': ['gmial.com', 'gmai.com', 'gmal.com', 'gamil.com', 'gnail.com', 'gmail.co', 'gmail.con', 'gmail.cm', 'gmaill.com', 'gmail.comm', 'gmail.om'],
+  'yahoo.com': ['yaho.com', 'yahooo.com', 'yahoo.co', 'yahoo.con', 'yhoo.com'],
+  'hotmail.com': ['hotmial.com', 'hotmal.com', 'hotmai.com', 'hotmail.co', 'hotmail.con'],
+  'outlook.com': ['outlok.com', 'outloo.com', 'outlook.co', 'outlook.con'],
+  'icloud.com': ['iclod.com', 'icloud.co', 'icloud.con'],
+}
+
+export function fixEmailDomain(email) {
+  const at = String(email ?? '').trim().lastIndexOf('@')
+  if (at < 1) return null
+  const local = email.trim().slice(0, at)
+  const domain = email.trim().slice(at + 1).toLowerCase()
+  for (const [good, bad] of Object.entries(DOMAIN_FIXES)) {
+    if (bad.includes(domain)) return `${local}@${good}`
+  }
+  return null
+}
+
 // ── Lookup (by name OR email) ────────────────────────────────────────────
 // Returns one of:
 //   { state: 'found', record }
 //   { state: 'ambiguous' }           name given matches >1 member
-//   { state: 'not-found' }
+//   { state: 'not-found', suggestions? }   suggestions: { names: [...] } when
+//        the name is a near-spelling of up to three members' names,
+//        { email: 's•••a@gmail.com' } (masked, never the real address) when
+//        one roster email is a typo away, or { fixedEmail } when the domain
+//        itself looks mistyped (computed here, no roster involved)
 //   { state: 'not-connected' }       build without the Supabase env vars
 //   { state: 'error', message }
 // `role` is the one fixed value the RPC accepts ('supervising-council'), for
 // the holder whose name is spelt too many ways to match by name.
-export async function lookupMember({ name = '', email = '', role = null }) {
+// acceptNear: the visitor confirmed the masked email hint.
+export async function lookupMember({ name = '', email = '', role = null, acceptNear = false }) {
   if (!supabaseRestEnabled) return { state: 'not-connected' }
   try {
     const args = { name: name.trim(), email: email.trim() }
     if (role) args.role = role
+    if (acceptNear) args.accept_near = true
     const d = await restRpc('check_membership', args)
     if (d?.state === 'found' && d.record) {
       return { state: 'found', record: mapRecord(d.record) }
     }
     if (d?.state === 'ambiguous') return { state: 'ambiguous' }
-    return { state: 'not-found' }
+    const fixedEmail = fixEmailDomain(email)
+    const suggestions = fixedEmail ? { fixedEmail } : d?.suggestions || null
+    return { state: 'not-found', suggestions }
   } catch (e) {
     return { state: 'error', message: e.message }
   }

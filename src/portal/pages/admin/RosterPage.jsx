@@ -16,6 +16,8 @@ import {
   useTokenInfo,
 } from '../../rosterQueries.js'
 import { parseRosterFile } from '../../rosterFile.js'
+import { ROSTER_STATUSES as STATUSES } from '../../constants.js'
+import RosterBulkPanel from './RosterBulkPanel.jsx'
 import {
   ErrorText,
   Field,
@@ -34,16 +36,6 @@ import {
 // Two editors can feed it, and the rule between them is one line: a row edited
 // here belongs to the portal from then on, and spreadsheet imports leave it
 // alone (they report it as "kept"). Everything else follows the spreadsheet.
-
-const STATUSES = [
-  'Candidate Member',
-  'Associate Member',
-  'Full Member',
-  'Honorary Life Member',
-  'Alumni',
-  'Suspended',
-  'Archived',
-]
 
 const FILTERS = [
   ['', 'All statuses'],
@@ -212,6 +204,7 @@ function Row({ row, open, onToggle }) {
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-silver/70">
           <span className="font-semibold text-medical-light">{row.status || 'No status'}</span>
+          {row.close && <span className={`${tagCls} border-amber-400/40 text-amber-200`}>Similar spelling</span>}
           {row.profile_id && <span className={tagCls}>Signed in</span>}
           {row.portal_edited_at && <span className={tagCls}>Portal</span>}
         </span>
@@ -490,7 +483,7 @@ export default function RosterPage() {
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name or email"
+          placeholder="Search by name, email or position"
           aria-label="Search the roster"
           className={`${inputCls} max-w-sm`}
         />
@@ -554,6 +547,7 @@ export default function RosterPage() {
         </>
       )}
 
+      <RosterBulkPanel />
       <SpreadsheetPanel />
     </>
   )

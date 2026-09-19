@@ -20,6 +20,19 @@ export const MEMBERSHIP_LABELS = {
   alumni: 'Alumni',
 }
 
+// Statuses the roster editor and bulk updates offer. The roster column is free
+// text (the spreadsheet may hold others); these are the Constitution's tiers
+// plus the two housekeeping states.
+export const ROSTER_STATUSES = [
+  'Candidate Member',
+  'Associate Member',
+  'Full Member',
+  'Honorary Life Member',
+  'Alumni',
+  'Suspended',
+  'Archived',
+]
+
 export const PORTAL_HOME = '/portal'
 export const SIGN_IN_PATH = '/portal/sign-in'
 export const CALLBACK_PATH = '/portal/callback'
