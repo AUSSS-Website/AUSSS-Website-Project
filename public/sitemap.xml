@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Replace https://www.ausss.org with the real production domain. -->
+<!-- Replace https://ausss-ainshams.org with the real production domain. -->
 <urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">
-  <url><loc>https://www.ausss.org/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://www.ausss.org/join</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://www.ausss.org/exchange</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://www.ausss.org/ifmsa</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://www.ausss.org/ifmsa/history</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://www.ausss.org/gallery</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://www.ausss.org/magazine</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://www.ausss.org/merch</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://www.ausss.org/sorting</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://www.ausss.org/contact</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://www.ausss.org/constitution</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://www.ausss.org/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://ausss-ainshams.org/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://ausss-ainshams.org/join</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://ausss-ainshams.org/exchange</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://ausss-ainshams.org/ifmsa</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://ausss-ainshams.org/ifmsa/history</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ausss-ainshams.org/gallery</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://ausss-ainshams.org/magazine</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://ausss-ainshams.org/merch</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ausss-ainshams.org/sorting</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ausss-ainshams.org/contact</loc><changefreq>yearly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ausss-ainshams.org/constitution</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://ausss-ainshams.org/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

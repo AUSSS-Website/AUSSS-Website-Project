@@ -157,21 +157,21 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-# Production is the Vercel domain until ausss.org is attached to the Vercel project.
-site_url = "https://ausss-ainshams.vercel.app"
+# Production is ausss-ainshams.org (attached to the Vercel project on 2026-09-15; the
+# ausss-ainshams.vercel.app address still resolves and stays in the allow-list).
+site_url = "https://ausss-ainshams.org"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # Vercel team slug is "ausss-website", so previews match https://*-ausss-website.vercel.app.
-# Never allow "https://*.vercel.app/**" (open redirect to any Vercel-hosted site). The
-# ausss.org entries are placeholders until the custom domain is attached.
+# Never allow "https://*.vercel.app/**" (open redirect to any Vercel-hosted site).
 additional_redirect_urls = [
   "http://localhost:5173/portal/callback",
   "http://localhost:4173/portal/callback",
+  "https://ausss-ainshams.org/portal/callback",
+  "https://www.ausss-ainshams.org/portal/callback",
   "https://ausss-ainshams.vercel.app/portal/callback",
   "https://*-ausss-website.vercel.app/portal/callback",
-  # "https://www.ausss.org/portal/callback",
-  # "https://ausss.org/portal/callback",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -249,14 +249,14 @@ otp_expiry = 3600
 # Supabase SMTP, which only delivers to project team members, is capped at a couple of
 # emails per hour, and (on the free plan) cannot customise the email templates. Google
 # sign-in works without SMTP; magic links for members need this enabled. Uncomment once
-# ausss.org is verified in Resend and RESEND_API_KEY is in supabase/.env.
+# ausss-ainshams.org is verified in Resend and RESEND_API_KEY is in supabase/.env.
 # [auth.email.smtp]
 # enabled = true
 # host = "smtp.resend.com"
 # port = 465
 # user = "resend"
 # pass = "env(RESEND_API_KEY)"
-# admin_email = "ausss.secgen@gmail.com"
+# admin_email = "portal@ausss-ainshams.org"
 # sender_name = "AUSSS"
 
 # Uncomment to customize email template

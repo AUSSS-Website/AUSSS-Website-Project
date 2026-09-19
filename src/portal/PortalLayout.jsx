@@ -106,7 +106,7 @@ export default function PortalLayout() {
 
       <footer className="container-prose border-t border-white/10 py-6 text-xs text-silver/40">
         <Link to="/" className="transition-colors hover:text-white">
-          &larr; Back to ausss.org
+          &larr; Back to ausss-ainshams.org
         </Link>
       </footer>
     </div>

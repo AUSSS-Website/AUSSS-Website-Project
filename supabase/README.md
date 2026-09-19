@@ -131,4 +131,4 @@ Secrets referenced as `env(NAME)` (`SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`,
 Redirect allow-list: production and localhost are in `additional_redirect_urls`. Vercel
 preview URLs match `https://*-ausss-website.vercel.app/portal/callback` (team slug
 `ausss-website`); never `https://*.vercel.app/**`, which is an open redirect. Production is
-`https://ausss-ainshams.vercel.app` until the ausss.org domain is attached.
+`https://ausss-ainshams.org` (with `www` and the old `ausss-ainshams.vercel.app` also listed).

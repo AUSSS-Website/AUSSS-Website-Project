@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 
-// Plain-language privacy policy for ausss.org and the members portal. Written
+// Plain-language privacy policy for ausss-ainshams.org and the members portal. Written
 // to be read by a medical student in two minutes, not by a lawyer. Keep it
 // truthful: every item below maps to a real form, table or service in this
 // repo. Update LAST_UPDATED whenever the substance changes.

@@ -56,7 +56,7 @@ plan's decision 4 (section 13) chose to keep it as is.
 | Live config | `vercel.json` (headers, CSP, redirects). `netlify.toml` and the Netlify site are leftovers, not production |
 | Environment variables | `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, set for **Production and Preview** |
 | Account or team that owns the project | TODO for the webmaster: record the Vercel account email and team slug, and confirm the President has access |
-| Production URL | `https://ausss-ainshams.vercel.app` until the `ausss.org` domain is bought and attached (no custom domain as of 2026-09-13) |
+| Production URL | `https://ausss-ainshams.org` (custom domain attached 2026-09-15; `www` redirects to it; `https://ausss-ainshams.vercel.app` still resolves) |
 | Preview URL pattern | `https://*-ausss-website.vercel.app`; this is what the Supabase redirect allow-list matches |
 
 ### 2.3 Supabase: database, auth, storage for the portal
@@ -84,7 +84,7 @@ password (section 6).
 | Project name and id | TODO for the webmaster |
 | Credential | One OAuth 2.0 **Web application** client |
 | Authorised redirect URI | `https://wjijkqrdaakiwbtdssio.supabase.co/auth/v1/callback` |
-| Authorised JavaScript origins | TODO: confirm `https://www.ausss.org` and `http://localhost:5173` are listed |
+| Authorised JavaScript origins | None needed: the browser only ever talks to Supabase's callback URL above. The consent screen's authorised domains must list `ausss-ainshams.org` (Branding) |
 | OAuth consent screen | Published ("In production"), external user type. If it drops back to "Testing", only listed test users can sign in and the portal appears broken for everyone else |
 | Where the client id and secret live | Supabase Auth provider settings (or `supabase/.env` for `npm run db:config-push`); the vault |
 
@@ -96,19 +96,19 @@ The client secret is a secret. Rotating it means updating Supabase Auth and
 | Item | Value |
 | --- | --- |
 | Account | TODO: which login owns it; should be `aussswebsite@gmail.com` or a vault-held login |
-| Verified sending domain | `ausss.org` (DNS records at the registrar, section 2.6) |
+| Verified sending domain | `ausss-ainshams.org` (DNS records at the registrar, section 2.6); not set up as of 2026-09-19 |
 | API key | Used as the SMTP password for Supabase Auth custom SMTP (`smtp.resend.com`, port 465, user `resend`); also in `supabase/.env` as `RESEND_API_KEY` |
 | Why it exists | Supabase's default SMTP sends only to project team members, a couple of mails per hour, and cannot customise templates on the free plan. Without Resend, magic-link sign-in does not work for members; Google sign-in still does |
 | Limits | Free plan daily send cap (TODO: record the current figure). Plan risk "Email cap" in section 13 |
 
-### 2.6 Domain registrar and DNS for `ausss.org`
+### 2.6 Domain registrar and DNS for `ausss-ainshams.org`
 
 | Item | Value |
 | --- | --- |
-| Registrar | TODO for the webmaster |
+| Registrar | Squarespace Domains (nameservers `nsb1..4.squarespacedns.com`), bought 2026-09-15 by `aussswebsite@gmail.com` |
 | Registrant account login | Society vault |
 | Renewal date and payment method | TODO. Set a calendar reminder two months ahead; an expired domain takes the site, the email domain and the OAuth redirect down together |
-| DNS records that matter | `www` and apex pointing at Vercel; Resend domain-verification and DKIM/SPF records; anything the Google Form or Calendar needs |
+| DNS records that matter | apex `A 76.76.21.21` and `www CNAME cname.vercel-dns.com` (Vercel); later the Resend domain-verification and DKIM/SPF records; anything the Google Form or Calendar needs |
 
 ### 2.7 The `aussswebsite@gmail.com` Google account
 

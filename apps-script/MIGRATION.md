@@ -142,7 +142,7 @@ the officers who own the call, resolved from the `Accounts` sheet at send time.
   `omarbelo23/AUSSS` remote
 - Hosting: Vercel (`vercel.json`) and a Netlify site id
   `c6566a41-930b-45ea-97b2-6eb2c0b265e7` (`.netlify/state.json`)
-- The `ausss.org` domain / DNS
+- The `ausss-ainshams.org` domain / DNS (Squarespace, bought 2026-09-15)
 
 ---
 

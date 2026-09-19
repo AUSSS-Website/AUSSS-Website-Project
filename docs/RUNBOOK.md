@@ -212,9 +212,9 @@ Read the diff the CLI prints before confirming. Two caveats:
   file. The first push after any dashboard change is done by hand, reading the
   diff, never from CI.
 - The redirect allow-list must contain exact patterns:
-  `http://localhost:5173/**`, `https://*-ausss-website.vercel.app/**` and
-  `https://ausss-ainshams.vercel.app/**` (production until the ausss.org domain is
-  attached; then add `https://www.ausss.org/**`). Do not widen to
+  `http://localhost:5173/**`, `https://*-ausss-website.vercel.app/**`,
+  `https://ausss-ainshams.org/**`, `https://www.ausss-ainshams.org/**` and
+  `https://ausss-ainshams.vercel.app/**`. Do not widen to
   `https://*.vercel.app`; that is an open redirect.
 
 Settings not covered by `config.toml` (email templates on the free plan, some

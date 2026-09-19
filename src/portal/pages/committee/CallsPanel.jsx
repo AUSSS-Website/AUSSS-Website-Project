@@ -604,7 +604,7 @@ export function CallEditor({ committee, call, onDone, onCancel }) {
           type="email"
           value={notifyEmail}
           onChange={(e) => setNotifyEmail(e.target.value)}
-          placeholder="Also notify (optional), e.g. scope@ausss.org"
+          placeholder="Also notify (optional), e.g. a committee mailbox"
           className={inputCls}
         />
       </Section>
