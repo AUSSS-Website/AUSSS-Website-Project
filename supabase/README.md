@@ -46,17 +46,21 @@ green:
   `create ... if not exists` / `create or replace` where possible.
 - No `\` psql meta-commands, no enums (`text` + `check` instead; enum values cannot be added
   and used in the same transaction).
-- **The hosted project does not auto-expose new tables** (`auto_expose_new_tables = false`).
-  Every table, view and function needs explicit `grant`s to `anon` / `authenticated` /
-  `service_role`, plus RLS enabled and policies. A table without grants is simply invisible
-  to the Data API and the front end gets an empty error.
+- **Grants are explicit, and the only grants.** `auto_expose_new_tables = false` only
+  applies to the local stack; the hosted project used to grant `anon`/`authenticated` ALL on
+  every new table through default privileges, which made column-level restrictions void.
+  Migration `20260919160004_harden_table_grants` removed those defaults and re-issued every
+  grant, so a new table gets exactly what its migration says: `grant` what `anon` /
+  `authenticated` / `service_role` need, enable RLS, write policies, and add the table to
+  `tests/090-grants.sql`. A table without grants is invisible to the Data API.
 - Security-definer functions: `set search_path = ''`, owned by `postgres`, execute revoked
   from `public` and granted only to the roles that need it.
 
 ## Reference data (terms, committees, positions, invites)
 
-`src/data/society.js` stays the source of truth for committees and officer role mailboxes
-until Phase 2. `scripts/db/gen-reference-data.mjs` turns it into idempotent upserts:
+`src/data/society.js` stays the source of truth for the list of committees and officer role
+mailboxes (officer-edited page content lives in `committees.page` since Phase 2 and is never
+touched by the generator). `scripts/db/gen-reference-data.mjs` turns it into idempotent upserts:
 
 ```sh
 npm run db:gen-reference
