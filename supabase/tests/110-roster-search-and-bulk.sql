@@ -84,7 +84,8 @@ create temporary table pgtap_match on commit drop as
     '["SARA.youssef99@example.com", "Mahmoud Ali Hassan", "Sara El Sayed", "Omar Nabil Fathy", "Zzzz Qqqq", "  "]'::jsonb
   )) e;
 select results_eq(
-  $$ select line, state from pgtap_match order by line $$,
+  -- "C" so the order does not depend on the database's locale (SARA... before Sara ...)
+  $$ select line, state from pgtap_match order by line collate "C" $$,
   $$ values ('Mahmoud Ali Hassan', 'matched'), ('Omar Nabil Fathy', 'ambiguous'),
             ('SARA.youssef99@example.com', 'matched'), ('Sara El Sayed', 'likely'), ('Zzzz Qqqq', 'none') $$,
   'email and exact name are certain, a clear partial name is likely, a shared name is ambiguous'
