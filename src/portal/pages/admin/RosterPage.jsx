@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import {
   PAGE_SIZE,
@@ -16,6 +16,7 @@ import {
   useTokenInfo,
 } from '../../rosterQueries.js'
 import { parseRosterFile } from '../../rosterFile.js'
+import { prepareRoster, searchRoster } from '../../rosterSearch.js'
 import { ROSTER_STATUSES as STATUSES } from '../../constants.js'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
 import {
@@ -204,7 +205,6 @@ function Row({ row, open, onToggle }) {
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-silver/70">
           <span className="font-semibold text-medical-light">{row.status || 'No status'}</span>
-          {row.close && <span className={`${tagCls} border-amber-400/40 text-amber-200`}>Similar spelling</span>}
           {row.profile_id && <span className={tagCls}>Signed in</span>}
           {row.portal_edited_at && <span className={tagCls}>Portal</span>}
         </span>
@@ -441,23 +441,20 @@ function SpreadsheetPanel() {
 export default function RosterPage() {
   usePageTitle('Roster')
   const [q, setQ] = useState('')
-  const [term, setTerm] = useState('')
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(0)
   const [openId, setOpenId] = useState(null) // row id, or 'new'
 
-  // Search as you type, without a request per keystroke.
-  useEffect(() => {
-    const id = setTimeout(() => {
-      setTerm(q)
-      setPage(0)
-    }, 250)
-    return () => clearTimeout(id)
-  }, [q])
-
-  const roster = useRoster({ q: term, status, page })
-  const total = roster.data?.total ?? 0
+  // The whole roster is loaded once and searched in the browser
+  // (rosterSearch.js), so the list follows every letter with no request and no
+  // debounce. useDeferredValue keeps typing smooth if a render ever lags.
+  const roster = useRoster()
+  const prepared = useMemo(() => prepareRoster(roster.data || []), [roster.data])
+  const term = useDeferredValue(q)
+  const matches = useMemo(() => searchRoster(prepared, term, status), [prepared, term, status])
+  const total = matches.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const visible = matches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   return (
     <>
@@ -482,7 +479,10 @@ export default function RosterPage() {
         <input
           type="search"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value)
+            setPage(0)
+          }}
           placeholder="Search by name, email or position"
           aria-label="Search the roster"
           className={`${inputCls} max-w-sm`}
@@ -527,7 +527,7 @@ export default function RosterPage() {
       ) : (
         <>
           <ul className="space-y-3">
-            {roster.data.rows.map((row) => (
+            {visible.map((row) => (
               <Row key={row.id} row={row} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />
             ))}
           </ul>

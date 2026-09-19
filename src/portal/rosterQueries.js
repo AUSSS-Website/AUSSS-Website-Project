@@ -8,7 +8,7 @@ export const PAGE_SIZE = 50
 
 export const rosterKeys = {
   all: ['roster'],
-  list: (params) => ['roster', 'list', params],
+  list: () => ['roster', 'list'],
   runs: () => ['roster', 'runs'],
   token: () => ['roster', 'token'],
   sheet: () => ['roster', 'sheet'],
@@ -35,14 +35,23 @@ function unwrap({ data, error }) {
   return data
 }
 
-// Search, filter and paging happen in rpc/search_roster: every typed word must
-// match (any order) in the name, email or position; spelling variants and typos
-// match too, ranked below exact hits and flagged `close`.
-export async function fetchRoster({ q = '', status = '', page = 0 }) {
-  const data = unwrap(
-    await supabase.rpc('search_roster', { q, status, page, page_size: PAGE_SIZE }),
-  )
-  return { rows: data?.rows || [], total: data?.total ?? 0 }
+// The whole roster, in name order. A few hundred rows (about 100 KB): the page
+// searches it in the browser (rosterSearch.js) so typing never waits on the
+// network. PostgREST caps a response at 1000 rows, hence the loop.
+export async function fetchRoster() {
+  const rows = []
+  for (let from = 0; ; from += 1000) {
+    const chunk = unwrap(
+      await supabase
+        .from('roster_entries')
+        .select(COLUMNS)
+        .order('full_name', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + 999),
+    )
+    rows.push(...(chunk || []))
+    if (!chunk || chunk.length < 1000) return rows
+  }
 }
 
 export async function saveRosterEntry({ id, values }) {
@@ -143,12 +152,8 @@ export async function fetchBulkUpdates() {
 
 // ---- hooks ----------------------------------------------------------------
 
-export function useRoster(params) {
-  return useQuery({
-    queryKey: rosterKeys.list(params),
-    queryFn: () => fetchRoster(params),
-    placeholderData: (prev) => prev,
-  })
+export function useRoster() {
+  return useQuery({ queryKey: rosterKeys.list(), queryFn: fetchRoster })
 }
 
 export function useSyncRuns() {

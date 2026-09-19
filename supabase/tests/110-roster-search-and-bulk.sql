@@ -3,7 +3,7 @@
 -- (near-complete names only, emails only ever masked) and the verification rules (on the roster
 -- or holding a position means verified).
 begin;
-select plan(37);
+select plan(38);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -67,6 +67,10 @@ select is(
   (select (e ->> 'close')::boolean from jsonb_array_elements(public.search_roster('mohamed') -> 'rows') e
     where e ->> 'full_name' = 'Mahmoud Ali Hassan'),
   true, '...while a skeleton neighbour is listed after it and flagged'
+);
+select is(
+  public.search_roster('sara elsayed') -> 'rows' -> 0 ->> 'full_name',
+  'Sara Youssef El Sayed', 'a glued particle meets its spaced spelling (two-letter skeleton, whole part)'
 );
 select is((public.search_roster('scora') ->> 'total')::int, 1, 'positions are searchable');
 select is(

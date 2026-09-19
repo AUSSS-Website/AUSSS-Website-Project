@@ -149,10 +149,12 @@ portal's **Roster** page (`/portal/admin/roster`, EB only) all read it. Migratio
 Roster page. A row edited there is stamped `portal_edited_at` and belongs to the portal from
 then on. A status change on a row whose member has signed in updates their profile too.
 
-**Search.** The box on the Roster page goes through `rpc/search_roster`: every typed word must
-match (any order) in the name, email or position; transliteration variants (Mohamed/Muhammad,
-Abdelrahman/Abd El Rahman) and typos match too, ranked below exact hits and tagged *Similar
-spelling*. The rules live in `app.roster_match` and `app.name_skeleton`.
+**Search.** The Roster page loads the whole roster once and searches it in the browser
+(`src/portal/rosterSearch.js`), so the list follows every keystroke. Every typed word must match
+(any order) in the name, email or position; transliteration variants (Mohamed/Muhammad,
+Abdelrahman/Abd El Rahman, Elsayed/El Sayed) and typos match too, ranked below exact hits. The
+same rules exist in SQL (`app.roster_match`, `app.name_skeleton`) for the bulk-update matcher and
+`rpc/search_roster`; change both together.
 
 **Bulk updates** (attendance after a GA, a batch of status upgrades): Roster → *Bulk update*.
 Paste names and/or emails, name the event, review the matches (*likely* ones are pre-selected,
