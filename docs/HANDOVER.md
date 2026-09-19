@@ -56,7 +56,7 @@ plan's decision 4 (section 13) chose to keep it as is.
 | Live config | `vercel.json` (headers, CSP, redirects). `netlify.toml` and the Netlify site are leftovers, not production |
 | Environment variables | `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, set for **Production and Preview** |
 | Account or team that owns the project | TODO for the webmaster: record the Vercel account email and team slug, and confirm the President has access |
-| Production URL | `https://ausss-ainshams.org` (custom domain attached 2026-09-15; `www` redirects to it; `https://ausss-ainshams.vercel.app` still resolves) |
+| Production URL | `https://ausss-ainshams.org` (custom domain attached 2026-09-15). `www` and the old `https://ausss-ainshams.vercel.app` both redirect (308) to it; the redirects are set on the project's Domains page in Vercel |
 | Preview URL pattern | `https://*-ausss-website.vercel.app`; this is what the Supabase redirect allow-list matches |
 
 ### 2.3 Supabase: database, auth, storage for the portal

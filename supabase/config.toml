@@ -157,8 +157,9 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-# Production is ausss-ainshams.org (attached to the Vercel project on 2026-09-15; the
-# ausss-ainshams.vercel.app address still resolves and stays in the allow-list).
+# Production is ausss-ainshams.org (attached to the Vercel project on 2026-09-15). The old
+# ausss-ainshams.vercel.app address redirects to it and stays in the allow-list for safety.
+# Hosted values were set in the dashboard on 2026-09-19; keep this file in step with them.
 site_url = "https://ausss-ainshams.org"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
