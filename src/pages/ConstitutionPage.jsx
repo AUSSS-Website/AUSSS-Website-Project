@@ -101,17 +101,15 @@ export default function ConstitutionPage() {
       </header>
 
       <div className="container-prose pb-20 sm:pb-28">
-        {/* Portrait, viewport-height-bound frame so a single page fills the
-            view (width capped to an A4-ish ratio of the height). */}
-        <div
-          className="mx-auto w-full"
-          style={{ maxWidth: 'calc(88vh / 1.414)' }}
-        >
+        {/* Wide and fitted to width, so the text is comfortably readable and
+            you scroll through the pages. (It used to fit one whole page to the
+            screen height, which left it under 500px wide on a laptop.) */}
+        <div className="mx-auto w-full max-w-6xl">
           <PdfFrame
             src={CONSTITUTION_PDF}
             title="AUSSS Constitution & Bylaws"
-            fit="page"
-            heightClass="h-[88vh]"
+            fit="width"
+            heightClass="h-[92vh]"
           />
         </div>
 
