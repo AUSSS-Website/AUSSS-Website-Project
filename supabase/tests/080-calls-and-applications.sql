@@ -186,6 +186,8 @@ select is(
   '{"ok": true, "ref": "CALL-1"}'::jsonb,
   'a valid application is accepted'
 );
+-- read the stored row as postgres (anon has no select on applications)
+select tests.clear_auth();
 select is(
   (select jsonb_build_object('positions', positions, 'answers', answers, 'title', call_title)
      from public.applications where ref = 'CALL-1'),
@@ -194,6 +196,7 @@ select is(
     "title": "Booklet SWG"}'::jsonb,
   'positions resolve to titles, unknown ids and off-list select answers are dropped, the title is snapshotted'
 );
+select tests.authenticate_as_anon();
 select is(
   public.submit_application(
     (select id from public.calls where title = 'Booklet SWG'),
