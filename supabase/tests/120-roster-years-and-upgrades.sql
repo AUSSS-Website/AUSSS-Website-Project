@@ -21,6 +21,13 @@ select is(app.academic_year_start('2027-01-15'), 2026, 'January belongs to the y
 select is(app.years_spent(app.academic_year_start() + 3), 0, 'a joining year in the future is never negative');
 select ok(app.years_spent(null) is null, 'an unknown joining year gives no number');
 
+-- ---- the eligibility rule (private helpers, so checked before anyone signs in) ---------------
+select is(app.count_floor('>2'), 3, '">2" guarantees three');
+select is(app.count_floor('2+'), 2, '"2+" guarantees two');
+select is(app.count_floor('n/a'), 0, 'text without a number guarantees none');
+select is(app.next_status('Candidate Member', '0', '1'), null::text, 'one National GA is not enough for Associate');
+select is(app.next_status('Associate Member', '>1', '3'), 'Full Member', 'two Local and three National GAs earn Full');
+
 -- ---- kept by the database -------------------------------------------------------------------
 delete from public.roster_entries;
 insert into public.roster_entries (source_key, full_name, name_normalized, joined_year, years_spent, status, lgas, ngas)
@@ -59,13 +66,7 @@ select is(
 update public.roster_entries set joined_year = app.academic_year_start() - 5 where source_key = 'y2';
 select is((select years_spent from public.roster_entries where source_key = 'y2'), 5, 'editing the joining year recounts');
 
--- ---- eligibility ----------------------------------------------------------------------------
-select is(app.count_floor('>2'), 3, '">2" guarantees three');
-select is(app.count_floor('2+'), 2, '"2+" guarantees two');
-select is(app.count_floor('n/a'), 0, 'text without a number guarantees none');
-select is(app.next_status('Candidate Member', '0', '1'), null::text, 'one National GA is not enough for Associate');
-select is(app.next_status('Associate Member', '>1', '3'), 'Full Member', 'two Local and three National GAs earn Full');
-
+-- ---- the EB's list ------------------------------------------------------------------------
 select results_eq(
   $$ select e ->> 'full_name', e ->> 'next'
      from jsonb_array_elements(public.roster_upgrade_candidates()) e order by 1 $$,
