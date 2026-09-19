@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(19);
+select plan(21);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -30,6 +30,8 @@ select ok(not has_table_privilege('anon', 'public.roster_sync_runs', 'select'), 
 select ok(not has_table_privilege('authenticated', 'public.roster_sync_runs', 'insert'), 'authenticated cannot write roster_sync_runs');
 select ok(not has_table_privilege('authenticated', 'app.roster_sync_token', 'select'), 'authenticated cannot read the sync token hash');
 select ok(not has_function_privilege('anon', 'public.import_roster(jsonb, text)', 'execute'), 'anon cannot call import_roster');
+select ok(not has_function_privilege('authenticated', 'public.admin_roster_cron_secret_ok(text)', 'execute'), 'only the secret key can check the cron secret');
+select ok(not has_function_privilege('authenticated', 'public.admin_roster_sheet_source()', 'execute'), 'only the secret key can read which sheet is connected');
 
 select * from finish();
 rollback;

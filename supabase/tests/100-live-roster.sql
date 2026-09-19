@@ -2,7 +2,7 @@
 -- row reaches the profile, the public lookup answers with membership facts only, and the import
 -- routes are closed to everyone but the EB / a valid sheet token.
 begin;
-select plan(25);
+select plan(30);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -26,6 +26,10 @@ select throws_ok(
 select throws_ok(
   $$ select public.rotate_roster_sync_token() $$,
   '42501', null, 'a plain member cannot issue the sync token'
+);
+select throws_ok(
+  $$ select public.set_roster_sheet('https://docs.google.com/spreadsheets/d/1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/edit') $$,
+  '42501', null, 'a plain member cannot connect a spreadsheet'
 );
 select tests.clear_auth();
 select tests.authenticate_as_anon();
@@ -114,6 +118,22 @@ select is(
 select is(
   (select count(*)::int from public.roster_sync_runs where source = 'upload'),
   2, 'every import is logged'
+);
+
+-- ---- connected sheet (the hourly pull) -----------------------------------------------------
+select throws_ok(
+  $$ select public.set_roster_sheet('not a link') $$,
+  '22023', 'That does not look like a Google Sheets link.', 'a connected sheet must look like one'
+);
+select is(
+  public.set_roster_sheet('https://docs.google.com/spreadsheets/d/1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/edit?usp=sharing') ->> 'active',
+  'true', 'the EB connects a sheet by pasting its link'
+);
+select is(
+  public.roster_sheet_info() ->> 'hint', '1aaa…aaaa', 'the portal is shown a hint, not the link'
+);
+select is(
+  public.set_roster_sheet(null) ->> 'active', 'false', 'the EB disconnects the sheet'
 );
 
 -- ---- sheet sync token -----------------------------------------------------------------------

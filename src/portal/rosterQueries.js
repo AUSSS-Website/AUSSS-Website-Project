@@ -11,6 +11,7 @@ export const rosterKeys = {
   list: (params) => ['roster', 'list', params],
   runs: () => ['roster', 'runs'],
   token: () => ['roster', 'token'],
+  sheet: () => ['roster', 'sheet'],
 }
 
 const COLUMNS =
@@ -108,6 +109,23 @@ export const fetchTokenInfo = async () => unwrap(await supabase.rpc('roster_sync
 export const rotateToken = async () => unwrap(await supabase.rpc('rotate_roster_sync_token'))
 export const revokeToken = async () => unwrap(await supabase.rpc('revoke_roster_sync_token'))
 
+export const fetchSheetInfo = async () => unwrap(await supabase.rpc('roster_sheet_info'))
+// sheet: a Google Sheets link or id; null disconnects.
+export const setSheet = async (sheet) => unwrap(await supabase.rpc('set_roster_sheet', { sheet }))
+
+// Asks the roster-sheet-sync Edge Function to pull the connected sheet now. It
+// lets this call in because the session belongs to an EB member.
+export async function syncSheetNow() {
+  const { data, error } = await supabase.functions.invoke('roster-sheet-sync', { body: {} })
+  if (error) {
+    // FunctionsHttpError keeps the JSON body on .context (a Response).
+    const body = await error.context?.json?.().catch(() => null)
+    throw new Error(body?.error || error.message)
+  }
+  if (!data?.ok) throw new Error(data?.error || data?.skipped || 'The sync did not run.')
+  return data.result
+}
+
 // ---- hooks ----------------------------------------------------------------
 
 export function useRoster(params) {
@@ -120,6 +138,10 @@ export function useRoster(params) {
 
 export function useSyncRuns() {
   return useQuery({ queryKey: rosterKeys.runs(), queryFn: fetchSyncRuns })
+}
+
+export function useSheetInfo() {
+  return useQuery({ queryKey: rosterKeys.sheet(), queryFn: fetchSheetInfo })
 }
 
 export function useTokenInfo() {
@@ -145,3 +167,5 @@ export const useReleaseRosterEntry = () => useRosterMutation(releaseRosterEntry)
 export const useImportRoster = () => useRosterMutation(importRoster)
 export const useRotateToken = () => useRosterMutation(rotateToken)
 export const useRevokeToken = () => useRosterMutation(revokeToken)
+export const useSetSheet = () => useRosterMutation(setSheet)
+export const useSyncSheetNow = () => useRosterMutation(syncSheetNow)

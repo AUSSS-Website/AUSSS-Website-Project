@@ -9,7 +9,10 @@ import {
   useRoster,
   useRotateToken,
   useSaveRosterEntry,
+  useSetSheet,
+  useSheetInfo,
   useSyncRuns,
+  useSyncSheetNow,
   useTokenInfo,
 } from '../../rosterQueries.js'
 import { parseRosterFile } from '../../rosterFile.js'
@@ -246,6 +249,76 @@ function RunSummary({ result }) {
   )
 }
 
+// The hourly pull: the server downloads the connected Google Sheet by itself,
+// so nothing has to be installed on the sheet.
+function SheetConnection({ onResult, onError }) {
+  const info = useSheetInfo()
+  const setSheet = useSetSheet()
+  const syncNow = useSyncSheetNow()
+  const [link, setLink] = useState('')
+  const busy = setSheet.isPending || syncNow.isPending
+  const active = info.data?.active
+
+  const run = async (fn) => {
+    onError('')
+    onResult(null)
+    try {
+      const out = await fn()
+      if (out && typeof out === 'object' && 'inserted' in out) onResult(out)
+    } catch (e) {
+      onError(e?.message || 'That did not work.')
+    }
+  }
+
+  return (
+    <div className="mt-5">
+      <p className="text-sm font-semibold text-white">
+        Google Sheet{' '}
+        <span className="font-normal text-silver/60">
+          {info.isPending
+            ? ''
+            : active
+              ? `· connected (${info.data.hint}), checked every hour`
+              : '· not connected'}
+        </span>
+      </p>
+      {active ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" disabled={busy} onClick={() => run(() => syncNow.mutateAsync())} className={outlineBtnCls}>
+            {syncNow.isPending ? 'Syncing…' : 'Sync now'}
+          </button>
+          <button type="button" disabled={busy} onClick={() => run(() => setSheet.mutateAsync(null))} className={outlineBtnCls}>
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            run(async () => {
+              await setSheet.mutateAsync(link)
+              setLink('')
+            })
+          }}
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          <input
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            required
+            placeholder="Paste the sheet’s link"
+            aria-label="Google Sheets link"
+            className={`${inputCls} max-w-md`}
+          />
+          <button type="submit" disabled={busy} className={outlineBtnCls}>
+            Connect
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
 function SpreadsheetPanel() {
   const fileRef = useRef(null)
   const importRoster = useImportRoster()
@@ -291,7 +364,9 @@ function SpreadsheetPanel() {
         edited in the portal are never overwritten, and nobody is removed by an import.
       </p>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <SheetConnection onResult={setLast} onError={setError} />
+
+      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-white/10 pt-5">
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFile} className="hidden" />
         <button type="button" disabled={importRoster.isPending} onClick={() => fileRef.current?.click()} className={outlineBtnCls}>
           {importRoster.isPending ? 'Importing…' : 'Import an .xlsx or .csv'}
@@ -305,14 +380,15 @@ function SpreadsheetPanel() {
 
       <div className="mt-6 border-t border-white/10 pt-5">
         <p className="text-sm font-semibold text-white">
-          Automatic sync from the sheet{' '}
+          Push from the sheet instead{' '}
           <span className="font-normal text-silver/60">
             {token.isPending ? '' : active ? `· on since ${when(token.data.created_at)}` : '· off'}
           </span>
         </p>
         <p className="mt-1 text-xs text-silver/55">
-          The script in apps-script/roster-sync.gs, installed on the sheet, sends the roster here
-          every hour using this token. Issuing a new token switches the old one off.
+          For a sheet that is not readable by the server: its owner installs
+          apps-script/roster-sync.gs, which sends the roster here every hour using this token.
+          Issuing a new token switches the old one off.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button type="button" disabled={rotate.isPending} onClick={issue} className={outlineBtnCls}>
@@ -356,7 +432,7 @@ function SpreadsheetPanel() {
               <li key={r.id}>
                 <p className="text-xs text-silver/50">
                   {when(r.at)} ·{' '}
-                  {r.source === 'sheet' ? 'sheet sync' : r.source === 'upload' ? 'file upload' : 'script'}
+                  {r.source === 'sheet' ? 'Google Sheet' : r.source === 'upload' ? 'file upload' : 'script'}
                   {r.batch ? ` · ${r.batch}` : ''}
                 </p>
                 <RunSummary result={r.result} />

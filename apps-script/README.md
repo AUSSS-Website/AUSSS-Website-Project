@@ -7,14 +7,15 @@ the Google Sheet.
 
 While the Secretary General still edits the sheet
 (`[SHARED] AUSSS Membership Database`, tab `Database`), its changes reach
-Supabase one of two ways:
+Supabase one of three ways:
 
 | Route | Who | How |
 |---|---|---|
+| **Hourly pull (in use)** | nobody; an EB member connects the sheet once | Portal → **Roster** → *Spreadsheet* → paste the sheet's link. The Edge Function `roster-sheet-sync` downloads the sheet every hour (pg_cron, seven past) and on *Sync now*. Needs nothing installed on the sheet, but the server must be able to read it: today by its public link, later through a service account (below) |
 | File upload | any EB member | Portal → **Roster** → *Spreadsheet* → *Import an .xlsx or .csv* (in the sheet: File → Download → Microsoft Excel) |
-| Automatic, hourly | the sheet's owner, once | [`roster-sync.gs`](./roster-sync.gs), below |
+| Push from the sheet | the sheet's owner, once | [`roster-sync.gs`](./roster-sync.gs), below |
 
-Both end in the same merge (`app.apply_roster_rows`):
+All three end in the same merge (`app.apply_roster_rows`):
 
 - a new name + email is **added**; a row that changed in the sheet is **updated**;
 - a row the EB edited in the portal is **kept** (the portal owns it from then
@@ -22,7 +23,22 @@ Both end in the same merge (`app.apply_roster_rows`):
 - a row that disappeared from the sheet is **reported, never deleted**;
 - people who already signed in are linked to their roster row at the end.
 
-## Setting up the hourly sync
+## Keeping the pull working once the sheet is private
+
+The sheet holds members' email addresses and must not stay on "anyone with the
+link". When its owner restricts it, the pull needs an identity Google can share
+the sheet with:
+
+1. Google Cloud project `ausss-website` → IAM → Service accounts → create one
+   (no roles), add a JSON key, enable the **Google Drive API**.
+2. `npx supabase secrets set GOOGLE_SERVICE_ACCOUNT="$(cat key.json)"`, then
+   delete the key file.
+3. The sheet's owner shares the sheet with the service account's email as
+   **Viewer**, then sets general access to **Restricted**.
+
+The function switches to the service account as soon as the secret exists.
+
+## Setting up the push from the sheet (alternative)
 
 Signed in as the sheet's owner (`ausss.secgen@gmail.com`):
 

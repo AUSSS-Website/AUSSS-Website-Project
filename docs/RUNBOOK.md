@@ -151,6 +151,12 @@ then on. A status change on a row whose member has signed in updates their profi
 
 **Bringing the spreadsheet in** (while the Secretary General still edits it), any of:
 
+0. **Nothing (the normal case):** the Edge Function `roster-sheet-sync` pulls the sheet connected
+   on the Roster page every hour (pg_cron job `roster-sheet-sync`, authenticated by the Vault
+   secret `roster_cron_secret`); *Sync now* on the same page runs it at once. If a run fails, look
+   at `select * from cron.job_run_details order by start_time desc limit 5`, at
+   `net._http_response`, and at the function's logs; the usual cause is the sheet no longer being
+   readable (see the service-account steps in `apps-script/README.md`).
 1. Portal → Roster → *Spreadsheet* → *Import an .xlsx or .csv*.
 2. The hourly Apps Script on the sheet (`apps-script/roster-sync.gs`), authenticated by the
    token issued on the same panel.
