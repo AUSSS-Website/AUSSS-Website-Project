@@ -250,15 +250,17 @@ otp_expiry = 3600
 # Supabase SMTP, which only delivers to project team members, is capped at a couple of
 # emails per hour, and (on the free plan) cannot customise the email templates. Google
 # sign-in works without SMTP; magic links for members need this enabled. Uncomment once
-# ausss-ainshams.org is verified in Resend and RESEND_API_KEY is in supabase/.env.
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.resend.com"
-# port = 465
-# user = "resend"
-# pass = "env(RESEND_API_KEY)"
-# admin_email = "portal@ausss-ainshams.org"
-# sender_name = "AUSSS"
+# Enabled 2026-09-20 (domain verified in Resend). RESEND_API_KEY lives in supabase/.env; the
+# same values are set in Dashboard > Authentication > Emails > SMTP settings. Keep this block
+# present: `config push` resets an omitted section to the default mailer.
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "portal@ausss-ainshams.org"
+sender_name = "AUSSS"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -447,4 +449,8 @@ enabled = true
 # Authenticates callers itself: the hourly pg_cron job sends a Vault secret, the portal sends
 # an EB session (see supabase/functions/roster-sheet-sync/index.ts).
 [functions.roster-sheet-sync]
+verify_jwt = false
+
+# Authenticates its caller itself (the daily pg_cron job's Vault secret).
+[functions.email-digest]
 verify_jwt = false

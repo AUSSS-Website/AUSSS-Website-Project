@@ -29,6 +29,8 @@ jobs:
       # project: only `config push` sends auth settings, and CI never runs it.
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
       SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      # Same story for the SMTP password in [auth.email.smtp]; the local stack mails to Inbucket.
+      RESEND_API_KEY: ci-placeholder
     steps:
       - uses: actions/checkout@v4
 

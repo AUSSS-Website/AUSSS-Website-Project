@@ -46,6 +46,7 @@ function ProfileForm({ user, profile }) {
   const [phone, setPhone] = useState(profile.phone || '')
   const [facultyYear, setFacultyYear] = useState(profile.faculty_year || '')
   const [optIn, setOptIn] = useState(Boolean(profile.directory_opt_in))
+  const [digest, setDigest] = useState(profile.email_digest !== false)
   const [msg, setMsg] = useState('')
 
   const submit = async (e) => {
@@ -57,6 +58,7 @@ function ProfileForm({ user, profile }) {
         phone: phone.trim() || null,
         faculty_year: facultyYear || null,
         directory_opt_in: optIn,
+        email_digest: digest,
       })
       setMsg('Saved.')
     } catch {
@@ -137,6 +139,22 @@ function ProfileForm({ user, profile }) {
               checked={optIn}
               onChange={setOptIn}
               label="Show me in the members directory"
+              disabled={save.isPending}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
+            <div className="max-w-md">
+              <p className="text-sm font-medium text-white">Email me a daily digest</p>
+              <p className="mt-1 text-xs text-silver/55">
+                At most one email a day, only when a task or an update is waiting
+                for you. Everything stays in the portal either way.
+              </p>
+            </div>
+            <Toggle
+              checked={digest}
+              onChange={setDigest}
+              label="Email me a daily digest"
               disabled={save.isPending}
             />
           </div>

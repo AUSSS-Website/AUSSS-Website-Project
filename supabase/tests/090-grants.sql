@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(35);
+select plan(38);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -52,6 +52,11 @@ select ok(not has_column_privilege('authenticated', 'public.notifications', 'pay
 select ok(not has_column_privilege('authenticated', 'public.task_updates', 'kind', 'insert'), 'authenticated cannot choose a task update kind');
 select ok(not has_table_privilege('authenticated', 'public.task_updates', 'update'), 'the task timeline is append-only');
 select ok(not has_function_privilege('anon', 'public.profile_names(uuid[])', 'execute'), 'anon cannot resolve names');
+
+-- email digest: the queue and the run marker are for the secret key only
+select ok(not has_function_privilege('authenticated', 'public.admin_digest_batch(int)', 'execute'), 'authenticated cannot read the digest queue');
+select ok(not has_function_privilege('authenticated', 'public.admin_digest_mark(uuid[], int, text)', 'execute'), 'authenticated cannot mark a digest run');
+select ok(not has_table_privilege('anon', 'public.digest_runs', 'select'), 'anon cannot read digest runs');
 
 select * from finish();
 rollback;

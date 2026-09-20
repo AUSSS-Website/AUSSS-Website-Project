@@ -577,6 +577,34 @@ To let an assistant position hand out tasks:
 update public.positions set can_assign_tasks = true where key = 'scope.assistant';
 ```
 
-Not done yet: the daily email digest (needs Resend; `notifications.emailed_at`
-and `profiles.email_digest` are already there for it), file attachments on
-tasks, and per-assignee completion.
+### The daily email digest
+
+Every day at 15:30 UTC the pg_cron job `email-digest` calls the Edge Function of the
+same name (its own Vault secret `digest_cron_secret`, `verify_jwt = false`). The
+function asks `rpc/admin_digest_batch` who has something unseen (unread notifications
+never emailed, plus live unread updates addressed to them since their last digest),
+sends one email each through Resend, then calls `rpc/admin_digest_mark`. People opt
+out under Profile (`profiles.email_digest`). Nobody is emailed twice within 20 hours.
+
+Resend's free plan allows 100 emails a day, shared with sign-in links, so a run takes
+at most 80 people (longest-waiting first) and stops early on a 429 or quota error;
+whoever did not fit is first in line the next day. If `digest_runs.note` keeps saying
+"Stopped early", go weekly, pay for Resend Pro, or move to another provider (SMTP
+settings plus the one `fetch` in the function).
+
+The function needs the secret `RESEND_API_KEY` (Dashboard > Edge Functions > Secrets).
+Without it, it answers `{ skipped }` and sends nothing. Optional secrets: `DIGEST_FROM`,
+`PORTAL_URL`.
+
+```sql
+-- What the last runs did.
+select * from public.digest_runs order by id desc limit 10;
+-- Who would be emailed right now (secret-key/postgres only).
+select jsonb_array_length(public.admin_digest_batch(80));
+-- Did the cron job fire, and what did the function answer?
+select * from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'email-digest') order by start_time desc limit 5;
+select id, status_code, content::text from net._http_response order by id desc limit 5;
+```
+
+Not done yet: file attachments on tasks, per-assignee completion, an immediate email
+on assignment (the plan had one; it would eat the daily allowance).

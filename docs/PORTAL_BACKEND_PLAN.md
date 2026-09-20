@@ -238,6 +238,25 @@ Route tree under `/portal`, all behind sign-in:
   Officers see read counts and who has not read.
 - **My committee**: members and positions, the committee page editor (today's
   "page" tab at `/account`), open calls and applications (today's "calls" tab).
+- **Committee roster** (Phase 4, requested 2026-09-20): each officer gets a
+  roster of just their own committee's members, not the society-wide roster
+  the EB has. From it they can assign members (to committee positions, and to
+  tasks) and keep private officer notes on each member. It is read-only for
+  the membership record itself: an officer cannot change a member's status,
+  joined year, LGA/NGA counts or any other roster field; those stay with the
+  EB and the Secretary General's sheet. Notes live in their own table, visible
+  to that committee's officers and the EB only, never to the member.
+  Prerequisite (decided 2026-09-20): the roster gets an explicit link from
+  each member to their committee (`roster_entries` has none today; only
+  `assignments` know a committee, and most members have no account yet). The
+  EB sets it on the Roster page, including through a bulk update, so "their
+  members" means the rows linked to that officer's committee, whether or not
+  the member has signed in. A member belongs to exactly one committee, so the
+  link is a single nullable `committee_id` column on `roster_entries`. The one
+  exception is **Contact Person**, an exchange position a member can hold
+  alongside their main position whatever their committee: it is modelled as an
+  extra marker on the member (and, for members with accounts, a second
+  assignment), never as a second committee.
 - **Directory**: opted-in members with positions, searchable.
 - **Notifications**: an in-app feed, and a daily email digest of anything
   unread (per-person opt-out), sent by an edge function on a `pg_cron`
@@ -382,7 +401,7 @@ use, not a demo.
 | **1. Identity** | 2 | Google and magic-link sign-in, `profiles`, `terms`, `committees`, `positions`, `assignments`, RLS helpers and their tests, roster import and account claiming | All current officers signed in with Google and holding their positions for 2026-27. |
 | **2. Officer parity** | 2 | Site settings, committee page editor, open calls and applications on Supabase (migration steps 1 to 3) | `officers.gs` is no longer called by production. |
 | **3. Portal core** | 3 | Dashboard, tasks, updates, read receipts, notifications feed, email digest | One committee runs a real month of work through it. |
-| **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster | 100 members with accounts, verification backlog under a day. |
+| **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster, per-committee officer roster (assign members, officer notes, membership fields read-only) | 100 members with accounts, verification backlog under a day. |
 | **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired | No Apps Script URL left in `src/data`. |
 | **6. Site management** | 4, then ongoing | Schema-driven editor; EB, FAQ, magazine, merch, events and home sections editable; content snapshot pipeline | An officer publishes a magazine issue with no developer involved. |
 | **7. Sustain** | ongoing | Term-rollover wizard, backups and a restore rehearsal, runbook, monitoring, the Pro plan decision | The first rollover to 2027-28 is done by the EB alone. |
