@@ -3,7 +3,7 @@
 -- triggers. Posts reach their audience once published, and readers leave receipts that only the
 -- post's managers can see.
 begin;
-select plan(36);
+select plan(37);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -154,6 +154,10 @@ select is(
   (select jsonb_build_object('title', title, 'completed', completed_at is not null) from public.tasks where created_by = tests.user_id('helper@pgtap.test')),
   '{"title": "Print the badges", "completed": false}'::jsonb,
   'the creator edits their task; reopening clears completed_at'
+);
+select is(
+  (select meta -> 'fields' from public.task_updates where kind = 'edited'),
+  '["title"]'::jsonb, 'the edit is recorded on the timeline with the fields that changed'
 );
 select is(
   (select count(*)::int from public.profile_names(array[tests.user_id('leo@pgtap.test'), tests.user_id('sara@pgtap.test')])),
