@@ -15,7 +15,7 @@ export const keys = {
 // Shape fixed by the contract; term is !inner so the is_current filter on the
 // embedded row actually drops non-current assignments instead of nulling them.
 export const ASSIGNMENT_SELECT =
-  'id, status, position:positions(id,key,title,short_title,level,committee:committees(id,slug,name,abbr,color,logo,kind)), term:terms!inner(id,label,is_current)'
+  'id, status, position:positions(id,key,title,short_title,level,can_assign_tasks,committee:committees(id,slug,name,abbr,color,logo,kind)), term:terms!inner(id,label,is_current)'
 
 function unwrap({ data, error }) {
   if (error) throw error

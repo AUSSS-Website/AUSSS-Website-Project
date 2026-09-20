@@ -11,6 +11,10 @@ import CallbackPage from './pages/CallbackPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
+import TasksPage from './pages/tasks/TasksPage.jsx'
+import TaskPage from './pages/tasks/TaskPage.jsx'
+import UpdatesPage from './pages/updates/UpdatesPage.jsx'
+import NotificationsPage from './pages/NotificationsPage.jsx'
 import VerificationQueuePage from './pages/admin/VerificationQueuePage.jsx'
 import SiteSettingsPage from './pages/admin/SiteSettingsPage.jsx'
 import RosterPage from './pages/admin/RosterPage.jsx'
@@ -53,6 +57,11 @@ export default function PortalRoot() {
             <Route index element={<DashboardPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="verify" element={<VerifyPage />} />
+            {/* Portal core: RLS decides which tasks and updates each person gets. */}
+            <Route path="tasks" element={<TasksPage />} />
+            <Route path="tasks/:id" element={<TaskPage />} />
+            <Route path="updates" element={<UpdatesPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             {/* Officer surfaces: the page itself checks officerOf(slug) so a
                 member who types the URL gets a polite refusal. */}
             <Route path="committees" element={<CommitteesPage />} />

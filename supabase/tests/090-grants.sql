@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(27);
+select plan(35);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -41,6 +41,17 @@ select ok(has_function_privilege('anon', 'public.check_membership(text, text, te
 
 select ok(not has_function_privilege('anon', 'public.roster_upgrade_candidates()', 'execute'), 'anon cannot list upgrade candidates');
 select ok(not has_function_privilege('authenticated', 'app.refresh_years_spent()', 'execute'), 'only the scheduler runs the years-spent rollover');
+
+-- portal core: nothing for anon; clients write comments and read receipts through narrow
+-- column grants, and the timeline / notification rows come from triggers only
+select ok(not has_table_privilege('anon', 'public.tasks', 'select'), 'anon cannot read tasks');
+select ok(not has_table_privilege('anon', 'public.posts', 'select'), 'anon cannot read posts');
+select ok(not has_table_privilege('anon', 'public.notifications', 'select'), 'anon cannot read notifications');
+select ok(not has_table_privilege('authenticated', 'public.notifications', 'insert'), 'authenticated cannot insert notifications');
+select ok(not has_column_privilege('authenticated', 'public.notifications', 'payload', 'update'), 'authenticated cannot rewrite a notification');
+select ok(not has_column_privilege('authenticated', 'public.task_updates', 'kind', 'insert'), 'authenticated cannot choose a task update kind');
+select ok(not has_table_privilege('authenticated', 'public.task_updates', 'update'), 'the task timeline is append-only');
+select ok(not has_function_privilege('anon', 'public.profile_names(uuid[])', 'execute'), 'anon cannot resolve names');
 
 select * from finish();
 rollback;

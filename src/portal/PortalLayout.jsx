@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { SIGN_IN_PATH } from './constants.js'
+import { useUnreadCount } from './workQueries.js'
 
 // The portal's own dark chrome. It deliberately does not sit inside the
 // public <Layout/> (navbar, footer, theme toggle) so signed-in pages stay
@@ -29,6 +30,7 @@ export default function PortalLayout() {
     isEB || assignments.some((a) => a.position?.level === 'officer' && a.position?.committee)
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
+  const unread = useUnreadCount().data || 0
 
   const handleSignOut = async () => {
     setBusy(true)
@@ -58,9 +60,26 @@ export default function PortalLayout() {
             </span>
           </Link>
 
-          <nav aria-label="Portal" className="flex items-center gap-5">
+          <nav aria-label="Portal" className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <NavLink to="/portal" end className={navCls}>
               Dashboard
+            </NavLink>
+            <NavLink to="/portal/tasks" className={navCls}>
+              Tasks
+            </NavLink>
+            <NavLink to="/portal/updates" className={navCls}>
+              Updates
+            </NavLink>
+            <NavLink to="/portal/notifications" className={navCls}>
+              Notifications
+              {unread > 0 && (
+                <span
+                  aria-label={`${unread} unread`}
+                  className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-medical px-1.5 py-0.5 text-[10px] font-bold text-forest-950"
+                >
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </NavLink>
             <NavLink to="/portal/profile" className={navCls}>
               Profile

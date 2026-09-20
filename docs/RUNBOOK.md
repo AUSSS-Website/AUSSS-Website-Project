@@ -550,3 +550,33 @@ Not yet done in Phase 2, by design:
   export from the Sheet; the two calls that were live on 2026-09-19 were
   copied by hand into `calls`).
 
+
+## 13. Portal core: tasks, updates, notifications (Phase 3)
+
+Since 2026-09-20 the portal has `/portal/tasks`, `/portal/updates` and
+`/portal/notifications`, and the dashboard opens with "Your tasks" and unread
+updates. Migrations `20260920200001_tasks_and_notifications` and
+`20260920200002_posts_and_reads`; tests in `supabase/tests/130-tasks-and-posts.sql`.
+
+| What | Table | Who sees it | Who writes |
+| --- | --- | --- | --- |
+| Tasks | `tasks` (committee or null = society-wide, term, status `todo`/`doing`/`blocked`/`done`, priority, `due_on` as a Cairo day) | assignees, the creator, the committee's officers, the EB | create: officers of the committee, positions with `can_assign_tasks`, EB (society-wide: EB only). Edit/delete/assign: officers, EB, or the creator. An assignee changes the **status only**: `app.guard_task()` pins every other column for them. |
+| Assignees | `task_assignees` | whoever sees the task | task managers; the person must hold a position in that committee this term (`app.is_assignable`) |
+| Timeline | `task_updates` | whoever sees the task | clients insert comments only (column grant on `task_id, body`); `created`, `status`, `edited`, `assigned`, `unassigned` rows come from triggers |
+| Notifications | `notifications` (`task_assigned`, `task_status`, `task_comment`) | the recipient | triggers only, never for your own action; the recipient may set `read_at` |
+| Updates | `posts` (committee or null = whole society, optional `levels`, `publish_at` null = draft, `expires_at`, `pinned`) | committee officers and EB always; everyone else once it is live and they are in the audience (`app.post_in_audience`) | officers of the committee, EB (society-wide: EB only) |
+| Read receipts | `post_reads` | the reader; the post's managers | the reader. `rpc/post_audience` lists who has and has not read a post (managers only). |
+
+`rpc/profile_names(ids)` resolves name + avatar for ids a member already holds,
+because `profiles` RLS hides members from each other. `rpc/task_assignable_people`
+feeds the assignee picker.
+
+To let an assistant position hand out tasks:
+
+```sql
+update public.positions set can_assign_tasks = true where key = 'scope.assistant';
+```
+
+Not done yet: the daily email digest (needs Resend; `notifications.emailed_at`
+and `profiles.email_digest` are already there for it), file attachments on
+tasks, and per-assignee completion.

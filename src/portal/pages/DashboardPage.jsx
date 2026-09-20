@@ -3,10 +3,84 @@ import usePageTitle from '../../hooks/usePageTitle.js'
 import Button from '../../components/ui/Button.jsx'
 import { useAuth } from '../../auth/AuthProvider.jsx'
 import { useMyVerification, usePendingVerifications } from '../queries.js'
+import { isPostLive, usePosts, useTasks } from '../workQueries.js'
 import { PageHeader, Panel, StatusBadge } from '../portalUi.jsx'
+import { CommitteeTag, DueLabel, PriorityPill, UnreadDot } from '../workUi.jsx'
 
-// /portal. One glance: who you are, whether you're verified, what you hold
-// this term, and (EB only) how many verification requests are waiting.
+// /portal. One glance: the work waiting on you, the updates you haven't read,
+// who you are, whether you're verified, what you hold this term, and (EB
+// only) how many verification requests are waiting.
+
+const moreLinkCls = 'mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white'
+
+// Open tasks assigned to this person, soonest due first (the query's order).
+function MyTasksPanel({ uid }) {
+  const tasks = useTasks()
+  const mine = (tasks.data || []).filter(
+    (t) => t.status !== 'done' && t.assignees.some((a) => a.profile_id === uid),
+  )
+  return (
+    <Panel title="Your tasks">
+      {tasks.isPending ? (
+        <p className="mt-4 text-sm text-silver/60">Loading…</p>
+      ) : tasks.error ? (
+        <p className="mt-4 text-sm text-silver/60">Couldn’t load your tasks.</p>
+      ) : mine.length === 0 ? (
+        <p className="mt-4 text-sm text-silver/60">Nothing open is assigned to you.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-white/10">
+          {mine.slice(0, 5).map((t) => (
+            <li key={t.id}>
+              <Link
+                to={`/portal/tasks/${t.id}`}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm text-white hover:text-medical-light"
+              >
+                <CommitteeTag committee={t.committee} />
+                <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
+                <PriorityPill priority={t.priority} />
+                <DueLabel task={t} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link to="/portal/tasks" className={moreLinkCls}>
+        {mine.length > 5 ? `All ${mine.length} open tasks` : 'All tasks'} &rarr;
+      </Link>
+    </Panel>
+  )
+}
+
+function UpdatesPanel({ uid }) {
+  const posts = usePosts()
+  const unread = (posts.data || []).filter(
+    (p) => isPostLive(p) && !p.reads.some((r) => r.profile_id === uid),
+  )
+  return (
+    <Panel title="Updates">
+      {posts.isPending ? (
+        <p className="mt-4 text-sm text-silver/60">Loading…</p>
+      ) : posts.error ? (
+        <p className="mt-4 text-sm text-silver/60">Couldn’t load updates.</p>
+      ) : unread.length === 0 ? (
+        <p className="mt-4 text-sm text-silver/60">You’re all caught up.</p>
+      ) : (
+        <ul className="mt-4 space-y-2.5">
+          {unread.slice(0, 4).map((p) => (
+            <li key={p.id} className="flex items-center gap-2.5 text-sm text-white">
+              <UnreadDot />
+              <span className="min-w-0 flex-1 truncate font-medium">{p.title}</span>
+              <CommitteeTag committee={p.committee} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link to="/portal/updates" className={moreLinkCls}>
+        {unread.length > 0 ? `Read ${unread.length} unread` : 'All updates'} &rarr;
+      </Link>
+    </Panel>
+  )
+}
 
 const STATUS_BLURB = {
   unverified:
@@ -80,6 +154,9 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-5 md:grid-cols-2">
+        <MyTasksPanel uid={user.id} />
+        <UpdatesPanel uid={user.id} />
+
         <Panel title="Membership">
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <StatusBadge status={status} />
