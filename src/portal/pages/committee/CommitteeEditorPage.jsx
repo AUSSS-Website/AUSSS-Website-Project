@@ -7,16 +7,18 @@ import { useCommittee } from '../../officerQueries.js'
 import { Centered, ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.jsx'
 import PageEditor from './PageEditor.jsx'
 import CallsPanel from './CallsPanel.jsx'
+import MembersPanel from './MembersPanel.jsx'
 
-// /portal/committees/:slug. Two things an officer manages for their
-// committee: the public page itself, and the recruitment calls running on
-// it. The database decides what is allowed (save_committee_page and the
+// /portal/committees/:slug. What an officer manages for their committee:
+// the public page itself, the recruitment calls running on it, and the
+// committee's own members. The database decides what is allowed (save_committee_page and the
 // calls policies); this page only decides what to show, so a member who
 // types the URL sees a polite refusal instead of a broken editor.
 
 const TABS = [
   ['page', 'Committee page'],
   ['calls', 'Open calls'],
+  ['members', 'Members'],
 ]
 
 export default function CommitteeEditorPage() {
@@ -103,7 +105,7 @@ export default function CommitteeEditorPage() {
             rel="noopener noreferrer"
             className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/10"
           >
-            View public page &nearr;
+            View public page ↗
           </Link>
         }
       />
@@ -133,6 +135,7 @@ export default function CommitteeEditorPage() {
         <PageEditor key={c.id} committee={c} staticCommittee={staticCommittee} />
       </div>
       {tab === 'calls' && <CallsPanel committee={c} />}
+      {tab === 'members' && <MembersPanel committee={c} />}
     </>
   )
 }

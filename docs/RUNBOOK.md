@@ -608,3 +608,70 @@ select id, status_code, content::text from net._http_response order by id desc l
 
 Not done yet: file attachments on tasks, per-assignee completion, an immediate email
 on assignment (the plan had one; it would eat the daily allowance).
+
+## 14. Committee rosters (Phase 4, part 1)
+
+Migration `20260921090001_committee_roster`. Every roster row can carry one committee
+(`roster_entries.committee_id`, nullable: a member is in exactly one committee or none
+yet) and the marker `is_contact_person` (Exchange Contact Person is held alongside the
+main position, never as a second committee).
+
+Who sets it: the EB, on `/portal/admin/roster` (the Committee field of a row, the
+committee filter, or **Set committees**: paste a committee's members list, review the
+matches, apply; logged in `roster_bulk_updates` and undoable like a GA). When a row has
+no committee, the database proposes one from the sheet's "Current Position" text if it
+names exactly one committee ("SCORA Core Team Member", "LORA"); it never overrides a
+choice, and clearing it by hand sticks until the position text changes. Neither column
+is a spreadsheet column, so setting them does not make the portal own the row and the
+hourly sheet sync keeps updating it.
+
+What officers get: the **Members** tab of `/portal/committees/<slug>`, fed by
+`rpc/committee_roster` (the roster table itself stays EB-only). Membership facts are
+read-only there. They can give a member a position below officer level
+(`rpc/assign_roster_member`: a standing invite on the roster email, so it works before
+the member has signed in; a member holding a position can be given tasks) and keep
+notes (`member_notes`). Notes are visible to that committee's officers and the EB,
+never to the member they are about (not even if that member is an officer or on the
+EB), and they stay with the committee that wrote them when a member moves.
+
+```sql
+-- How many members each committee has, and who is still unplaced but has a position text.
+select coalesce(c.abbr, '(none)') as committee, count(*)
+from public.roster_entries r left join public.committees c on c.id = r.committee_id
+group by 1 order by 2 desc;
+select full_name, current_position from public.roster_entries
+where committee_id is null and current_position is not null order by 2;
+```
+
+Not done yet: showing Contact Persons to the exchange officers.
+
+### Positions inside a committee (Phase 4, part 2)
+
+Migration `20260921100001_roster_positions`. Every roster row in a committee holds ONE
+position there (`roster_entries.position_id`). Giving a member a committee makes them
+its **Local Member**; the Position field that then appears in the row editor offers the
+committee's members, assistants and coordinators (and, for the EB, its officers). When
+nothing was chosen yet the sheet's "Current Position" text is read first ("SCORA Core
+Team Member", "RSD GA", "LORA"). Officers set the same field from the Members tab, for
+positions below their own only.
+
+The position reaches the portal by itself (`app.sync_roster_position`): a standing
+invite on the roster email, so an assignment at once if the member has an account and at
+their first sign-in otherwise. Changing it withdraws the old invite and ends the old
+assignment. No email on the roster: the title shows, nothing reaches an account.
+
+The list of positions is data, not code: **Position types** on the Roster page lets the
+EB add, rename or retire them per committee (the database makes the `key`; a retired
+position stays on its holders and stops being offered; Local Member cannot be retired).
+Assistants and coordinators share the level `assistant`; they receive tasks but do not
+assign them unless `positions.can_assign_tasks` is switched on for that position (SQL or
+the table editor for now). The seed came from the titles the sheet used on 2026-09-21;
+abbreviations nobody could expand (MEA, MEDA, RSDA, PNSDA, PR, ME, CBA, DA, TDA) are
+titled as the sheet writes them: rename them under Position types.
+
+```sql
+-- Who holds what, per committee.
+select c.abbr, p.title, count(*) from public.roster_entries r
+join public.positions p on p.id = r.position_id join public.committees c on c.id = r.committee_id
+group by 1, 2 order by 1, 3 desc;
+```

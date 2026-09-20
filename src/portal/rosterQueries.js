@@ -14,10 +14,12 @@ export const rosterKeys = {
   sheet: () => ['roster', 'sheet'],
   bulk: () => ['roster', 'bulk'],
   upgrades: () => ['roster', 'upgrades'],
+  committee: (id) => ['roster', 'committee', id],
+  notes: (entryId, committeeId) => ['roster', 'notes', committeeId, entryId],
 }
 
 const COLUMNS =
-  'id, full_name, email, status, joined_year, years_spent, lgas, ngas, current_position, origin, portal_edited_at, profile_id, import_batch, updated_at'
+  'id, full_name, email, status, joined_year, years_spent, lgas, ngas, current_position, origin, portal_edited_at, profile_id, import_batch, updated_at, committee_id, is_contact_person, position_id'
 
 // The columns an officer may type into; everything else is kept by the database
 // (years_spent is counted from joined_year and the academic year).
@@ -29,6 +31,9 @@ export const EDITABLE = [
   'lgas',
   'ngas',
   'current_position',
+  'committee_id',
+  'position_id',
+  'is_contact_person',
 ]
 
 function unwrap({ data, error }) {
@@ -62,6 +67,8 @@ export async function saveRosterEntry({ id, values }) {
     const v = typeof values[k] === 'string' ? values[k].trim() : values[k]
     if (k === 'joined_year') {
       patch[k] = v === '' || v == null ? null : Number(v)
+    } else if (k === 'is_contact_person') {
+      patch[k] = Boolean(v)
     } else {
       patch[k] = v === '' ? null : v
     }
@@ -132,7 +139,8 @@ export async function syncSheetNow() {
 export const matchRosterLines = async (lines) =>
   unwrap(await supabase.rpc('match_roster_lines', { lines })) || []
 
-// action: 'lga' | 'nga' | 'status'; label names the event; value is the status.
+// action: 'lga' | 'nga' | 'status' | 'committee'; label names the event; value is
+// the status, or the committee's slug ('' takes people out of their committee).
 export const bulkUpdateRoster = async ({ ids, action, label, value }) =>
   unwrap(await supabase.rpc('bulk_update_roster', { ids, action, label, value: value || null }))
 
@@ -150,6 +158,76 @@ export async function fetchBulkUpdates() {
     ) || []
   )
 }
+
+// ---- a committee's own roster (officers) -----------------------------------
+
+// roster_entries is closed to officers; rpc/committee_roster hands them the
+// members linked to their committee, membership facts read-only.
+export const fetchCommitteeRoster = async (committeeId) =>
+  unwrap(await supabase.rpc('committee_roster', { committee: committeeId })) || []
+
+// Sets the member's one position in the committee. 'assigned' (the member has an
+// account), 'invited' (waits for their first sign-in) or 'noted' (no email on file).
+export const assignRosterMember = async ({ entry, position }) =>
+  unwrap(await supabase.rpc('assign_roster_member', { entry, position }))
+
+// ---- position types ---------------------------------------------------------
+
+const POSITION_COLUMNS = 'id, key, committee_id, title, short_title, level, sort, active, can_assign_tasks'
+
+// Every committee position (society-wide ones are not handed out from the roster).
+export async function fetchPositions() {
+  return (
+    unwrap(
+      await supabase
+        .from('positions')
+        .select(POSITION_COLUMNS)
+        .not('committee_id', 'is', null)
+        .order('sort')
+        .order('title'),
+    ) || []
+  )
+}
+
+// EB only (RLS). The database makes the key.
+export const addPosition = async ({ committee_id, title, level }) =>
+  unwrap(
+    await supabase
+      .from('positions')
+      .insert({ committee_id, title, level, sort: level === 'member' ? 35 : 25 })
+      .select(POSITION_COLUMNS)
+      .single(),
+  )
+
+export const updatePosition = async ({ id, patch }) =>
+  unwrap(await supabase.from('positions').update(patch).eq('id', id).select(POSITION_COLUMNS).single())
+
+const NOTE_COLUMNS = 'id, roster_entry_id, committee_id, author_id, body, created_at, updated_at'
+
+export async function fetchMemberNotes({ entryId, committeeId }) {
+  return (
+    unwrap(
+      await supabase
+        .from('member_notes')
+        .select(NOTE_COLUMNS)
+        .eq('roster_entry_id', entryId)
+        .eq('committee_id', committeeId)
+        .order('created_at', { ascending: false }),
+    ) || []
+  )
+}
+
+export const addMemberNote = async ({ entryId, committeeId, body }) =>
+  unwrap(
+    await supabase
+      .from('member_notes')
+      .insert({ roster_entry_id: entryId, committee_id: committeeId, body })
+      .select(NOTE_COLUMNS)
+      .single(),
+  )
+
+export const deleteMemberNote = async (id) =>
+  unwrap(await supabase.from('member_notes').delete().eq('id', id))
 
 // ---- status upgrades --------------------------------------------------------
 
@@ -208,6 +286,40 @@ export function useBulkUpdates() {
   return useQuery({ queryKey: rosterKeys.bulk(), queryFn: fetchBulkUpdates })
 }
 
+export function useCommitteeRoster(committeeId) {
+  return useQuery({
+    queryKey: rosterKeys.committee(committeeId),
+    queryFn: () => fetchCommitteeRoster(committeeId),
+    enabled: Boolean(committeeId),
+  })
+}
+
+export function usePositions() {
+  return useQuery({ queryKey: ['positions'], queryFn: fetchPositions })
+}
+
+function usePositionMutation(mutationFn) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['positions'] })
+      qc.invalidateQueries({ queryKey: rosterKeys.all })
+    },
+  })
+}
+
+export const useAddPosition = () => usePositionMutation(addPosition)
+export const useUpdatePosition = () => usePositionMutation(updatePosition)
+
+export function useMemberNotes(entryId, committeeId) {
+  return useQuery({
+    queryKey: rosterKeys.notes(entryId, committeeId),
+    queryFn: () => fetchMemberNotes({ entryId, committeeId }),
+    enabled: Boolean(entryId && committeeId),
+  })
+}
+
 export function useTokenInfo() {
   return useQuery({ queryKey: rosterKeys.token(), queryFn: fetchTokenInfo })
 }
@@ -237,3 +349,6 @@ export const useApproveUpgrades = () => useRosterMutation(approveUpgrades)
 export const useDismissUpgrades = () => useRosterMutation(dismissUpgrades)
 export const useSetSheet = () => useRosterMutation(setSheet)
 export const useSyncSheetNow = () => useRosterMutation(syncSheetNow)
+export const useAssignRosterMember = () => useRosterMutation(assignRosterMember)
+export const useAddMemberNote = () => useRosterMutation(addMemberNote)
+export const useDeleteMemberNote = () => useRosterMutation(deleteMemberNote)

@@ -257,6 +257,9 @@ Route tree under `/portal`, all behind sign-in:
   alongside their main position whatever their committee: it is modelled as an
   extra marker on the member (and, for members with accounts, a second
   assignment), never as a second committee.
+  **Built 2026-09-21** (migration `20260921090001_committee_roster`, the
+  Members tab of `/portal/committees/:slug`, and the committee field, filter
+  and "Set committees" bulk update on the Roster page); see RUNBOOK section 14.
 - **Directory**: opted-in members with positions, searchable.
 - **Notifications**: an in-app feed, and a daily email digest of anything
   unread (per-person opt-out), sent by an edge function on a `pg_cron`

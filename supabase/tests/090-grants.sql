@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(38);
+select plan(44);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -57,6 +57,15 @@ select ok(not has_function_privilege('anon', 'public.profile_names(uuid[])', 'ex
 select ok(not has_function_privilege('authenticated', 'public.admin_digest_batch(int)', 'execute'), 'authenticated cannot read the digest queue');
 select ok(not has_function_privilege('authenticated', 'public.admin_digest_mark(uuid[], int, text)', 'execute'), 'authenticated cannot mark a digest run');
 select ok(not has_table_privilege('anon', 'public.digest_runs', 'select'), 'anon cannot read digest runs');
+
+-- committee rosters: officers go through the RPC, and a note's author and committee are set by
+-- the database, never by the client
+select ok(not has_function_privilege('anon', 'public.committee_roster(uuid)', 'execute'), 'anon cannot read a committee roster');
+select ok(not has_function_privilege('anon', 'public.assign_roster_member(uuid, uuid)', 'execute'), 'anon cannot assign members');
+select ok(not has_table_privilege('anon', 'public.positions', 'insert'), 'anon cannot add position types');
+select ok(not has_table_privilege('anon', 'public.member_notes', 'select'), 'anon cannot read officer notes');
+select ok(not has_column_privilege('authenticated', 'public.member_notes', 'author_id', 'insert'), 'authenticated cannot choose a note''s author');
+select ok(not has_column_privilege('authenticated', 'public.member_notes', 'committee_id', 'update'), 'a note cannot be moved to another committee');
 
 select * from finish();
 rollback;

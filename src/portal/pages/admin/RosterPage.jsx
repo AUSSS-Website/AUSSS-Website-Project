@@ -6,6 +6,7 @@ import {
   useImportRoster,
   useReleaseRosterEntry,
   useRevokeToken,
+  usePositions,
   useRoster,
   useRotateToken,
   useSaveRosterEntry,
@@ -18,8 +19,10 @@ import {
 import { parseRosterFile } from '../../rosterFile.js'
 import { prepareRoster, searchRoster } from '../../rosterSearch.js'
 import { ROSTER_STATUSES as STATUSES } from '../../constants.js'
+import { useCommittees } from '../../officerQueries.js'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
 import RosterUpgradesPanel from './RosterUpgradesPanel.jsx'
+import PositionTypesPanel, { PositionOptions, localMemberOf } from './PositionTypesPanel.jsx'
 import {
   ErrorText,
   Field,
@@ -57,6 +60,9 @@ const BLANK = {
   lgas: '',
   ngas: '',
   current_position: '',
+  committee_id: '',
+  position_id: '',
+  is_contact_person: false,
 }
 
 const tagCls =
@@ -73,10 +79,11 @@ function when(iso) {
 function toForm(row) {
   const f = {}
   for (const k of Object.keys(BLANK)) f[k] = row?.[k] == null ? '' : String(row[k])
+  f.is_contact_person = Boolean(row?.is_contact_person)
   return f
 }
 
-function Editor({ row, onClose }) {
+function Editor({ row, committees, positions, onClose }) {
   const save = useSaveRosterEntry()
   const remove = useDeleteRosterEntry()
   const release = useReleaseRosterEntry()
@@ -156,6 +163,53 @@ function Editor({ row, onClose }) {
             className={inputCls}
           />
         </Field>
+        <Field
+          label="Committee"
+          hint="One committee per member. Its officers see this member on their committee roster."
+          htmlFor="r-committee"
+        >
+          <select
+            id="r-committee"
+            value={form.committee_id}
+            onChange={(e) => {
+              // a new committee starts them as its Local Member; the position is then theirs to change
+              const committee_id = e.target.value
+              setForm((f) => ({ ...f, committee_id, position_id: localMemberOf(positions, committee_id) }))
+            }}
+            className={inputCls}
+          >
+            <option value="">No committee</option>
+            {committees.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.abbr}
+              </option>
+            ))}
+          </select>
+          <label className="mt-3 flex items-center gap-2 text-sm text-silver/75">
+            <input
+              type="checkbox"
+              checked={form.is_contact_person}
+              onChange={(e) => setForm((f) => ({ ...f, is_contact_person: e.target.checked }))}
+            />
+            Exchange Contact Person (held alongside their committee)
+          </label>
+        </Field>
+        {form.committee_id && (
+          <Field
+            label="Position in the committee"
+            hint="Reaches their portal account by itself: at once if they have signed in, otherwise at their first sign-in."
+            htmlFor="r-position"
+          >
+            <select id="r-position" value={form.position_id} onChange={set('position_id')} className={inputCls}>
+              <PositionOptions
+                positions={positions}
+                committeeId={form.committee_id}
+                current={row?.position_id}
+                withOfficers
+              />
+            </select>
+          </Field>
+        )}
       </div>
 
       <ErrorText>{error}</ErrorText>
@@ -202,7 +256,9 @@ function Editor({ row, onClose }) {
   )
 }
 
-function Row({ row, open, onToggle }) {
+function Row({ row, committees, positions, open, onToggle }) {
+  const committee = committees.find((c) => c.id === row.committee_id)
+  const position = positions.find((p) => p.id === row.position_id)
   return (
     <li className="rounded-2xl border border-white/10 bg-forest-800 p-5">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-left">
@@ -212,11 +268,18 @@ function Row({ row, open, onToggle }) {
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-silver/70">
           <span className="font-semibold text-medical-light">{row.status || 'No status'}</span>
+          {committee && (
+            <span className={tagCls}>
+              {committee.abbr}
+              {position ? ` · ${position.short_title || position.title}` : ''}
+            </span>
+          )}
+          {row.is_contact_person && <span className={tagCls}>Contact Person</span>}
           {row.profile_id && <span className={tagCls}>Signed in</span>}
           {row.portal_edited_at && <span className={tagCls}>Portal</span>}
         </span>
       </button>
-      {open && <Editor row={row} onClose={onToggle} />}
+      {open && <Editor row={row} committees={committees} positions={positions} onClose={onToggle} />}
     </li>
   )
 }
@@ -449,10 +512,11 @@ export default function RosterPage() {
   usePageTitle('Roster')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('')
+  const [committee, setCommittee] = useState('') // committee id, 'none', 'contact', or '' for all
   const [page, setPage] = useState(0)
   const [openId, setOpenId] = useState(null) // row id, or 'new'
   // Its own switch: opening a member below must not close the panel and lose a pasted list.
-  const [showGa, setShowGa] = useState(false)
+  const [bulk, setBulk] = useState('') // '', 'lga' or 'committee': which bulk update is open
 
   // The whole roster is loaded once and searched in the browser
   // (rosterSearch.js), so the list follows every letter with no request and no
@@ -460,7 +524,16 @@ export default function RosterPage() {
   const roster = useRoster()
   const prepared = useMemo(() => prepareRoster(roster.data || []), [roster.data])
   const term = useDeferredValue(q)
-  const matches = useMemo(() => searchRoster(prepared, term, status), [prepared, term, status])
+  const committees = useCommittees().data || []
+  const positions = usePositions().data || []
+  const [showTypes, setShowTypes] = useState(false)
+  const matches = useMemo(() => {
+    const found = searchRoster(prepared, term, status)
+    if (!committee) return found
+    if (committee === 'none') return found.filter((r) => !r.committee_id)
+    if (committee === 'contact') return found.filter((r) => r.is_contact_person)
+    return found.filter((r) => r.committee_id === committee)
+  }, [prepared, term, status, committee])
   const total = matches.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const visible = matches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -475,11 +548,27 @@ export default function RosterPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              aria-expanded={showGa}
-              onClick={() => setShowGa((v) => !v)}
+              aria-expanded={bulk === 'lga'}
+              onClick={() => setBulk(bulk === 'lga' ? '' : 'lga')}
               className={`${outlineBtnCls} px-5 py-2`}
             >
               Register a GA
+            </button>
+            <button
+              type="button"
+              aria-expanded={bulk === 'committee'}
+              onClick={() => setBulk(bulk === 'committee' ? '' : 'committee')}
+              className={`${outlineBtnCls} px-5 py-2`}
+            >
+              Set committees
+            </button>
+            <button
+              type="button"
+              aria-expanded={showTypes}
+              onClick={() => setShowTypes((v) => !v)}
+              className={`${outlineBtnCls} px-5 py-2`}
+            >
+              Position types
             </button>
             <button
               type="button"
@@ -495,11 +584,13 @@ export default function RosterPage() {
 
       <RosterUpgradesPanel />
 
-      {showGa && <RosterBulkPanel onClose={() => setShowGa(false)} />}
+      {bulk && <RosterBulkPanel key={bulk} initialAction={bulk} committees={committees} onClose={() => setBulk('')} />}
+
+      {showTypes && <PositionTypesPanel committees={committees} onClose={() => setShowTypes(false)} />}
 
       {openId === 'new' && (
         <Panel title="New member" className="mb-6">
-          <Editor row={null} onClose={() => setOpenId(null)} />
+          <Editor row={null} committees={committees} positions={positions} onClose={() => setOpenId(null)} />
         </Panel>
       )}
 
@@ -522,13 +613,31 @@ export default function RosterPage() {
             setPage(0)
           }}
           aria-label="Filter by status"
-          className={`${inputCls} w-auto`}
+          className={`${inputCls} sm:w-auto`}
         >
           {FILTERS.map(([v, l]) => (
             <option key={v} value={v}>
               {l}
             </option>
           ))}
+        </select>
+        <select
+          value={committee}
+          onChange={(e) => {
+            setCommittee(e.target.value)
+            setPage(0)
+          }}
+          aria-label="Filter by committee"
+          className={`${inputCls} sm:w-auto`}
+        >
+          <option value="">All committees</option>
+          {committees.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.abbr}
+            </option>
+          ))}
+          <option value="none">No committee</option>
+          <option value="contact">Contact Persons</option>
         </select>
         <span className="text-xs text-silver/50" aria-live="polite">
           {roster.isPending ? '' : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
@@ -547,7 +656,7 @@ export default function RosterPage() {
       ) : total === 0 ? (
         <Panel>
           <p className="text-sm text-silver/70">
-            {term || status
+            {term || status || committee
               ? 'Nobody matches that.'
               : 'The roster is empty. Import the membership spreadsheet below to fill it.'}
           </p>
@@ -556,7 +665,7 @@ export default function RosterPage() {
         <>
           <ul className="space-y-3">
             {visible.map((row) => (
-              <Row key={row.id} row={row} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />
+              <Row key={row.id} row={row} committees={committees} positions={positions} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />
             ))}
           </ul>
           {pages > 1 && (

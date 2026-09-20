@@ -25,6 +25,14 @@ const ACTIONS = {
   lga: { label: 'Attended a Local GA (+1)', field: 'Local GAs', hint: 'e.g. LGA October 2026' },
   nga: { label: 'Attended a National GA (+1)', field: 'National GAs', hint: 'e.g. NGA Alexandria, Feb 2027' },
   status: { label: 'Set membership status to…', field: 'Status', hint: 'e.g. Upgrades approved before LGA Oct 2026' },
+  committee: { label: 'Put in a committee…', field: 'Committee', hint: 'e.g. SCORA members 2026-27' },
+}
+
+// What a bulk update did, for the review header and the history.
+function effect(action, value) {
+  if (action === 'status') return `status → ${value}`
+  if (action === 'committee') return value ? `committee → ${value.toUpperCase()}` : 'taken out of their committee'
+  return `${ACTIONS[action].field} +1`
 }
 
 const STATE_LABEL = {
@@ -126,7 +134,7 @@ function History() {
               <p className={b.undone_at ? 'line-through opacity-60' : ''}>
                 <span className="font-semibold text-white">{b.label}</span> · {b.changes.length}{' '}
                 {b.changes.length === 1 ? 'member' : 'members'} ·{' '}
-                {b.action === 'status' ? `status → ${b.value}` : `${ACTIONS[b.action].field} +1`}
+                {effect(b.action, b.value)}
               </p>
               <p className="text-xs text-silver/50">
                 {when(b.at)}
@@ -156,10 +164,11 @@ function History() {
   )
 }
 
-export default function RosterBulkPanel({ onClose }) {
+export default function RosterBulkPanel({ onClose, initialAction = 'lga', committees = [] }) {
   const fileRef = useRef(null)
   const apply = useBulkUpdateRoster()
-  const [action, setAction] = useState('lga')
+  const [action, setAction] = useState(initialAction)
+  const [committee, setCommittee] = useState('') // slug; '' = no committee
   const [label, setLabel] = useState('')
   const [status, setStatus] = useState('Associate Member')
   const [text, setText] = useState('')
@@ -221,7 +230,7 @@ export default function RosterBulkPanel({ onClose }) {
         ids: selectedIds,
         action,
         label,
-        value: action === 'status' ? status : null,
+        value: action === 'status' ? status : action === 'committee' ? committee : null,
       })
       setDone(r)
       setItems(null)
@@ -237,12 +246,12 @@ export default function RosterBulkPanel({ onClose }) {
   const certain = (items || []).map((it, i) => ({ it, i })).filter(({ it }) => it.state === 'matched')
 
   return (
-    <Panel title="Register a GA" className="mb-6">
+    <Panel title={action === 'committee' ? 'Set committees' : 'Register a GA'} className="mb-6">
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-silver/65">
-          Paste the attendance list and everyone on it gets the GA added to their count. You review
-          every match before anything changes, and each update can be undone. The same list can
-          also set a membership status.
+          Paste a list of people and everyone on it gets one change: a GA added to their count, a
+          membership status, or their committee. You review every match before anything changes,
+          and each update can be undone.
         </p>
         <button type="button" onClick={onClose} className={outlineBtnCls}>
           Close
@@ -271,12 +280,23 @@ export default function RosterBulkPanel({ onClose }) {
                   ))}
                 </select>
               </Field>
+            ) : action === 'committee' ? (
+              <Field label="Committee" htmlFor="b-committee">
+                <select id="b-committee" value={committee} onChange={(e) => setCommittee(e.target.value)} className={inputCls}>
+                  <option value="">No committee (take them out)</option>
+                  {committees.map((c) => (
+                    <option key={c.id} value={c.slug}>
+                      {c.abbr}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             ) : (
               <div className="hidden sm:block" />
             )}
           </div>
           <Field
-            label={action === 'status' ? 'Reason' : 'Event'}
+            label={action === 'lga' || action === 'nga' ? 'Event' : 'Reason'}
             hint="Names this update in the history. The same name can’t be applied twice, which is what stops a list being counted again."
             htmlFor="b-label"
           >
@@ -316,7 +336,7 @@ export default function RosterBulkPanel({ onClose }) {
         <div className="mt-5">
           <p className="text-sm text-white">
             <span className="font-semibold">{label}</span> ·{' '}
-            {action === 'status' ? `status → ${status}` : `${ACTIONS[action].field} +1`}
+            {effect(action, action === 'status' ? status : committee)}
           </p>
           <p className="mt-1 text-xs text-silver/60" aria-live="polite">
             {counts.matched} matched · {counts.likely} likely · {counts.ambiguous} to pick · {counts.none} not found
