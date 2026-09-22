@@ -260,6 +260,30 @@ Route tree under `/portal`, all behind sign-in:
   **Built 2026-09-21** (migration `20260921090001_committee_roster`, the
   Members tab of `/portal/committees/:slug`, and the committee field, filter
   and "Set committees" bulk update on the Roster page); see RUNBOOK section 14.
+- **Gallery editor** (requested 2026-09-22): the gallery becomes fully
+  editable from the portal by the PNSD officers and the EB, replacing today's
+  static pipeline (`_source/build-gallery.mjs` writing `src/data/gallery.js`
+  and `/assets/gallery`) and the admin-key takedown page. They can add and
+  remove photos, create and delete albums, set each album's title, blurb and
+  hero (cover) photo, and rearrange album order, all live without a redeploy.
+  Adding photos is a drag-and-drop zone on the album page (drop files from the
+  desktop straight onto the site) plus a plain file picker; the upload goes to
+  the `gallery` Storage bucket and a thumbnail/full pair is produced
+  server-side (Storage image transforms or an edge function), so no local
+  build step remains. Data: `albums` (slug, title, blurb, cover_photo_id,
+  sort_order) and `gallery_photos` (album_id, storage path, width/height,
+  sort_order, label, featured, hidden). Writes are role-checked
+  (`app.is_officer_of('pnsd')` or `app.is_eb()`), reads stay anon and cached by
+  the public site. Deleting keeps the file for 30 days before the bucket rule
+  purges it, so a mistaken removal can be undone.
+  Every album keeps its own shareable link, `/gallery/<slug>` (the route
+  exists today): the editor shows a copy-link / Share button per album, the
+  slug is set from the title and editable, renaming keeps the old slug as a
+  redirect so shared links never break, and the album page carries its own
+  title, description and hero photo in the Open Graph tags so a pasted link
+  previews that album (not the generic site card) in WhatsApp, Facebook and
+  Instagram. This needs per-route pre-rendered HTML, the same work as the
+  discoverability item in Phase 4.
 - **Directory**: opted-in members with positions, searchable.
 - **Notifications**: an in-app feed, and a daily email digest of anything
   unread (per-person opt-out), sent by an edge function on a `pg_cron`
@@ -385,7 +409,8 @@ Order, chosen so each step unblocks the next and nothing loses data:
 5. **Exchange stories**, with the moderation queue moving into the portal.
 6. **Merch orders**, receipts to the private bucket, a fulfilment board for the
    merch officer.
-7. **Gallery takedowns**, replacing the admin-key page with a role check.
+7. **Gallery**, replacing the admin-key takedown page and the static photo
+   pipeline with the portal gallery editor (section 8).
 8. **Magazine engagement counters.**
 
 When all eight are flipped, `apps-script/` moves to `apps-script/_retired/`
@@ -404,8 +429,8 @@ use, not a demo.
 | **1. Identity** | 2 | Google and magic-link sign-in, `profiles`, `terms`, `committees`, `positions`, `assignments`, RLS helpers and their tests, roster import and account claiming | All current officers signed in with Google and holding their positions for 2026-27. |
 | **2. Officer parity** | 2 | Site settings, committee page editor, open calls and applications on Supabase (migration steps 1 to 3) | `officers.gs` is no longer called by production. |
 | **3. Portal core** | 3 | Dashboard, tasks, updates, read receipts, notifications feed, email digest | One committee runs a real month of work through it. |
-| **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster, per-committee officer roster (assign members, officer notes, membership fields read-only) | 100 members with accounts, verification backlog under a day. |
-| **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired | No Apps Script URL left in `src/data`. |
+| **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster, per-committee officer roster (assign members, officer notes, membership fields read-only); **discoverability** (added 2026-09-22): make the site show up in normal Google searches and in AI answers (Google AI Overviews, ChatGPT, Perplexity, Claude): check indexing and submit the sitemap in Search Console, register with Bing Webmaster Tools (feeds ChatGPT and Copilot), per-route titles/descriptions and pre-rendered HTML for the public pages (one SPA `index.html` today), richer JSON-LD (committees, events, contact), `llms.txt`, robots.txt explicitly allowing the AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended), and backlinks from IFMSA/IFMSA-Egypt and the faculty site | 100 members with accounts, verification backlog under a day; searching "AUSSS" or "Ain Shams medical students society" returns the site on page one in Google and in an AI answer. |
+| **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired; **gallery editor** for PNSD + EB (added 2026-09-22: add/remove photos by drag-and-drop or file picker, add/remove/reorder albums with title, blurb and hero photo; each album has its own shareable link with its own preview card; see section 8) | No Apps Script URL left in `src/data`; a PNSD officer publishes a new album with photos from the portal without a developer. |
 | **6. Site management** | 4, then ongoing | Schema-driven editor; EB, FAQ, magazine, merch, events and home sections editable; content snapshot pipeline | An officer publishes a magazine issue with no developer involved. |
 | **7. Sustain** | ongoing | Term-rollover wizard, backups and a restore rehearsal, runbook, monitoring, the Pro plan decision | The first rollover to 2027-28 is done by the EB alone. |
 
