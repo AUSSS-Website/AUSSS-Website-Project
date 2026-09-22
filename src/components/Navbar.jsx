@@ -74,7 +74,7 @@ function NavMenu({ item, solid }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="true"
-        className={`group relative flex items-center gap-1.5 text-sm font-medium transition-colors ${
+        className={`group relative flex items-center gap-1.5 text-sm font-medium transition-colors 2xl:text-base ${
           solid
             ? 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
             : 'text-white hover:text-white'
@@ -201,14 +201,18 @@ export default function Navbar() {
     >
       <nav
         aria-label="Main navigation"
-        className="container-prose flex h-24 items-center justify-between"
+        // Full-bleed, not container-prose: on a wide monitor the bar should
+        // reach the screen edges instead of sitting in the 96rem content box.
+        // Padding matches container-prose up to lg so the logo still lines up
+        // with page content on laptops, then grows on very large screens.
+        className="flex h-24 w-full items-center justify-between px-6 sm:px-10 lg:px-16 min-[1920px]:px-24"
       >
         <Link to="/" className="group flex items-center" aria-label="AUSSS home">
           {/* Black logo only when bar is solid AND light mode; white otherwise. */}
           <img
             src="/assets/brand/ausss-icon-black.png"
             alt="AUSSS, Ain Shams University Students' Scientific Society"
-            className={`h-14 w-auto transition-opacity sm:h-16 ${
+            className={`h-14 w-auto transition-opacity sm:h-16 2xl:h-[4.5rem] ${
               solid ? 'block dark:hidden' : 'hidden'
             }`}
           />
@@ -216,13 +220,13 @@ export default function Navbar() {
             src="/assets/brand/ausss-icon-white.png"
             alt=""
             aria-hidden="true"
-            className={`h-14 w-auto transition-opacity sm:h-16 ${
+            className={`h-14 w-auto transition-opacity sm:h-16 2xl:h-[4.5rem] ${
               solid ? 'hidden dark:block' : 'block'
             }`}
           />
         </Link>
 
-        <ul className="hidden items-center gap-6 md:flex lg:gap-7">
+        <ul className="hidden items-center gap-6 md:flex lg:gap-7 xl:gap-8 2xl:gap-10">
           {LINKS.map((l) =>
             l.children ? (
               <NavMenu key={l.to} item={l} solid={solid} />
@@ -231,7 +235,7 @@ export default function Navbar() {
               <NavLink
                 to={parseTo(l.to)}
                 end={l.to === '/'}
-                className={`group relative text-sm font-medium transition-colors ${
+                className={`group relative text-sm font-medium transition-colors 2xl:text-base ${
                   solid
                     ? 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
                     : 'text-white hover:text-white'
@@ -256,7 +260,7 @@ export default function Navbar() {
             <li>
               <Link
                 to="/magazine"
-                className="whitespace-nowrap rounded-full bg-medical px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-medical/20 transition-colors duration-300 hover:bg-medical-light"
+                className="whitespace-nowrap rounded-full bg-medical px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-medical/20 transition-colors duration-300 hover:bg-medical-light 2xl:px-6 2xl:py-2.5 2xl:text-base"
               >
                 {MAGAZINE_CTA}
               </Link>
@@ -269,7 +273,7 @@ export default function Navbar() {
           <li>
             <Link
               to="/members"
-              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 ${
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 2xl:px-6 2xl:py-2.5 2xl:text-base ${
                 solid
                   ? 'bg-forest-600 text-silver-light hover:bg-forest-500'
                   : 'bg-white text-forest hover:bg-silver-light'
