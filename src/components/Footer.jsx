@@ -36,6 +36,10 @@ export default function Footer() {
             <p className="heading-serif text-base text-silver/75">
               Life Savers, Change Makers
             </p>
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-silver/55">
+              Ain Shams University Students&rsquo; Scientific Society, the IFMSA
+              society at the Faculty of Medicine, Ain Shams University.
+            </p>
             <div className="mt-1 flex gap-3">
               {socials.map((s) => (
                 <a

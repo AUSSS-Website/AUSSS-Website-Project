@@ -39,8 +39,8 @@ export default function Hero() {
         </p>
 
         <h1 className="sr-only">
-          AUSSS, Ain Shams University Students’ Scientific Society · Life
-          Savers, Change Makers
+          AUSSS, Ain Shams University Students’ Scientific Society (IFMSA Ain
+          Shams) · Life Savers, Change Makers
         </h1>
         <img
           ref={logoRef}

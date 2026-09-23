@@ -18,9 +18,9 @@ import { joinFaqs } from '../data/faq.js'
 
 export const SITE_URL = 'https://ausss-ainshams.org'
 export const SITE_NAME = 'AUSSS'
-export const BASE_TITLE = 'AUSSS, Life Savers, Change Makers'
+export const BASE_TITLE = "AUSSS, Ain Shams University Students' Scientific Society"
 export const BASE_DESCRIPTION =
-  "Ain Shams University Students' Scientific Society, Life Savers, Change Makers. Empowering Medical Research and Student Exchange. Celebrating 55 years of youth and impact."
+  "AUSSS is the Ain Shams University Students' Scientific Society: the IFMSA society at the Faculty of Medicine, Ain Shams University, Cairo. Medical research, public health, medical education and student exchange since 1971. Life Savers, Change Makers."
 export const DEFAULT_IMAGE = `${SITE_URL}/assets/brand/ausss-horizontal-white.png`
 export const DEFAULT_IMAGE_ALT = "AUSSS, Ain Shams University Students' Scientific Society"
 
@@ -36,7 +36,15 @@ export function organizationJsonLd() {
     '@type': 'EducationalOrganization',
     '@id': ORG_ID,
     name: society.name,
-    alternateName: ['AUSSS', 'Ain Shams Students’ Scientific Society'],
+    // The names people actually type into a search box.
+    alternateName: [
+      'AUSSS',
+      'AUSSS Ain Shams',
+      'Ain Shams University Student Scientific Society',
+      'Ain Shams Students’ Scientific Society',
+      'IFMSA Ain Shams',
+      'IFMSA Ain Shams University',
+    ],
     url: `${SITE_URL}/`,
     logo: DEFAULT_IMAGE,
     image: DEFAULT_IMAGE,
@@ -71,6 +79,21 @@ export function organizationJsonLd() {
       email: society.contactEmail,
       availableLanguage: ['en', 'ar'],
     },
+  }
+}
+
+// Tells Google which site name to show in results ("AUSSS") and what else
+// the site is called.
+function webSiteJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${SITE_URL}/#website`,
+    url: `${SITE_URL}/`,
+    name: 'AUSSS',
+    alternateName: [society.name, 'IFMSA Ain Shams'],
+    publisher: { '@id': ORG_ID },
+    inLanguage: 'en',
   }
 }
 
@@ -153,7 +176,7 @@ export function publicPages() {
       description: BASE_DESCRIPTION,
       changefreq: 'weekly',
       priority: 1.0,
-      jsonLd: [organizationJsonLd()],
+      jsonLd: [organizationJsonLd(), webSiteJsonLd()],
     },
     {
       path: '/join',
@@ -208,9 +231,9 @@ export function publicPages() {
     },
     {
       path: '/ifmsa',
-      title: 'IFMSA',
+      title: 'IFMSA Ain Shams',
       description:
-        'AUSSS in the International Federation of Medical Students’ Associations: standing committees, exchanges, and a worldwide network of medical students.',
+        'IFMSA at Ain Shams University: AUSSS is the IFMSA-Egypt affiliate at the Faculty of Medicine, with the six standing committees, the SCOPE and SCORE exchanges, and a worldwide network of medical students.',
       changefreq: 'monthly',
       priority: 0.7,
     },

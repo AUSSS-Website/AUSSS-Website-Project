@@ -31,8 +31,8 @@ function StatBand({ title, items }) {
 
 export default function IFMSAPage() {
   usePageTitle(
-    'IFMSA',
-    'AUSSS in the International Federation of Medical Students’ Associations: standing committees, exchanges, and a worldwide network of medical students.',
+    'IFMSA Ain Shams',
+    'IFMSA at Ain Shams University: AUSSS is the IFMSA-Egypt affiliate at the Faculty of Medicine, with the six standing committees, the SCOPE and SCORE exchanges, and a worldwide network of medical students.',
   )
   useReveal()
 
@@ -59,7 +59,7 @@ export default function IFMSAPage() {
             className="mx-auto mt-8 h-16 w-auto opacity-95 sm:h-20"
           />
           <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
-            What is IFMSA?
+            IFMSA at Ain Shams
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-silver/75">
             {ifmsa.intro}

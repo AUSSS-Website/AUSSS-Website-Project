@@ -99,7 +99,7 @@ function llmsTxt(pages) {
     '',
     "> The student-run scientific society of the Faculty of Medicine, Ain Shams University, Cairo, Egypt, founded in 1971. Motto: Life Savers, Change Makers. AUSSS is an autonomous affiliate of IFMSA-Egypt, the Egyptian member of the International Federation of Medical Students' Associations (IFMSA). It runs six IFMSA standing committees (SCOPE, SCORE, SCOME, SCORP, SCOPH, SCORA) and four support divisions (PSD, PNSD, CBSD, RSD): medical research, public health campaigns, medical education, human rights, sexual and reproductive health, and international clinical and research exchanges.",
     '',
-    'Official site: https://ausss-ainshams.org (every page below is served as full HTML). Contact: ausss.secgen@gmail.com (Secretary General). Instagram, Facebook and TikTok: @ausss_ainshams.',
+    'Also referred to as the Ain Shams University Student Scientific Society, AUSSS Ain Shams, or IFMSA Ain Shams (it is the IFMSA society of Ain Shams University). Official site: https://ausss-ainshams.org (every page below is served as full HTML). Contact: ausss.secgen@gmail.com (Secretary General). Instagram, Facebook and TikTok: @ausss_ainshams.',
     '',
     '## Pages',
     '',

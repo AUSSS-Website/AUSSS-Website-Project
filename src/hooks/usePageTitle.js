@@ -11,7 +11,7 @@ import { useEffect } from 'react'
 //
 //   usePageTitle('Join AUSSS')                         // title only
 //   usePageTitle('Join AUSSS', 'Apply to AUSSS…')      // + description
-const BASE_TITLE = 'AUSSS, Life Savers, Change Makers'
+const BASE_TITLE = "AUSSS, Ain Shams University Students' Scientific Society"
 
 function metaDescriptionEl() {
   return typeof document === 'undefined'
