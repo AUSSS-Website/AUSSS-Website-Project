@@ -11,9 +11,10 @@ import MembersPanel from './MembersPanel.jsx'
 
 // /portal/committees/:slug. What an officer manages for their committee:
 // the public page itself, the recruitment calls running on it, and the
-// committee's own members. The database decides what is allowed (save_committee_page and the
-// calls policies); this page only decides what to show, so a member who
-// types the URL sees a polite refusal instead of a broken editor.
+// committee's own members. The database decides what is allowed
+// (save_committee_page and the calls policies); this page only decides what
+// to show, so a member who types the URL sees a polite refusal instead of a
+// broken editor.
 
 const TABS = [
   ['page', 'Committee page'],

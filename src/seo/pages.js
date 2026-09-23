@@ -215,7 +215,7 @@ export function publicPages() {
     },
     {
       path: '/exchange/join',
-      title: 'Join the Exchange Team',
+      title: 'Join the exchange team',
       description:
         'The AUSSS exchange team: the LEO-In, LEO-Out and LORE officer roles, their assistants, and the contact persons who host every arrival.',
       changefreq: 'monthly',

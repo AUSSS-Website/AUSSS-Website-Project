@@ -19,7 +19,7 @@ const AMENDMENT_STEPS = [
     n: 2,
     title: 'Circulate',
     ref: '§14.3–14.4, §18.1',
-    body: 'The Secretary General shares every proposal with the Supervising Council, Team of Officials and all members beforehand. Bylaw changes to Chapters 1 & 2 need at least two full members and one month’s notice; other points need two weeks’. Skipping these steps makes a proposal invalid.',
+    body: 'The Secretary General shares every proposal with the Supervising Council, Team of Officials and all members beforehand. Bylaw changes to Chapters 1 and 2 need at least two full members and one month’s notice; other points need two weeks’. Skipping these steps makes a proposal invalid.',
   },
   {
     n: 3,
@@ -161,7 +161,7 @@ export default function ConstitutionPage() {
             </h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-silver/70">
               The Secretary General handles amendment proposals and member
-              correspondence. Reach out directly:
+              correspondence.
             </p>
             <a
               href={`mailto:${SECGEN_EMAIL}`}

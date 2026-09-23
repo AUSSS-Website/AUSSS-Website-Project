@@ -458,8 +458,8 @@ next request. Until Phase 2, also update `src/data/society.js` and the
   `auth_rls_initplan` mean a migration broke a rule in section 2.
 - **Vercel**: Deployments, the failed build's log; runtime is static so there
   are no server logs. CSP violations show in the browser console as blocked
-  `connect-src`; `vercel.json`, `netlify.toml` and `public/_headers` must all
-  list `https://wjijkqrdaakiwbtdssio.supabase.co` and `wss://...`.
+  `connect-src`; the CSP in `vercel.json` must list
+  `https://wjijkqrdaakiwbtdssio.supabase.co` and `wss://...`.
 - **Browser**: DevTools Network filtered on `supabase.co`. Status and body of
   the failing request tell you which case below you are in.
 
@@ -693,10 +693,10 @@ which renders every public page to real HTML at build time.
   and JSON-LD (organisation record on the home page; WebPage + BreadcrumbList
   everywhere; FAQPage on /join; an Organization per committee; ImageGallery per
   album). The home page is `dist/index.html`.
-- `spa.html`: the untouched shell. `vercel.json` (and `public/_redirects` for Netlify)
-  rewrite every URL without a pre-rendered file to it: the portal, the redirect
-  aliases, unknown paths. Hosting serves static files before rewrites, so a
-  pre-rendered page always wins.
+- `spa.html`: the untouched shell. `vercel.json` rewrites every URL without a
+  pre-rendered file to it: the portal, the redirect aliases, unknown paths.
+  Vercel serves static files before rewrites, so a pre-rendered page always
+  wins.
 - `sitemap.xml` and `llms.txt`, generated from the same page list. There is no
   `public/sitemap.xml` any more; do not add one back, it would shadow the generated one.
 

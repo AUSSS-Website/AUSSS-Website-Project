@@ -1,8 +1,9 @@
 /**
- * AUSSS sign-ups — recruitment waitlist + newsletter (Google Apps Script)
+ * AUSSS sign-ups, the recruitment waitlist (Google Apps Script)
  * ---------------------------------------------------------------------------
  * Companion to orders.gs / stories.gs. Captures lightweight email sign-ups in
- * one sheet, distinguished by a `kind` field ('waitlist' | 'newsletter').
+ * one sheet with a `kind` column. The site now only sends 'waitlist'; the
+ * 'newsletter' kind is kept so old rows and any future use still work.
  *
  *   Deploy → New deployment → Web app
  *     Execute as:     Me

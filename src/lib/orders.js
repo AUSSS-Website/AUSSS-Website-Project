@@ -1,22 +1,13 @@
 import { ORDERS_WEBAPP_URL } from '../data/merchConfig.js'
 import { productById } from '../data/merchProducts.js'
+import { appsScriptPost } from './appsScriptPost.js'
 import { makeReference } from './reference.js'
 
-// ── Order submission ─────────────────────────────────────────────────────
-//
-// Two paths:
-//   • Live (Phase 4): POSTs JSON to the deployed Apps Script web app.
-//   • Stub (Phase 3 / no URL yet): logs the payload to the console and
-//     returns a fake order reference so the UX can be reviewed in dev
-//     without a backend.
-//
-// Returns: { ok: true, reference }  on success
-//          { ok: false, error }    on failure
+// Merch order submission (/merch/checkout). The order reference is generated
+// here and sent with the payload, so the success screen, the sheet row and the
+// notification email all quote the same code (see appsScriptPost.js).
 
-const REFERENCE_PREFIX = 'AUSSS'
-
-// Serializes a cart line into something the Apps Script + spreadsheet can
-// store as a single readable cell.
+// One readable line per cart item, for a single spreadsheet cell.
 function summarizeItems(items) {
   return items
     .map((it) => {
@@ -30,58 +21,27 @@ function summarizeItems(items) {
     .join('\n')
 }
 
+// payload: { contact: {name, email, phone, isMember, lc, year, notes},
+//            items: [{productId, size, design, qty}], subtotal,
+//            paymentMethod, screenshotBase64, screenshotFilename }
+// Resolves to { ok: true, reference } on success, { ok: false, error } on a
+// failure.
 export async function submitOrder(payload) {
-  // payload shape:
-  //   { contact: {name, email, phone, isMember, lc, year, notes},
-  //     items: [{productId, size, design, qty}],
-  //     subtotal,
-  //     paymentMethod: 'instapay' | 'telda' | 'vodafone',
-  //     screenshotBase64: string,
-  //     screenshotFilename: string,
-  //   }
-  // `lc` is only sent when isMember === 'No'.
-
-  // The reference is generated client-side and shipped *to* the script.
-  // Why: Apps Script's POST → 302 → googleusercontent.com redirect doesn't
-  // forward CORS headers on the second hop, so the browser can't read the
-  // response body even though the script ran successfully. By generating
-  // the reference here and sending it in the payload, the sheet/email/UI
-  // all show the same number, and the fetch can be fire-and-forget.
-  const reference = makeReference(REFERENCE_PREFIX)
-
-  const enriched = {
-    ...payload,
-    reference,
-    itemsSummary: summarizeItems(payload.items),
-    submittedAt: new Date().toISOString(),
-  }
-
-  if (!ORDERS_WEBAPP_URL) {
-    // Stub path, used in dev when ORDERS_WEBAPP_URL is empty.
-    // eslint-disable-next-line no-console
-    console.info('[orders] stub submit', enriched)
-    await new Promise((r) => setTimeout(r, 700)) // mimic network latency
-    return { ok: true, reference, stub: true }
-  }
-
+  const reference = makeReference('AUSSS')
   try {
-    // mode: 'no-cors' = fire-and-forget. The script DID run (we see emails
-    // arriving), the browser just can't read the JSON response across the
-    // redirect. The opaque response is fine, we already know the reference.
-    await fetch(ORDERS_WEBAPP_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(enriched),
+    await appsScriptPost(ORDERS_WEBAPP_URL, {
+      ...payload,
+      reference,
+      itemsSummary: summarizeItems(payload.items),
+      submittedAt: new Date().toISOString(),
     })
     return { ok: true, reference }
   } catch (err) {
-    // Only thrown on true network-level failures (DNS, offline, etc.).
     return { ok: false, error: err.message || 'Network error' }
   }
 }
 
-// Read a File as a base64 string (sans data: prefix) for upload to Drive.
+// Read a File as a base64 string (without the data: prefix) for upload to Drive.
 export function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

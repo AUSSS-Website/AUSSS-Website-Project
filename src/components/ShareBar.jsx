@@ -52,8 +52,8 @@ export default function ShareBar({ url, title, className = '' }) {
     let ok = false
 
     // Preferred path, the async Clipboard API. Requires a secure context
-    // (HTTPS / localhost); the live site is HTTPS on Netlify, so this is the
-    // normal path in modern browsers, including mobile Safari/Chrome.
+    // (HTTPS / localhost), which the live site is, so this is the normal path
+    // in modern browsers, including mobile Safari and Chrome.
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(target)

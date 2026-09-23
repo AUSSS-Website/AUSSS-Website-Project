@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
 import { MEMBERSHIP_LABELS } from './constants.js'
 
-// Shared dark-chrome primitives for the portal. The class strings are lifted
-// verbatim from LoginPage/AccountPage so the portal looks like the officer
-// surfaces that already exist, without touching those files.
+// Shared dark-chrome primitives for the portal, matching the public site's
+// look so the two never drift apart.
 
 // Full-height centred stage (spinners, error cards, empty states).
 export function Centered({ children }) {
@@ -24,7 +23,7 @@ export function Spinner({ className = 'h-8 w-8' }) {
   )
 }
 
-// The auth surface from LoginPage: dark page, one narrow rounded card.
+// The sign-in surface: dark page, one narrow rounded card.
 export function AuthCard({ eyebrow, title, subtitle, children }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-forest-950 px-4">
@@ -46,7 +45,7 @@ export function AuthCard({ eyebrow, title, subtitle, children }) {
   )
 }
 
-// Content panel used on the dashboard/profile pages (AccountPage's cards).
+// Content panel used on the dashboard and profile pages.
 export function Panel({ title, children, className = '' }) {
   return (
     <section className={`rounded-2xl border border-white/10 bg-forest-800 p-5 ${className}`}>
@@ -60,8 +59,8 @@ export function Panel({ title, children, className = '' }) {
   )
 }
 
-// Page header pattern from AccountPage: eyebrow, serif title, one-line intro,
-// optional action on the right.
+// Page header: eyebrow, serif title, one-line intro, optional action on the
+// right.
 export function PageHeader({ eyebrow, title, subtitle, action }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 pb-8">
@@ -80,15 +79,15 @@ export function PageHeader({ eyebrow, title, subtitle, action }) {
   )
 }
 
-// Compact form input (AccountPage editor).
+// Compact form input.
 export const inputCls =
   'w-full rounded-xl border border-white/15 bg-forest-900 px-4 py-2.5 text-sm text-white placeholder:text-silver/40 focus:border-medical focus:outline-none'
 
-// Taller input for the auth card (LoginPage).
+// Taller input for the sign-in card.
 export const authInputCls =
   'w-full rounded-xl border border-white/15 bg-forest-950 px-4 py-3 text-white placeholder:text-silver/40 focus-visible:border-medical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
-// Button strings from AccountPage: blue primary pill and hairline outline pill.
+// Blue primary pill and hairline outline pill.
 export const primaryBtnCls =
   'rounded-full bg-medical px-6 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light disabled:opacity-40'
 export const outlineBtnCls =
@@ -131,7 +130,6 @@ export function StatusBadge({ status }) {
   )
 }
 
-// Switch from AccountPage's SiteSettingsPanel.
 export function Toggle({ checked, onChange, label, disabled }) {
   return (
     <button
@@ -154,7 +152,7 @@ export function Toggle({ checked, onChange, label, disabled }) {
   )
 }
 
-// Inline error line (LoginPage).
+// Inline error line.
 export function ErrorText({ id, children }) {
   if (!children) return null
   return (

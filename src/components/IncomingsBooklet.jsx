@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense, Component } from 'react'
-import {
-  incomingsBooklet,
-  bookletPageUrls,
-  bookletCover,
-} from '../data/incomingsBooklet.js'
+import { incomingsBooklet } from '../data/incomingsBooklet.js'
+import { pageUrls } from '../lib/pageImages.js'
 
 // The flipbook drags in react-pageflip and eagerly preloads every page image
 // (~4 MB), so it is both code-split AND only mounted once the reader is opened.
@@ -17,7 +14,7 @@ export default function IncomingsBooklet() {
   const [open, setOpen] = useState(false)
   const readerRef = useRef(null)
   const booklet = incomingsBooklet
-  const pages = bookletPageUrls(booklet)
+  const pages = pageUrls(booklet.pages)
 
   // The reader opens *below* the card, which on a page this long can land
   // entirely off-screen, so bring it into view once it has mounted.
@@ -37,7 +34,7 @@ export default function IncomingsBooklet() {
               cover sitting in the card. */}
           <div className="flex items-center justify-center bg-forest-950/50 p-6">
             <img
-              src={bookletCover(booklet)}
+              src={pages[0]}
               alt={`${booklet.title} cover`}
               loading="lazy"
               decoding="async"

@@ -10,27 +10,15 @@
 // project.
 //
 // Every function throws on transport or API errors so callers keep the same
-// single-catch shape they had with appsScriptGet.
+// single-catch shape as appsScriptGet.
+import { timeoutSignal } from './timeoutSignal.js'
 
 const BASE = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 // False on a build without the env vars (local without .env.local). Callers
-// then fall back to their static defaults, exactly as when officers.gs was
-// unconfigured.
+// then fall back to their static defaults.
 export const supabaseRestEnabled = Boolean(BASE && KEY)
-
-function timeoutSignal(ms) {
-  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
-    return AbortSignal.timeout(ms)
-  }
-  if (typeof AbortController !== 'undefined') {
-    const ctrl = new AbortController()
-    setTimeout(() => ctrl.abort(), ms)
-    return ctrl.signal
-  }
-  return undefined
-}
 
 async function request(path, { method = 'GET', body, timeoutMs = 10000, headers = {} } = {}) {
   if (!supabaseRestEnabled) throw new Error('Supabase is not configured')

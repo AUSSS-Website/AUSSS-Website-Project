@@ -82,10 +82,8 @@ In `src/data/merchConfig.js`:
 export const ORDERS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfy…/exec'
 ```
 
-Rebuild and redeploy the site
-(`npm run build && npx --no-install netlify deploy --prod --dir=dist`).
-That's it — `/merch/checkout` now writes to the sheet, screenshots land in
-Drive, and the SG gets emailed.
+Commit and push; Vercel deploys it. That's it: `/merch/checkout` now writes to
+the sheet, screenshots land in Drive, and the team gets emailed.
 
 ## 8. Share access with the rest of the team
 

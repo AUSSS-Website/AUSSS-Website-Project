@@ -5,9 +5,9 @@
 // a square whose side is a multiple of 48 px, reachable at a stable URL and
 // declared with <link rel="icon">; most crawlers also try /favicon.ico. The
 // old single 128 px PNG met none of that. Output: public/favicon.ico (16, 32,
-// 48 px), public/icons/icon-{48,96,144,192,512}.png and the 180 px Apple touch
-// icon, all the same white mark on the brand green, square (Google and the
-// OS apply their own corner shape).
+// 48 px), public/favicon.png, public/icons/icon-{96,144,192,512}.png and the
+// 180 px Apple touch icon, all the same white mark on the brand green, square
+// (Google and the OS apply their own corner shape).
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
@@ -55,7 +55,7 @@ function ico(pngs) {
 }
 
 await fs.mkdir(OUT, { recursive: true })
-for (const size of [48, 96, 144, 192, 512]) {
+for (const size of [96, 144, 192, 512]) {
   await fs.writeFile(path.join(OUT, `icon-${size}.png`), await tile(size))
 }
 await fs.writeFile(path.join(root, 'public/apple-touch-icon.png'), await tile(180))

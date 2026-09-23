@@ -242,7 +242,7 @@ export default function IFMSAHistoryPage() {
             to="/ifmsa"
             className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
           >
-            ← Back to What is IFMSA?
+            ← Back to IFMSA at Ain Shams
           </Link>
         </div>
       </div>

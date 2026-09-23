@@ -1,8 +1,8 @@
 // Adapted from react-bits (MIT), https://reactbits.dev/animations/image-trail
-// Single change from upstream: the useEffect returns a cleanup that breaks the
-// requestAnimationFrame chain and kills in-flight gsap tweens, so navigating
-// away from /gallery doesn't leave an animation loop running. The variant
-// classes themselves are unmodified.
+// Only variant 7 is kept (the gallery hero uses it). One change from upstream:
+// the useEffect returns a cleanup that breaks the requestAnimationFrame chain
+// and kills in-flight gsap tweens, so navigating away from /gallery doesn't
+// leave an animation loop running.
 
 import { useRef, useEffect } from 'react'
 import { gsap } from 'gsap'
@@ -55,110 +55,6 @@ class ImageItem {
   }
   getRect() {
     this.rect = this.DOM.el.getBoundingClientRect()
-  }
-}
-
-class ImageTrailVariant1 {
-  constructor(container) {
-    this.container = container
-    this.DOM = { el: container }
-    this.images = [...this.DOM.el.querySelectorAll('.content__img')].map((img) => new ImageItem(img))
-    this.imagesTotal = this.images.length
-    this.imgPosition = 0
-    this.zIndexVal = 1
-    this.activeImagesCount = 0
-    this.isIdle = true
-    this.threshold = 80
-
-    this.mousePos = { x: 0, y: 0 }
-    this.lastMousePos = { x: 0, y: 0 }
-    this.cacheMousePos = { x: 0, y: 0 }
-
-    const handlePointerMove = (ev) => {
-      const rect = this.container.getBoundingClientRect()
-      this.mousePos = getLocalPointerPos(ev, rect)
-    }
-    container.addEventListener('mousemove', handlePointerMove)
-    container.addEventListener('touchmove', handlePointerMove)
-
-    const initRender = (ev) => {
-      const rect = this.container.getBoundingClientRect()
-      this.mousePos = getLocalPointerPos(ev, rect)
-      this.cacheMousePos = { ...this.mousePos }
-
-      requestAnimationFrame(() => this.render())
-
-      container.removeEventListener('mousemove', initRender)
-      container.removeEventListener('touchmove', initRender)
-    }
-    container.addEventListener('mousemove', initRender)
-    container.addEventListener('touchmove', initRender)
-  }
-
-  render() {
-    let distance = getMouseDistance(this.mousePos, this.lastMousePos)
-    this.cacheMousePos.x = lerp(this.cacheMousePos.x, this.mousePos.x, 0.1)
-    this.cacheMousePos.y = lerp(this.cacheMousePos.y, this.mousePos.y, 0.1)
-
-    if (distance > this.threshold) {
-      this.showNextImage()
-      this.lastMousePos = { ...this.mousePos }
-    }
-    if (this.isIdle && this.zIndexVal !== 1) {
-      this.zIndexVal = 1
-    }
-    requestAnimationFrame(() => this.render())
-  }
-
-  showNextImage() {
-    ++this.zIndexVal
-    this.imgPosition = this.imgPosition < this.imagesTotal - 1 ? this.imgPosition + 1 : 0
-    const img = this.images[this.imgPosition]
-
-    gsap.killTweensOf(img.DOM.el)
-    gsap
-      .timeline({
-        onStart: () => this.onImageActivated(),
-        onComplete: () => this.onImageDeactivated(),
-      })
-      .fromTo(
-        img.DOM.el,
-        {
-          opacity: 1,
-          scale: 1,
-          zIndex: this.zIndexVal,
-          x: this.cacheMousePos.x - img.rect.width / 2,
-          y: this.cacheMousePos.y - img.rect.height / 2,
-        },
-        {
-          duration: 0.4,
-          ease: 'power1',
-          x: this.mousePos.x - img.rect.width / 2,
-          y: this.mousePos.y - img.rect.height / 2,
-        },
-        0,
-      )
-      .to(
-        img.DOM.el,
-        {
-          duration: 0.4,
-          ease: 'power3',
-          opacity: 0,
-          scale: 0.2,
-        },
-        0.4,
-      )
-  }
-
-  onImageActivated() {
-    this.activeImagesCount++
-    this.isIdle = false
-  }
-  onImageDeactivated() {
-    this.activeImagesCount--
-    if (this.activeImagesCount === 0) {
-      this.isIdle = true
-    }
   }
 }
 
@@ -285,18 +181,12 @@ function getNewPosition(position, offset, arr) {
   }
 }
 
-const variantMap = {
-  1: ImageTrailVariant1,
-  7: ImageTrailVariant7,
-}
-
-export default function ImageTrail({ items = [], variant = 7 }) {
+export default function ImageTrail({ items = [] }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
     if (!containerRef.current) return
-    const Cls = variantMap[variant] || variantMap[7]
-    const instance = new Cls(containerRef.current)
+    const instance = new ImageTrailVariant7(containerRef.current)
 
     return () => {
       // Break the requestAnimationFrame chain: the next scheduled frame
@@ -308,7 +198,7 @@ export default function ImageTrail({ items = [], variant = 7 }) {
         window.removeEventListener('resize', img.resize)
       })
     }
-  }, [variant, items])
+  }, [items])
 
   return (
     <div className="content" ref={containerRef}>

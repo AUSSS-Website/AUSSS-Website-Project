@@ -1,19 +1,10 @@
 import { useState } from 'react'
 import { readableAccent, rgba } from '../lib/color.js'
+import { initials } from '../lib/text.js'
 
 // Shared presentational pieces for the committee page, also reused by the
 // officer editor's live preview, so what officers see while editing is the
 // exact same component that renders on the public page (no drift).
-
-export const initials = (name) =>
-  (name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase() || ','
 
 export function PersonCard({ person, color }) {
   const accent = readableAccent(color)

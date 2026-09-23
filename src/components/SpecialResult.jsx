@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { readableAccent, rgba } from '../lib/color.js'
+import { initials } from '../lib/text.js'
 
 /* ── Heba "Grandma" garden generator ───────────────────────────────────
    One main vine emerges from behind the photo and spirals around it.
@@ -227,16 +228,6 @@ function buildHebaGarden() {
 
 const HEBA_GARDEN = buildHebaGarden()
 
-const initials = (name) =>
-  (name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase() || ','
-
 function RevealButton({ onReveal, label }) {
   return (
     <button
@@ -313,7 +304,7 @@ function President({ onReveal, otherPositions }) {
         …why are you looking up your own membership status? You run this place.
       </p>
       <p className="relative mx-auto mt-3 max-w-lg text-sm text-silver/55">
-        Constitution §9, “the organization shall be managed by the Executive
+        Constitution §9: “the organisation shall be managed by the Executive
         Board.” You’d know. You signed it.
       </p>
       <AlsoServingAs positions={otherPositions} accent="#E7C763" />
@@ -818,7 +809,7 @@ function Heba({ onReveal }) {
       </div>
 
       <p className="relative mt-6 text-xs font-semibold uppercase tracking-[0.28em] text-[#E7C879]">
-        AUSSS · Past &amp; Present
+        AUSSS · Past and present
       </p>
       <h2 className="heading-serif relative mt-4 text-4xl text-white sm:text-5xl">
         Welcome back, Heba.
@@ -945,8 +936,8 @@ function TeamMember({ entry, onReveal, otherPositions }) {
       )}
 
       <p className="relative mx-auto mt-5 max-w-md text-sm leading-relaxed text-silver/65">
-        You’re part of the AUSSS Team of Officials, membership status checks
-        are for the rest of us.
+        You’re on the AUSSS Team of Officials. Membership status checks are
+        for the rest of us.
       </p>
 
       <AlsoServingAs positions={otherPositions} accent={accent} />

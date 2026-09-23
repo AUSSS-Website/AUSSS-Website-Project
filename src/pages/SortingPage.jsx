@@ -11,7 +11,6 @@ import {
   STORAGE_KEY,
   profileFor,
   scoreAnswers,
-  trackSorting,
 } from '../data/sortingQuiz.js'
 
 // "The Sorting", a personality quiz that places students into a committee
@@ -88,14 +87,13 @@ export default function SortingPage() {
     else setQIndex(qIndex - 1)
   }
 
-  // Persist + track once per completed run, when the winner is known.
+  // Remember the result once per completed run, when the winner is known.
   const recorded = useRef(false)
   useEffect(() => {
     if ((stage === 'reveal' || stage === 'result') && winner && !recorded.current) {
       recorded.current = true
       saveResult(winner.abbr)
       setSaved({ abbr: winner.abbr })
-      trackSorting(winner.abbr)
     }
     if (stage === 'quiz') recorded.current = false
   }, [stage, winner])
@@ -145,14 +143,14 @@ function Intro({ saved, onBegin }) {
         Where do you belong?
       </h1>
       <p className="mx-auto mt-6 max-w-xl text-lg font-light leading-relaxed text-silver/75">
-        Six Standing Committees and Four Support Divisions <br></br>
-        Find out which one you belong to
+        Six standing committees, four support divisions. Find out which one is
+        yours.
       </p>
       <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-silver/60">
         There’s no talking hat here, just a handful of questions and a
         remarkably perceptive alligator. There are no wrong answers, and no
-        committee you can’t belong to. Answer as yourself, and Dash will take care of the sorting.
-      
+        committee you can’t belong to. Answer as yourself and Dash will take
+        care of the sorting.
       </p>
       <button
         onClick={onBegin}
@@ -162,7 +160,7 @@ function Intro({ saved, onBegin }) {
         <span aria-hidden="true">→</span>
       </button>
       <p className="mt-5 text-xs text-silver/45">
-        Takes about two minutes, don't worry, Dash is gentle.
+        It takes about two minutes. Dash is gentle.
       </p>
       {savedCommittee && (
         <p className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-forest-800/80 px-5 py-2.5 text-sm text-silver/70">
@@ -484,7 +482,7 @@ function Result({ winner, ranked, answers, onRetake }) {
       </div>
       <p className="mx-auto mt-8 max-w-md text-xs leading-relaxed text-silver/40">
         Sorted by a few honest questions, not by destiny. Every committee and
-        division welcomes every member, whatever Dash mutters.
+        division welcomes every member, whatever Dash says.
       </p>
     </div>
   )

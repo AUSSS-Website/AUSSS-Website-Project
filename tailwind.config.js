@@ -17,7 +17,6 @@ export default {
         medical: {
           DEFAULT: '#5B8DB8',
           light: '#8FB4D4',
-          pale: '#DCE8F2',
         },
         silver: {
           DEFAULT: '#C9D6DF',
@@ -43,10 +42,6 @@ export default {
           '70%': { transform: 'scale(1.25)', opacity: '0' },
           '100%': { opacity: '0' },
         },
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
         // One reveal line, fading in and back out within its dwell so the
         // Sorting deliberation reads slowly and dramatically.
         reveal: {
@@ -59,7 +54,6 @@ export default {
         'fade-up': 'fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
         'fade-in': 'fade-in 1.2s ease-out both',
         'pulse-ring': 'pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        float: 'float 6s ease-in-out infinite',
         reveal: 'reveal 2000ms ease-in-out both',
       },
     },

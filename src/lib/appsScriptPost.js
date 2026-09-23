@@ -1,23 +1,30 @@
-// Secure write helper for the Apps Script backends.
+// Writes to the Apps Script backends.
 //
-// Apps Script POST replies aren't readable cross-origin (the 302 → google
-// usercontent redirect drops the CORS headers on POST), which is the whole
-// reason the older flows smuggled secrets, passwords, the gallery admin key,
-// session tokens, through the GET *query string*, where they leak into
-// browser history, devtools, and Google's request logs.
+// Apps Script answers a POST with a 302 to googleusercontent.com, and that
+// second hop carries no CORS headers, so the browser can never read a POST's
+// reply. Two helpers work around that:
 //
-// This helper fixes that without losing the reply: the secret travels in the
-// POST *body* (unlogged), and the backend stashes its JSON result under a
-// client-chosen one-time `nonce`. We then read the result with a follow-up
-// GET ?action=claim&nonce=…, the only thing in that URL is a single-use,
-// ~2-minute-lived random value that is worthless to anyone reading the logs.
+//   appsScriptPost       fire-and-forget. The script runs (the sheet row and
+//                        the email arrive); we just cannot read the reply.
+//                        Orders, stories and sign-ups use this, and generate
+//                        their reference on the client so the success screen,
+//                        the sheet and the email all quote the same code.
 //
-// Requires the matching `claim` support in the .gs backends (officers.gs /
-// gallery.gs). Callers should fall back to the legacy GET path when the
-// backend reports an unknown action, so a new client keeps working against an
-// not-yet-redeployed backend (see useGalleryRemovals).
+//   appsScriptPostClaim  when the reply matters (the gallery admin key). The
+//                        secret travels in the POST body, never the URL, and
+//                        the backend stashes its JSON result under a one-time
+//                        `nonce`. A follow-up GET ?action=claim&nonce=… reads
+//                        it back; the only thing in that URL is a single-use,
+//                        short-lived random value.
 
-const UNKNOWN_ACTION = 'Unknown action'
+export async function appsScriptPost(url, payload) {
+  await fetch(url, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  })
+}
 
 function randomNonce() {
   try {
@@ -36,25 +43,12 @@ function randomNonce() {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/**
- * Fire a no-cors POST whose JSON reply is retrieved via a follow-up
- * GET ?action=claim&nonce=…. Resolves with the backend's `{ ok: true, … }`
- * payload, or throws. A thrown error carries `.rejected = true` and
- * `.code = <backend error string>` when the backend explicitly said no, which
- * lets callers detect `Unknown action` and fall back to the legacy GET path.
- *
- * @param {string} baseUrl   the /exec endpoint
- * @param {object} payload   POSTed as JSON (the `nonce` is added for you)
- * @param {{ timeoutMs?: number }} [opts]
- */
+// Resolves with the backend's `{ ok: true, … }` payload, or throws. A thrown
+// error carries `.rejected = true` when the backend explicitly said no (bad
+// key), as opposed to a timeout or a network failure.
 export async function appsScriptPostClaim(baseUrl, payload, { timeoutMs = 15000 } = {}) {
   const nonce = randomNonce()
-  await fetch(baseUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ ...payload, nonce }),
-  })
+  await appsScriptPost(baseUrl, { ...payload, nonce })
 
   const deadline = Date.now() + timeoutMs
   let delay = 600
@@ -69,17 +63,14 @@ export async function appsScriptPostClaim(baseUrl, payload, { timeoutMs = 15000 
       if (res.ok) {
         const data = await res.json()
         if (data && data.ok) return data
-        // Result not stored yet → the POST is still being processed. Keep
-        // polling (Apps Script writes typically settle in 1–3s).
+        // Not stored yet: the POST is still being processed (Apps Script
+        // writes usually settle in 1 to 3 seconds). Keep polling.
         if (data && data.pending) {
           delay = Math.min(Math.round(delay * 1.4), 2000)
           continue
         }
-        // An explicit rejection (bad password/key, or an old backend that
-        // doesn't know `claim`). Surface it so the caller can fall back.
         const err = new Error((data && data.error) || 'Request failed')
         err.rejected = true
-        err.code = data && data.error
         throw err
       }
     } catch (err) {
@@ -90,5 +81,3 @@ export async function appsScriptPostClaim(baseUrl, payload, { timeoutMs = 15000 
   }
   throw lastTransient || new Error('Request timed out')
 }
-
-export { UNKNOWN_ACTION }

@@ -57,7 +57,7 @@ export default function PortalRoot() {
             <Route index element={<DashboardPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="verify" element={<VerifyPage />} />
-            {/* Portal core: RLS decides which tasks and updates each person gets. */}
+            {/* The database decides which tasks and updates each person gets. */}
             <Route path="tasks" element={<TasksPage />} />
             <Route path="tasks/:id" element={<TaskPage />} />
             <Route path="updates" element={<UpdatesPage />} />

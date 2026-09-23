@@ -8,16 +8,15 @@ import {
 } from '../../officerQueries.js'
 import { ErrorText, Field, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
-// The "Committee page" editor, ported from AccountPage's Editor onto the
-// Supabase data layer. The parent renders the page header and tabs; this
-// component owns only the form, the live preview and the sticky save bar.
+// The "Committee page" editor. The parent renders the page header and tabs;
+// this component owns only the form, the live preview and the sticky save bar.
 //
 //   <PageEditor committee={row} staticCommittee={societyCommittee} />
 //
 // `committee` is the committees row (useCommittee): its `page` is {} for no
 // override, else the document the database normalised on the last save.
 // `staticCommittee` is the matching src/data/society.js entry and supplies the
-// defaults the form starts from, exactly as the old editor did.
+// defaults the form starts from.
 
 const MAX_MEMBERS = 10
 
@@ -236,16 +235,16 @@ export default function PageEditor({ committee, staticCommittee }) {
               id="cp-tagline"
               value={tagline}
               onChange={(e) => patch({ tagline: e.target.value })}
-              placeholder="e.g. Exchange the world, four-week clerkships abroad."
+              placeholder="e.g. Four-week clinical clerkships abroad."
               className={inputCls}
             />
           </Field>
 
           {/* Bio */}
           <Field
-            label="About (bio)"
+            label="About"
             htmlFor="cp-about"
-            hint="Separate paragraphs with a blank line."
+            hint="Who you are, in a paragraph or two. Separate paragraphs with a blank line."
           >
             <textarea
               id="cp-about"

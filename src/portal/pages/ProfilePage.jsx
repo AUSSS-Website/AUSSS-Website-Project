@@ -13,9 +13,9 @@ import {
   primaryBtnCls,
 } from '../portalUi.jsx'
 
-// /portal/profile. Only the columns the column-level grant allows are
-// editable here; membership status/tier/joined year are EB-only via RPC and
-// email follows the auth account (synced by a DB trigger), so it's read-only.
+// /portal/profile. Only the columns the database lets a member write are
+// editable here; membership status, tier and joined year are EB-only, and the
+// email follows the sign-in account (synced by a trigger), so it is read-only.
 
 export default function ProfilePage() {
   usePageTitle('Your profile')
@@ -99,7 +99,7 @@ function ProfileForm({ user, profile }) {
             />
           </Field>
 
-          <Field label="Phone" htmlFor="pf-phone" hint="Optional. Used by your officer to reach you.">
+          <Field label="Phone" htmlFor="pf-phone" hint="Optional. Your officers use it to reach you.">
             <input
               id="pf-phone"
               type="tel"

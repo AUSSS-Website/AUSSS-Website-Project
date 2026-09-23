@@ -8,7 +8,7 @@ import { ErrorText, Field, Panel, inputCls, outlineBtnCls, primaryBtnCls } from 
 // so the list never needs a developer. A retired position stays on whoever
 // holds it and simply stops being offered.
 
-export const POSITION_GROUPS = [
+const POSITION_GROUPS = [
   ['member', 'Members'],
   ['assistant', 'Assistants and coordinators'],
   ['officer', 'Officers'],
@@ -71,7 +71,7 @@ function TypeRow({ position }) {
         </button>
       )}
       {isDefault ? (
-        <span className="text-xs text-silver/50">given to every new member of the committee</span>
+        <span className="text-xs text-silver/50">Given to every new member of the committee</span>
       ) : (
         <button
           type="button"

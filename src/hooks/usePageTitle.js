@@ -3,7 +3,6 @@ import { useEffect } from 'react'
 // Per-route document title, meta description, and canonical link. Every page
 // shares the brand defaults from index.html unless it calls this hook; the
 // cleanup restores them so nothing leaks across client-side navigations.
-// Also feeds analytics, which reads document.title when tracking page views.
 //
 // Crawlers never see this hook run: the public pages are pre-rendered at build
 // time from src/seo/pages.js, which must carry the same title and description

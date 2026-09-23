@@ -2,20 +2,19 @@ import { useState, lazy, Suspense, Component } from 'react'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { magazine, shelfIssues, isMissing, ARCHIVE_CONTACT } from '../data/magazine.js'
+import { pageUrls } from '../lib/pageImages.js'
 import CanvaFrame from '../components/CanvaFrame.jsx'
 import ShareBar from '../components/ShareBar.jsx'
 import MagazineEngagement from '../components/MagazineEngagement.jsx'
 import { trackMagazineDownload } from '../hooks/useMagazineEngagement.js'
 import GalleryAurora from '../components/GalleryAurora.jsx'
 
-// The flipbook pulls in pdf.js + react-pageflip, lazy-load it so the page
-// shell paints immediately and the heavy reader streams in after.
+// The flipbook pulls in react-pageflip and preloads every page image, so it is
+// lazy-loaded: the page shell paints first and the reader streams in after.
 const Flipbook = lazy(() => import('../components/Flipbook.jsx'))
 
-// /magazine shows the latest published edition by default. Once two or more
-// editions are published (see src/data/magazine.js) a small switcher lets
-// readers move between them; with a single edition it renders nothing, so the
-// single-issue experience is unchanged.
+// /magazine opens on the latest published edition; a switcher moves between
+// the editions listed in src/data/magazine.js.
 export default function MagazinePage() {
   usePageTitle('Magazine')
   useReveal()
@@ -28,7 +27,7 @@ export default function MagazinePage() {
   )
 }
 
-// Compact edition switcher, only rendered when 2+ editions are published.
+// Compact edition switcher, only rendered when there are two or more editions.
 function IssueSwitcher({ issues, currentId, onSelect }) {
   if (!issues || issues.length < 2) return null
   return (
@@ -47,7 +46,7 @@ function IssueSwitcher({ issues, currentId, onSelect }) {
             type="button"
             onClick={() => onSelect(it.id)}
             aria-pressed={active}
-            title={missing ? 'We’re still locating this edition' : undefined}
+            title={missing ? 'We’re still looking for this edition' : undefined}
             className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${style}`}
           >
             {it.switcherLabel || it.title}
@@ -58,7 +57,7 @@ function IssueSwitcher({ issues, currentId, onSelect }) {
   )
 }
 
-// ── Cover thumbnail (image, or a gradient placeholder when none yet) ─────────
+// ── Cover thumbnail (page 1, or a gradient placeholder for a missing edition) ─
 function Cover({ src, alt, label }) {
   const [failed, setFailed] = useState(false)
   if (src && !failed) {
@@ -83,17 +82,7 @@ function Cover({ src, alt, label }) {
   )
 }
 
-// The header thumbnail is the magazine's actual first page. Derive it from the
-// built flipbook pages so every edition shows page 1 automatically (no separate
-// cover file to keep in sync); fall back to the `cover` field for a Canva-only
-// draft that has no pages yet.
-function firstPageSrc(issue) {
-  const p = issue.pages
-  if (p?.count) return `${p.base}/${String(1).padStart(p.pad, '0')}.${p.ext}`
-  return issue.cover || null
-}
-
-// ── The edition, Canva embedded ──────────────────────────────────────────────
+// ── The edition ──────────────────────────────────────────────────────────────
 function IssueView({ issue, issues, onSelect }) {
   return (
     <article className="relative overflow-hidden bg-forest-950">
@@ -118,7 +107,7 @@ function IssueView({ issue, issues, onSelect }) {
         <div className="container-prose relative">
           <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:text-left">
             <div className="aspect-[1300/1839] w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-forest-800">
-              <Cover src={firstPageSrc(issue)} alt={`${issue.title} cover`} label={issue.title} />
+              <Cover src={pageUrls(issue.pages)[0]} alt={`${issue.title} cover`} label={issue.title} />
             </div>
             <div>
               <h1 className="heading-serif text-4xl text-white sm:text-5xl">
@@ -181,19 +170,15 @@ function IssueView({ issue, issues, onSelect }) {
   )
 }
 
-// Picks the reader: the page-flipping PDF if one is set, else the Canva embed,
-// else a placeholder, so nothing 404s during a draft.
+// Picks the reader: the page-flipping book when the edition has page images,
+// otherwise the Canva embed. (An edition with neither never reaches the shelf.)
 function MagazineReader({ issue }) {
   if (isMissing(issue)) return <MissingPanel issue={issue} />
-  const p = issue.pages
-  if (p?.count) {
-    const urls = Array.from({ length: p.count }, (_, i) => {
-      const n = String(i + 1).padStart(p.pad || 3, '0')
-      return `${p.base}/${n}.${p.ext || 'jpg'}`
-    })
+  const urls = pageUrls(issue.pages)
+  if (urls.length > 0) {
     return (
-      // key by issue id so switching editions remounts the reader cleanly
-      // (fresh page-flip state + aspect probe).
+      // Keyed by edition so switching remounts the reader cleanly (fresh
+      // page-flip state and aspect probe).
       <ReaderBoundary issue={issue} key={issue.id}>
         <Suspense fallback={<ReaderLoading />}>
           <Flipbook pages={urls} title={issue.title} />
@@ -201,27 +186,7 @@ function MagazineReader({ issue }) {
       </ReaderBoundary>
     )
   }
-  if (issue.canva) {
-    return (
-      <CanvaFrame
-        src={issue.canva}
-        title={`${issue.title}, AUSSS Magazine`}
-        ratio={issue.aspect || undefined}
-      />
-    )
-  }
-  return (
-    <div className="flex aspect-[1/1] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center sm:aspect-[4/3]">
-      <span className="text-silver/45">
-        <MagazineIcon />
-      </span>
-      <p className="mt-4 max-w-sm text-sm text-silver/55">
-        The magazine will appear here once a PDF is added. Drop it in{' '}
-        <code className="text-silver/70">public/assets/magazine/</code> and set
-        its path in <code className="text-silver/70">magazine.js</code>.
-      </p>
-    </div>
-  )
+  return <CanvaFrame src={issue.canva} title={`${issue.title}, AUSSS Magazine`} />
 }
 
 // Placeholder for a known back-issue we haven't tracked down a copy of yet.
@@ -233,12 +198,11 @@ function MissingPanel({ issue }) {
         <MagazineIcon />
       </span>
       <h3 className="heading-serif mt-4 text-2xl text-white">
-        We’re still locating this edition
+        We’re still looking for this edition
       </h3>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-silver/60">
-        We haven’t tracked down a copy of {issue.title} of the AUSSS Magazine
-        yet. If you have it, or know who might, please help us complete the
-        archive.
+        We don’t have a copy of {issue.title} of the AUSSS Magazine yet. If you
+        have one, or know who might, please help us complete the archive.
       </p>
       {email && (
         <a
@@ -255,8 +219,8 @@ function MissingPanel({ issue }) {
   )
 }
 
-// If the flip reader (pdf.js / react-pageflip) throws, don't blank the page,
-// fall back to a friendly panel with the open/download links.
+// If the flip reader throws, keep the page and show a panel with the
+// open/download links instead.
 class ReaderBoundary extends Component {
   constructor(props) {
     super(props)
@@ -271,7 +235,7 @@ class ReaderBoundary extends Component {
   render() {
     if (!this.state.failed) return this.props.children
     const { issue } = this.props
-    const href = issue.download || issue.pdf || issue.canva
+    const href = issue.download || issue.canva
     return (
       <div className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
         <span className="text-silver/45">

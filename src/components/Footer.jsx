@@ -2,8 +2,6 @@ import { lazy, Suspense } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { socials } from '../data/society.js'
 import SocialIcon from './SocialIcon.jsx'
-import SignupForm from './SignupForm.jsx'
-import { NEWSLETTER_OPEN } from '../data/signupsConfig.js'
 
 // The aurora pulls in `ogl` (a full WebGL renderer, ~90 KB). It only ever
 // shows on /magazine, so load it lazily instead of in every page's bundle.
@@ -70,7 +68,7 @@ export default function Footer() {
               Constitution
             </Link>
             <Link to="/join" className="transition-colors hover:text-white">Join</Link>
-            <Link to="/sorting" className="transition-colors hover:text-white">Sorting Quiz</Link>
+            <Link to="/sorting" className="transition-colors hover:text-white">Sorting quiz</Link>
             <Link to="/portal/sign-in" className="transition-colors hover:text-white">
               Members portal
             </Link>
@@ -78,25 +76,7 @@ export default function Footer() {
           </nav>
         </div>
 
-        {NEWSLETTER_OPEN && (
-          <div className="mt-12 flex flex-col items-center gap-4 border-t border-white/10 pt-10 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-silver/55">
-              The AUSSS Digest
-            </p>
-            <p className="max-w-md text-sm text-silver/70">
-              Society news, magazine drops and recruitment alerts, straight to
-              your inbox. No spam.
-            </p>
-            <SignupForm
-              kind="newsletter"
-              layout="inline"
-              submitLabel="Subscribe"
-              successText="Subscribed. Watch your inbox."
-            />
-          </div>
-        )}
-
-        <div className="mt-10 pt-4">
+        <div className="mt-12 border-t border-white/10 pt-10">
           <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-silver/55">
             Find us
           </p>

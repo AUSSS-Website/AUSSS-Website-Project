@@ -14,7 +14,6 @@ import { productById } from '../data/merchProducts.js'
 import { submitOrder, fileToBase64 } from '../lib/orders.js'
 import {
   ORDERS_OPEN,
-  ORDERS_WEBAPP_URL,
   availablePaymentMethods,
   paymentMethodById,
 } from '../data/merchConfig.js'
@@ -61,7 +60,7 @@ export default function CheckoutPage() {
   const [screenshotError, setScreenshotError] = useState('')
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState(null) // { ok, reference, error, stub }
+  const [result, setResult] = useState(null) // { ok, reference, error }
 
   // Only redirect away if the page was loaded with an empty cart, i.e.
   // the user bookmarked /merch/checkout after a previous order. Don't
@@ -103,7 +102,7 @@ export default function CheckoutPage() {
       next.phone = 'Enter a valid phone / WhatsApp number (e.g. 01x xxxx xxxx)'
     if (!contact.isMember) next.isMember = 'Pick one'
     if (contact.isMember === 'No' && !contact.lc.trim())
-      next.lc = 'Tell us which LC'
+      next.lc = 'Tell us which local committee'
     if (!contact.year) next.year = 'Pick one'
     if (contact.notes.length > MAX_NOTES_LENGTH)
       next.notes = `Keep it under ${MAX_NOTES_LENGTH} characters`
@@ -305,7 +304,7 @@ export default function CheckoutPage() {
 
                 {contact.isMember === 'No' && (
                   <Field
-                    label="Which LC are you from? *"
+                    label="Which local committee are you from? *"
                     htmlFor="lc"
                     error={errors.lc}
                     span={2}
@@ -485,14 +484,6 @@ export default function CheckoutPage() {
             </div>
           </aside>
         </div>
-
-        {!ORDERS_WEBAPP_URL && (
-          <p className="mx-auto mt-10 max-w-2xl rounded-lg border border-medical/30 bg-medical/5 px-4 py-3 text-center text-xs text-medical-light">
-            <strong>Dev preview:</strong> the order backend isn&rsquo;t
-            connected yet; submitting will log the payload to the console
-            and show a fake reference. Phase 4 wires the Apps Script.
-          </p>
-        )}
       </div>
     </article>
   )
@@ -729,11 +720,6 @@ function OrderSuccess({ result, contact }) {
             </Link>{' '}
             and mention it so we can find your order.
           </p>
-          {result.stub && (
-            <p className="mt-5 text-[11px] uppercase tracking-[0.16em] text-medical-light/70">
-              Dev preview · backend not connected
-            </p>
-          )}
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/merch"

@@ -33,13 +33,13 @@ export const ROSTER_STATUSES = [
   'Archived',
 ]
 
-export const PORTAL_HOME = '/portal'
+const PORTAL_HOME = '/portal'
 export const SIGN_IN_PATH = '/portal/sign-in'
 export const CALLBACK_PATH = '/portal/callback'
 
 // Where to send someone after sign-in. Lives in sessionStorage (not the URL)
 // because the OAuth round trip through Google/Supabase drops our query string.
-export const NEXT_KEY = 'ausss-portal-next'
+const NEXT_KEY = 'ausss-portal-next'
 
 // One path segment: unreserved + sub-delims + percent escapes, nothing else.
 // No slashes, backslashes, whitespace or control characters can sneak in.

@@ -4,13 +4,13 @@ import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useCommittees } from './officerQueries.js'
 
-// Phase 3 reads and writes: tasks and their timeline, updates (posts) and read
-// receipts, the notifications feed. Same shape as queries.js: plain async
-// functions first, react-query hooks underneath. Who may see or change what is
-// decided by RLS and the triggers in the two 20260920200x migrations; the
+// Tasks and their timeline, updates (posts) and read receipts, and the
+// notifications feed. Same shape as queries.js: plain async functions first,
+// react-query hooks underneath. Who may see or change what is decided by
+// row-level security and the triggers in the 20260920200x migrations; the
 // helpers here only decide what to fetch and which buttons to offer.
 
-export const workKeys = {
+const workKeys = {
   tasks: (uid) => ['tasks', uid],
   task: (id) => ['task', id],
   assignable: (committeeId) => ['task-assignable', committeeId || 'society'],
@@ -61,7 +61,7 @@ export function useWorkScopes() {
 
 // profiles RLS hides members from each other, so timelines resolve the ids
 // they already hold through rpc/profile_names (name + avatar only).
-export async function fetchNames(ids) {
+async function fetchNames(ids) {
   if (!ids.length) return {}
   const rows = unwrap(await supabase.rpc('profile_names', { ids }))
   const out = {}
@@ -85,7 +85,7 @@ export function useNames(ids) {
 const TASK_SELECT =
   'id, title, body, status, priority, due_on, completed_at, committee_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color), assignees:task_assignees(profile_id)'
 
-export async function fetchTasks() {
+async function fetchTasks() {
   const rows = unwrap(
     await supabase
       .from('tasks')
@@ -97,7 +97,7 @@ export async function fetchTasks() {
   return rows || []
 }
 
-export async function fetchTask(id) {
+async function fetchTask(id) {
   const [task, updates] = await Promise.all([
     supabase.from('tasks').select(TASK_SELECT).eq('id', id).maybeSingle(),
     supabase
@@ -112,7 +112,7 @@ export async function fetchTask(id) {
   return { ...row, updates: unwrap(updates) || [] }
 }
 
-export async function fetchAssignable(committeeId) {
+async function fetchAssignable(committeeId) {
   const rows = unwrap(
     await supabase.rpc('task_assignable_people', { committee: committeeId || null }),
   )
@@ -129,7 +129,7 @@ async function addAssignees(taskId, ids) {
 }
 
 // fields: { committee_id, title, body, priority, due_on, status }
-export async function createTask({ assignees = [], ...fields }) {
+async function createTask({ assignees = [], ...fields }) {
   const row = unwrap(await supabase.from('tasks').insert(fields).select('id').single())
   await addAssignees(row.id, assignees)
   return row
@@ -137,7 +137,7 @@ export async function createTask({ assignees = [], ...fields }) {
 
 // `assignees` (when given) is the wanted set; only the difference is written,
 // so the timeline shows who was added and who was dropped.
-export async function updateTask({ id, assignees, previousAssignees = [], ...patch }) {
+async function updateTask({ id, assignees, previousAssignees = [], ...patch }) {
   if (Object.keys(patch).length) {
     unwrap(await supabase.from('tasks').update(patch).eq('id', id).select('id').single())
   }
@@ -153,11 +153,11 @@ export async function updateTask({ id, assignees, previousAssignees = [], ...pat
   }
 }
 
-export async function deleteTask(id) {
+async function deleteTask(id) {
   unwrap(await supabase.from('tasks').delete().eq('id', id))
 }
 
-export async function addTaskComment({ task_id, body }) {
+async function addTaskComment({ task_id, body }) {
   unwrap(await supabase.from('task_updates').insert({ task_id, body }))
 }
 
@@ -204,7 +204,7 @@ const POST_SELECT =
   'id, committee_id, kind, title, body, levels, pinned, publish_at, expires_at, author_id, created_at, committee:committees(id,slug,abbr,name,color), reads:post_reads(profile_id)'
 
 // Pinned first, then drafts (only their managers receive them), then newest.
-export async function fetchPosts() {
+async function fetchPosts() {
   const rows = unwrap(
     await supabase.from('posts').select(POST_SELECT).order('created_at', { ascending: false }).limit(80),
   )
@@ -212,7 +212,7 @@ export async function fetchPosts() {
   return (rows || []).sort((a, b) => Number(b.pinned) - Number(a.pinned) || stamp(b) - stamp(a))
 }
 
-export async function savePost({ id, ...fields }) {
+async function savePost({ id, ...fields }) {
   if (id) {
     unwrap(await supabase.from('posts').update(fields).eq('id', id).select('id').single())
     return
@@ -220,12 +220,12 @@ export async function savePost({ id, ...fields }) {
   unwrap(await supabase.from('posts').insert(fields).select('id').single())
 }
 
-export async function deletePost(id) {
+async function deletePost(id) {
   unwrap(await supabase.from('posts').delete().eq('id', id))
 }
 
 // Receipts are insert-only; a second visit is a harmless duplicate.
-export async function markPostsRead({ uid, ids }) {
+async function markPostsRead({ uid, ids }) {
   if (!ids.length) return
   unwrap(
     await supabase.from('post_reads').upsert(
@@ -235,7 +235,7 @@ export async function markPostsRead({ uid, ids }) {
   )
 }
 
-export async function fetchPostAudience(postId) {
+async function fetchPostAudience(postId) {
   return unwrap(await supabase.rpc('post_audience', { post: postId })) || []
 }
 
@@ -286,7 +286,7 @@ export function usePostMutations() {
 
 // ---- notifications ---------------------------------------------------------
 
-export async function fetchNotifications() {
+async function fetchNotifications() {
   const rows = unwrap(
     await supabase
       .from('notifications')
@@ -297,7 +297,7 @@ export async function fetchNotifications() {
   return rows || []
 }
 
-export async function fetchUnreadCount() {
+async function fetchUnreadCount() {
   const { count, error } = await supabase
     .from('notifications')
     .select('id', { count: 'exact', head: true })
@@ -307,7 +307,7 @@ export async function fetchUnreadCount() {
 }
 
 // ids omitted = everything unread
-export async function markNotificationsRead(ids) {
+async function markNotificationsRead(ids) {
   let q = supabase.from('notifications').update({ read_at: new Date().toISOString() }).is('read_at', null)
   if (ids) q = q.in('id', ids)
   unwrap(await q)

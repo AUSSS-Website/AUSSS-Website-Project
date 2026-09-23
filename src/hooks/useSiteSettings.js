@@ -14,7 +14,7 @@ import { readJson } from '../lib/localCache.js'
 const CACHE_KEY = 'ausss-site-settings'
 const DEFAULTS = { magazineInHeader: true }
 
-export async function fetchSiteSettings() {
+async function fetchSiteSettings() {
   if (!supabaseRestEnabled) return { ...DEFAULTS }
   const rows = await restSelect('site_settings', { select: 'key,value' })
   const out = { ...DEFAULTS }

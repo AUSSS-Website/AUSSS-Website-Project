@@ -186,8 +186,9 @@ export default function IFMSAPage() {
                 A history in six committees
               </h3>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-silver/70">
-                IFMSA grew committee by committee from 1951. Trace each standing
-                committee’s founding year and name changes on a single timeline.
+                IFMSA grew committee by committee from 1951. Follow each
+                standing committee’s founding year and name changes on one
+                timeline.
               </p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-medical-light transition-colors group-hover:text-white">

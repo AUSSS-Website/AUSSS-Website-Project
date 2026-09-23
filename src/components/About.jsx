@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom'
 
 const PILLARS = [
   {
-    title: 'Health for the Community',
-    body: 'Awareness campaigns, screenings, and outreach take students beyond the lecture hall to serve communities across Egypt.',
+    title: 'Health for the community',
+    body: 'Awareness campaigns, screenings and outreach take students beyond the lecture hall to serve communities across Egypt.',
     icon: (
       <>
         <circle cx="9" cy="7" r="3" />
@@ -14,7 +14,7 @@ const PILLARS = [
     ),
   },
   {
-    title: 'Global Student Exchange',
+    title: 'Global student exchange',
     body: 'Clinical and research clerkships connect Ain Shams students with partner faculties across the world.',
     to: '/exchange',
     icon: (
@@ -25,8 +25,8 @@ const PILLARS = [
     ),
   },
   {
-    title: 'Evidence-Based Culture',
-    body: 'Journal clubs, methodology workshops, and mentorship build a generation fluent in scientific rigor.',
+    title: 'Evidence-based culture',
+    body: 'Journal clubs, methodology workshops and mentorship build a generation fluent in scientific rigour.',
     icon: (
       <>
         <path d="M5 4h11l3 3v13H5z" strokeLinejoin="round" />
@@ -57,14 +57,12 @@ export default function About() {
               For{' '}
               <span className="font-medium text-forest dark:text-medical-light">
                 55 years
-              </span>{' '}
-              AUSSS has actively{' '}
-              <span className="font-medium text-forest dark:text-medical-light">
-                redefined what is possible
               </span>
-              . Here, boundaries are pushed and ceilings are shattered as our
-              members turn ideas into action. AUSSS is where your curiosity
-              grows into a{' '}
+              , AUSSS has been where Ain Shams medical students{' '}
+              <span className="font-medium text-forest dark:text-medical-light">
+                turn ideas into action
+              </span>
+              . It is where curiosity grows into a{' '}
               <span className="font-medium text-medical dark:text-medical-light">
                 calling for change
               </span>
@@ -85,9 +83,9 @@ export default function About() {
               .
             </p>
             <p>
-              Through professional and research exchanges, projects, campaigns
-              and peer-to-peer training, AUSSS empowers medical students to use
-              their knowledge{' '}
+              Through clinical and research exchanges, projects, campaigns and
+              peer-to-peer training, AUSSS helps medical students use their
+              knowledge{' '}
               <span className="font-semibold text-forest dark:text-medical-light">
                 for the benefit of society
               </span>

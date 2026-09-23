@@ -54,11 +54,9 @@ export default function ProductCard({ product, onOpenSizeChart }) {
           <span className="heading-serif text-xl text-white sm:text-2xl">
             {formatEGP(product.price)}
           </span>
-          {product.preorder && (
-            <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-medical-light sm:inline-block">
-              Pre-order
-            </span>
-          )}
+          <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-medical-light sm:inline-block">
+            Pre-order
+          </span>
         </div>
 
         {needsSize && (

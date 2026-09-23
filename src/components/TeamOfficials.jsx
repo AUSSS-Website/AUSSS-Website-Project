@@ -3,19 +3,10 @@ import { Link } from 'react-router-dom'
 import { committees, slugFor } from '../data/society.js'
 import { readableAccent, rgba } from '../lib/color.js'
 import { driveImg } from '../lib/img.js'
+import { initials } from '../lib/text.js'
 import { useOfficerOverrides } from '../hooks/useOfficerOverrides.js'
 
 const isSupport = (g) => /support|division|psd|pnsd|cbsd/i.test(g || '')
-
-const initials = (name) =>
-  (name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase() || ','
 
 // Support divisions: force "Support Division" onto its own second line so
 // all the headings line up uniformly.
@@ -223,11 +214,11 @@ export default function TeamOfficials() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h2 className="heading-serif mt-5 text-4xl text-white sm:text-5xl">
-            Committees &amp; Support Divisions
+            Committees and support divisions
           </h2>
           <p className="mt-4 text-lg font-light text-silver/70">
-            The operational arm of the Executive Board. Select any unit to
-            explore who they are and what they do.
+            The teams that carry out the society&rsquo;s work. Open any of them
+            to see who they are and what they do.
           </p>
         </div>
 
@@ -236,7 +227,7 @@ export default function TeamOfficials() {
           <>
             <Connector />
             <div className="reveal">
-              <TierLabel>Standing Committees</TierLabel>
+              <TierLabel>Standing committees</TierLabel>
             </div>
             <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {standing.map((c, i) => (
@@ -256,7 +247,7 @@ export default function TeamOfficials() {
           <>
             <Connector />
             <div className="reveal">
-              <TierLabel>Support Divisions</TierLabel>
+              <TierLabel>Support divisions</TierLabel>
             </div>
             <div className="mx-auto mt-10 grid max-w-5xl grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {support.map((c, i) => (

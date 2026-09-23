@@ -14,7 +14,7 @@ import { readJson } from '../lib/localCache.js'
 
 const CACHE_KEY = 'ausss-officer-overrides-cache'
 
-export async function fetchOverrides() {
+async function fetchOverrides() {
   if (!supabaseRestEnabled) return {}
   const rows = await restSelect('committees', { select: 'slug,page' })
   const map = {}

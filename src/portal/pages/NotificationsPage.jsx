@@ -65,7 +65,7 @@ export default function NotificationsPage() {
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">Nothing yet. You’ll hear here when a task involves you.</p>
+          <p className="text-sm text-silver/70">Nothing yet. You’ll be notified here when a task involves you.</p>
         </Panel>
       ) : (
         <ul className="max-w-3xl space-y-3">

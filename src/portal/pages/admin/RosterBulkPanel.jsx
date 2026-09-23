@@ -8,11 +8,12 @@ import {
 import { parseCsv } from '../../rosterFile.js'
 import { ROSTER_STATUSES } from '../../constants.js'
 import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { when } from '../../workUi.jsx'
 
 // "Register a GA" on /portal/admin/roster, opened from the page header: paste an
 // attendance list (names and/or emails, one person per line), review how each
-// line was matched to the roster, then apply ONE change to everyone confirmed: +1 Local GA, +1
-// National GA, or a new status.
+// line was matched to the roster, then apply ONE change to everyone confirmed:
+// +1 Local GA, +1 National GA, a new status, or a committee.
 //
 // Nothing is written until the last button. The database does the matching
 // (rpc/match_roster_lines, the same matcher as the search box) and sorts every
@@ -39,14 +40,6 @@ const STATE_LABEL = {
   likely: 'Likely',
   ambiguous: 'Pick one',
   none: 'Not found',
-}
-
-function when(iso) {
-  try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-  } catch {
-    return ''
-  }
 }
 
 const describe = (r) => [r.full_name, r.email, r.status].filter(Boolean).join(' · ')
@@ -95,7 +88,7 @@ function ReviewRow({ item, choice, onChoose }) {
           ))}
         </select>
       ) : (
-        <span className="text-xs text-silver/50">Nobody close on the roster. Add them first, or fix the spelling.</span>
+        <span className="text-xs text-silver/50">Nobody close to this on the roster. Add them first, or fix the spelling.</span>
       )}
     </li>
   )
@@ -371,7 +364,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
                         checked={Boolean(choices[i])}
                         onChange={(e) => setChoices((c) => ({ ...c, [i]: e.target.checked ? it.match.id : '' }))}
                       />
-                      include
+                      Include
                     </label>
                   </li>
                 ))}

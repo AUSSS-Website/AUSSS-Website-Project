@@ -53,7 +53,7 @@ plan's decision 4 (section 13) chose to keep it as is.
 | Item | Value |
 | --- | --- |
 | Deploys from | The GitHub repository above through the Vercel GitHub integration (no `.vercel/` folder locally, no manual deploys) |
-| Live config | `vercel.json` (headers, CSP, redirects). `netlify.toml` and the Netlify site are leftovers, not production |
+| Live config | `vercel.json` (headers, CSP, the SPA rewrite). The old Netlify config was removed from the repo in September 2026 |
 | Environment variables | `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, set for **Production and Preview** |
 | Account or team that owns the project | TODO for the webmaster: record the Vercel account email and team slug, and confirm the President has access |
 | Production URL | `https://ausss-ainshams.org` (custom domain attached 2026-09-15). `www` and the old `https://ausss-ainshams.vercel.app` both redirect (308) to it; the redirects are set on the project's Domains page in Vercel |
@@ -144,8 +144,8 @@ referenced from `committees.page`). Phase 5 retires the remaining five.
 
 ### 2.9 Other
 
-- Netlify site `ausss-ainshams` under a personal login: not production, safe
-  to delete once `netlify.toml` is retired.
+- Netlify site `ausss-ainshams` under a personal login: not production and no
+  longer referenced by the repo. Safe to delete.
 - Membership Google Form and its response sheet: owner TODO (see
   `apps-script/MIGRATION.md` section C).
 - Membership database: lives in Supabase (`public.roster_entries`, edited at

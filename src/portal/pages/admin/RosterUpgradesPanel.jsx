@@ -68,7 +68,7 @@ export default function RosterUpgradesPanel() {
           <span className="font-semibold">
             {rows.length} {rows.length === 1 ? 'member has' : 'members have'} the attendance for a higher status
           </span>
-          <span className="text-silver/60"> · the Executive Board grants it</span>
+          <span className="text-silver/60"> · only the Executive Board can grant it</span>
         </p>
         {rows.length > 0 && (
           <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={outlineBtnCls}>

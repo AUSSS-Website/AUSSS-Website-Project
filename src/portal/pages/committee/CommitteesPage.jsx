@@ -6,7 +6,7 @@ import { Centered, ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.
 
 // /portal/committees. The committees this person may edit: every one for the
 // EB and webmaster, otherwise the committees where they hold an officer-level
-// position this term. Replaces the EB "Picker" from the old /account page.
+// position this term.
 
 function CommitteeTile({ c }) {
   return (

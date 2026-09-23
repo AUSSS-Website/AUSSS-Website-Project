@@ -55,7 +55,7 @@ export function parseCsv(text) {
 
 // grid: array of arrays of cell text. Returns { rows, batch } or throws with a
 // message an officer can act on.
-export function gridToRoster(grid) {
+function gridToRoster(grid) {
   const hi = grid.findIndex((r) => String(r?.[0] ?? '').trim().toLowerCase() === 'name')
   if (hi === -1) {
     throw new Error(

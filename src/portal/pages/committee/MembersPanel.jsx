@@ -28,7 +28,7 @@ function Fact({ label, children }) {
   return (
     <div>
       <dt className="text-[10px] font-semibold uppercase tracking-wider text-silver/45">{label}</dt>
-      <dd className="mt-0.5 whitespace-pre-line text-sm text-silver/85">{children || '—'}</dd>
+      <dd className="mt-0.5 whitespace-pre-line text-sm text-silver/85">{children || '–'}</dd>
     </div>
   )
 }
@@ -190,7 +190,7 @@ function Member({ member, committee, positions, open, onToggle }) {
         <span className="flex flex-wrap items-center gap-2 text-xs text-silver/70">
           <span className="font-semibold text-medical-light">{member.status || 'No status'}</span>
           {member.position && <span className={tagCls}>{member.position.title}</span>}
-          {member.is_contact_person && <span className={tagCls}>Contact Person</span>}
+          {member.is_contact_person && <span className={tagCls}>Contact person</span>}
           {member.notes > 0 && (
             <span className={tagCls}>
               {member.notes} {member.notes === 1 ? 'note' : 'notes'}
@@ -273,8 +273,8 @@ export default function MembersPanel({ committee }) {
     <>
       <p className="max-w-2xl pb-5 text-sm text-silver/65">
         Everyone the membership roster places in {committee.abbr}. You can set each member&rsquo;s
-        position and keep notes on them; their membership record (status, year joined, GA counts) is kept
-        by the Executive Board and cannot be changed here.
+        position and keep notes on them. Their membership record (status, year joined, GA counts) is
+        kept by the Executive Board and cannot be changed here.
       </p>
       <div className="flex flex-wrap items-center gap-3 pb-5">
         <input

@@ -20,6 +20,7 @@ import { parseRosterFile } from '../../rosterFile.js'
 import { prepareRoster, searchRoster } from '../../rosterSearch.js'
 import { ROSTER_STATUSES as STATUSES } from '../../constants.js'
 import { useCommittees } from '../../officerQueries.js'
+import { when } from '../../workUi.jsx'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
 import RosterUpgradesPanel from './RosterUpgradesPanel.jsx'
 import PositionTypesPanel, { PositionOptions, localMemberOf } from './PositionTypesPanel.jsx'
@@ -67,14 +68,6 @@ const BLANK = {
 
 const tagCls =
   'inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-silver/60'
-
-function when(iso) {
-  try {
-    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-  } catch {
-    return ''
-  }
-}
 
 function toForm(row) {
   const f = {}
@@ -191,7 +184,7 @@ function Editor({ row, committees, positions, onClose }) {
               checked={form.is_contact_person}
               onChange={(e) => setForm((f) => ({ ...f, is_contact_person: e.target.checked }))}
             />
-            Exchange Contact Person (held alongside their committee)
+            Exchange contact person (held alongside their committee)
           </label>
         </Field>
         {form.committee_id && (
@@ -274,7 +267,7 @@ function Row({ row, committees, positions, open, onToggle }) {
               {position ? ` · ${position.short_title || position.title}` : ''}
             </span>
           )}
-          {row.is_contact_person && <span className={tagCls}>Contact Person</span>}
+          {row.is_contact_person && <span className={tagCls}>Contact person</span>}
           {row.profile_id && <span className={tagCls}>Signed in</span>}
           {row.portal_edited_at && <span className={tagCls}>Portal</span>}
         </span>
@@ -449,7 +442,7 @@ function SpreadsheetPanel() {
           </span>
         </p>
         <p className="mt-1 text-xs text-silver/55">
-          For a sheet that is not readable by the server: its owner installs
+          For a sheet the server cannot read: its owner installs the script in
           apps-script/roster-sync.gs, which sends the roster here every hour using this token.
           Issuing a new token switches the old one off.
         </p>
@@ -637,7 +630,7 @@ export default function RosterPage() {
             </option>
           ))}
           <option value="none">No committee</option>
-          <option value="contact">Contact Persons</option>
+          <option value="contact">Contact persons</option>
         </select>
         <span className="text-xs text-silver/50" aria-live="polite">
           {roster.isPending ? '' : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}

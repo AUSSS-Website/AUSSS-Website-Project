@@ -1,21 +1,11 @@
 import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
+import { normalize } from './text.js'
 
 // The membership check reads the live roster in Supabase through
 // rpc/check_membership (supabase/migrations/20260919200001_live_roster.sql).
 // The matching (email first, then an exact normalised name) happens in the
 // database, which answers with one person's membership facts and never a name
-// or an email, so nothing about the roster ships in the bundle any more.
-
-// Mirror of app.normalize_text in the database; only used for local text
-// comparisons (classify below), never for matching.
-export function normalize(v) {
-  return String(v ?? '')
-    .normalize('NFKD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
-}
+// or an email, so nothing about the roster ships in the bundle.
 
 const mapRecord = (raw) => ({
   status: raw.status,
@@ -25,17 +15,6 @@ const mapRecord = (raw) => ({
   ngas: raw.ngas,
   currentPosition: (raw.currentPosition || '').trim() || 'General Member',
 })
-
-// Position cells in the roster sometimes pack multiple roles separated
-// by a line break (e.g. "Supervising Council\r\nInternational TEDA"). Splits
-// the raw value into individual positions so the UI can render them as a
-// stacked list instead of one squashed string.
-export function splitPositions(raw) {
-  return String(raw ?? '')
-    .split(/\r\n|\n/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
 
 // The mail domains members actually use, and the slips seen for them. Purely
 // about what was typed: "gmial.com" is wrong whoever you are.
@@ -47,7 +26,7 @@ const DOMAIN_FIXES = {
   'icloud.com': ['iclod.com', 'icloud.co', 'icloud.con'],
 }
 
-export function fixEmailDomain(email) {
+function fixEmailDomain(email) {
   const at = String(email ?? '').trim().lastIndexOf('@')
   if (at < 1) return null
   const local = email.trim().slice(0, at)
@@ -164,7 +143,7 @@ const TIERS = {
   },
 }
 
-export function classify(statusText) {
+function classify(statusText) {
   const s = normalize(statusText)
   if (!s) return null
   if (s.includes('suspend')) return 'suspended'

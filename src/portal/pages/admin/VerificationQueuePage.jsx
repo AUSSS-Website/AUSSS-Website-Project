@@ -11,21 +11,11 @@ import {
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
+import { when } from '../../workUi.jsx'
 
 // /portal/admin/verification (EB only, gated by RequireEB). Approve sets the
 // member active; decline leaves them unverified. Both go through the
 // decide_verification RPC so the request and the profile change together.
-
-function when(iso) {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
-  } catch {
-    return ''
-  }
-}
 
 function Row({ req, onDecide, busyId, error }) {
   const p = req.profile || {}

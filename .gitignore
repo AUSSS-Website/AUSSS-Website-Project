@@ -4,9 +4,6 @@ dist
 *.local
 .vite
 
-# Local Netlify folder
-.netlify
-
 # Raw originals (logos, photos, PDFs, membership xlsx with PII) — never publish
 _source/
 

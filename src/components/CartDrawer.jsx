@@ -126,7 +126,8 @@ export default function CartDrawer({ open, onClose }) {
                 </span>
               </div>
               <p className="mb-4 text-xs leading-relaxed text-forest-900/60 dark:text-silver/55">
-                Pre-order. We&rsquo;ll WhatsApp you to confirm details and arrange pickup or payment.
+                Everything is pre-order. We&rsquo;ll WhatsApp you to confirm the
+                details and arrange pickup.
               </p>
               <Link
                 to="/merch/checkout"
@@ -165,7 +166,7 @@ function EmptyState({ onClose }) {
         Your cart is empty
       </p>
       <p className="mt-2 text-sm text-forest-900/60 dark:text-silver/60">
-        Browse the merch catalogue and add something you love.
+        Browse the merch and add something you like.
       </p>
       <button
         type="button"

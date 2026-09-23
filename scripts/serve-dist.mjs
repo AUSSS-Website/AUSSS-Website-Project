@@ -25,7 +25,6 @@ const types = {
   '.pdf': 'application/pdf',
   '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2',
-  '.riv': 'application/octet-stream',
 }
 
 function resolveFile(urlPath) {

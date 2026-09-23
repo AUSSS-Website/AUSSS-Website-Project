@@ -101,7 +101,7 @@ export default function PortalLayout() {
             )}
             {isEB && (
               <NavLink to="/portal/admin/settings" className={navCls}>
-                Site
+                Site settings
               </NavLink>
             )}
           </nav>

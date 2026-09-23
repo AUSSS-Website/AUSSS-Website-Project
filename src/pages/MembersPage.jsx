@@ -2,12 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-import {
-  lookupMember,
-  adviceFor,
-  NOT_A_MEMBER,
-  splitPositions,
-} from '../lib/membership.js'
+import { lookupMember, adviceFor, NOT_A_MEMBER } from '../lib/membership.js'
+import { splitPositions } from '../lib/text.js'
 import SpecialResult from '../components/SpecialResult.jsx'
 import {
   matchPosition,
@@ -32,7 +28,7 @@ const STATUS_COLOR = {
 // GA cells can be "", "0", "3", ">2", "2+", "≥1" … parse safely.
 function parseGA(value) {
   const s = String(value ?? '').trim()
-  if (!s) return { display: ', ', num: 0, atLeast: false, known: false }
+  if (!s) return { display: '–', num: 0, atLeast: false, known: false }
   const digits = s.match(/\d+/)
   const num = digits ? parseInt(digits[0], 10) : 0
   const atLeast = /[>≥]|\+|more|over|at least/i.test(s)
@@ -284,7 +280,7 @@ export default function MembersPage() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h1 className="heading-serif mt-5 text-4xl text-white sm:text-6xl">
-            Check Your Membership
+            Check your membership
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-silver/75">
             Enter the name <em>or</em> email you registered with to see your
@@ -301,7 +297,7 @@ export default function MembersPage() {
             className="reveal rounded-3xl border border-white/12 bg-forest-900/60 p-8 sm:p-10"
           >
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-silver/60">
-              Full Name
+              Full name
             </label>
             <input
               type="text"
@@ -366,8 +362,8 @@ export default function MembersPage() {
                     </p>
                     <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] sm:grid-cols-4">
                       {[
-                        ['Year joined', statusRecord.yearJoined || ', '],
-                        ['Years spent', statusRecord.yearsSpent || ', '],
+                        ['Year joined', statusRecord.yearJoined || '–'],
+                        ['Years spent', statusRecord.yearsSpent || '–'],
                         ['Local GAs', parseGA(statusRecord.lgas).display],
                         ['National GAs', parseGA(statusRecord.ngas).display],
                       ].map(([k, v]) => (
@@ -407,14 +403,14 @@ export default function MembersPage() {
                       )
                     })()}
                     <p className="mt-6 border-t border-white/10 pt-4 text-xs text-silver/55">
-                      Found an issue with your membership? Fill out this form{' '}
+                      Something wrong with your record?{' '}
                       <a
                         href={MEMBERSHIP_ISSUE_FORM}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-semibold text-medical-light underline-offset-2 transition-colors hover:text-white hover:underline"
                       >
-                        here
+                        Tell us through this form
                       </a>
                       .
                     </p>
@@ -437,7 +433,7 @@ export default function MembersPage() {
                     />
                   )}
                   <p className="mt-2 text-sm text-silver/65">
-                    Double-check the exact name you registered with. Not a
+                    Check the exact name or email you registered with. Not a
                     member yet? Here’s how to join:
                   </p>
                   <GuidanceCard
@@ -465,11 +461,10 @@ export default function MembersPage() {
               {result.state === 'not-connected' && (
                 <div className="rounded-3xl border border-white/12 bg-forest-900/60 p-8">
                   <p className="heading-serif text-2xl text-white">
-                    Lookup not yet connected
+                    The lookup is unavailable right now
                   </p>
                   <p className="mt-2 text-sm text-silver/65">
-                    The live membership lookup is being set up. Please check
-                    back soon, or{' '}
+                    Please check back soon, or{' '}
                     <Link to="/contact" className="text-medical-light hover:text-white">
                       contact us
                     </Link>
@@ -504,7 +499,7 @@ export default function MembersPage() {
             </h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-silver/65">
               Every membership rule above comes from the AUSSS Constitution
-              &amp; Bylaws. Read the full document:
+              &amp; Bylaws. Read the full document.
             </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link

@@ -13,8 +13,8 @@ import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls, primary
 import { CommitteeTag, LEVEL_LABELS, POST_KIND_LABEL, RichText, UnreadDot, personName, when } from '../../workUi.jsx'
 import PostEditor from './PostEditor.jsx'
 
-// /portal/updates. The feed of posts addressed to this person (RLS decides),
-// newest first with pinned ones on top. Opening a long post, or pressing
+// /portal/updates. The feed of posts addressed to this person (the database
+// decides), newest first with pinned ones on top. Opening a long post, or pressing
 // "Mark as read", leaves a receipt; the post's managers (committee officers,
 // EB) see the count and, on demand, exactly who has and has not read it.
 
@@ -111,7 +111,7 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
               onClick={() => setShowAudience((v) => !v)}
               className="text-xs font-semibold text-silver/60 hover:text-white"
             >
-              Read by {post.reads.length} · {showAudience ? 'hide' : 'who?'}
+              Read by {post.reads.length} · {showAudience ? 'hide who' : 'show who'}
             </button>
             <button type="button" onClick={() => onEdit(post)} className="text-xs font-semibold text-silver/60 hover:text-white">
               Edit

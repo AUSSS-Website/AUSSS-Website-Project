@@ -16,7 +16,7 @@ import RoleNode from '../components/RoleNode.jsx'
 // and what each seat does; joining gets its own treatment separately.
 export default function ExchangeJoinPage() {
   usePageTitle(
-    'Join the Exchange Team',
+    'Join the exchange team',
     'The AUSSS exchange team: the LEO-In, LEO-Out and LORE officer roles, their assistants, and the contact persons who host every arrival.',
   )
   useReveal()
@@ -40,7 +40,7 @@ export default function ExchangeJoinPage() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
-            Join the Exchange Team
+            Join the exchange team
           </h1>
         </div>
       </header>
@@ -71,8 +71,8 @@ export default function ExchangeJoinPage() {
 
           <TierLabel>Assistants</TierLabel>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-silver/60">
-            One to each side of the clinical programme, and both to the LORE,
-            who runs research in either direction.
+            One for each side of the clinical programme. Both also support the
+            LORE, who runs research exchange in both directions.
           </p>
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
             {assistants.map((r) => (
@@ -82,10 +82,10 @@ export default function ExchangeJoinPage() {
 
           <Connector />
 
-          <TierLabel>Contact Persons</TierLabel>
+          <TierLabel>Contact persons</TierLabel>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-silver/60">
-            Not one seat but as many as there are arrivals. Open to any member
-            each season, and where most people start.
+            As many seats as there are arrivals. Open to any member each
+            season, and where most people start.
           </p>
           <div className="mx-auto mt-8 max-w-xl">
             <RoleNode role={contactPersons} tier="assistant" />

@@ -115,7 +115,7 @@ function PositionChip({ assignment }) {
     <li
       className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white"
       style={chipStyle(c?.color)}
-      title={c ? `${c.name} — ${pos.title}` : pos.title}
+      title={c ? `${c.name} · ${pos.title}` : pos.title}
     >
       {c?.logo && <img src={c.logo} alt="" className="h-4 w-4 object-contain" />}
       {label}

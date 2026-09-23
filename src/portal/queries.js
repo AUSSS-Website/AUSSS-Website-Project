@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase.js'
 // around them. Keys include the uid so switching accounts never shows the
 // previous account's rows even before the cache is cleared.
 
-export const keys = {
+const keys = {
   profile: (uid) => ['profile', uid],
   assignments: (uid) => ['assignments', uid],
   myVerification: (uid) => ['verification', 'mine', uid],
@@ -14,7 +14,7 @@ export const keys = {
 
 // Shape fixed by the contract; term is !inner so the is_current filter on the
 // embedded row actually drops non-current assignments instead of nulling them.
-export const ASSIGNMENT_SELECT =
+const ASSIGNMENT_SELECT =
   'id, status, position:positions(id,key,title,short_title,level,can_assign_tasks,committee:committees(id,slug,name,abbr,color,logo,kind)), term:terms!inner(id,label,is_current)'
 
 function unwrap({ data, error }) {
@@ -22,13 +22,13 @@ function unwrap({ data, error }) {
   return data
 }
 
-export async function fetchProfile(uid) {
+async function fetchProfile(uid) {
   return unwrap(
     await supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
   )
 }
 
-export async function fetchAssignments(uid) {
+async function fetchAssignments(uid) {
   const rows = unwrap(
     await supabase
       .from('assignments')
@@ -41,7 +41,7 @@ export async function fetchAssignments(uid) {
 }
 
 // Latest request only: the UI cares about "is one pending / what was decided".
-export async function fetchMyVerification(uid) {
+async function fetchMyVerification(uid) {
   return unwrap(
     await supabase
       .from('verification_requests')
@@ -55,7 +55,7 @@ export async function fetchMyVerification(uid) {
 
 // verification_requests has two FKs to profiles (profile_id, decided_by), so
 // the embed must name the column or PostgREST refuses it as ambiguous.
-export async function fetchPendingVerifications() {
+async function fetchPendingVerifications() {
   const rows = unwrap(
     await supabase
       .from('verification_requests')
@@ -68,13 +68,13 @@ export async function fetchPendingVerifications() {
   return rows || []
 }
 
-export async function updateProfile(uid, patch) {
+async function updateProfile(uid, patch) {
   return unwrap(
     await supabase.from('profiles').update(patch).eq('id', uid).select().single(),
   )
 }
 
-export async function requestVerification(uid, message) {
+async function requestVerification(uid, message) {
   return unwrap(
     await supabase
       .from('verification_requests')
@@ -86,7 +86,7 @@ export async function requestVerification(uid, message) {
 
 // decision: 'approved' | 'declined'. new_status only matters on approve; the
 // RPC defaults it to 'active' when omitted.
-export async function decideVerification({ request_id, decision, new_status }) {
+async function decideVerification({ request_id, decision, new_status }) {
   const args = { request_id, decision }
   if (new_status) args.new_status = new_status
   return unwrap(await supabase.rpc('decide_verification', args))

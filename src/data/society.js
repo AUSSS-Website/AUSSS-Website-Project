@@ -1,13 +1,6 @@
-// Central data source for AUSSS leadership and committees.
-// Replace placeholder names/initials with real members as needed.
-//
-// ── Provenance convention for `activities` ───────────────────────────────
-// Each activity carries a `scope`:
-//   'AUSSS'        → verified from AUSSS's own public channels.
-//   'IFMSA-Egypt'  → documented IFMSA-Egypt national campaign that runs
-//                     through local committees (incl. Ain Shams). It is
-//                     labelled as such in the UI, NOT presented as an
-//                     AUSSS-exclusive project. Keep this honest.
+// The society's people, committees and page copy, in one place. Officers can
+// override parts of a committee page from the portal; everything else on the
+// public site reads from here.
 
 export const executiveBoard = [
   {
@@ -91,7 +84,7 @@ export const committees = [
       ],
     },
     officer: 'Local Exchange Officer',
-    tagline: 'Exchange the world, four-week clinical clerkships abroad.',
+    tagline: 'Four-week clinical clerkships abroad.',
     // For committees with more than one officer, use `officers`
     // (order here = display order). Single-officer ones use
     // `officer` (title) + `officerAbbr` + `holder` (the person).
@@ -110,29 +103,6 @@ export const committees = [
       'Host incoming exchange students at Ain Shams teaching hospitals, each with a supervising physician and a full social programme.',
       'Prepare outgoing students with pre-departure orientation, documentation, and academic-recognition guidance.',
       'Run the Local Exchange Officer (LEO-In / LEO-Out) team and recruit at exchange fairs.',
-    ],
-    activities: [
-      {
-        title: 'Four-week clinical clerkships',
-        blurb:
-          'Specialties offered through IFMSA-Egypt include internal medicine, surgery, OB/GYN, tropical & emergency medicine, radiology, pathology, dermatology and ophthalmology, 5 hrs/day, with ≥80% attendance earning the official SCOPE certificate.',
-        type: 'Exchange',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'Hosting at Ain Shams hospitals',
-        blurb:
-          'Ain Shams Specialized Hospital is a documented host venue for incoming IFMSA students, who observe surgeries and clinical rounds with local student support.',
-        type: 'Exchange',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'National Weekends social programme',
-        blurb:
-          'Incoming students join IFMSA-Egypt national trips (Cairo, Alexandria, Dahab) alongside city social outings run by local contact persons.',
-        type: 'Project',
-        scope: 'IFMSA-Egypt',
-      },
     ],
   },
   {
@@ -181,22 +151,6 @@ export const committees = [
       'Guide students through the SCORE Research Projects Database, proposals, and academic recognition.',
       'Run research-skills sessions on literature review, data collection, scientific writing and ethics.',
     ],
-    activities: [
-      {
-        title: 'International research clerkships',
-        blurb:
-          'Four-to-eight-week clinical or preclinical research projects under a mentor; ≥80% attendance earns the official SCORE certificate. Project types span basic-lab, clinical, and Global Action Projects.',
-        type: 'Exchange',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'Shared exchange social programme',
-        blurb:
-          'SCORE exchange students join the same IFMSA-Egypt National Weekends and city social programme as SCOPE.',
-        type: 'Project',
-        scope: 'IFMSA-Egypt',
-      },
-    ],
   },
   {
     name: 'Medical Education',
@@ -236,43 +190,13 @@ export const committees = [
       'Runs skills workshops, evidence-based medicine sessions, and curriculum advocacy.',
     about: [
       'SCOME, the Standing Committee on Medical Education, is the platform where medical students contribute to and shape the development of medical education. One of IFMSA’s original 1951 committees, it treats students as full stakeholders and the first quality-check of their own curriculum.',
-      'At AUSSS, SCOME runs skills training, evidence-based-medicine sessions and peer-teaching, carrying the Local Officer on Medical Education (LOME) into national medical-education projects.',
+      'At AUSSS, SCOME runs skills training, evidence-based-medicine sessions and peer teaching, and takes part in national medical-education projects through the Local Officer on Medical Education (LOME).',
     ],
     whatWeDo: [
       'Run clinical-skills and study-skills workshops and peer-teaching sessions.',
       'Deliver evidence-based-medicine (EBM) training and awareness.',
       'Advocate for student voice in curriculum and quality of medical education.',
       'Develop trainers through the Training Medical Education Trainers (TMET) pathway.',
-    ],
-    activities: [
-      {
-        title: 'AUSSS SCOME content & sessions',
-        blurb:
-          'AUSSS produces dedicated SCOME educational content and runs sessions under its Local Officer on Medical Education (LOME).',
-        type: 'Workshop',
-        scope: 'AUSSS',
-      },
-      {
-        title: 'Evidence-Based Medicine (EBM) project',
-        blurb:
-          'IFMSA-Egypt national train-the-trainer programme, cascaded locally to roughly 2,000 students.',
-        type: 'Project',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'Basic & Advanced Life Support (BLS/ALS)',
-        blurb:
-          'Recurring SCOME competency-training series run across IFMSA-Egypt local committees.',
-        type: 'Workshop',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'CleoApaTrain (TMET)',
-        blurb:
-          'IFMSA-Egypt’s recurring national Training Medical Education Trainers workshop.',
-        type: 'Workshop',
-        scope: 'IFMSA-Egypt',
-      },
     ],
   },
   {
@@ -313,22 +237,13 @@ export const committees = [
     description: 'Advocates for ethics in medicine and humanitarian engagement.',
     about: [
       'SCORP, the Standing Committee on Human Rights and Peace, empowers medical students to promote and protect human rights and peace through advocacy, awareness and capacity building. Founded in 1983, it works on human rights, peace, refugees and displaced persons, ethics in healthcare, disaster response and vulnerable populations.',
-      'AUSSS members carry this into campus advocacy, community outreach, and medical-ethics campaigns.',
+      'At AUSSS, that means campus advocacy, community outreach and medical-ethics campaigns.',
     ],
     whatWeDo: [
       'Run human-rights and medical-ethics awareness campaigns on campus and in the community.',
       'Advocate for vulnerable and marginalised groups in healthcare.',
       'Support refugee and community outreach and charity drives.',
       'Develop human-rights trainers through the TNHRT pathway.',
-    ],
-    activities: [
-      {
-        title: 'Together Against Stigma (TAS)',
-        blurb:
-          'IFMSA-Egypt’s flagship SCORP project, national workshops, online campaigns and local actions on medical ethics, patient and healthcare-worker rights, vulnerable groups, and discrimination against female health workers.',
-        type: 'Campaign',
-        scope: 'IFMSA-Egypt',
-      },
     ],
   },
   {
@@ -378,43 +293,6 @@ export const committees = [
       'Mark world health days (World TB Day, World Diabetes Day, AMR Week).',
       'Deliver mental-health and healthy-lifestyle workshops.',
     ],
-    activities: [
-      {
-        title: '“Myth or Fact? Diabetes” reel series',
-        blurb:
-          'AUSSS multi-part myth-versus-fact educational reels correcting common diabetes misconceptions.',
-        type: 'Campaign',
-        scope: 'AUSSS',
-      },
-      {
-        title: '“Normal Sadness & Grief” mental-health workshop',
-        blurb:
-          'AUSSS × OSSS joint mental-health workshop facilitated by the two societies’ Mental Health Coordinators.',
-        type: 'Workshop',
-        scope: 'AUSSS',
-      },
-      {
-        title: 'First Aid programme',
-        blurb:
-          'AUSSS runs a First Aid programme with a dedicated Local Coordinator.',
-        type: 'Workshop',
-        scope: 'AUSSS',
-      },
-      {
-        title: 'Eyes on Diabetes, World Diabetes Day',
-        blurb:
-          'IFMSA-Egypt national WDD screening campaign (blood glucose, blood pressure, fundus exam) across local committees.',
-        type: 'Campaign',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'World Antimicrobial Awareness Week',
-        blurb:
-          'IFMSA-Egypt AMR advocacy (“Save the Cure” / #WAAW), physical campaigns reaching thousands of students and the public.',
-        type: 'Campaign',
-        scope: 'IFMSA-Egypt',
-      },
-    ],
   },
   {
     name: 'Sexual & Reproductive Health & Rights',
@@ -462,36 +340,6 @@ export const committees = [
       'Mark World AIDS Day and the International AIDS Candlelight Memorial.',
       'Support family-planning and anti-FGM awareness.',
     ],
-    activities: [
-      {
-        title: '“Myth vs Fact: Contraception” carousel',
-        blurb:
-          'AUSSS educational content correcting contraception myths, including the myth that contraception causes infertility.',
-        type: 'Campaign',
-        scope: 'AUSSS',
-      },
-      {
-        title: '“Consent is empowerment” campaign',
-        blurb:
-          'AUSSS campaign on informed, voluntary, ongoing consent, that silence is not consent and “no” must be respected.',
-        type: 'Campaign',
-        scope: 'AUSSS',
-      },
-      {
-        title: 'Family Planning & Anti-FGM projects',
-        blurb:
-          'IFMSA-Egypt SCORA national projects on family planning and ending female genital mutilation.',
-        type: 'Project',
-        scope: 'IFMSA-Egypt',
-      },
-      {
-        title: 'World AIDS Day & Candlelight Memorial',
-        blurb:
-          'Red-ribbon SCORAngels awareness for World AIDS Day and the International AIDS Candlelight Memorial (third Sunday of May).',
-        type: 'Awareness Day',
-        scope: 'IFMSA-Egypt',
-      },
-    ],
   },
   {
     name: 'Projects Support Division',
@@ -514,15 +362,6 @@ export const committees = [
       'Support committees through project planning, execution and evaluation.',
       'Set quality standards and assess the impact of activities.',
       'Maintain project documentation and institutional memory.',
-    ],
-    activities: [
-      {
-        title: 'AUSSS Projects Support Division',
-        blurb:
-          'AUSSS maintains a Projects Support Division led by a PSD Director coordinating the project lifecycle across committees.',
-        type: 'Project',
-        scope: 'AUSSS',
-      },
     ],
   },
   {
@@ -570,15 +409,6 @@ export const committees = [
       'Run leadership and soft-skill development tracks for members.',
       'Support committees with capacity-building sessions.',
     ],
-    activities: [
-      {
-        title: 'National trainings (CleoApaTrain, PHLT, IPET)',
-        blurb:
-          'Capacity-building feeds IFMSA-Egypt’s national trainings such as CleoApaTrain, PHLT and IPET, developing certified trainers.',
-        type: 'Workshop',
-        scope: 'IFMSA-Egypt',
-      },
-    ],
   },
   {
     name: 'Research Support Division',
@@ -605,8 +435,7 @@ export const committees = [
   },
 ]
 
-// NOTE: the Hero's "Members" figure is dynamic, see useMemberCount in
-// src/data/membersMeta.js (the live roster count from Supabase).
+// The Hero's "Members" figure is live: see src/hooks/useMemberCount.js.
 
 // --- Slug helpers (used by the per-committee routes) ---------------------
 // A committee may set an explicit `slug`; otherwise it's derived from abbr.
@@ -617,25 +446,16 @@ export const committeeBySlug = (slug) =>
   committees.find((c) => slugFor(c) === String(slug).toLowerCase())
 
 // --- Society-wide info --------------------------------------------------
-// Paste the society's public Google Calendar address into `calendarId`
-// (e.g. "abc123@group.calendar.google.com") OR a full embed src URL.
 export const society = {
   // Official name per Constitution §1.1.
   name: "Ain Shams University Students' Scientific Society",
-  calendarId: '', // e.g. 'xxxxx@group.calendar.google.com'
-  // Public contact = Secretary General (handles correspondence &
-  // member communication per Constitution §4.2.2 / §8).
+  // Public contact is the Secretary General (correspondence and member
+  // communication per Constitution §4.2.2 / §8).
   contactEmail: 'ausss.secgen@gmail.com',
-  // Official handle is `ausss_ainshams` per Constitution §14.2.5.
-  // Stored as a full URL because it is consumed directly as a link href.
-  instagram: 'https://instagram.com/ausss_ainshams',
-  timezone: 'Africa/Cairo',
 }
 
 // --- Official social channels (Constitution §14.2) ---------------------
-// `key` selects the brand icon in the Social page / footer.
-// Facebook: the Constitution names the page but not its URL, paste the
-// real page URL into `href` below (currently a placeholder).
+// `key` selects the brand icon in the contact page and the footer.
 export const socials = [
   {
     key: 'instagram',
@@ -697,7 +517,7 @@ export const ifmsaScale = {
   ],
   egypt: [
     { value: '1969', label: 'IFMSA-Egypt founded' },
-    { value: '80,000', label: 'Egyptian med students' },
+    { value: '80,000', label: 'Egyptian medical students' },
     { value: '31', label: 'Local committees' },
     { value: 'Ain Shams', label: 'AUSSS local committee' },
   ],
@@ -892,7 +712,7 @@ export const exchange = {
       blurb:
         'A four-week clinical or research clerkship somewhere else in the world, arranged through IFMSA.',
       eyebrow: 'Outgoing exchange',
-      title: 'Going Abroad',
+      title: 'Going abroad',
       label: 'Going abroad (outgoing)',
       intro:
         'Four weeks in a hospital or a lab somewhere else in the world, arranged through IFMSA. You pick the country, apply through AUSSS and IFMSA-Egypt, and arrive to lodging, a meal a day and a doctor or mentor expecting you.',
@@ -903,7 +723,7 @@ export const exchange = {
         'Apply through AUSSS and IFMSA-Egypt with the required documents.',
         'Travel for a four-week (SCOPE) or four-to-eight-week (SCORE) clerkship.',
         'Get lodging, at least one meal a day, and a supervising doctor or mentor.',
-        'Earn an official certificate with ≥80% attendance.',
+        'Earn an official certificate with at least 80% attendance.',
       ],
       links: [{ label: 'IFMSA exchange portal', href: 'https://exchange.ifmsa.org' }],
     },
@@ -936,13 +756,10 @@ export const exchange = {
   },
   // The third thing people arrive at /exchange looking for: not a direction,
   // but a place on the team that runs both of them (LEOs, assistants, CBDA).
-  // Exchange spans two committees, SCOPE and SCORE, so this points at the
-  // society's own join page, which lists both and leads to their open calls.
-  // Repoint `to` if recruitment ever gets its own destination.
   joinTeam: {
     to: '/exchange/join',
     eyebrow: 'Get involved',
-    title: 'Join the Exchange Team',
+    title: 'Join the exchange team',
     blurb:
       'Run the programme rather than travel on it: three officers, three assistants, and how you get one of those seats.',
     cta: 'See the roles',
@@ -990,9 +807,9 @@ export const exchange = {
       },
     ],
     // The bottom tier, and the widest one: a contact person is assigned to
-     // each incoming student rather than to the committee, so there are as many
-     // of them in a season as there are arrivals. One role, many holders, it
-     // renders as a single full-width node rather than a row.
+    // each incoming student rather than to the committee, so there are as many
+    // of them in a season as there are arrivals. One role, many holders, it
+    // renders as a single full-width node rather than a row.
     contactPersons: {
       abbr: 'Contact Persons',
       title: 'One paired with every incoming student',
@@ -1006,9 +823,9 @@ export const exchange = {
         'Every student arriving at Ain Shams, clinical through SCOPE or research through SCORE, is paired with a contact person for their month here: the one who meets them, keeps them oriented around the hospital and the city, and makes the social programme actually happen. Recruited fresh each exchange season, and the most common first role in exchange.',
     },
     // None of the assistants belong to a single committee: the LORE runs
-     // research exchange in both directions, so every one of them works to the
-     // LORE as well as to their clinical counterpart. Hence the site accent
-     // rather than a committee colour, only the three officers carry those.
+    // research exchange in both directions, so every one of them works to the
+    // LORE as well as to their clinical counterpart. Hence the site accent
+    // rather than a committee colour, only the three officers carry those.
     assistants: [
       {
         abbr: 'Incomings Assistant',
@@ -1041,11 +858,11 @@ export const exchange = {
   // How you apply to go abroad, the outgoing flow, so it renders on
   // /exchange/outgoings rather than the hub.
   timeline: [
-    { step: 'Exchange Exam Registration', body: 'Wait for the Exchange Exam registration to open, then apply.' },
+    { step: 'Exchange exam', body: 'Register when the exchange exam opens, then sit it.' },
     { step: 'Interview', body: 'Attend your exchange interview.' },
     { step: 'Get your contract', body: 'Selected applicants are assigned their exchange contract.' },
-    { step: 'Prepare & travel', body: 'Complete pre-departure preparation, then travel for your clerkship abroad.' },
-    { step: 'Certificate', body: 'Finish with ≥80% attendance and receive your official certificate.' },
+    { step: 'Prepare and travel', body: 'Complete the pre-departure preparation, then travel for your clerkship.' },
+    { step: 'Certificate', body: 'Finish with at least 80% attendance and receive your official certificate.' },
   ],
   links: [
     { label: 'IFMSA exchange portal', href: 'https://exchange.ifmsa.org' },

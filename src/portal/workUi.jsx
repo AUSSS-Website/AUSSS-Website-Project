@@ -1,8 +1,8 @@
 import { todayCairo } from './officerQueries.js'
 
-// Small shared pieces for the Phase 3 pages (tasks, updates, notifications):
-// labels for the database's status / priority / kind values, due-date wording,
-// and the chips every list renders.
+// Small shared pieces for the tasks, updates and notifications pages: labels
+// for the database's status / priority / kind values, due-date wording, and
+// the chips every list renders.
 
 export const TASK_STATUSES = [
   ['todo', 'To do'],
@@ -85,7 +85,7 @@ function dayDiff(due) {
 }
 
 // Due dates are Cairo calendar days and the day itself is still on time.
-export function dueInfo(task) {
+function dueInfo(task) {
   if (!task.due_on) return null
   const d = dayDiff(task.due_on)
   const date = new Date(`${task.due_on}T12:00:00`).toLocaleDateString(undefined, {

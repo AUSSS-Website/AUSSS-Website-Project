@@ -15,18 +15,18 @@ import {
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
+import { smallInputCls } from '../../workUi.jsx'
 
-// Officer-side Open Calls management for the portal, ported from
-// src/components/officerCalls.jsx (the Apps-Script version) onto Supabase.
+// Officer-side Open Calls management for the portal.
 //
-// Three views, one file, same convention as before:
+// Three views, one file:
 //   CallsPanel        list of this committee's calls (the entry point)
 //   CallEditor        create / edit a call, its positions and its questions
 //   ApplicationsList  who applied, what they said, and how triage is going
 //
 // Every read and write goes through officerQueries.js; authorisation lives in
-// the database (RLS), so a failed write surfaces here as a thrown error with a
-// message, never as a silently ignored save.
+// the database (row-level security), so a failed write surfaces here as a
+// thrown error with a message, never as a silently ignored save.
 
 const MAX_POSITIONS = 8
 const MAX_QUESTIONS = 6
@@ -37,9 +37,6 @@ const APPLICATION_STATUSES = [
   ['accepted', 'Accepted'],
   ['declined', 'Declined'],
 ]
-
-const smallInputCls =
-  'w-full rounded-lg border border-white/15 bg-forest-950 px-3 py-2 text-sm text-white placeholder:text-silver/40 focus:border-medical focus:outline-none'
 
 // Client-side ids for new positions/questions. The database keeps whatever id
 // we send (falling back to p0/q0 when blank), and applications reference
@@ -52,8 +49,7 @@ function uid(prefix) {
   }
 }
 
-// The old file's Panel was a labelled section, not a card; portalUi's Field is
-// the same label + hint pattern, so it is wrapped here to keep the old width.
+// A labelled section (not a card): portalUi's Field, kept to a readable width.
 function Section({ label, hint, children }) {
   return (
     <section className="mx-auto max-w-3xl">
@@ -85,9 +81,9 @@ function BackButton({ onClick }) {
 function StatusPill({ call }) {
   const map = {
     open: ['Open', 'bg-medical/20 text-medical-light'],
-    expired: ['Closed, deadline passed', 'bg-amber-400/15 text-amber-300'],
+    expired: ['Closed: deadline passed', 'bg-amber-400/15 text-amber-300'],
     closed: ['Closed by you', 'bg-white/10 text-silver/70'],
-    draft: ['Draft, not visible', 'bg-white/10 text-silver/70'],
+    draft: ['Draft: not visible', 'bg-white/10 text-silver/70'],
   }
   const [label, cls] = map[call.effectiveStatus] || map.draft
   return (
@@ -296,7 +292,7 @@ export default function CallsPanel({ committee }) {
 }
 
 // ── Create / edit ───────────────────────────────────────────────────────────
-export function CallEditor({ committee, call, onDone, onCancel }) {
+function CallEditor({ committee, call, onDone, onCancel }) {
   const editing = Boolean(call)
   const { create, update } = useCallMutations(committee.slug, committee.id)
   const [title, setTitle] = useState(call?.title || '')
@@ -594,11 +590,11 @@ export function CallEditor({ committee, call, onDone, onCancel }) {
         </div>
       </Section>
 
-      {/* Application emails are not sent in Phase 2; the address is kept so
-          switching them on later needs no re-entry. */}
+      {/* Application emails are not sent yet; the address is kept so switching
+          them on later needs no re-entry. */}
       <Section
         label="Notifications"
-        hint="Also notify (optional). Saved for when application emails are switched on."
+        hint="Optional. Application emails aren’t sent yet; this address is saved for when they are."
       >
         <input
           type="email"
@@ -788,7 +784,7 @@ function ApplicationRow({ app, onPatch }) {
   )
 }
 
-export function ApplicationsList({ call, onBack }) {
+function ApplicationsList({ call, onBack }) {
   const applications = useApplications(call.id)
   const updateApplication = useUpdateApplication(call.id)
   const rows = applications.data || []

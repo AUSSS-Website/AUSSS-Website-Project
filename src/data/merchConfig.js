@@ -1,38 +1,28 @@
-// Runtime config for the merch order flow.
-//
-// Why this lives here: lets the AUSSS team flip the shop on/off, paste in
-// the Apps Script web app URL, and update payment handles without touching
-// any UI code. Phase 4 of the rollout fills in ORDERS_WEBAPP_URL.
+// Switches, endpoint and payment handles for the merch shop, kept out of the
+// UI code so the team can change them without touching a component.
 
-// Master switch. When false the checkout shows a "pre-orders are closed"
-// message instead of the form, and /merch's "Order" CTAs degrade to a
-// "follow our channels" hint. Useful between drops.
+// When false the checkout shows a "pre-orders are closed" message instead of
+// the form. Useful between drops.
 export const ORDERS_OPEN = true
 
-// The Apps Script web app deployed from apps-script/orders.gs (Phase 4).
-// Empty string = use the stub submit handler that just console-logs the
-// payload, so we can still review the UX end-to-end in dev.
+// The Apps Script web app deployed from apps-script/orders.gs. It emails each
+// order to aussswebsite@gmail.com; change TEAM_EMAIL there and redeploy to
+// reroute them.
 export const ORDERS_WEBAPP_URL =
   'https://script.google.com/macros/s/AKfycbygftItgPl5_dOdQFlOllM8XzATj3SEgBoy4bVc1OIflJWmeBImzbWc5WkTDwEqmVJE/exec'
 
-// Order notifications are sent from inside apps-script/orders.gs, currently to
-// aussswebsite@gmail.com. To reroute them, edit TEAM_EMAIL there and redeploy
-// the script, nothing on this side needs to change.
-
 // ── Payment methods ─────────────────────────────────────────────────────
-// Each entry becomes a tile on the checkout page. Set `available: false`
-// to temporarily hide one (e.g. Instapay down for maintenance) without
-// deleting the config.
+// Each entry is a tile on the checkout page. Set `available: false` to hide
+// one temporarily (Instapay down for maintenance, say) without deleting it.
 //
 //   type:
-//     'link'    – payable URL (Instapay request link)
-//     'handle'  – an @handle (Telda etc.)
-//     'phone'   – a mobile number (Vodafone Cash etc.)
+//     'link'    a payable URL (Instapay request link)
+//     'handle'  an @handle (Telda)
+//     'phone'   a mobile number (Vodafone Cash)
 //
-// All methods require the buyer to upload a payment-receipt screenshot
-// before submitting.
+// Every method asks the buyer to upload a receipt screenshot before submitting.
 
-export const PAYMENT_METHODS = [
+const PAYMENT_METHODS = [
   {
     id: 'instapay',
     type: 'link',

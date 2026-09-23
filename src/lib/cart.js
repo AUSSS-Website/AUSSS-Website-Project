@@ -12,7 +12,7 @@ const STORAGE_KEY = 'ausss-cart-v1'
 
 // Per-line quantity ceiling. Group orders go through DMs anyway; this just
 // stops typos/abuse from inflating the cart unbounded.
-export const MAX_QTY = 20
+const MAX_QTY = 20
 
 // Lines silently dropped at load because their product left the catalogue.
 // The checkout page reads this once to tell the user instead of letting the
@@ -145,8 +145,6 @@ export function useCartCount() {
 export function formatEGP(n) {
   return `${Number(n || 0).toLocaleString('en-EG')} EGP`
 }
-
-export { lineKey }
 
 // ── Drawer open/close, shared state so any button can toggle it ─────────
 let drawerOpen = false

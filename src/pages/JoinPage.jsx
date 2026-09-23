@@ -18,7 +18,7 @@ const WHY = [
     body: 'Public-health screenings, awareness drives, peer education and human-rights advocacy that reach thousands of students and the public.',
   },
   {
-    title: 'Train & lead',
+    title: 'Train and lead',
     body: 'Capacity-building tracks and IFMSA trainer pathways turn members into certified trainers, project leads and officers.',
   },
   {
@@ -27,24 +27,16 @@ const WHY = [
   },
   {
     title: 'Bench to bedside',
-    body: 'Research methodology, journal clubs and scientific output embedded alongside clinical training.',
+    body: 'Research methodology, journal clubs and scientific output, alongside your clinical training.',
   },
   {
     title: 'A community',
-    body: 'Six standing committees and four support divisions, a place to contribute, grow and belong throughout medical school.',
+    body: 'Six standing committees and four support divisions: a place to contribute, grow and belong throughout medical school.',
   },
 ]
 
-export default function JoinPage() {
-  usePageTitle(
-    'Join us',
-    'Become part of AUSSS, the Ain Shams University Students’ Scientific Society. Join our committees for research, public health, and global student exchange.',
-  )
-  useReveal()
-  const standing = committees.filter((c) => c.group === 'Standing Committee')
-  const divisions = committees.filter((c) => c.group === 'Support Division')
-
-  const CommitteeRow = ({ list }) => (
+function CommitteeRow({ list }) {
+  return (
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {list.map((c) => {
         const accent = readableAccent(c.color)
@@ -69,6 +61,16 @@ export default function JoinPage() {
       })}
     </div>
   )
+}
+
+export default function JoinPage() {
+  usePageTitle(
+    'Join us',
+    'Become part of AUSSS, the Ain Shams University Students’ Scientific Society. Join our committees for research, public health, and global student exchange.',
+  )
+  useReveal()
+  const standing = committees.filter((c) => c.group === 'Standing Committee')
+  const divisions = committees.filter((c) => c.group === 'Support Division')
 
   return (
     <article className="bg-forest-950">
@@ -125,15 +127,15 @@ export default function JoinPage() {
             Find your committee
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-silver/60">
-            Six standing committees and four support divisions, tap any to see
-            what they do.
+            Six standing committees and four support divisions. Open any of
+            them to see what they do.
           </p>
           <div className="mt-6 flex justify-center">
             <Link
               to="/sorting"
               className="inline-flex items-center gap-2 rounded-full border border-medical/40 bg-medical/10 px-6 py-2.5 text-sm font-semibold text-medical-light transition-colors hover:border-medical hover:text-white"
             >
-              Not sure where you fit? Take the Sorting Quiz
+              Not sure where you fit? Take the Sorting quiz
               <span aria-hidden="true">→</span>
             </Link>
           </div>
@@ -170,18 +172,16 @@ export default function JoinPage() {
               Registration
             </p>
             <p className="relative mt-3 font-serif text-2xl leading-relaxed text-white sm:text-3xl">
-              Membership opens each intake.
+              Registration opens once a year.
             </p>
             <p className="relative mx-auto mt-4 max-w-xl text-base leading-relaxed text-silver/75">
               Recruitment isn’t open right now. Leave your email and we’ll let
-              you know the moment the next registration window opens. No spam,
-              just the one heads-up.
+              you know the moment the next window opens. No spam, just the one
+              heads-up.
             </p>
             {WAITLIST_OPEN && (
               <div className="relative mt-8">
                 <SignupForm
-                  kind="waitlist"
-                  withName
                   submitLabel="Notify me when it opens"
                   successText="You’re on the list. We’ll email you when registration opens."
                 />
@@ -201,7 +201,7 @@ export default function JoinPage() {
         {/* FAQ */}
         <section className="reveal mx-auto max-w-3xl">
           <h2 className="heading-serif text-center text-3xl text-white">
-            Frequently asked
+            Frequently asked questions
           </h2>
           <FAQ items={joinFaqs} className="mt-8" />
         </section>

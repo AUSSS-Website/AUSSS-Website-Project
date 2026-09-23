@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { submitStory } from '../lib/stories.js'
-import { STORIES_OPEN, STORIES_WEBAPP_URL } from '../data/storiesConfig.js'
+import { STORIES_OPEN } from '../data/storiesConfig.js'
 
 const PROGRAMME_OPTIONS = [
   'SCOPE: Professional (clinical) exchange',
@@ -28,7 +28,7 @@ export default function ShareStoryPage() {
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState(null) // { ok, reference, error, stub }
+  const [result, setResult] = useState(null) // { ok, reference, error }
 
   if (!STORIES_OPEN) {
     return <StoriesClosed />
@@ -77,9 +77,9 @@ export default function ShareStoryPage() {
             Share your exchange story
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base font-light text-silver/75">
-            Did a SCOPE or SCORE exchange with AUSSS? Tell us what it was like.
-            With your permission we may feature it on this page to inspire the
-            next round of exchange students.
+            Been on a SCOPE or SCORE exchange with AUSSS? Tell us what it was
+            like. With your permission, we may feature it on the exchange pages
+            for the next round of students.
           </p>
         </div>
       </header>
@@ -232,14 +232,6 @@ export default function ShareStoryPage() {
               )}
             </button>
           </div>
-
-          {!STORIES_WEBAPP_URL && (
-            <p className="mx-auto mt-2 max-w-2xl rounded-lg border border-medical/30 bg-medical/5 px-4 py-3 text-center text-xs text-medical-light">
-              <strong>Dev preview:</strong> the story backend isn&rsquo;t
-              connected yet; submitting will log the payload to the console
-              and show a fake reference.
-            </p>
-          )}
         </form>
       </div>
     </article>
@@ -313,11 +305,6 @@ function StorySuccess({ result, name }) {
               {result.reference}
             </span>
           </div>
-          {result.stub && (
-            <p className="mt-5 text-[11px] uppercase tracking-[0.16em] text-medical-light/70">
-              Dev preview · backend not connected
-            </p>
-          )}
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/exchange"
@@ -348,7 +335,7 @@ function StoriesClosed() {
           </h1>
           <p className="mt-4 text-base text-silver/75">
             We&rsquo;re not collecting new exchange stories right now. Follow
-            our channels to hear when submissions reopen.
+            our channels to hear when submissions open again.
           </p>
           <Link
             to="/exchange"

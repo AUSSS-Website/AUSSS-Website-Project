@@ -16,7 +16,7 @@ function subscribe(cb) {
   return () => listeners.delete(cb)
 }
 
-export function setTheme(next) {
+function setTheme(next) {
   const isDark = next === 'dark'
   document.documentElement.classList.toggle('dark', isDark)
   try {
@@ -25,7 +25,7 @@ export function setTheme(next) {
   listeners.forEach((cb) => cb())
 }
 
-export function toggleTheme() {
+function toggleTheme() {
   setTheme(currentTheme() === 'dark' ? 'light' : 'dark')
 }
 

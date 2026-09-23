@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 
-// Plain-language privacy policy for ausss-ainshams.org and the members portal. Written
-// to be read by a medical student in two minutes, not by a lawyer. Keep it
-// truthful: every item below maps to a real form, table or service in this
-// repo. Update LAST_UPDATED whenever the substance changes.
-const LAST_UPDATED = '13 September 2026'
+// Plain-language privacy policy for ausss-ainshams.org and the members portal.
+// Written to be read by a medical student in two minutes, not by a lawyer.
+// Keep it truthful: every item below maps to a real form, table or service in
+// this repo. Update LAST_UPDATED whenever the substance changes.
+const LAST_UPDATED = '24 September 2026'
+// (newsletter sign-up removed the same day; only the waitlist form remains)
 const SECGEN_EMAIL = 'ausss.secgen@gmail.com'
 const IFMSA_EXCHANGES_PRIVACY = 'https://ifmsa.org/exchanges-privacy/'
 const IFMSA_PRIVACY = 'https://ifmsa.org/privacy/'
@@ -25,29 +26,27 @@ const SECTIONS = [
     title: 'Browsing the public site',
     body: [
       'You can read every public page without an account and without giving us any information.',
-      'We do not use advertising cookies or trackers. If we turn on Vercel Web Analytics, it counts page views without cookies and without identifying you. If we ever enable Google Analytics, this page will say so.',
-      'Some pages embed content from Google Calendar, Google Drive, Canva, Instagram and Google Maps. When such an embed loads, that provider receives your browser request under its own privacy policy.',
+      'We do not use advertising cookies or trackers. Vercel Web Analytics counts page views without cookies and without identifying you.',
+      'Some pages embed content from Google Drive, Canva and Google Maps. When such an embed loads, that provider receives your browser request under its own privacy policy.',
     ],
   },
   {
     id: 'forms',
     title: 'Forms on the site',
     bullets: [
-      'Newsletter and recruitment alerts: your name, email address and an optional phone number, so we can send you the AUSSS Digest and tell you when applications open.',
-      'Join applications: the details you enter on the join form, used only to process your application to the society or a committee.',
-      'Exchange stories: your name, phone number, destination, year, your story and any photos you attach, used to publish the story on the exchange pages if you agree.',
-      'Merch orders: your name, phone number and delivery details, used only to prepare and hand over your order.',
-      'Membership status check: the name and email you type are converted to a one-way hash in your browser and compared with a hashed copy of the roster. The name and email themselves never leave your device.',
+      'Recruitment waitlist: your name and email address, so we can tell you when applications open.',
+      'Applications to open calls, when a committee is recruiting: the details you enter on the form, used only to consider your application.',
+      'Exchange stories: your name, email, phone number, destination, year and your story, used to publish the story on the exchange pages if you agree.',
+      'Merch orders: your name, email, phone number, year, the items you ordered and the payment receipt you upload, used only to prepare and hand over your order.',
+      'Membership status check: the name or email you type is sent to our database, which answers with your own membership record and nothing else. No names or emails from the roster are ever sent to your browser.',
     ],
     after:
-      "Form submissions are stored in spreadsheets in the society's Google account and are seen only by the officers who run that activity.",
+      "Form submissions are stored in spreadsheets in the society's Google account, or in the society's database for open calls, and are seen only by the officers who run that activity.",
   },
   {
     id: 'portal',
     title: 'The members portal',
-    body: [
-      'Signing in uses Google or an emailed sign-in link. We never store a password.',
-    ],
+    body: ['Signing in uses Google or an emailed sign-in link. We never store a password.'],
     bullets: [
       'From your sign-in provider: your email address, display name and profile picture.',
       'What you add yourself: phone number, faculty year, and whether you want to appear in a members directory (off by default).',
@@ -55,8 +54,7 @@ const SECTIONS = [
       'Verification requests: if the roster does not match your email, you can ask the Executive Board to confirm you. We keep the request and the decision.',
       'An audit trail: the portal records who changed what and when, so that membership and position changes can always be traced.',
     ],
-    after:
-      'Your session is kept in your own browser storage so you stay signed in. Signing out clears it.',
+    after: 'Your session is kept in your own browser storage so you stay signed in. Signing out clears it.',
   },
   {
     id: 'who-sees',
@@ -67,17 +65,16 @@ const SECTIONS = [
       'Officers of a committee can see the members who hold a position in that committee this term, and nothing beyond it.',
       'Other members cannot see your record. A directory, when it exists, will show only people who opted in.',
     ],
-    after:
-      'These rules are enforced in the database itself, not only in the screens you see.',
+    after: 'These rules are enforced in the database itself, not only in the screens you see.',
   },
   {
     id: 'services',
     title: 'Services that hold data for us',
     bullets: [
       'Supabase hosts the portal database and sign-in service.',
-      'Vercel hosts the website.',
+      'Vercel hosts the website and counts page views.',
       'Google provides sign-in, and Google Sheets and Drive hold form submissions and society documents.',
-      'Resend, once configured, delivers sign-in and notification emails.',
+      'Resend delivers sign-in and notification emails.',
     ],
     after:
       'Each of these processes data on our instructions. We do not sell or rent your information, and we do not share it with anyone for advertising.',
@@ -106,7 +103,7 @@ const SECTIONS = [
     bullets: [
       'See and correct your portal details at any time under Profile.',
       'Ask us for a copy of what we hold about you, or to correct or delete it, by emailing the Secretary General. Deleting your portal account removes your sign-in and profile; membership records that the society must keep, such as the roster and past positions, are kept for its records.',
-      'Unsubscribe from the Digest with the link in any email, or by writing to us.',
+      'Ask to be taken off the recruitment waitlist at any time by writing to us.',
     ],
   },
   {
@@ -119,7 +116,10 @@ const SECTIONS = [
 ]
 
 export default function PrivacyPage() {
-  usePageTitle('Privacy policy', 'What AUSSS collects on this site and in the members portal, who can see it, and how IFMSA handles exchange data.')
+  usePageTitle(
+    'Privacy policy',
+    'What AUSSS collects on this site and in the members portal, who can see it, and how IFMSA handles exchange data.',
+  )
   useReveal()
 
   return (

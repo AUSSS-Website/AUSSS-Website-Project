@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase.js'
 
 export const PAGE_SIZE = 50
 
-export const rosterKeys = {
+const rosterKeys = {
   all: ['roster'],
   list: () => ['roster', 'list'],
   runs: () => ['roster', 'runs'],
@@ -23,7 +23,7 @@ const COLUMNS =
 
 // The columns an officer may type into; everything else is kept by the database
 // (years_spent is counted from joined_year and the academic year).
-export const EDITABLE = [
+const EDITABLE = [
   'full_name',
   'email',
   'status',
@@ -44,7 +44,7 @@ function unwrap({ data, error }) {
 // The whole roster, in name order. A few hundred rows (about 100 KB): the page
 // searches it in the browser (rosterSearch.js) so typing never waits on the
 // network. PostgREST caps a response at 1000 rows, hence the loop.
-export async function fetchRoster() {
+async function fetchRoster() {
   const rows = []
   for (let from = 0; ; from += 1000) {
     const chunk = unwrap(
@@ -60,7 +60,7 @@ export async function fetchRoster() {
   }
 }
 
-export async function saveRosterEntry({ id, values }) {
+async function saveRosterEntry({ id, values }) {
   const patch = {}
   for (const k of EDITABLE) {
     if (!(k in values)) continue
@@ -79,13 +79,13 @@ export async function saveRosterEntry({ id, values }) {
   return unwrap(await q.select(COLUMNS).single())
 }
 
-export async function deleteRosterEntry(id) {
+async function deleteRosterEntry(id) {
   return unwrap(await supabase.from('roster_entries').delete().eq('id', id))
 }
 
 // Hand a portal-owned row back to the spreadsheet: the next import may
 // overwrite it again.
-export async function releaseRosterEntry(id) {
+async function releaseRosterEntry(id) {
   return unwrap(
     await supabase
       .from('roster_entries')
@@ -96,11 +96,11 @@ export async function releaseRosterEntry(id) {
   )
 }
 
-export async function importRoster({ rows, batch }) {
+async function importRoster({ rows, batch }) {
   return unwrap(await supabase.rpc('import_roster', { rows, batch }))
 }
 
-export async function fetchSyncRuns() {
+async function fetchSyncRuns() {
   return (
     unwrap(
       await supabase
@@ -112,17 +112,17 @@ export async function fetchSyncRuns() {
   )
 }
 
-export const fetchTokenInfo = async () => unwrap(await supabase.rpc('roster_sync_token_info'))
-export const rotateToken = async () => unwrap(await supabase.rpc('rotate_roster_sync_token'))
-export const revokeToken = async () => unwrap(await supabase.rpc('revoke_roster_sync_token'))
+const fetchTokenInfo = async () => unwrap(await supabase.rpc('roster_sync_token_info'))
+const rotateToken = async () => unwrap(await supabase.rpc('rotate_roster_sync_token'))
+const revokeToken = async () => unwrap(await supabase.rpc('revoke_roster_sync_token'))
 
-export const fetchSheetInfo = async () => unwrap(await supabase.rpc('roster_sheet_info'))
+const fetchSheetInfo = async () => unwrap(await supabase.rpc('roster_sheet_info'))
 // sheet: a Google Sheets link or id; null disconnects.
-export const setSheet = async (sheet) => unwrap(await supabase.rpc('set_roster_sheet', { sheet }))
+const setSheet = async (sheet) => unwrap(await supabase.rpc('set_roster_sheet', { sheet }))
 
 // Asks the roster-sheet-sync Edge Function to pull the connected sheet now. It
 // lets this call in because the session belongs to an EB member.
-export async function syncSheetNow() {
+async function syncSheetNow() {
   const { data, error } = await supabase.functions.invoke('roster-sheet-sync', { body: {} })
   if (error) {
     // FunctionsHttpError keeps the JSON body on .context (a Response).
@@ -141,13 +141,13 @@ export const matchRosterLines = async (lines) =>
 
 // action: 'lga' | 'nga' | 'status' | 'committee'; label names the event; value is
 // the status, or the committee's slug ('' takes people out of their committee).
-export const bulkUpdateRoster = async ({ ids, action, label, value }) =>
+const bulkUpdateRoster = async ({ ids, action, label, value }) =>
   unwrap(await supabase.rpc('bulk_update_roster', { ids, action, label, value: value || null }))
 
-export const undoBulkUpdate = async (log_id) =>
+const undoBulkUpdate = async (log_id) =>
   unwrap(await supabase.rpc('undo_roster_bulk_update', { log_id }))
 
-export async function fetchBulkUpdates() {
+async function fetchBulkUpdates() {
   return (
     unwrap(
       await supabase
@@ -163,12 +163,12 @@ export async function fetchBulkUpdates() {
 
 // roster_entries is closed to officers; rpc/committee_roster hands them the
 // members linked to their committee, membership facts read-only.
-export const fetchCommitteeRoster = async (committeeId) =>
+const fetchCommitteeRoster = async (committeeId) =>
   unwrap(await supabase.rpc('committee_roster', { committee: committeeId })) || []
 
 // Sets the member's one position in the committee. 'assigned' (the member has an
 // account), 'invited' (waits for their first sign-in) or 'noted' (no email on file).
-export const assignRosterMember = async ({ entry, position }) =>
+const assignRosterMember = async ({ entry, position }) =>
   unwrap(await supabase.rpc('assign_roster_member', { entry, position }))
 
 // ---- position types ---------------------------------------------------------
@@ -176,7 +176,7 @@ export const assignRosterMember = async ({ entry, position }) =>
 const POSITION_COLUMNS = 'id, key, committee_id, title, short_title, level, sort, active, can_assign_tasks'
 
 // Every committee position (society-wide ones are not handed out from the roster).
-export async function fetchPositions() {
+async function fetchPositions() {
   return (
     unwrap(
       await supabase
@@ -190,7 +190,7 @@ export async function fetchPositions() {
 }
 
 // EB only (RLS). The database makes the key.
-export const addPosition = async ({ committee_id, title, level }) =>
+const addPosition = async ({ committee_id, title, level }) =>
   unwrap(
     await supabase
       .from('positions')
@@ -199,12 +199,12 @@ export const addPosition = async ({ committee_id, title, level }) =>
       .single(),
   )
 
-export const updatePosition = async ({ id, patch }) =>
+const updatePosition = async ({ id, patch }) =>
   unwrap(await supabase.from('positions').update(patch).eq('id', id).select(POSITION_COLUMNS).single())
 
 const NOTE_COLUMNS = 'id, roster_entry_id, committee_id, author_id, body, created_at, updated_at'
 
-export async function fetchMemberNotes({ entryId, committeeId }) {
+async function fetchMemberNotes({ entryId, committeeId }) {
   return (
     unwrap(
       await supabase
@@ -217,7 +217,7 @@ export async function fetchMemberNotes({ entryId, committeeId }) {
   )
 }
 
-export const addMemberNote = async ({ entryId, committeeId, body }) =>
+const addMemberNote = async ({ entryId, committeeId, body }) =>
   unwrap(
     await supabase
       .from('member_notes')
@@ -226,14 +226,14 @@ export const addMemberNote = async ({ entryId, committeeId, body }) =>
       .single(),
   )
 
-export const deleteMemberNote = async (id) =>
+const deleteMemberNote = async (id) =>
   unwrap(await supabase.from('member_notes').delete().eq('id', id))
 
 // ---- status upgrades --------------------------------------------------------
 
 // Members whose GA counts reach the next tier: [{ id, full_name, email, status,
 // next, lgas, ngas }]. The database only proposes; the EB approves.
-export const fetchUpgradeCandidates = async () =>
+const fetchUpgradeCandidates = async () =>
   unwrap(await supabase.rpc('roster_upgrade_candidates')) || []
 
 const byTarget = (rows) => {
@@ -244,7 +244,7 @@ const byTarget = (rows) => {
 
 // One logged (and undoable) bulk update per target status. The minute in the
 // label keeps two approvals on the same day apart, since a label applies once.
-export async function approveUpgrades(rows) {
+async function approveUpgrades(rows) {
   const stamp = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
   for (const [next, ids] of byTarget(rows)) {
     await bulkUpdateRoster({ ids, action: 'status', value: next, label: `Upgrade to ${next} · ${stamp}` })
@@ -252,7 +252,7 @@ export async function approveUpgrades(rows) {
 }
 
 // "Not now": remembered per target, for the academic year it was said in.
-export async function dismissUpgrades(rows) {
+async function dismissUpgrades(rows) {
   const at = new Date().toISOString()
   for (const [next, ids] of byTarget(rows)) {
     unwrap(

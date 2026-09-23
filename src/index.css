@@ -213,7 +213,6 @@
   .animate-fade-up,
   .animate-fade-in,
   .animate-reveal,
-  .animate-float,
   .animate-pulse-ring {
     animation: none !important;
     opacity: 1 !important;

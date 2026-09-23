@@ -12,22 +12,12 @@
 //   1 a typo away from a word of the name
 // so exact hits come first and spelling neighbours follow.
 // Keep skeleton() in step with app.name_skeleton if either changes.
-
-// Same as normalize() in src/lib/membership.js and app.normalize_text: strip
-// diacritics, lower-case, collapse whitespace. Local so this module stays pure
-// (no env, no network) and can be exercised from Node.
-const normalize = (v) =>
-  String(v ?? '')
-    .normalize('NFKD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
+import { normalize } from '../lib/text.js'
 
 const FOLD = { j: 'g', q: 'k', c: 'k', z: 's' }
 const fold = (s) => s.replace(/[jqcz]/g, (ch) => FOLD[ch])
 
-export function skeleton(text) {
+function skeleton(text) {
   const prepared = normalize(text)
     .replace(/-/g, ' ')
     .replace(/ph/g, 'f')

@@ -4,11 +4,10 @@
 //
 // An <iframe>, not an <object>: the site's Content-Security-Policy keeps
 // `object-src 'none'` (plugins stay off) and allows same-origin frames through
-// `frame-src 'self'` (vercel.json, netlify.toml, public/_headers). The earlier
-// <object> with an <iframe> inside was refused on both counts, and the page
-// showed "blocked" instead of the document. An iframe has no fallback content,
-// so the way out for browsers that can't show a PDF inline (most phones) is
-// the link underneath.
+// `frame-src 'self'` (vercel.json). The earlier <object> with an <iframe>
+// inside was refused on both counts, and the page showed "blocked" instead of
+// the document. An iframe has no fallback content, so the way out for browsers
+// that can't show a PDF inline (most phones) is the link underneath.
 // fit: 'width' (default) scales the page to the frame width; 'page' fits a
 // whole page within the frame (one page per view).
 export default function PdfFrame({ src, title, heightClass = 'h-[82vh]', fit = 'width' }) {

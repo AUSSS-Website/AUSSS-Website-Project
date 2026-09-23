@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 
-// Officer-side reads and writes for Phase 2: site settings (EB), the
-// committee page document, Open Calls and their applications. Same shape as
-// queries.js: plain async functions first, react-query hooks underneath.
-// Authorisation is entirely in the database (RLS + the two RPCs); these
+// Officer-side reads and writes: site settings (EB), the committee page
+// document, Open Calls and their applications. Same shape as queries.js:
+// plain async functions first, react-query hooks underneath. Authorisation
+// is entirely in the database (row-level security and the RPCs); these
 // helpers only decide what to fetch.
 
-export const officerKeys = {
+const officerKeys = {
   siteSettings: () => ['site-settings'],
   committee: (slug) => ['committee', slug],
   calls: (slug) => ['calls', slug],
@@ -22,14 +22,14 @@ function unwrap({ data, error }) {
 // ---- site settings ---------------------------------------------------------
 
 // Returns { key: value } for every row.
-export async function fetchSiteSettings() {
+async function fetchSiteSettings() {
   const rows = unwrap(await supabase.from('site_settings').select('key,value,updated_at'))
   const out = {}
   for (const r of rows || []) out[r.key] = r.value
   return out
 }
 
-export async function upsertSiteSetting(key, value) {
+async function upsertSiteSetting(key, value) {
   return unwrap(
     await supabase
       .from('site_settings')
@@ -62,9 +62,9 @@ export function useUpsertSiteSetting() {
 
 // ---- committee page --------------------------------------------------------
 
-export const COMMITTEE_SELECT = 'id, slug, name, abbr, kind, color, logo, sort, active, page'
+const COMMITTEE_SELECT = 'id, slug, name, abbr, kind, color, logo, sort, active, page'
 
-export async function fetchCommittees() {
+async function fetchCommittees() {
   const rows = unwrap(
     await supabase.from('committees').select(COMMITTEE_SELECT).eq('active', true).order('sort'),
   )
@@ -79,7 +79,7 @@ export function useCommittees(enabled = true) {
   })
 }
 
-export async function fetchCommittee(slug) {
+async function fetchCommittee(slug) {
   return unwrap(
     await supabase.from('committees').select(COMMITTEE_SELECT).eq('slug', slug).maybeSingle(),
   )
@@ -87,7 +87,7 @@ export async function fetchCommittee(slug) {
 
 // RPC: the database normalises the document and returns what it stored.
 // Pass {} to clear the override.
-export async function saveCommitteePage(slug, page) {
+async function saveCommitteePage(slug, page) {
   return unwrap(await supabase.rpc('save_committee_page', { slug, page }))
 }
 
@@ -165,11 +165,11 @@ export function resizeImageToBlob(file, max = 512, quality = 0.85) {
 // Every column, including notify_email, plus the application count. RLS
 // returns the committee's calls only for its officers/EB; others would see
 // just the live ones, but the UI never sends them here.
-export const CALL_SELECT =
+const CALL_SELECT =
   'id, committee_id, status, title, kind, summary, description, commitment, deadline, notify_email, positions, questions, created_by, created_at, updated_at, applications(count)'
 
-// Same rule as the database view / officers.gs: open + past deadline = expired.
-export function effectiveStatus(call) {
+// Same rule as the database view: open + past deadline = expired.
+function effectiveStatus(call) {
   if (!call) return 'draft'
   if (call.status !== 'open') return call.status
   if (call.deadline && call.deadline < todayCairo()) return 'expired'
@@ -202,7 +202,7 @@ function normalizeCallRow(row) {
   }
 }
 
-export async function fetchCommitteeCalls(committeeId) {
+async function fetchCommitteeCalls(committeeId) {
   const rows = unwrap(
     await supabase
       .from('calls')
@@ -230,7 +230,7 @@ function toCallRow(fields) {
   }
 }
 
-export async function createCall(committeeId, fields) {
+async function createCall(committeeId, fields) {
   const row = unwrap(
     await supabase
       .from('calls')
@@ -241,21 +241,21 @@ export async function createCall(committeeId, fields) {
   return normalizeCallRow(row)
 }
 
-export async function updateCall(id, fields) {
+async function updateCall(id, fields) {
   const row = unwrap(
     await supabase.from('calls').update(toCallRow(fields)).eq('id', id).select(CALL_SELECT).single(),
   )
   return normalizeCallRow(row)
 }
 
-export async function setCallStatus(id, status) {
+async function setCallStatus(id, status) {
   const row = unwrap(
     await supabase.from('calls').update({ status }).eq('id', id).select(CALL_SELECT).single(),
   )
   return normalizeCallRow(row)
 }
 
-export async function deleteCall(id) {
+async function deleteCall(id) {
   unwrap(await supabase.from('calls').delete().eq('id', id))
   return id
 }
@@ -281,10 +281,10 @@ export function useCallMutations(slug, committeeId) {
 
 // ---- applications ----------------------------------------------------------
 
-export const APPLICATION_SELECT =
+const APPLICATION_SELECT =
   'id, ref, call_id, committee_id, call_title, name, email, phone, year, positions, motivation, answers, status, notes, created_at'
 
-export async function fetchApplications(callId) {
+async function fetchApplications(callId) {
   const rows = unwrap(
     await supabase
       .from('applications')
@@ -295,7 +295,7 @@ export async function fetchApplications(callId) {
   return rows || []
 }
 
-export async function updateApplication(id, patch) {
+async function updateApplication(id, patch) {
   return unwrap(
     await supabase
       .from('applications')

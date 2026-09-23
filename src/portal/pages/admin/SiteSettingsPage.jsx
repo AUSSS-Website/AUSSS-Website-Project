@@ -15,13 +15,13 @@ import {
 // /portal/admin/settings (EB only, gated by RequireEB). Site-wide switches
 // read by every visitor from public.site_settings. Known keys get a proper
 // control; anything else is shown as raw JSON so a new setting can be added
-// from the dashboard before the site has a UI for it.
+// from the Supabase dashboard before the site has a control for it.
 
 const KNOWN = [
   {
     key: 'magazineInHeader',
     label: 'Show the AUSSS Magazine in the header',
-    hint: 'When off, the Magazine link disappears from the public navbar for everyone.',
+    hint: 'When off, the Magazine button disappears from the public site’s header for everyone.',
     type: 'boolean',
     fallback: true,
   },
@@ -40,7 +40,7 @@ function BooleanSetting({ def, value, onChange, busy }) {
   )
 }
 
-// Raw editor for keys the UI doesn't know. The value must be valid JSON.
+// Raw editor for keys this page does not know. The value must be valid JSON.
 function RawSetting({ k, value, onSave, busy }) {
   const [text, setText] = useState(JSON.stringify(value))
   const [err, setErr] = useState('')
@@ -51,7 +51,7 @@ function RawSetting({ k, value, onSave, busy }) {
     try {
       parsed = JSON.parse(text)
     } catch {
-      setErr('Not valid JSON.')
+      setErr('That is not valid JSON.')
       return
     }
     onSave(parsed)

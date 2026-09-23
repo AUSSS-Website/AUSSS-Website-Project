@@ -89,10 +89,10 @@ export default function ContactPage() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h1 className="heading-serif mt-5 text-4xl text-white sm:text-6xl">
-            Contact Us
+            Contact us
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-silver/75">
-            Reach the Executive Board, a standing committee, or a support
+            Reach the Executive Board, a standing committee or a support
             division directly, or follow us on our official channels.
           </p>
           {society.contactEmail && (
@@ -148,13 +148,13 @@ export default function ContactPage() {
           ))}
         </Group>
 
-        <Group title="Standing Committees">
+        <Group title="Standing committees">
           {standing.map((c) => (
             <div key={slugFor(c)}>{unitRows(c)}</div>
           ))}
         </Group>
 
-        <Group title="Support Divisions">
+        <Group title="Support divisions">
           {support.map((c) => (
             <div key={slugFor(c)}>{unitRows(c)}</div>
           ))}
@@ -166,7 +166,7 @@ export default function ContactPage() {
             to="/#officials"
             className="text-medical-light hover:text-white"
           >
-            Browse all committees &amp; divisions →
+            Browse all committees and divisions →
           </Link>
         </p>
       </div>

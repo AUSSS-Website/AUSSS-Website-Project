@@ -1,14 +1,5 @@
 import { executiveBoard } from '../data/society.js'
-
-const initials = (name) =>
-  name
-    .replace(/^Dr\.\s*/, '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
+import { initials } from '../lib/text.js'
 
 function Member({ m, size = 'md' }) {
   const ring =
@@ -135,8 +126,8 @@ export default function ExecutiveBoard() {
             Executive Board
           </h2>
           <p className="mt-4 text-lg font-light text-silver/70">
-            The governing council steering the society’s academic vision and
-            operations.
+            The elected board that sets the society&rsquo;s direction and runs
+            its day-to-day.
           </p>
         </div>
 

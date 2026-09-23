@@ -23,9 +23,8 @@ export default function CommitteePage() {
 
   if (!c) return <Navigate to="/" replace />
 
-  // Live officer edits (photo / tagline / bio / what-we-do / members) merged
-  // on top of the static society.js committee. Empty when no override exists
-  // or the feature is dormant.
+  // Live officer edits (photo, tagline, bio, what-we-do, members) merged on
+  // top of the static society.js committee. Empty when there is no override.
   const ov = overrides[slugFor(c)] || {}
 
   const accent = readableAccent(c.color)
@@ -97,7 +96,7 @@ export default function CommitteePage() {
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            All committees &amp; divisions
+            All committees and divisions
           </Link>
 
           <div className="mx-auto mb-6 flex h-28 items-center justify-center">
@@ -182,7 +181,7 @@ export default function CommitteePage() {
             but never this canonical IFMSA framing. */}
         {c.ifmsa && (
           <section className="reveal mx-auto max-w-5xl">
-            <SectionLabel accent={accent}>From IFMSA · mission &amp; pillars</SectionLabel>
+            <SectionLabel accent={accent}>From IFMSA · mission and pillars</SectionLabel>
             <div
               className="mt-8 rounded-3xl border bg-forest-900/60 p-8 sm:p-10"
               style={{ borderColor: rgba(c.color, 0.3) }}
@@ -203,7 +202,7 @@ export default function CommitteePage() {
               {c.ifmsa.pillars?.length > 0 && (
                 <>
                   <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.2em] text-silver/45">
-                    Objectives &amp; focus areas
+                    Objectives and focus areas
                   </p>
                   <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
                     {c.ifmsa.pillars.map((item, idx) => (
@@ -229,7 +228,7 @@ export default function CommitteePage() {
                 rel="noopener noreferrer"
                 className="mt-8 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-silver/50 transition-colors hover:text-white"
               >
-                Mission &amp; objectives as published by IFMSA
+                Mission and objectives as published by IFMSA
                 <svg
                   viewBox="0 0 24 24"
                   className="h-3.5 w-3.5"
@@ -344,7 +343,7 @@ export default function CommitteePage() {
             to="/#officials"
             className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
           >
-            Back to all committees &amp; divisions
+            Back to all committees and divisions
           </Link>
         </div>
       </div>

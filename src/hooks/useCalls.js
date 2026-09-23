@@ -5,16 +5,10 @@ import { readJson } from '../lib/localCache.js'
 
 // Live Open Calls, keyed by committee slug, the public read.
 //
-// Same shape as useOfficerOverrides: one GET on mount, a localStorage cache so
-// a repeat visit paints immediately, and failures swallowed in favour of the
-// cached (or empty) map. An empty map is a perfectly normal state, most
-// committees have no open calls most of the time, and the section just doesn't
-// render.
-//
-// It also doubles as the feature's availability probe: a backend that predates
-// Open Calls answers `?action=calls` with "Unknown action" over a readable GET,
-// so we land on the empty map and no Apply button is ever shown for an
-// endpoint that wouldn't answer it.
+// Same shape as useOfficerOverrides: one fetch on mount, a localStorage cache
+// so a repeat visit paints immediately, and failures swallowed in favour of
+// the cached (or empty) map. An empty map is a normal state: most committees
+// have no open calls most of the time, and the section just doesn't render.
 
 const CACHE_KEY = 'ausss-calls-cache'
 

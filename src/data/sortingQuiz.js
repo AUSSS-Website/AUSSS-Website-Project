@@ -28,20 +28,6 @@ import { AXES, AXIS_INFO, COMMITTEE_PROFILES } from './committeeProfiles.js'
 
 export const STORAGE_KEY = 'ausss:sorting-result'
 
-// Paste a Google Apps Script /exec URL here to start counting results in a
-// sheet (same fire-and-forget GET pattern as the magazine engagement).
-const SORTING_WEBAPP_URL = ''
-
-export function trackSorting(abbr) {
-  if (!SORTING_WEBAPP_URL) return
-  try {
-    const url = `${SORTING_WEBAPP_URL}?action=sorting_result&committee=${encodeURIComponent(abbr)}`
-    fetch(url).catch(() => {})
-  } catch {
-    /* tracking must never break the reveal */
-  }
-}
-
 // Lines whispered while Dash deliberates, shown one at a time
 // before the result. The final announcement ("Better be…") lives on the
 // result screen itself.

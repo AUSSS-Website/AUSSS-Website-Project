@@ -35,19 +35,14 @@
 > `AUSSS Officer Photos` folder shared anyone-with-link until every committee has
 > re-uploaded its photos through the portal.
 >
-> ### Discovered en route: the signups endpoint is dead
+> ### Signups endpoint: fixed 2026-09-24
 >
-> `Website Sign Up's` is a **standalone** script whose live code still has
-> `var SPREADSHEET_ID = ''`. In a standalone script
-> `SpreadsheetApp.getActiveSpreadsheet()` returns `null`, so `getSheet_()` throws
-> on every POST — the recruitment-waitlist and newsletter forms have been
-> silently failing. (Compare `Exchange Stories`, which correctly sets
-> `SPREADSHEET_ID = '1D0bin-JW8G2VnVk0OenhoeszF_vxLO8slPN5qiOyMBQ'`.)
->
-> Fix while you are redeploying it: either paste a real sheet id into
-> `SPREADSHEET_ID`, or copy the self-healing `ss_()` pattern from `magazine.gs`
-> (create a sheet once, remember its id in `ENGAGEMENT_SHEET_ID`-style Script
-> Properties). This is a pre-existing bug, unrelated to the migration.
+> `Website Sign Up's` is a **standalone** script and its live code used to have
+> `var SPREADSHEET_ID = ''`, so every POST threw before writing a row and the
+> recruitment-waitlist and newsletter forms failed silently. On 2026-09-24 a
+> sheet id was pasted into `SPREADSHEET_ID` and the script redeployed; a test
+> POST returned `{"ok":true}`. If the forms ever stop landing rows again, check
+> that value first.
 
 **Why:** every backend the site depends on — six Apps Script web apps, their
 Google Sheets, the officer-photo Drive folder, the magazine PDFs — currently
@@ -112,8 +107,7 @@ roster moved to Supabase. `roster-sync.gs` is bound to the Secretary General's m
 
 | Asset | Where referenced | Status |
 |---|---|---|
-| Membership Google Form `1FAIpQLSeU1QhHkuLpJtiUFGbD_Kdbqhzs8GMAuR3x63HMnm4XzeBAYQ` | `src/pages/MembersPage.jsx:22` | Owner unverified. Transfer it and its response sheet, or the responses become unreachable |
-| Public Google Calendar | `src/data/society.js:625` `calendarId: ''` | **Not configured yet** — nothing to migrate. Create it in the new account when you do |
+| Membership Google Form `1FAIpQLSeU1QhHkuLpJtiUFGbD_Kdbqhzs8GMAuR3x63HMnm4XzeBAYQ` | `src/pages/MembersPage.jsx` (`MEMBERSHIP_ISSUE_FORM`) | Owner unverified. Transfer it and its response sheet, or the responses become unreachable |
 
 ### D. Notification recipients — **already changed in the repo**
 
@@ -141,8 +135,8 @@ the officers who own the call, resolved from the `Accounts` sheet at send time.
 
 - GitHub: `origin` → `Optimalgeoduck/AUSSS-Website-Project`, plus an
   `omarbelo23/AUSSS` remote
-- Hosting: Vercel (`vercel.json`) and a Netlify site id
-  `c6566a41-930b-45ea-97b2-6eb2c0b265e7` (`.netlify/state.json`)
+- Hosting: Vercel (`vercel.json`). The old Netlify site
+  (`c6566a41-930b-45ea-97b2-6eb2c0b265e7`) is not production and can be deleted
 - The `ausss-ainshams.org` domain / DNS (Squarespace, bought 2026-09-15)
 
 ---

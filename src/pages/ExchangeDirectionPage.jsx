@@ -141,7 +141,7 @@ export default function ExchangeDirectionPage({ dir }) {
 
 // The old in-page toggle, now two real links, so each direction keeps its own
 // URL while readers can still flip between them in one click.
-export function DirectionTabs({ current }) {
+function DirectionTabs({ current }) {
   return (
     <nav
       aria-label="Exchange direction"

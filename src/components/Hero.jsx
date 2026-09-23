@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import ECGBackground from './ECGBackground.jsx'
 import CountUp from './CountUp.jsx'
 import Button from './ui/Button.jsx'
-import { useMemberCount } from '../data/membersMeta.js'
+import { useMemberCount } from '../hooks/useMemberCount.js'
 
 export default function Hero() {
   // The ECG baseline anchors just below this CTA row on every viewport.
@@ -76,7 +76,7 @@ export default function Hero() {
             Join the Society
           </Button>
           <Button href="#about" variant="outline" size="lg" className="w-full sm:w-auto">
-            Discover Our Mission
+            Discover our mission
           </Button>
         </div>
 
@@ -86,9 +86,9 @@ export default function Hero() {
         >
           {[
             [memberCount.toLocaleString(), 'Members'],
-            ['10', 'Committees & Divisions'],
-            ['300+', 'Exchange Students Served'],
-            ['80+', 'Campaigns / yr'],
+            ['10', 'Committees and divisions'],
+            ['300+', 'Exchange students hosted'],
+            ['80+', 'Campaigns a year'],
           ].map(([v, l]) => (
             <div key={l} className="bg-forest-900/40 px-4 py-6 backdrop-blur-sm">
               <div className="heading-serif text-3xl text-white">

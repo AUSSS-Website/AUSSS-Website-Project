@@ -2,7 +2,7 @@
 // (SCOME #100016, CBSD #1E1E17), so `readableAccent` lightens anything
 // too dark to stay legible on the dark forest theme.
 
-export function hexToRgb(hex) {
+function hexToRgb(hex) {
   const h = String(hex || '').replace('#', '')
   const v =
     h.length === 3

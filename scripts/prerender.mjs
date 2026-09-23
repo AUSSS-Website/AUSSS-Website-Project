@@ -11,10 +11,10 @@
 // How: Vite loads the app in Node (src/entry-server.jsx), React renders each
 // route from src/seo/pages.js to a string, and the result is written to
 // `dist/<route>/index.html` (the home page to `dist/index.html`). The untouched
-// shell is kept as `dist/spa.html`, which vercel.json (and public/_redirects)
-// fall back to for every URL that has no pre-rendered file: the portal, the
-// redirects, unknown paths. Hosting serves static files before rewrites, so a
-// pre-rendered page always wins over the shell.
+// shell is kept as `dist/spa.html`, which vercel.json falls back to for every
+// URL that has no pre-rendered file: the portal, the redirects, unknown paths.
+// Vercel serves static files before rewrites, so a pre-rendered page always
+// wins over the shell.
 //
 // The browser keeps mounting with createRoot(): React replaces the
 // pre-rendered markup with the live app on load. The content is identical, so

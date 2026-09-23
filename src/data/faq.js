@@ -1,6 +1,6 @@
-// FAQ content. Plain data so officers can edit copy without touching the UI.
-// NOTE: written from the society's public framing, review/adjust the specifics
-// (fees, exact timing) before relying on them publicly.
+// The /join FAQ. Plain data so the copy can be edited without touching the UI.
+// The fee and timing answers deliberately stay general: the specifics are
+// announced with each recruitment round.
 
 export const joinFaqs = [
   {
@@ -9,7 +9,7 @@ export const joinFaqs = [
   },
   {
     q: 'When does recruitment open?',
-    a: 'Membership opens each intake. There isn’t always an open window, so add your email to the waitlist above and we’ll notify you the moment the next one opens.',
+    a: 'Registration opens once a year, at the start of the academic year. Outside that window you can’t apply, so add your email to the waitlist above and we’ll tell you the moment the next one opens.',
   },
   {
     q: 'Is there a membership fee?',
@@ -17,7 +17,7 @@ export const joinFaqs = [
   },
   {
     q: 'Do I have to pick a committee right away?',
-    a: 'No. Explore the six standing committees and four support divisions first. If you’re unsure where you fit, the Sorting Quiz gives you a starting point.',
+    a: 'No. Explore the six standing committees and four support divisions first. If you’re unsure where you fit, the Sorting quiz gives you a starting point.',
   },
   {
     q: 'What is the exchange programme?',

@@ -9,9 +9,9 @@ import { exchange } from '../data/society.js'
 // same fork:
 //   /exchange/outgoings  going abroad
 //   /exchange/incomings  hosting students at Ain Shams
-//   /join                joining the team that runs both
-// Everything that used to sit under these cards now lives on the two direction
-// pages themselves (ExchangeTracks.jsx and ExchangeStories.jsx).
+//   /exchange/join       joining the team that runs both
+// The shared material (ExchangeTracks.jsx, ExchangeStories.jsx) lives on the
+// two direction pages.
 export default function ExchangePage() {
   usePageTitle(
     'Exchange',
@@ -44,11 +44,11 @@ export default function ExchangePage() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
-            Exchange the World
+            Exchange the world
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg font-light leading-relaxed text-silver/75">
-            Four weeks of medicine somewhere new: ours abroad, theirs here.
-            Which one brought you?
+            Four weeks of medicine somewhere new: our students abroad, or
+            theirs here in Cairo. Which one are you here for?
           </p>
         </div>
       </header>

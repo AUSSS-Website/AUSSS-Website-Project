@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { readJson } from '../lib/localCache.js'
 import { restRpc, supabaseRestEnabled } from '../lib/supabaseRest.js'
 
-// The Hero's "Members" figure. The live number is rpc/roster_stats (the
-// roster in Supabase); MEMBERS_META is what a first-time visitor sees, and what
-// everyone sees if the roster is unreachable or still empty. Bump it now and
-// then so the first impression doesn't drift far from the truth.
-export const MEMBERS_META = { count: 581 }
+// The Hero's "Members" figure. The live number comes from rpc/roster_stats
+// (the roster in Supabase); FALLBACK_COUNT is what a first-time visitor sees,
+// and what everyone sees if the roster is unreachable or still empty. Bump it
+// now and then so the first impression does not drift far from the truth.
+const FALLBACK_COUNT = 581
 
 const CACHE_KEY = 'ausss:member-count'
 
@@ -16,7 +16,7 @@ const CACHE_KEY = 'ausss:member-count'
 export function useMemberCount() {
   const [count] = useState(() => {
     const cached = readJson(CACHE_KEY, {}).count
-    return Number.isInteger(cached) && cached > 0 ? cached : MEMBERS_META.count
+    return Number.isInteger(cached) && cached > 0 ? cached : FALLBACK_COUNT
   })
   useEffect(() => {
     if (!supabaseRestEnabled) return
@@ -27,7 +27,7 @@ export function useMemberCount() {
         }
       })
       .catch(() => {
-        /* offline, blocked storage: keep showing what we have */
+        /* offline or blocked storage: keep showing what we have */
       })
   }, [])
   return count

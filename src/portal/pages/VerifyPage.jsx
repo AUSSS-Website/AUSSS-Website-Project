@@ -52,7 +52,7 @@ export default function VerifyPage() {
       <Panel>
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={status} />
-          <p className="text-sm text-silver/70">You’re already verified, nothing to do here.</p>
+          <p className="text-sm text-silver/70">You’re already verified. There’s nothing to do here.</p>
         </div>
       </Panel>
     )
@@ -60,8 +60,8 @@ export default function VerifyPage() {
     body = (
       <Panel title="Request pending">
         <p className="mt-4 text-sm text-silver/70">
-          Sent {when(latest.created_at)}. An EB member will confirm you against the
-          membership records; you’ll see your badge change on the dashboard.
+          Sent {when(latest.created_at)}. An EB member will check you against the
+          membership records. You’ll see your badge change on the dashboard.
         </p>
         {latest.message && (
           <blockquote className="mt-4 border-l-2 border-white/15 pl-4 text-sm text-silver/55">

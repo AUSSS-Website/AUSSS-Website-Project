@@ -5,26 +5,9 @@
 // the currently-known holder in society.js.
 
 import { executiveBoard, committees, slugFor } from '../data/society.js'
-
-export const norm = (v) =>
-  String(v ?? '')
-    .normalize('NFKD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
+import { normalize as norm, splitPositions } from './text.js'
 
 const compact = (v) => norm(v).replace(/[^a-z0-9]/g, '')
-
-// Source positions sometimes pack multiple roles on separate lines
-// ("LEO-OUT\r\nNational CBSD Team- TEDA"). Split so each can be matched
-// individually.
-export function splitPositions(raw) {
-  return String(raw ?? '')
-    .split(/\r\n|\n/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
 
 // "President" / "AUSSS President" → true, but NOT "Vice President".
 // Multi-position safe, true if any sub-position is a presidential role.

@@ -16,9 +16,10 @@ import {
 } from '../../workUi.jsx'
 import TaskEditor from './TaskEditor.jsx'
 
-// /portal/tasks. Everything RLS lets this person see: tasks assigned to them,
-// tasks they created, and (officers, EB) their committees' tasks. Filters are
-// client-side; a committee runs tens of tasks a term, not thousands.
+// /portal/tasks. Everything the database lets this person see: tasks assigned
+// to them, tasks they created, and (officers, EB) their committees' tasks.
+// Filters are client-side; a committee runs tens of tasks a term, not
+// thousands.
 
 const EMPTY = []
 
