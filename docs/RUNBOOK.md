@@ -675,3 +675,59 @@ select c.abbr, p.title, count(*) from public.roster_entries r
 join public.positions p on p.id = r.position_id join public.committees c on c.id = r.committee_id
 group by 1, 2 order by 1, 3 desc;
 ```
+
+## 15. Discoverability: pre-rendered pages, sitemap, robots, llms.txt (Phase 4)
+
+The public site is a single-page app, so until 2026-09-23 every URL served the same
+empty `index.html` and only crawlers that run JavaScript (Google, slowly) saw any
+content. Bing, the AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended) and
+the link-preview bots of WhatsApp, Facebook and Instagram saw a blank page with the
+home-page card. Now `npm run build` runs `vite build` and then `scripts/prerender.mjs`,
+which renders every public page to real HTML at build time.
+
+**What the build produces (in `dist/`):**
+
+- `<route>/index.html` for every entry in `src/seo/pages.js` (35 pages on
+  2026-09-23: the fixed pages, one per committee, one per gallery album), each with
+  the page's own `<title>`, description, canonical link, Open Graph / Twitter card
+  and JSON-LD (organisation record on the home page; WebPage + BreadcrumbList
+  everywhere; FAQPage on /join; an Organization per committee; ImageGallery per
+  album). The home page is `dist/index.html`.
+- `spa.html`: the untouched shell. `vercel.json` (and `public/_redirects` for Netlify)
+  rewrite every URL without a pre-rendered file to it: the portal, the redirect
+  aliases, unknown paths. Hosting serves static files before rewrites, so a
+  pre-rendered page always wins.
+- `sitemap.xml` and `llms.txt`, generated from the same page list. There is no
+  `public/sitemap.xml` any more; do not add one back, it would shadow the generated one.
+
+**Adding or changing a public page:** add the route in `src/App.jsx` as before, then add
+an entry to `src/seo/pages.js` (path, title, description; optionally an image and the
+breadcrumb parent). Keep the title and description identical to what the page passes to
+`usePageTitle()`: the table is what crawlers read, the hook is what a visitor sees after
+client-side navigation. New committees and albums are picked up by themselves. The
+build fails if a listed path does not render a `<main>` (route missing) or is listed
+twice.
+
+**Components must survive Node:** the pre-render runs the public pages in Node with no
+`window`, `document` or `localStorage`. Effects (`useEffect`) do not run there, so
+browser-only work belongs in effects; anything read during render must be guarded
+(`typeof window === 'undefined'`), see `src/lib/localCache.js` and `CountUp.jsx` for
+the pattern. A render error fails the build with the offending route in the message.
+
+**Checking the output:** `npm run preview:prerendered` serves `dist/` the way Vercel
+does (file, then `<dir>/index.html`, then `spa.html`). `vite preview` cannot show the
+pre-rendered pages: its SPA fallback answers `/join` with the home page. In production,
+`curl -s https://ausss-ainshams.org/join | grep '<title>'` must print "Join us · AUSSS"
+and `curl -s https://ausss-ainshams.org/portal | grep '<title>'` the base title.
+
+**robots.txt** (`public/robots.txt`) names every search and AI crawler explicitly and
+allows all of them; it disallows the portal, the admin/checkout surfaces and
+`/spa.html`. **llms.txt** follows https://llmstxt.org: a description of the society and
+the annotated page list, for AI assistants that look for it.
+
+**Search Console** (property `ausss-ainshams.org`, owner aussswebsite@gmail.com,
+verified through the meta tag in `index.html`, keep that tag): after a deploy that adds
+pages, open Sitemaps, resubmit `https://ausss-ainshams.org/sitemap.xml`, and use URL
+Inspection > Request indexing on the pages that matter. **Bing Webmaster Tools**
+(feeds Bing, Copilot, ChatGPT search and DuckDuckGo): sign in with the same Google
+account and import the site from Search Console; it takes the sitemap from there.

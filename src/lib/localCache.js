@@ -8,9 +8,11 @@
 //
 // The fallback also types the result: pass `[]` and only an array comes back,
 // pass `{}` and only an object does.
-export function readJson(key, fallback, storage = localStorage) {
+export function readJson(key, fallback, storage) {
   try {
-    const raw = storage.getItem(key)
+    // Resolved inside the guard: there is no Web Storage when the page is
+    // pre-rendered in Node at build time (scripts/prerender.mjs).
+    const raw = (storage || localStorage).getItem(key)
     if (!raw) return fallback
     const parsed = JSON.parse(raw)
     const ok = Array.isArray(fallback)

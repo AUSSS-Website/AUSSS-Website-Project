@@ -17,7 +17,8 @@
     <meta name="google-site-verification" content="aHRb3kmpLcUm4CHOuDNy7NEUaaq9AteRSzzYef3uhQM" />
 
     <!-- Canonical / social. Production domain since 2026-09-19 (attached to the Vercel
-         project; keep public/sitemap.xml and robots.txt in step with it). -->
+         project; keep src/seo/pages.js and public/robots.txt in step with it). At build time
+         scripts/prerender.mjs rewrites this block per page and generates sitemap.xml. -->
     <link rel="canonical" href="https://ausss-ainshams.org/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AUSSS" />
@@ -47,7 +48,8 @@
       rel="stylesheet"
     />
 
-    <!-- Structured data so search engines understand the organisation. -->
+    <!-- Structured data so search engines understand the organisation (the pre-rendered
+         pages carry a fuller record from src/seo/pages.js; this is the SPA-shell fallback). -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",

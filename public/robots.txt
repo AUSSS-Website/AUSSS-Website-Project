@@ -1,11 +1,75 @@
+# ausss-ainshams.org
+#
+# Everyone may crawl the public site, including the AI crawlers, which are
+# named explicitly below so nobody has to guess (an unnamed crawler falls
+# under "*", which allows the same). The public pages are pre-rendered HTML
+# (scripts/prerender.mjs), so crawlers that do not run JavaScript still get
+# the full content.
+
 User-agent: *
 Allow: /
 
-# Admin / account surfaces — keep them out of search results. (This is a
+# Search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# AI answer engines and assistants (Google AI Overviews / Gemini, ChatGPT,
+# Claude, Perplexity, Meta AI, Apple Intelligence, DuckDuckGo, Common Crawl)
+User-agent: Google-Extended
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Admin / account surfaces: keep them out of search results. (This is a
 # convenience, not a security control; the real protection is server-side.)
 Disallow: /gallery/admin
 Disallow: /login
 Disallow: /account
 Disallow: /portal
+Disallow: /merch/checkout
+Disallow: /spa.html
 
 Sitemap: https://ausss-ainshams.org/sitemap.xml

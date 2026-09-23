@@ -47,7 +47,7 @@ export default function Hero() {
           src="/assets/brand/ausss-vertical-white.png"
           alt="AUSSS"
           // This is the LCP element, hint the browser to fetch it first.
-          fetchPriority="high"
+          fetchpriority="high"
           decoding="async"
           draggable={false}
           className="animate-fade-up mx-auto h-52 w-auto sm:h-64 lg:h-80"

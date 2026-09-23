@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "dev:host": "vite --host",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender.mjs",
+    "build:spa": "vite build",
     "preview": "vite preview",
+    "preview:prerendered": "node scripts/serve-dist.mjs",
     "preview:host": "vite preview --host",
     "db": "node scripts/db/supa.mjs",
     "db:new": "node scripts/db/supa.mjs migration new",

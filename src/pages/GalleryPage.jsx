@@ -280,7 +280,7 @@ function AlbumView({ album, isAdmin, removals }) {
                 width={featuredPhoto.w}
                 height={featuredPhoto.h}
                 decoding="async"
-                fetchPriority="high"
+                fetchpriority="high"
                 className={`max-h-[72vh] w-full object-contain transition-transform duration-700 group-hover:scale-[1.02] ${
                   removals.effective.has(featuredPhoto.full) ? 'opacity-30 grayscale' : ''
                 }`}

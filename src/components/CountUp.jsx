@@ -36,7 +36,13 @@ const fmt = (n, decimals, grouped) =>
 export default function CountUp({ value, duration = 1400, className }) {
   const { prefix, num, suffix, decimals, grouped } = parse(value)
   const ref = useRef(null)
-  const [display, setDisplay] = useState(num == null ? value : prefix + '0' + suffix)
+  // Pre-rendered HTML (scripts/prerender.mjs) shows the final figure: a
+  // crawler must not read "0 Members". In the browser the count starts at 0.
+  const [display, setDisplay] = useState(() => {
+    if (num == null) return value
+    if (typeof window === 'undefined') return prefix + fmt(num, decimals, grouped) + suffix
+    return prefix + '0' + suffix
+  })
 
   useEffect(() => {
     if (num == null) return

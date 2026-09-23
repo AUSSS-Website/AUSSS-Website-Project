@@ -42,9 +42,13 @@ journal") with **Inter** (UI sans, "modern tech").
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run build    # production bundle in /dist
-npm run preview  # serve the production build
+npm run build    # production bundle in /dist, then pre-renders every public page
+npm run preview:prerendered  # serve /dist the way Vercel does (pre-rendered pages + spa.html fallback)
+npm run preview  # Vite's preview (SPA only: it does not show the pre-rendered pages)
 ```
+
+Public pages are listed in `src/seo/pages.js`; the build writes one HTML file per
+entry plus `sitemap.xml` and `llms.txt` (see `docs/RUNBOOK.md`, section 15).
 
 ## Customizing
 
