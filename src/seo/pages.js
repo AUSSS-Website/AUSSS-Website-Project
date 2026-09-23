@@ -53,7 +53,9 @@ export function organizationJsonLd() {
       'The student-run scientific society of the Faculty of Medicine, Ain Shams University, Cairo: six IFMSA standing committees and four support divisions running medical research, public health campaigns, medical education and international student exchange since 1971.',
     foundingDate: '1971',
     email: society.contactEmail,
-    sameAs: socials.map((s) => s.href),
+    // Every profile Google already ranks for "AUSSS": tells it they are all
+    // the same organisation and this site is its home.
+    sameAs: [...socials.map((s) => s.href), 'https://www.linkedin.com/company/ausss'],
     parentOrganization: {
       '@type': 'CollegeOrUniversity',
       name: 'Ain Shams University, Faculty of Medicine',
