@@ -43,7 +43,7 @@ language sql
 stable
 parallel safe
 set search_path = ''
-as $
+as $$
   select left(
     btrim(
       regexp_replace(
@@ -124,7 +124,7 @@ language plpgsql
 stable
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_n int := 2;
   v_candidate text;
@@ -139,7 +139,7 @@ begin
   end loop;
   return v_candidate;
 end
-$;
+$$;
 
 -- The slug comes from the title when the editor leaves it blank, is normalised otherwise, and
 -- can never be one another album has used (a shared link must keep pointing at one album).

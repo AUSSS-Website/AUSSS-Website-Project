@@ -30,6 +30,8 @@ export default function PortalLayout() {
     isEB || assignments.some((a) => a.position?.level === 'officer' && a.position?.committee)
   // The gallery belongs to PNSD (and the EB).
   const canEditGallery = officerOf('pnsd')
+  // The magazine belongs to CBSD (and the EB).
+  const canEditMagazine = officerOf('cbsd')
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const unread = useUnreadCount().data || 0
@@ -94,6 +96,11 @@ export default function PortalLayout() {
             {canEditGallery && (
               <NavLink to="/portal/gallery" className={navCls}>
                 Gallery
+              </NavLink>
+            )}
+            {canEditMagazine && (
+              <NavLink to="/portal/magazine" className={navCls}>
+                Magazine
               </NavLink>
             )}
             {isEB && (

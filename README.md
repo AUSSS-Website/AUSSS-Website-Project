@@ -9,7 +9,7 @@ Faculty of Medicine, Ain Shams University. Live at
 - **React 18** + **Vite 5**, React Router 7, Tailwind CSS 3
 - **Supabase** for the members portal (auth, database, edge functions) and for
   the public reads that need live data (membership lookup, committee page
-  overrides, site settings, open calls, the photo gallery)
+  overrides, site settings, open calls, the photo gallery, the magazine shelf)
 - **Google Apps Script** web apps for the remaining public forms (merch orders,
   exchange stories, sign-ups) and the magazine counters; see [`apps-script/`](./apps-script)
 - Hosted on **Vercel** through the GitHub integration; `vercel.json` holds the
@@ -35,7 +35,7 @@ back to its static content.
 | --- | --- |
 | People, committees and page copy | `src/data/society.js` |
 | Join-page FAQ | `src/data/faq.js` |
-| Magazine editions | `src/data/magazine.js` |
+| Magazine editions | The portal magazine editor (`/portal/magazine`, CBSD and EB) |
 | Merch catalogue, payment handles, shop switch | `src/data/merchProducts.js`, `src/data/merchConfig.js` |
 | Form switches and Apps Script URLs | `src/data/*Config.js` |
 | Gallery albums | The portal gallery editor (`/portal/gallery`, PNSD and EB) |

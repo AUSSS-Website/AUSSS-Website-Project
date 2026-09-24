@@ -28,6 +28,7 @@
     "@vercel/analytics": "^2.0.1",
     "gsap": "^3.15.0",
     "ogl": "^1.0.11",
+    "pdfjs-dist": "^6.3.289",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-pageflip": "^2.0.3",

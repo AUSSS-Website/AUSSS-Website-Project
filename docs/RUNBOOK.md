@@ -785,3 +785,36 @@ an album page, it appears in the grid within seconds and on `/gallery/<slug>` on
 Anonymous: `curl -s -X POST -H "apikey: $ANON" -H "Authorization: Bearer $ANON"
 $URL/rest/v1/rpc/gallery_public` returns `{"albums":[...]}`, and
 `$URL/rest/v1/albums` returns a permission error.
+
+## 17. Magazine editor (Phase 5)
+
+Since 2026-09-24 the magazine shelf (`/magazine`) is read from the database and edited in the
+portal at `/portal/magazine` by the CBSD officers and the EB (`app.is_magazine_editor()` =
+`app.is_officer_of('cbsd')`). `src/data/magazine.js` and the `_source/build-magazine.mjs`
+rasterising step are retired. Migration `20260924150001_magazine` (it also seeded the seven
+pre-portal editions), tests `170-magazine.sql` and the magazine block of `090-grants.sql`.
+
+**Data.** `magazine_issues`: slug (the permanent id, `vol-7`, also the key of the reads and
+likes counters in `apps-script/magazine.gs`), title, switcher_label, date_label, blurb, status
+(`draft` not shown, `published`, `missing` = a known back-issue with a placeholder), sort_order
+(the switcher order, newest first), pages_base, page_count, hero_page, download_url, canva_url.
+Page images are `<pages_base>/NNN.jpg`: the pre-portal editions keep theirs under
+`/assets/magazine/<id>/pages` (served by Vercel, 61 MB in the repo); editions uploaded from the
+portal put them in the public Storage bucket `magazine` under `<issue id>/pages/`. A published
+edition reaches the site once it has pages or a Canva link.
+
+**Uploading an edition.** The editor picks the PDF; pdf.js (loaded on demand in the portal
+only) renders every page to a 1300 px wide JPEG in the browser and uploads it; pages beyond the
+new count are removed, so a re-upload replaces the edition cleanly. Page images can also be
+picked directly. The **hero page** (the cover in the header, the switcher and the share card)
+is chosen by clicking a page; the database clamps it to the page count.
+
+**Public site.** `src/lib/magazine.js` fetches `rpc/magazine_public()` and caches it; the
+prerender bakes the shelf into `/magazine` and uses the latest edition's hero page as its
+Open Graph image. Egress: a full read of an edition is 7 to 18 MB; editions uploaded from the
+portal count against Supabase's 5 GB/month (section 16), the pre-portal ones against Vercel.
+
+**Checks.** Signed in as an editor: `/portal/magazine` lists the editions; upload a small PDF to
+a draft, its pages appear and a click on one makes it the cover; set it to Published and it
+shows on `/magazine`. Anonymous: `rpc/magazine_public` answers, `/rest/v1/magazine_issues` is
+refused.

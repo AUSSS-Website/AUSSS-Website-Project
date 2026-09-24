@@ -22,6 +22,8 @@ import CommitteesPage from './pages/committee/CommitteesPage.jsx'
 import CommitteeEditorPage from './pages/committee/CommitteeEditorPage.jsx'
 import GalleryEditorPage from './pages/gallery/GalleryPage.jsx'
 import AlbumEditorPage from './pages/gallery/AlbumEditorPage.jsx'
+import MagazineEditorPage from './pages/magazine/MagazinePage.jsx'
+import IssueEditorPage from './pages/magazine/IssueEditorPage.jsx'
 
 // Lazy boundary for everything under /portal/*. This is the ONLY place the
 // public app touches the portal, so supabase-js and react-query stay out of
@@ -71,6 +73,9 @@ export default function PortalRoot() {
             {/* Gallery editor: PNSD officers and the EB (the page checks officerOf('pnsd')). */}
             <Route path="gallery" element={<GalleryEditorPage />} />
             <Route path="gallery/:slug" element={<AlbumEditorPage />} />
+            {/* Magazine editor: CBSD officers and the EB (the page checks officerOf('cbsd')). */}
+            <Route path="magazine" element={<MagazineEditorPage />} />
+            <Route path="magazine/:slug" element={<IssueEditorPage />} />
             <Route
               path="admin/settings"
               element={

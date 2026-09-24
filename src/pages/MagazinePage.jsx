@@ -1,7 +1,7 @@
 import { useState, lazy, Suspense, Component } from 'react'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-import { magazine, shelfIssues, isMissing, ARCHIVE_CONTACT } from '../data/magazine.js'
+import { ARCHIVE_CONTACT, heroUrl, isMissing, latestIssue, useMagazine } from '../lib/magazine.js'
 import { pageUrls } from '../lib/pageImages.js'
 import CanvaFrame from '../components/CanvaFrame.jsx'
 import ShareBar from '../components/ShareBar.jsx'
@@ -14,17 +14,18 @@ import GalleryAurora from '../components/GalleryAurora.jsx'
 const Flipbook = lazy(() => import('../components/Flipbook.jsx'))
 
 // /magazine opens on the latest published edition; a switcher moves between
-// the editions listed in src/data/magazine.js.
+// the editions on the shelf. The shelf comes from the database (the CBSD
+// officers edit it in the portal), see src/lib/magazine.js.
 export default function MagazinePage() {
   usePageTitle('Magazine')
   useReveal()
-  // Default to the latest published edition; `selected` tracks the switcher.
-  const [selectedId, setSelectedId] = useState(magazine?.id ?? null)
-  if (!magazine) return <EmptyShelf />
-  const issue = shelfIssues.find((i) => i.id === selectedId) || magazine
-  return (
-    <IssueView issue={issue} issues={shelfIssues} onSelect={setSelectedId} />
-  )
+  const { issues, loading } = useMagazine()
+  const magazine = latestIssue(issues)
+  // `selected` tracks the switcher; null means "the latest".
+  const [selectedId, setSelectedId] = useState(null)
+  if (!magazine) return loading ? <ShelfLoading /> : <EmptyShelf />
+  const issue = issues.find((i) => i.id === selectedId) || magazine
+  return <IssueView issue={issue} issues={issues} onSelect={setSelectedId} />
 }
 
 // Compact edition switcher, only rendered when there are two or more editions.
@@ -57,7 +58,7 @@ function IssueSwitcher({ issues, currentId, onSelect }) {
   )
 }
 
-// ── Cover thumbnail (page 1, or a gradient placeholder for a missing edition) ─
+// ── Cover thumbnail (the hero page, or a gradient placeholder for a missing edition) ─
 function Cover({ src, alt, label }) {
   const [failed, setFailed] = useState(false)
   if (src && !failed) {
@@ -107,7 +108,7 @@ function IssueView({ issue, issues, onSelect }) {
         <div className="container-prose relative">
           <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:text-left">
             <div className="aspect-[1300/1839] w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-forest-800">
-              <Cover src={pageUrls(issue.pages)[0]} alt={`${issue.title} cover`} label={issue.title} />
+              <Cover src={heroUrl(issue)} alt={`${issue.title} cover`} label={issue.title} />
             </div>
             <div>
               <h1 className="heading-serif text-4xl text-white sm:text-5xl">
@@ -266,6 +267,20 @@ function ReaderLoading() {
       <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-medical-light" />
       <p className="mt-4 text-sm text-silver/60">Preparing the reader…</p>
     </div>
+  )
+}
+
+// Cold start with nothing cached: the shelf is on its way.
+function ShelfLoading() {
+  return (
+    <article className="bg-forest-950">
+      <div className="container-prose flex min-h-[60vh] items-center justify-center pt-32 sm:pt-40">
+        <span
+          className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light"
+          aria-label="Loading the magazine"
+        />
+      </div>
+    </article>
   )
 }
 

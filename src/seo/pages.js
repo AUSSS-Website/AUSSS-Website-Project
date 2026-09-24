@@ -172,7 +172,13 @@ function albumJsonLd(a, path) {
 //  is the gallery snapshot the prerender fetched (src/lib/gallery.js shape:
 // cover/coverFull are absolute Storage URLs for live albums, site paths for the
 // static fallback).
-export function publicPages(albums = []) {
+// `issues` is the magazine shelf (src/lib/magazine.js shape); the latest edition's
+// cover page becomes the /magazine share card.
+export function publicPages(albums = [], issues = []) {
+  const latest = issues.find((i) => !i.missing && (i.pages?.count || i.canva)) || null
+  const latestCover = latest && latest.pages?.count
+    ? abs(latest.pages.base + '/' + String(latest.heroPage || 1).padStart(3, '0') + '.jpg')
+    : undefined
   const pages = [
     {
       path: '/',
@@ -263,6 +269,8 @@ export function publicPages(albums = []) {
       title: 'Magazine',
       description:
         'The AUSSS magazine: articles, research features and society news by Ain Shams medical students, read online.',
+      image: latestCover,
+      imageAlt: latest ? `AUSSS Magazine, ${latest.title}` : undefined,
       changefreq: 'monthly',
       priority: 0.7,
     },

@@ -8,11 +8,14 @@ import { renderToPipeableStream } from 'react-dom/server'
 import { StaticRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { setBakedGallery } from './lib/gallery.js'
+import { setBakedMagazine } from './lib/magazine.js'
 
-//  is the live gallery the prerender fetched once (src/lib/gallery.js),
-// so /gallery and every album page render with real photos.
-export function render(url, albums) {
+// `albums` and `issues` are the live gallery and magazine shelf the prerender
+// fetched once (src/lib/gallery.js, src/lib/magazine.js), so /gallery, every
+// album page and /magazine render with the real content.
+export function render(url, albums, issues) {
   setBakedGallery(albums)
+  setBakedMagazine(issues)
   return new Promise((resolve, reject) => {
     const chunks = []
     const sink = new Writable({

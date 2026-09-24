@@ -241,6 +241,17 @@ export default function DashboardPage() {
           </Panel>
         )}
 
+        {officerOf('cbsd') && (
+          <Panel title="Magazine">
+            <p className="mt-4 text-sm text-silver/70">
+              Add an edition from its PDF, pick its cover page and write its description.
+            </p>
+            <Link to="/portal/magazine" className={moreLinkCls}>
+              Open the magazine editor &rarr;
+            </Link>
+          </Panel>
+        )}
+
         {isEB && (
           <Panel title="Executive Board">
             <p className="mt-4 text-sm text-silver/70">

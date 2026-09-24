@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(51);
+select plan(55);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -75,6 +75,12 @@ select ok(not has_column_privilege('authenticated', 'public.gallery_photos', 'pa
 select ok(not has_column_privilege('authenticated', 'public.gallery_photos', 'created_by', 'insert'), 'authenticated cannot choose a photo''s author');
 select ok(not has_column_privilege('authenticated', 'public.albums', 'created_by', 'update'), 'authenticated cannot change an album''s author');
 select ok(not has_table_privilege('authenticated', 'public.album_slugs', 'insert'), 'aliases are written by the rename trigger only');
+
+-- magazine: visitors read the RPC only; editors write content columns, never authorship
+select ok(not has_table_privilege('anon', 'public.magazine_issues', 'select'), 'anon cannot read magazine_issues');
+select ok(has_function_privilege('anon', 'public.magazine_public()', 'execute'), 'anon can read the public shelf');
+select ok(not has_column_privilege('authenticated', 'public.magazine_issues', 'created_by', 'insert'), 'authenticated cannot choose an edition''s author');
+select ok(not has_column_privilege('authenticated', 'public.magazine_issues', 'id', 'update'), 'an edition cannot be re-keyed');
 
 select * from finish();
 rollback;

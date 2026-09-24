@@ -289,6 +289,8 @@ Route tree under `/portal`, all behind sign-in:
   applied) rather than server-side: Storage image transforms need the Pro
   plan, and an edge function cannot decode a 12 MP phone photo inside its
   CPU budget. The outcome is the same: no local build step, no developer.
+  **Built 2026-09-24** (migration `20260924120001_gallery`, `/portal/gallery`,
+  the eight albums imported into Storage; RUNBOOK section 16).
 - **Magazine editor** (requested 2026-09-24): the magazine shelf becomes
   editable from the portal by the CBSD officers and the EB, replacing
   `src/data/magazine.js` and the `_source/build-magazine.mjs` rasterising
@@ -305,6 +307,9 @@ Route tree under `/portal`, all behind sign-in:
   `app.is_eb()`), reads stay anon; the public /magazine page and its
   pre-rendered card read the same snapshot the gallery uses. Follows the
   gallery editor in the Phase 5 order.
+  **Built 2026-09-24** (migration `20260924150001_magazine`, `/portal/magazine`;
+  RUNBOOK section 17). Pre-portal editions keep their page images under
+  `/assets/magazine`; only new uploads go to Storage.
 - **Directory**: opted-in members with positions, searchable.
 - **Notifications**: an in-app feed, and a daily email digest of anything
   unread (per-person opt-out), sent by an edge function on a `pg_cron`

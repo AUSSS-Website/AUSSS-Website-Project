@@ -137,6 +137,20 @@ async function loadAlbums(vite) {
   }
 }
 
+// Same for the magazine shelf (src/lib/magazine.js): /magazine is pre-rendered
+// with the latest edition and its cover page in the share card.
+async function loadIssues(vite) {
+  const magazine = await vite.ssrLoadModule('/src/lib/magazine.js')
+  try {
+    const live = await magazine.fetchMagazineIssues()
+    console.log('prerender: ' + live.length + ' magazine editions from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the magazine (' + err.message + '); the shelf renders empty this build')
+    return []
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -163,13 +177,14 @@ async function main() {
     const { render } = await vite.ssrLoadModule('/src/entry-server.jsx')
     const { publicPages } = await vite.ssrLoadModule('/src/seo/pages.js')
     const albums = await loadAlbums(vite)
-    const pages = publicPages(albums)
+    const issues = await loadIssues(vite)
+    const pages = publicPages(albums, issues)
 
     const seen = new Set()
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums)
+      const appHtml = await render(page.path, albums, issues)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }
