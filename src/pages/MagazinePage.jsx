@@ -6,7 +6,7 @@ import { pageUrls } from '../lib/pageImages.js'
 import CanvaFrame from '../components/CanvaFrame.jsx'
 import ShareBar from '../components/ShareBar.jsx'
 import MagazineEngagement from '../components/MagazineEngagement.jsx'
-import { trackMagazineDownload } from '../hooks/useMagazineEngagement.js'
+import { useMagazineEngagement } from '../hooks/useMagazineEngagement.js'
 import GalleryAurora from '../components/GalleryAurora.jsx'
 
 // The flipbook pulls in react-pageflip and preloads every page image, so it is
@@ -85,6 +85,9 @@ function Cover({ src, alt, label }) {
 
 // ── The edition ──────────────────────────────────────────────────────────────
 function IssueView({ issue, issues, onSelect }) {
+  // One reading session per edition opened: the read, the like, the download
+  // and how far the reader gets all go through it.
+  const engagement = useMagazineEngagement(isMissing(issue) ? null : issue.id)
   return (
     <article className="relative overflow-hidden bg-forest-950">
       {/* The gallery's WebGL aurora, flipped to rise from the bottom of the
@@ -134,7 +137,7 @@ function IssueView({ issue, issues, onSelect }) {
                   href={issue.download}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => trackMagazineDownload(issue.id)}
+                  onClick={engagement.download}
                   className="inline-flex items-center gap-2 rounded-full bg-medical px-5 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light"
                 >
                   <DownloadIcon />
@@ -156,7 +159,7 @@ function IssueView({ issue, issues, onSelect }) {
           )}
           {!isMissing(issue) && (
             <>
-              <MagazineEngagement issueId={issue.id} className="mt-6" />
+              <MagazineEngagement engagement={engagement} className="mt-6" />
               <ShareBar title={issue.title} className="mt-6" />
             </>
           )}
@@ -164,7 +167,7 @@ function IssueView({ issue, issues, onSelect }) {
       </header>
 
       <div className="container-prose pb-20 sm:pb-28">
-        <MagazineReader issue={issue} />
+        <MagazineReader issue={issue} onPage={engagement.reachPage} />
       </div>
       </div>
     </article>
@@ -173,7 +176,7 @@ function IssueView({ issue, issues, onSelect }) {
 
 // Picks the reader: the page-flipping book when the edition has page images,
 // otherwise the Canva embed. (An edition with neither never reaches the shelf.)
-function MagazineReader({ issue }) {
+function MagazineReader({ issue, onPage }) {
   if (isMissing(issue)) return <MissingPanel issue={issue} />
   const urls = pageUrls(issue.pages)
   if (urls.length > 0) {
@@ -182,7 +185,7 @@ function MagazineReader({ issue }) {
       // page-flip state and aspect probe).
       <ReaderBoundary issue={issue} key={issue.id}>
         <Suspense fallback={<ReaderLoading />}>
-          <Flipbook pages={urls} title={issue.title} />
+          <Flipbook pages={urls} title={issue.title} onPage={onPage} />
         </Suspense>
       </ReaderBoundary>
     )

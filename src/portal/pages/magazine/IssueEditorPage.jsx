@@ -6,6 +6,7 @@ import {
   storagePagesBase,
   uploadPageImages,
   uploadPdfPages,
+  useIssueInsights,
   useIssueMutations,
   useIssues,
 } from '../../magazineQueries.js'
@@ -239,6 +240,74 @@ function PagesPanel({ issue }) {
   )
 }
 
+// Reads, likes, downloads and how far readers get. `reach[n]` is how many
+// reading sessions reached page n or further, drawn as one bar per page.
+function ReadersPanel({ issue }) {
+  const q = useIssueInsights(issue.slug)
+  const d = q.data
+  const tracked = d?.tracked || 0
+  const maxReach = d?.reach?.[0]?.readers || 0
+  const pct = (n) => (tracked ? Math.round((100 * n) / tracked) : 0)
+  return (
+    <Panel title="Readers" className="mb-6">
+      {q.isPending ? (
+        <p className="mt-3 text-sm text-silver/60">Loading…</p>
+      ) : q.error ? (
+        <ErrorText>{q.error.message}</ErrorText>
+      ) : (
+        <>
+          <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              ['Reads', d.views],
+              ['Likes', d.likes],
+              ['Downloads', d.downloads],
+              ['Read to the end', tracked ? `${pct(d.finished)}%` : '–'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-white/10 bg-forest-950 p-3">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-silver/50">{label}</dt>
+                <dd className="heading-serif mt-1 text-2xl text-white">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          {tracked > 0 ? (
+            <>
+              <p className="mt-4 text-xs text-silver/55">
+                Since 2026-09-24 the site records how far each reader gets. {tracked} tracked{' '}
+                {tracked === 1 ? 'session' : 'sessions'}; the median reader stops at page{' '}
+                {Math.round(d.median_page || 0)} of {issue.page_count}. Each bar is the share of readers who reached
+                that page.
+              </p>
+              <ol className="mt-3 flex h-24 items-end gap-px" aria-label="Readers reaching each page">
+                {d.reach.map((r) => (
+                  <li
+                    key={r.page}
+                    className="group relative flex-1 rounded-t bg-medical/70 transition-colors hover:bg-medical"
+                    style={{ height: `${maxReach ? Math.max(4, (100 * r.readers) / maxReach) : 4}%` }}
+                    title={`Page ${r.page}: ${r.readers} ${r.readers === 1 ? 'reader' : 'readers'} (${pct(r.readers)}%)`}
+                  >
+                    <span className="sr-only">
+                      Page {r.page}: {r.readers} readers
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-1 flex justify-between text-[10px] text-silver/40">
+                <span>Page 1</span>
+                <span>Page {issue.page_count}</span>
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-xs text-silver/55">
+              Reading depth is recorded from 2026-09-24 on; the reads before that come from the old counter. No
+              tracked reading session yet.
+            </p>
+          )}
+        </>
+      )}
+    </Panel>
+  )
+}
+
 function IssueEditor({ issue }) {
   const navigate = useNavigate()
   const { remove } = useIssueMutations()
@@ -263,6 +332,7 @@ function IssueEditor({ issue }) {
         }
       />
       <DetailsForm issue={issue} />
+      {issue.status !== 'missing' && <ReadersPanel issue={issue} />}
       <PagesPanel issue={issue} />
       <Panel title="Delete edition" className="mt-8">
         <p className="mt-3 text-xs text-silver/55">

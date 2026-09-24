@@ -437,7 +437,9 @@ Order, chosen so each step unblocks the next and nothing loses data:
    merch officer.
 7. **Gallery**, replacing the admin-key takedown page and the static photo
    pipeline with the portal gallery editor (section 8).
-8. **Magazine engagement counters.**
+8. **Magazine engagement counters.** Built 2026-09-24 (migration
+   `20260924170001_magazine_engagement`): totals plus reading depth per session,
+   shown to the CBSD officers on the edition page (RUNBOOK section 17).
 
 When all eight are flipped, `apps-script/` moves to `apps-script/_retired/`
 with a README, the Sheets are marked read-only archives, and the CSP loses

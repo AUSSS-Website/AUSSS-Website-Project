@@ -86,6 +86,20 @@ async function reorderIssues(ids) {
   return ids
 }
 
+// ---- readers ---------------------------------------------------------------
+
+// rpc/magazine_insights: totals plus the reading-depth curve for one edition
+// ({ views, likes, downloads, sessions, tracked, finished, median_page,
+// reach: [{ page, readers }] }). Editors only; the database checks.
+export function useIssueInsights(slug) {
+  return useQuery({
+    queryKey: ['magazine', 'insights', slug],
+    queryFn: async () => unwrap(await supabase.rpc('magazine_insights', { issue: slug })),
+    enabled: Boolean(slug),
+    staleTime: 60_000,
+  })
+}
+
 export function useIssueMutations() {
   const qc = useQueryClient()
   const done = () => qc.invalidateQueries({ queryKey: magazineKeys.issues() })

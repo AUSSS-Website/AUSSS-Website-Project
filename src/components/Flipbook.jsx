@@ -6,11 +6,21 @@ import useMediaQuery from '../hooks/useMediaQuery.js'
 // book with a real page-curl, a two-page spread on desktop, a single page on
 // mobile. Images are pre-built from the full-quality PDF (see
 // _source/build-magazine.mjs), so there's no big download and no client pdf.js.
-export default function Flipbook({ pages, title }) {
+// `onPage(n)` (optional) reports the furthest page now visible, 1-based: the
+// right-hand page of a spread on desktop, the single page on a phone. The
+// magazine uses it to record how far readers get.
+export default function Flipbook({ pages, title, onPage }) {
   const [ratio, setRatio] = useState(null) // page height ÷ width
   const [page, setPage] = useState(0)
   const isMobile = useMediaQuery('(max-width: 767px)')
   const bookRef = useRef(null)
+
+  useEffect(() => {
+    if (!onPage || !ratio) return
+    // Page 0 is the cover alone; from then on a desktop spread shows two pages.
+    const visible = isMobile || page === 0 ? page + 1 : Math.min(pages.length, page + 2)
+    onPage(visible)
+  }, [onPage, page, isMobile, pages.length, ratio])
 
   // Lock the book's proportions to the real page shape before rendering it.
   useEffect(() => {

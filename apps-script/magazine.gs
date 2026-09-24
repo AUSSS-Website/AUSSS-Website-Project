@@ -1,4 +1,8 @@
 /**
+ * RETIRED 2026-09-24 (Phase 5): the counters live in the database (magazine_stats,
+ * rpc/magazine_track) and the site no longer calls this web app. Its totals were
+ * carried over. Kept for reference only.
+ *
  * AUSSS Magazine engagement backend — view + like counters.
  *
  * Deploy (same as the officers script):

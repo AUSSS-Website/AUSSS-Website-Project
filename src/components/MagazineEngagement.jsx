@@ -1,11 +1,12 @@
-import { useMagazineEngagement } from '../hooks/useMagazineEngagement.js'
 import { magazineCountersVisible } from '../data/magazineConfig.js'
 
-// Like button and live "reads" count for a magazine issue. The hook records a
-// view even while the counter UI is hidden (magazineCountersVisible === false),
-// so the numbers keep accumulating for the day the counter is switched on.
-export default function MagazineEngagement({ issueId, className = '' }) {
-  const { counts, liked, like, enabled } = useMagazineEngagement(issueId)
+// Like button and live "reads" count for a magazine issue. `engagement` is the
+// page's useMagazineEngagement() result (one reading session, shared with the
+// reader's page tracking). The read is recorded even while the counter UI is
+// hidden (magazineCountersVisible === false), so the numbers keep accumulating
+// for the day the counter is switched on.
+export default function MagazineEngagement({ engagement, className = '' }) {
+  const { counts, liked, like, enabled } = engagement
   if (!enabled) return null
   // Tracking already fired in the hook above, just hide the visible counter.
   if (!magazineCountersVisible) return null

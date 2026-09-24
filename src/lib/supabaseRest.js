@@ -20,10 +20,13 @@ const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 // then fall back to their static defaults.
 export const supabaseRestEnabled = Boolean(BASE && KEY)
 
-async function request(path, { method = 'GET', body, timeoutMs = 10000, headers = {} } = {}) {
+// `keepalive` lets a small request outlive the page (a last "how far did they
+// read" beacon on pagehide); browsers cap such bodies at about 64 KB.
+async function request(path, { method = 'GET', body, timeoutMs = 10000, headers = {}, keepalive = false } = {}) {
   if (!supabaseRestEnabled) throw new Error('Supabase is not configured')
   const res = await fetch(`${BASE}/rest/v1/${path}`, {
     method,
+    keepalive,
     signal: timeoutSignal(timeoutMs),
     headers: {
       apikey: KEY,

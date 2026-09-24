@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(55);
+select plan(60);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -81,6 +81,13 @@ select ok(not has_table_privilege('anon', 'public.magazine_issues', 'select'), '
 select ok(has_function_privilege('anon', 'public.magazine_public()', 'execute'), 'anon can read the public shelf');
 select ok(not has_column_privilege('authenticated', 'public.magazine_issues', 'created_by', 'insert'), 'authenticated cannot choose an edition''s author');
 select ok(not has_column_privilege('authenticated', 'public.magazine_issues', 'id', 'update'), 'an edition cannot be re-keyed');
+
+-- magazine counters: written and read through the two RPCs only
+select ok(not has_table_privilege('anon', 'public.magazine_sessions', 'select'), 'anon cannot read magazine_sessions');
+select ok(not has_table_privilege('authenticated', 'public.magazine_sessions', 'select'), 'authenticated cannot read magazine_sessions');
+select ok(not has_table_privilege('authenticated', 'public.magazine_stats', 'update'), 'authenticated cannot edit the counters');
+select ok(has_function_privilege('anon', 'public.magazine_track(uuid, text, text, int)', 'execute'), 'anon can track a reading session');
+select ok(not has_function_privilege('anon', 'public.magazine_insights(text)', 'execute'), 'anon cannot read the insights');
 
 select * from finish();
 rollback;

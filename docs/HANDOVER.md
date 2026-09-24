@@ -123,12 +123,14 @@ Supabase organisation. Requirements, from `apps-script/MIGRATION.md` step 0:
 - It is never handed to a single rotating officer. The password changes at every
   rollover and lands in the vault.
 
-### 2.8 Apps Script web apps (four still live until Phase 5 is complete)
+### 2.8 Apps Script web apps (three still live until Phase 5 is complete)
 
-Four Google Apps Script web apps and their Sheets (`orders.gs`,
-`signups.gs`, `stories.gs`, `magazine.gs`) still serve the public site.
-`gallery.gs` (the photo takedown list) was retired on 2026-09-24: the gallery is
-edited in the portal (RUNBOOK section 16) and its web app can be archived. Their
+Three Google Apps Script web apps and their Sheets (`orders.gs`,
+`signups.gs`, `stories.gs`) still serve the public site. `gallery.gs` (the photo
+takedown list) and `magazine.gs` (the reads and likes counters) were retired on
+2026-09-24: the gallery and the magazine are edited in the portal (RUNBOOK sections
+16 and 17), the counters live in `magazine_stats`, and both web apps and the counter
+sheet can be archived. Their
 URLs are hard-coded in `src/data/*Config.js`; the inventory, Script Properties
 and Drive folders are in `apps-script/MIGRATION.md` section A and B. Ownership
 is moving to `aussswebsite@gmail.com`; check that document for what is still

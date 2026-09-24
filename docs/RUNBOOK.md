@@ -814,6 +814,18 @@ prerender bakes the shelf into `/magazine` and uses the latest edition's hero pa
 Open Graph image. Egress: a full read of an edition is 7 to 18 MB; editions uploaded from the
 portal count against Supabase's 5 GB/month (section 16), the pre-portal ones against Vercel.
 
+**Reads, likes, downloads and reading depth** (migration `20260924170001_magazine_engagement`,
+test `180-magazine-engagement.sql`): the counters left `apps-script/magazine.gs` on 2026-09-24
+(its totals were seeded into `magazine_stats`, the old issue-1/issue-2 rows folded into
+vol-6/vol-7). Every visit to an edition is a reading session: the browser makes a random id,
+calls `rpc/magazine_track` with `view` (counts the read), then `page` as the flipbook advances
+(the furthest page reached, sent after a short pause and again when the tab is hidden or
+closed), `like` and `download` once per session. No IP, user agent or account is stored. New
+sessions are capped at 60 a minute. The editor's page shows `rpc/magazine_insights`: totals,
+the share who read to the end, the median page and a bar per page (Readers panel). The
+on-page counter stays hidden (`magazineCountersVisible` in `src/data/magazineConfig.js`)
+until the EB wants it shown.
+
 **Checks.** Signed in as an editor: `/portal/magazine` lists the editions; upload a small PDF to
 a draft, its pages appear and a click on one makes it the cover; set it to Published and it
 shows on `/magazine`. Anonymous: `rpc/magazine_public` answers, `/rest/v1/magazine_issues` is
