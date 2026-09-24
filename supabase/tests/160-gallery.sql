@@ -148,9 +148,9 @@ select is(
   '["22222222-2222-2222-2222-222222222222", "11111111-1111-1111-1111-111111111111", "33333333-3333-3333-3333-333333333333"]'::jsonb,
   'the featured photo comes first, then sort order'
 );
-select is(
-  public.gallery_public() -> 'albums' -> 0 ->> 'cover',
-  (select path from public.gallery_photos where id = '22222222-2222-2222-2222-222222222222'),
+-- (anon cannot read gallery_photos, so the path is checked by its photo-id suffix)
+select ok(
+  public.gallery_public() -> 'albums' -> 0 ->> 'cover' like '%/22222222-2222-2222-2222-222222222222',
   'without a chosen cover, the first photo is the cover'
 );
 
@@ -167,9 +167,8 @@ select is(
   '1',
   'hidden and binned photos are not counted'
 );
-select is(
-  public.gallery_public() -> 'albums' -> 0 ->> 'cover',
-  (select path from public.gallery_photos where id = '22222222-2222-2222-2222-222222222222'),
+select ok(
+  public.gallery_public() -> 'albums' -> 0 ->> 'cover' like '%/22222222-2222-2222-2222-222222222222',
   'a hidden cover falls back to the first visible photo'
 );
 
