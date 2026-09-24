@@ -7,8 +7,12 @@ import { Writable } from 'node:stream'
 import { renderToPipeableStream } from 'react-dom/server'
 import { StaticRouter } from 'react-router-dom'
 import App from './App.jsx'
+import { setBakedGallery } from './lib/gallery.js'
 
-export function render(url) {
+//  is the live gallery the prerender fetched once (src/lib/gallery.js),
+// so /gallery and every album page render with real photos.
+export function render(url, albums) {
+  setBakedGallery(albums)
   return new Promise((resolve, reject) => {
     const chunks = []
     const sink = new Writable({

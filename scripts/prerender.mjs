@@ -121,6 +121,22 @@ function llmsTxt(pages) {
   ].join('\n')
 }
 
+// The gallery lives in the database (portal editor); fetch it once so the album
+// pages and their share cards are pre-rendered with real photos. Without the
+// Supabase env vars (a local build without .env.local) the gallery index is
+// rendered empty and no album pages exist; the browser fills it in at runtime.
+async function loadAlbums(vite) {
+  const gallery = await vite.ssrLoadModule('/src/lib/gallery.js')
+  try {
+    const live = await gallery.fetchGalleryAlbums()
+    console.log(`prerender: ${live.length} albums from the database`)
+    return live
+  } catch (err) {
+    console.warn(`prerender: could not fetch the gallery (${err.message}); no album pages this build`)
+    return []
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -146,13 +162,14 @@ async function main() {
   try {
     const { render } = await vite.ssrLoadModule('/src/entry-server.jsx')
     const { publicPages } = await vite.ssrLoadModule('/src/seo/pages.js')
-    const pages = publicPages()
+    const albums = await loadAlbums(vite)
+    const pages = publicPages(albums)
 
     const seen = new Set()
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path)
+      const appHtml = await render(page.path, albums)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }

@@ -9,11 +9,10 @@
 // usePageTitle(): the pre-rendered head is what crawlers read, the hook is
 // what a visitor sees after client-side navigation. Keep the two in step.
 //
-// Not listed on purpose: /portal/** (sign-in only), /gallery/admin, /login,
+// Not listed on purpose: /portal/** (sign-in only), /login,
 // /account, /merch/checkout, /social, /quiz and the singular exchange aliases
 // (all redirects or private surfaces).
 import { committees, slugFor, society, socials, exchange } from '../data/society.js'
-import { albums } from '../data/gallery.js'
 import { joinFaqs } from '../data/faq.js'
 
 export const SITE_URL = 'https://ausss-ainshams.org'
@@ -170,7 +169,10 @@ function albumJsonLd(a, path) {
 // One entry per public URL. `title` is the part before " · AUSSS" (empty on
 // the home page, which uses BASE_TITLE), `image` an absolute URL for the
 // social preview card, `changefreq` and `priority` are the sitemap hints.
-export function publicPages() {
+//  is the gallery snapshot the prerender fetched (src/lib/gallery.js shape:
+// cover/coverFull are absolute Storage URLs for live albums, site paths for the
+// static fallback).
+export function publicPages(albums = []) {
   const pages = [
     {
       path: '/',
@@ -338,9 +340,9 @@ export function publicPages() {
       description: a.blurb
         ? `${a.blurb} ${a.count} photos from AUSSS.`
         : `${a.count} photos from ${a.title}, an AUSSS album.`,
-      // The cover's full-size file (~150 KB) rather than its thumbnail, so the
-      // preview card is sharp.
-      image: a.cover ? abs(a.cover.replace('-thumb.', '-full.')) : undefined,
+      // The cover's full-size file rather than its thumbnail, so the preview
+      // card is sharp.
+      image: a.coverFull ? abs(a.coverFull) : undefined,
       imageAlt: a.title,
       changefreq: 'yearly',
       priority: 0.5,

@@ -284,6 +284,27 @@ Route tree under `/portal`, all behind sign-in:
   previews that album (not the generic site card) in WhatsApp, Facebook and
   Instagram. This needs per-route pre-rendered HTML, the same work as the
   discoverability item in Phase 4.
+  **Build note (2026-09-24):** the thumbnail/full pair is made in the
+  officer's browser (canvas, 600 px and 1600 px JPEGs, EXIF orientation
+  applied) rather than server-side: Storage image transforms need the Pro
+  plan, and an edge function cannot decode a 12 MP phone photo inside its
+  CPU budget. The outcome is the same: no local build step, no developer.
+- **Magazine editor** (requested 2026-09-24): the magazine shelf becomes
+  editable from the portal by the CBSD officers and the EB, replacing
+  `src/data/magazine.js` and the `_source/build-magazine.mjs` rasterising
+  step. They can add a new edition (title, volume label, blurb, download and
+  Canva links), upload its PDF from the portal (the pages are rasterised in
+  the browser with pdf.js and uploaded to the `magazine` bucket as
+  `<issue>/pages/NNN.jpg`, so no developer step remains), pick the hero page
+  (the page shown as the edition's cover in the header, the switcher and the
+  share card; page 1 by default), reorder the shelf, mark a back-issue as
+  missing, and unpublish. Data: `magazine_issues` (slug, title,
+  switcher_label, date_label, blurb, sort_order, status
+  `draft | published | missing`, page_count, hero_page, download_url,
+  canva_url). Writes are role-checked (`app.is_officer_of('cbsd')` or
+  `app.is_eb()`), reads stay anon; the public /magazine page and its
+  pre-rendered card read the same snapshot the gallery uses. Follows the
+  gallery editor in the Phase 5 order.
 - **Directory**: opted-in members with positions, searchable.
 - **Notifications**: an in-app feed, and a daily email digest of anything
   unread (per-person opt-out), sent by an edge function on a `pg_cron`
@@ -430,7 +451,7 @@ use, not a demo.
 | **2. Officer parity** | 2 | Site settings, committee page editor, open calls and applications on Supabase (migration steps 1 to 3) | `officers.gs` is no longer called by production. |
 | **3. Portal core** | 3 | Dashboard, tasks, updates, read receipts, notifications feed, email digest | One committee runs a real month of work through it. |
 | **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster, per-committee officer roster (assign members, officer notes, membership fields read-only); **discoverability** (added 2026-09-22): make the site show up in normal Google searches and in AI answers (Google AI Overviews, ChatGPT, Perplexity, Claude): check indexing and submit the sitemap in Search Console, register with Bing Webmaster Tools (feeds ChatGPT and Copilot), per-route titles/descriptions and pre-rendered HTML for the public pages (one SPA `index.html` today), richer JSON-LD (committees, events, contact), `llms.txt`, robots.txt explicitly allowing the AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended), and backlinks from IFMSA/IFMSA-Egypt and the faculty site. **Built 2026-09-23:** every public page (35 URLs incl. committees and albums) is pre-rendered HTML at build time with its own title, description, canonical, Open Graph card and JSON-LD; sitemap.xml and llms.txt are generated from the same list; robots.txt names the AI crawlers; `spa.html` is the fallback shell (RUNBOOK section 15). Left: Search Console sitemap resubmission + indexing requests, Bing Webmaster Tools, backlinks | 100 members with accounts, verification backlog under a day; searching "AUSSS" or "Ain Shams medical students society" returns the site on page one in Google and in an AI answer. |
-| **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired; **gallery editor** for PNSD + EB (added 2026-09-22: add/remove photos by drag-and-drop or file picker, add/remove/reorder albums with title, blurb and hero photo; each album has its own shareable link with its own preview card; see section 8) | No Apps Script URL left in `src/data`; a PNSD officer publishes a new album with photos from the portal without a developer. |
+| **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired; **gallery editor** for PNSD + EB (added 2026-09-22: add/remove photos by drag-and-drop or file picker, add/remove/reorder albums with title, blurb and hero photo; each album has its own shareable link with its own preview card; see section 8); **magazine editor** for CBSD + EB (added 2026-09-24: add an edition from a PDF, pick its hero page, write its blurb, reorder the shelf; see section 8) | No Apps Script URL left in `src/data`; a PNSD officer publishes a new album with photos from the portal without a developer. |
 | **6. Site management** | 4, then ongoing | Schema-driven editor; EB, FAQ, magazine, merch, events and home sections editable; content snapshot pipeline | An officer publishes a magazine issue with no developer involved. |
 | **7. Sustain** | ongoing | Term-rollover wizard, backups and a restore rehearsal, runbook, monitoring, the Pro plan decision | The first rollover to 2027-28 is done by the EB alone. |
 

@@ -24,10 +24,12 @@ function displayName(profile, user) {
 }
 
 export default function PortalLayout() {
-  const { user, profile, isEB, assignments, signOut } = useAuth()
+  const { user, profile, isEB, assignments, officerOf, signOut } = useAuth()
   // Officers (and the EB) get the committee editor in the nav; members don't.
   const canEditCommittees =
     isEB || assignments.some((a) => a.position?.level === 'officer' && a.position?.committee)
+  // The gallery belongs to PNSD (and the EB).
+  const canEditGallery = officerOf('pnsd')
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const unread = useUnreadCount().data || 0
@@ -87,6 +89,11 @@ export default function PortalLayout() {
             {canEditCommittees && (
               <NavLink to="/portal/committees" className={navCls}>
                 Committees
+              </NavLink>
+            )}
+            {canEditGallery && (
+              <NavLink to="/portal/gallery" className={navCls}>
+                Gallery
               </NavLink>
             )}
             {isEB && (

@@ -9,7 +9,7 @@ import { readJson } from '../lib/localCache.js'
 //   { tagline, about[], whatWeDo[], whatWeDoEnabled, photo, membersEnabled, members[] }
 // Committee pages fetch the whole map once on load and merge the matching
 // slug's override on top of the static society.js committee. Mirrors the
-// fetch + localStorage-cache shape of useGalleryRemovals. An empty page ({})
+// fetch + localStorage-cache shape of src/lib/gallery.js. An empty page ({})
 // means "no override" and is left out of the map.
 
 const CACHE_KEY = 'ausss-officer-overrides-cache'

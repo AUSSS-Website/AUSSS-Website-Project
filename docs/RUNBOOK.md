@@ -731,3 +731,57 @@ pages, open Sitemaps, resubmit `https://ausss-ainshams.org/sitemap.xml`, and use
 Inspection > Request indexing on the pages that matter. **Bing Webmaster Tools**
 (feeds Bing, Copilot, ChatGPT search and DuckDuckGo): sign in with the same Google
 account and import the site from Search Console; it takes the sitemap from there.
+
+## 16. Gallery editor (Phase 5)
+
+Since 2026-09-24 the public gallery (`/gallery`, `/gallery/<slug>`) is read from the
+database and edited in the portal at `/portal/gallery` by the PNSD officers and the EB
+(`app.is_gallery_editor()` = `app.is_officer_of('pnsd')`, which includes the EB). The
+static pipeline (`_source/build-gallery.mjs`, `src/data/gallery.js`, `public/assets/gallery`)
+and the admin-key takedown page (`/gallery/admin`, `apps-script/gallery.gs`) are retired.
+Migration `20260924120001_gallery`, tests `160-gallery.sql` and the gallery block of
+`090-grants.sql`.
+
+**Data.** `albums` (slug, title, blurb, cover_photo_id, sort_order, published),
+`gallery_photos` (album_id, path, width, height, sort_order, label, featured, hidden,
+deleted_at), `album_slugs` (every slug an album has ever had). Files live in the public
+Storage bucket `gallery` as `<album id>/<photo id>-thumb.jpg` (600 px) and `-full.jpg`
+(1600 px); the row's `path` is the prefix. Both files are made in the officer's browser
+(canvas, EXIF orientation applied) before upload, so a full-size phone photo is fine and
+no build step exists. Storage image transforms (Pro plan) are not used.
+
+**Rules the database enforces.** The slug comes from the title when left blank, is
+normalised (`app.slugify`), and can never be one another album has used; a rename keeps
+the old slug in `album_slugs`, and the public page redirects it (`aliases` in the
+snapshot). One featured photo per album (the wide banner above the grid). Editors write
+content columns only (column grants): ids, paths, authorship and timestamps are set by
+triggers. Nobody but editors can read the tables; visitors read `rpc/gallery_public()`,
+one JSON document with the published albums that have at least one visible photo.
+
+**Hide, remove, bin.** *Hide* keeps the photo in the album but off the site (the old
+takedown list). *Remove* sets `deleted_at`: the photo shows in the album's bin with
+Restore and Delete for good; anything older than 30 days is purged (files then row) the
+next time an editor opens that album (`purgeExpired` in `src/portal/galleryQueries.js`),
+so no scheduled job is involved. Deleting an album removes its files first, then the
+rows.
+
+**Public site.** `src/lib/gallery.js` fetches the snapshot and caches it in localStorage
+for an instant repeat paint. The prerender (`scripts/prerender.mjs`) fetches the same
+snapshot at build time, so every album page and its share card are pre-rendered with the
+live photos; without the Supabase env vars it warns and builds no album pages. A new album
+is therefore listed in the sitemap and gets its own preview card at the next deploy; the
+page itself is live immediately.
+
+**The eight pre-portal albums were imported on 2026-09-24** (258 photos, 58 MB) from the
+webmaster's signed-in portal session (the same uploads and inserts the editor makes); the
+static data file, the assets and `_source/build-gallery.mjs` are gone. Storage egress on the
+free plan is 5 GB/month and the gallery is its largest consumer (about 2 to 3 MB per album
+view, cached for a year in the browser), so watch Settings, Usage in the Supabase dashboard
+for the first months; the remedies are a Vercel rewrite in front of the bucket or the Pro
+plan.
+
+**Checks.** Signed in as an editor: `/portal/gallery` lists the albums; drop a photo on
+an album page, it appears in the grid within seconds and on `/gallery/<slug>` on reload.
+Anonymous: `curl -s -X POST -H "apikey: $ANON" -H "Authorization: Bearer $ANON"
+$URL/rest/v1/rpc/gallery_public` returns `{"albums":[...]}`, and
+`$URL/rest/v1/albums` returns a permission error.

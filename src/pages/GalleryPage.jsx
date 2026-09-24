@@ -1,54 +1,39 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { memo, useCallback, useEffect, useState } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import useMediaQuery from '../hooks/useMediaQuery.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import useFocusTrap from '../hooks/useFocusTrap.js'
 import ImageTrail from '../components/ImageTrail.jsx'
 import GalleryAurora from '../components/GalleryAurora.jsx'
-import { albums as rawAlbums, trail } from '../data/gallery.js'
-import { useGalleryRemovals } from '../hooks/useGalleryRemovals.js'
+import { findAlbum, useGallery } from '../lib/gallery.js'
 import { society } from '../data/society.js'
 
-// Photos hidden through /gallery/admin are fetched on load and filtered out
-// here, so a takedown reaches visitors without a redeploy.
-
-// Hide removed photos and recompute count/cover; drop now-empty albums.
-function visibleAlbums(albums, hidden) {
-  if (hidden.size === 0) return albums
-  return albums
-    .map((a) => {
-      const photos = a.photos.filter((p) => !hidden.has(p.full))
-      return { ...a, photos, count: photos.length, cover: photos[0]?.thumb }
-    })
-    .filter((a) => a.count > 0)
-}
+// The albums come from the database (the PNSD officers edit them in the portal);
+// src/lib/gallery.js decides what to show while the live document loads. A photo
+// hidden or removed in the editor is simply absent here.
 
 export default function GalleryPage() {
   const { slug } = useParams()
-  const { hidden } = useGalleryRemovals()
+  const { albums, trail, loading } = useGallery()
 
-  const album = slug ? rawAlbums.find((a) => a.slug === slug) : null
+  const { album, redirectTo } = findAlbum(albums, slug)
   usePageTitle(album ? album.title : 'Gallery')
-  if (slug && !album) return <NotFoundAlbum slug={slug} />
+  // A link shared before the album was renamed still opens it.
+  if (redirectTo) return <Navigate to={`/gallery/${redirectTo}`} replace />
+  if (slug && !album) return loading ? <LoadingAlbum /> : <NotFoundAlbum slug={slug} />
 
-  return album ? (
-    <AlbumView album={album} hidden={hidden} />
-  ) : (
-    <GalleryIndex hidden={hidden} />
-  )
+  return album ? <AlbumView album={album} /> : <GalleryIndex albums={albums} trail={trail} />
 }
 
 // ───────────────────────── Index view ─────────────────────────
 
-function GalleryIndex({ hidden }) {
+function GalleryIndex({ albums, trail }) {
   useReveal()
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const hasTrail = trail.length > 0
   const showTrail = isDesktop && !reduceMotion && hasTrail
-
-  const albums = visibleAlbums(rawAlbums, hidden)
 
   return (
     <article className="bg-forest-950">
@@ -189,14 +174,10 @@ const AlbumCard = memo(function AlbumCard({ a }) {
 
 // ───────────────────────── Album view ─────────────────────────
 
-function AlbumView({ album, hidden }) {
+function AlbumView({ album }) {
   useReveal()
   const [openIdx, setOpenIdx] = useState(null)
-
-  const photos = useMemo(
-    () => album.photos.filter((p) => !hidden.has(p.full)),
-    [album.photos, hidden],
-  )
+  const photos = album.photos
 
   const open = openIdx != null
   const close = useCallback(() => setOpenIdx(null), [])
@@ -212,7 +193,7 @@ function AlbumView({ album, hidden }) {
     [photos.length],
   )
 
-  // A pinned featured photo (pipeline puts it first) renders as a full-width
+  // A featured photo (the editor puts it first) renders as a full-width
   // banner above the grid. The grid then shows the rest; `gridOffset` keeps
   // lightbox indices aligned with the full `photos` array.
   const featuredPhoto = photos[0]?.featured ? photos[0] : null
@@ -451,7 +432,20 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
   )
 }
 
-// ───────────────────────── Not-found ─────────────────────────
+// ───────────────────────── Loading / not-found ─────────────────────────
+
+// Shown for an album slug we do not know yet while the live list is still on
+// its way (a brand-new album opened from a shared link).
+function LoadingAlbum() {
+  return (
+    <article className="relative isolate overflow-hidden bg-forest-950">
+      <GalleryAurora />
+      <div className="container-prose relative z-10 flex min-h-[60vh] items-center justify-center pt-32">
+        <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light" aria-label="Loading album" />
+      </div>
+    </article>
+  )
+}
 
 function NotFoundAlbum({ slug }) {
   return (

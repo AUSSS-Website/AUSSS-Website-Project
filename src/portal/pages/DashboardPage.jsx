@@ -125,7 +125,7 @@ function PositionChip({ assignment }) {
 
 export default function DashboardPage() {
   usePageTitle('Members portal')
-  const { user, profile, assignments, isEB, profileError } = useAuth()
+  const { user, profile, assignments, isEB, officerOf, profileError } = useAuth()
   // Committees this person can edit: officers see theirs, the EB sees all.
   const officerCommittees = assignments
     .filter((a) => a.position?.level === 'officer' && a.position?.committee)
@@ -226,6 +226,17 @@ export default function DashboardPage() {
               className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
             >
               Open the editor &rarr;
+            </Link>
+          </Panel>
+        )}
+
+        {officerOf('pnsd') && (
+          <Panel title="Gallery">
+            <p className="mt-4 text-sm text-silver/70">
+              Add albums and photos to the public gallery. Changes are live as soon as they are saved.
+            </p>
+            <Link to="/portal/gallery" className={moreLinkCls}>
+              Open the gallery editor &rarr;
             </Link>
           </Panel>
         )}

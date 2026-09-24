@@ -21,7 +21,6 @@ const ExchangeDirectionPage = lazy(
 const ExchangeJoinPage = lazy(() => import('./pages/ExchangeJoinPage.jsx'))
 const ShareStoryPage = lazy(() => import('./pages/ShareStoryPage.jsx'))
 const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'))
-const GalleryAdminPage = lazy(() => import('./pages/GalleryAdminPage.jsx'))
 const JoinPage = lazy(() => import('./pages/JoinPage.jsx'))
 const SortingPage = lazy(() => import('./pages/SortingPage.jsx'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'))
@@ -82,7 +81,9 @@ export default function App() {
                 <Route path="/exchange/join" element={<ExchangeJoinPage />} />
                 <Route path="/exchange/share" element={<ShareStoryPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
-                <Route path="/gallery/admin" element={<GalleryAdminPage />} />
+                {/* The admin-key takedown page retired in Phase 5; photos are hidden
+                    from the portal gallery editor now. */}
+                <Route path="/gallery/admin" element={<Navigate to="/portal/gallery" replace />} />
                 <Route path="/gallery/:slug" element={<GalleryPage />} />
                 <Route path="/join" element={<JoinPage />} />
                 <Route path="/sorting" element={<SortingPage />} />

@@ -1,4 +1,7 @@
 /**
+ * RETIRED 2026-09-24 (Phase 5): the gallery is edited in the members portal and read
+ * from Supabase; the site no longer calls this web app. Kept for reference only.
+ *
  * AUSSS gallery — photo takedown endpoint (Google Apps Script web app)
  *
  * Stores a list of "removed" gallery photo paths. The public gallery reads

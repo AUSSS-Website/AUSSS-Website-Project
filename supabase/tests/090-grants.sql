@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(44);
+select plan(51);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -66,6 +66,15 @@ select ok(not has_table_privilege('anon', 'public.positions', 'insert'), 'anon c
 select ok(not has_table_privilege('anon', 'public.member_notes', 'select'), 'anon cannot read officer notes');
 select ok(not has_column_privilege('authenticated', 'public.member_notes', 'author_id', 'insert'), 'authenticated cannot choose a note''s author');
 select ok(not has_column_privilege('authenticated', 'public.member_notes', 'committee_id', 'update'), 'a note cannot be moved to another committee');
+
+-- gallery: visitors read the RPC only; editors write content columns, never paths or authorship
+select ok(not has_table_privilege('anon', 'public.albums', 'select'), 'anon cannot read albums');
+select ok(not has_table_privilege('anon', 'public.gallery_photos', 'select'), 'anon cannot read gallery_photos');
+select ok(has_function_privilege('anon', 'public.gallery_public()', 'execute'), 'anon can read the public gallery');
+select ok(not has_column_privilege('authenticated', 'public.gallery_photos', 'path', 'update'), 'a photo cannot be re-pathed');
+select ok(not has_column_privilege('authenticated', 'public.gallery_photos', 'created_by', 'insert'), 'authenticated cannot choose a photo''s author');
+select ok(not has_column_privilege('authenticated', 'public.albums', 'created_by', 'update'), 'authenticated cannot change an album''s author');
+select ok(not has_table_privilege('authenticated', 'public.album_slugs', 'insert'), 'aliases are written by the rename trigger only');
 
 select * from finish();
 rollback;

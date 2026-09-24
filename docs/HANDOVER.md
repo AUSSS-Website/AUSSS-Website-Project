@@ -123,10 +123,12 @@ Supabase organisation. Requirements, from `apps-script/MIGRATION.md` step 0:
 - It is never handed to a single rotating officer. The password changes at every
   rollover and lands in the vault.
 
-### 2.8 Apps Script web apps (five still live until Phase 5)
+### 2.8 Apps Script web apps (four still live until Phase 5 is complete)
 
-Five Google Apps Script web apps and their Sheets (`gallery.gs`, `orders.gs`,
-`signups.gs`, `stories.gs`, `magazine.gs`) still serve the public site. Their
+Four Google Apps Script web apps and their Sheets (`orders.gs`,
+`signups.gs`, `stories.gs`, `magazine.gs`) still serve the public site.
+`gallery.gs` (the photo takedown list) was retired on 2026-09-24: the gallery is
+edited in the portal (RUNBOOK section 16) and its web app can be archived. Their
 URLs are hard-coded in `src/data/*Config.js`; the inventory, Script Properties
 and Drive folders are in `apps-script/MIGRATION.md` section A and B. Ownership
 is moving to `aussswebsite@gmail.com`; check that document for what is still
@@ -195,7 +197,6 @@ seat. RUNBOOK section 8 covers that.
 | Resend API key | Supabase custom SMTP, `supabase/.env` | Webmaster |
 | Resend and registrar logins | Rare admin | President, webmaster |
 | Vercel account login (if not SSO via GitHub) | Hosting | President, webmaster |
-| Apps Script `ADMIN_KEY` (gallery) | Legacy backend until Phase 5 | Webmaster |
 
 - When someone leaves a role, the secrets they could see are rotated (section 6),
   not merely "removed from the vault".
