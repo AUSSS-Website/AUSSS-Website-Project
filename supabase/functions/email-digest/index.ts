@@ -75,6 +75,10 @@ function describe(n: Notification) {
       return `“${title}” moved to ${STATUS[n.payload.to ?? ''] || n.payload.to}`
     case 'task_comment':
       return `New comment on “${title}”`
+    case 'order_new':
+      return `New merch pre-order ${n.payload.ref || ''}${n.payload.subtotal ? ` (${n.payload.subtotal} EGP)` : ''}`
+    case 'story_new':
+      return `New exchange story ${n.payload.ref || ''}`
     default:
       return `Activity on “${title}”`
   }
@@ -83,9 +87,16 @@ function describe(n: Notification) {
 function render(p: Person) {
   const first = (p.full_name || '').trim().split(/\s+/)[0]
   const hello = first ? `Hi ${first},` : 'Hi,'
+  // 'tasks' also carries the website submissions; the heading below covers both
   const tasks = p.notifications.map((n) => ({
     text: describe(n),
-    url: n.payload.task_id ? `${PORTAL}/tasks/${n.payload.task_id}` : `${PORTAL}/notifications`,
+    url: n.payload.task_id
+      ? `${PORTAL}/tasks/${n.payload.task_id}`
+      : n.kind === 'order_new'
+        ? `${PORTAL}/submissions?tab=orders`
+        : n.kind === 'story_new'
+          ? `${PORTAL}/submissions?tab=stories`
+          : `${PORTAL}/notifications`,
   }))
   const posts = p.posts.map((x) => ({
     text: `${x.committee || 'AUSSS'}: ${x.title}`,
@@ -105,7 +116,7 @@ function render(p: Person) {
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1b1b1b;max-width:560px">
     <p>${esc(hello)}</p>
     <p>Here is what is waiting for you in the AUSSS members portal.</p>
-    ${section('Your tasks', tasks)}
+    ${section('Your tasks and new submissions', tasks)}
     ${section('Updates you have not read', posts)}
     <p style="margin-top:28px"><a href="${esc(PORTAL)}" style="background:#06402B;color:#ffffff;padding:10px 18px;border-radius:999px;text-decoration:none">Open the portal</a></p>
     <p style="margin-top:28px;font-size:12px;color:#777">You get this at most once a day, only when something is unread.
@@ -113,7 +124,7 @@ function render(p: Person) {
   </div>`
 
   const lines = [hello, '', 'Here is what is waiting for you in the AUSSS members portal.']
-  if (tasks.length) lines.push('', 'YOUR TASKS', ...tasks.map((r) => `- ${r.text}\n  ${r.url}`))
+  if (tasks.length) lines.push('', 'YOUR TASKS AND NEW SUBMISSIONS', ...tasks.map((r) => `- ${r.text}\n  ${r.url}`))
   if (posts.length) lines.push('', 'UPDATES YOU HAVE NOT READ', ...posts.map((r) => `- ${r.text}`), `  ${PORTAL}/updates`)
   lines.push('', `Open the portal: ${PORTAL}`, '', `At most once a day, only when something is unread. Switch it off under Profile: ${PORTAL}/profile`)
   return { subject: subject.slice(0, 180), html, text: lines.join('\n') }

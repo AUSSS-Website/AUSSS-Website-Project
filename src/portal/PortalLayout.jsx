@@ -32,6 +32,9 @@ export default function PortalLayout() {
   const canEditGallery = officerOf('pnsd')
   // The magazine belongs to CBSD (and the EB).
   const canEditMagazine = officerOf('cbsd')
+  // Submissions: the EB triages orders, stories and the waitlist; the exchange
+  // officers (SCOPE, SCORE) see the stories.
+  const canTriage = isEB || officerOf('scope') || officerOf('score')
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const unread = useUnreadCount().data || 0
@@ -101,6 +104,11 @@ export default function PortalLayout() {
             {canEditMagazine && (
               <NavLink to="/portal/magazine" className={navCls}>
                 Magazine
+              </NavLink>
+            )}
+            {canTriage && (
+              <NavLink to="/portal/submissions" className={navCls}>
+                Submissions
               </NavLink>
             )}
             {isEB && (

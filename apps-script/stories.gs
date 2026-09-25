@@ -1,4 +1,8 @@
 /**
+ * RETIRED 2026-09-25 (Phase 5): this form now writes to Supabase (rpc/submit_story)
+ * and is read in the members portal under Submissions; the site no longer calls this
+ * web app. Kept for reference only. Rows already in the sheet stay there as an archive.
+ *
  * AUSSS exchange stories — Google Apps Script Web App
  * ---------------------------------------------------------------------------
  * Companion to orders.gs. Bind this to a Google Sheet (Extensions → Apps

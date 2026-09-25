@@ -123,18 +123,20 @@ Supabase organisation. Requirements, from `apps-script/MIGRATION.md` step 0:
 - It is never handed to a single rotating officer. The password changes at every
   rollover and lands in the vault.
 
-### 2.8 Apps Script web apps (three still live until Phase 5 is complete)
+### 2.8 Apps Script web apps (all retired; the Sheets are archives)
 
-Three Google Apps Script web apps and their Sheets (`orders.gs`,
-`signups.gs`, `stories.gs`) still serve the public site. `gallery.gs` (the photo
-takedown list) and `magazine.gs` (the reads and likes counters) were retired on
-2026-09-24: the gallery and the magazine are edited in the portal (RUNBOOK sections
-16 and 17), the counters live in `magazine_stats`, and both web apps and the counter
-sheet can be archived. Their
-URLs are hard-coded in `src/data/*Config.js`; the inventory, Script Properties
-and Drive folders are in `apps-script/MIGRATION.md` section A and B. Ownership
-is moving to `aussswebsite@gmail.com`; check that document for what is still
-"pending owner".
+No Google Apps Script web app serves the public site any more. `orders.gs`,
+`signups.gs` and `stories.gs` were retired on 2026-09-25 (Phase 5): merch
+pre-orders, exchange stories and waitlist sign-ups now land in Supabase and are
+handled in the portal under Submissions (RUNBOOK section 18); the payment
+receipts go to the private `receipts` bucket instead of the "AUSSS Orders
+Receipts" Drive folder. `gallery.gs` (the photo takedown list) and `magazine.gs`
+(the reads and likes counters) were retired on 2026-09-24 (RUNBOOK sections 16
+and 17). The old Sheets (`Orders`, `Signups`, `Exchange Stories`) keep the rows
+submitted before the switch and can be marked read-only; nothing on the site
+reads them. The inventory, Script Properties and Drive folders are in
+`apps-script/MIGRATION.md` section A and B; finish the ownership transfers so the
+archive is society-owned, but do not redeploy any of the web apps.
 
 `officers.gs` (officer login, committee page overrides, site settings, Open
 Calls) was retired from production on 2026-09-19 (Phase 2): the site no longer

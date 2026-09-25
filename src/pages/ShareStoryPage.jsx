@@ -25,6 +25,7 @@ export default function ShareStoryPage() {
     programme: '',
     year: '',
     story: '',
+    website: '', // honeypot: hidden, stays blank for people
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -88,8 +89,9 @@ export default function ShareStoryPage() {
         <form
           onSubmit={onSubmit}
           noValidate
-          className="mx-auto max-w-2xl space-y-10"
+          className="relative mx-auto max-w-2xl space-y-10"
         >
+          <Honeypot value={form.website} onChange={(v) => update('website', v)} />
           {/* Who you are */}
           <fieldset className="rounded-2xl border border-white/10 bg-forest-900 p-6 sm:p-8">
             <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-medical-light">
@@ -262,6 +264,25 @@ function Field({ label, htmlFor, error, span = 1, children }) {
         </span>
       )}
     </label>
+  )
+}
+
+// An off-screen field people never see; a bot that fills it is quietly ignored
+// by the database.
+function Honeypot({ value, onChange }) {
+  return (
+    <div className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+      <label htmlFor="website">Website</label>
+      <input
+        id="website"
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
   )
 }
 

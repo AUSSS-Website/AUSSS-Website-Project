@@ -830,3 +830,45 @@ until the EB wants it shown.
 a draft, its pages appear and a click on one makes it the cover; set it to Published and it
 shows on `/magazine`. Anonymous: `rpc/magazine_public` answers, `/rest/v1/magazine_issues` is
 refused.
+
+## 18. Submissions: merch orders, exchange stories, the waitlist (Phase 5)
+
+Since 2026-09-25 the last three public forms write to the database instead of Google Apps
+Script: the recruitment waitlist on `/join` (`signups`), the exchange story form on
+`/exchange/share` (`stories`) and the merch checkout on `/merch/checkout` (`orders`). They are
+handled in the portal at `/portal/submissions`: the EB sees all three tabs, the SCOPE and SCORE
+officers see Stories (`app.can_triage(kind)`). `orders.gs`, `signups.gs` and `stories.gs` are
+retired; the old Sheets keep their rows as an archive. Migration `20260925090001_submissions`,
+tests `190-submissions.sql` and the last block of `090-grants.sql`.
+
+**How a submission arrives.** The site calls one anon RPC per form (`submit_signup`,
+`submit_story`, `submit_order`), each with the validation, quiet dedupe and per-minute cap the
+script had, plus a honeypot field bots fill in. A refusal (errcode 22023) carries the message
+the form shows. Nobody inserts into the tables directly. The story and order references
+(`STORY-…`, `AUSSS-…`) are made by the browser and kept by the database, so the success
+screen and the row match.
+
+**Orders.** `submit_order` prices every line from `merch_products` (seeded from
+`src/data/merchProducts.js`; keep the two in step: an EB member can edit a price in the table,
+but the shop page still reads the file, and a mismatch is written into `price_flag` on the
+order instead of refusing it). The buyer's payment screenshot is shrunk in the browser
+(1600 px JPEG) and uploaded to the private bucket `receipts` as `<order id>.jpg`; the bucket
+policy accepts one file per order placed in the last 30 minutes (`app.receipt_upload_ok`),
+then `order_receipt_attached` records it. The portal opens receipts through ten-minute signed
+URLs. An order whose upload failed shows "No receipt uploaded" and the buyer was told to send
+it. Deleting an order (EB) removes its receipt too.
+
+**Who hears about it.** A new order or story writes a notification for everyone who triages it
+(EB, webmaster; the exchange officers for stories), so it appears in the feed and in the daily
+email digest (section 13). Sign-ups do not notify (they arrive in bulk); the dashboard panel
+and the Waitlist tab show the count.
+
+**Triage.** Each row has a status (`orders`: new, confirmed, collected, cancelled; `stories`:
+new, contacted, featured, declined; `signups`: new, contacted, archived) and private notes
+(`officer_notes` on orders). Filter chips, a search box and *Export CSV* (the filtered rows,
+UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes.
+
+**Checks.** Anonymous: `rpc/submit_signup` with a valid email answers `{ok: true}`;
+`/rest/v1/orders` is refused. Signed in as the webmaster: `/portal/submissions` lists the
+three tabs; a test order placed on localhost shows its receipt through *View receipt*; delete
+the test rows afterwards (the order's receipt disappears from the bucket with it).

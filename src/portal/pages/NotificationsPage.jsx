@@ -21,6 +21,16 @@ function describe(n, names) {
       return { line: `${who} moved a task to ${STATUS_LABEL[p.to] || p.to}`, detail: p.title }
     case 'task_comment':
       return { line: `${who} commented on “${p.title}”`, detail: p.excerpt }
+    case 'order_new':
+      return {
+        line: `New merch pre-order${p.flagged ? ' (check the amount)' : ''}`,
+        detail: `${p.name || 'Someone'} · ${p.ref || ''}${p.subtotal != null ? ` · ${p.subtotal} EGP` : ''}`,
+      }
+    case 'story_new':
+      return {
+        line: 'New exchange story',
+        detail: `${p.name || 'Someone'}${p.destination ? ` · ${p.destination}` : ''} · ${p.ref || ''}`,
+      }
     default:
       return { line: 'Something changed', detail: p.title }
   }
@@ -38,6 +48,8 @@ export default function NotificationsPage() {
   const open = (n) => {
     if (!n.read_at) markRead.mutate([n.id])
     if (n.payload?.task_id) navigate(`/portal/tasks/${n.payload.task_id}`)
+    else if (n.kind === 'order_new') navigate('/portal/submissions?tab=orders')
+    else if (n.kind === 'story_new') navigate('/portal/submissions?tab=stories')
   }
 
   return (
@@ -45,7 +57,7 @@ export default function NotificationsPage() {
       <PageHeader
         eyebrow="Notifications"
         title="Notifications"
-        subtitle="Activity on tasks you created or were assigned."
+        subtitle="Activity on your tasks, and what came in through the website forms."
         action={
           unread > 0 && (
             <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate(undefined)} className={outlineBtnCls}>

@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(60);
+select plan(72);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -88,6 +88,21 @@ select ok(not has_table_privilege('authenticated', 'public.magazine_sessions', '
 select ok(not has_table_privilege('authenticated', 'public.magazine_stats', 'update'), 'authenticated cannot edit the counters');
 select ok(has_function_privilege('anon', 'public.magazine_track(uuid, text, text, int)', 'execute'), 'anon can track a reading session');
 select ok(not has_function_privilege('anon', 'public.magazine_insights(text)', 'execute'), 'anon cannot read the insights');
+
+-- public forms (sign-ups, stories, orders): anon writes through the RPCs only and reads nothing;
+-- triage edits are limited to the status and notes columns; the receipt bucket check is anon-callable
+select ok(not has_table_privilege('anon', 'public.signups', 'select'), 'anon cannot read signups');
+select ok(not has_table_privilege('anon', 'public.stories', 'select'), 'anon cannot read stories');
+select ok(not has_table_privilege('anon', 'public.orders', 'select'), 'anon cannot read orders');
+select ok(not has_table_privilege('authenticated', 'public.orders', 'insert'), 'authenticated cannot insert orders directly');
+select ok(not has_table_privilege('authenticated', 'public.stories', 'insert'), 'authenticated cannot insert stories directly');
+select ok(not has_column_privilege('authenticated', 'public.orders', 'subtotal', 'update'), 'an order''s subtotal cannot be edited');
+select ok(not has_column_privilege('authenticated', 'public.orders', 'receipt_path', 'update'), 'an order''s receipt cannot be re-pathed');
+select ok(has_function_privilege('anon', 'public.submit_signup(text, text, text, text, text)', 'execute'), 'anon can join the waitlist');
+select ok(has_function_privilege('anon', 'public.submit_story(text, text, text, text, text, text, text, text, text)', 'execute'), 'anon can send a story');
+select ok(has_function_privilege('anon', 'public.submit_order(text, text, text, text, jsonb, boolean, text, text, text, text, int, text)', 'execute'), 'anon can place an order');
+select ok(has_function_privilege('anon', 'app.receipt_upload_ok(text)', 'execute'), 'the receipt upload policy can run as anon');
+select ok(not has_function_privilege('anon', 'app.can_triage(text)', 'execute'), 'anon cannot ask who may triage');
 
 select * from finish();
 rollback;

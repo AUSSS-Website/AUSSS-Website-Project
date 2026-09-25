@@ -1,56 +1,70 @@
-import { ORDERS_WEBAPP_URL } from '../data/merchConfig.js'
-import { productById } from '../data/merchProducts.js'
-import { appsScriptPost } from './appsScriptPost.js'
+import { restRpc, restUpload } from './supabaseRest.js'
 import { makeReference } from './reference.js'
+import { resizeImage } from './resizeImage.js'
 
-// Merch order submission (/merch/checkout). The order reference is generated
-// here and sent with the payload, so the success screen, the sheet row and the
-// notification email all quote the same code (see appsScriptPost.js).
+// Merch order submission (/merch/checkout), in three steps:
+//   1. rpc/submit_order   the database prices the cart from its own price book
+//                         and stores the order; it answers with the id and the
+//                         receipt path it will accept
+//   2. upload             the payment screenshot, shrunk to a JPEG here, goes
+//                         to the private `receipts` bucket at that path (the
+//                         bucket policy allows exactly one file per fresh order)
+//   3. rpc/order_receipt_attached   records that the file is there
+//
+// The reference is generated here so the success screen and the row the EB
+// sees in the portal quote the same code.
+//
+// Resolves to { ok: true, reference, receiptAttached } on success (an order
+// without its receipt is still an order: the buyer is told to send it on),
+// { ok: false, error } on a failure.
 
-// One readable line per cart item, for a single spreadsheet cell.
-function summarizeItems(items) {
-  return items
-    .map((it) => {
-      const p = productById[it.productId]
-      if (!p) return null
-      const variant = [it.size, it.design].filter(Boolean).join(' / ')
-      const label = variant ? `${p.name} (${variant})` : p.name
-      return `${it.qty}× ${label} = ${p.price * it.qty} EGP`
-    })
-    .filter(Boolean)
-    .join('\n')
-}
+const RECEIPT_MAX_PX = 1600
 
-// payload: { contact: {name, email, phone, isMember, lc, year, notes},
-//            items: [{productId, size, design, qty}], subtotal,
-//            paymentMethod, screenshotBase64, screenshotFilename }
-// Resolves to { ok: true, reference } on success, { ok: false, error } on a
-// failure.
+// payload: { contact: {name, email, phone, isMember, lc, year, notes, website},
+//            items: [{productId, size, design, qty}], subtotal, paymentMethod,
+//            screenshot: File | null }
 export async function submitOrder(payload) {
   const reference = makeReference('AUSSS')
+  const c = payload.contact || {}
+  let order
   try {
-    await appsScriptPost(ORDERS_WEBAPP_URL, {
-      ...payload,
-      reference,
-      itemsSummary: summarizeItems(payload.items),
-      submittedAt: new Date().toISOString(),
+    order = await restRpc('submit_order', {
+      ref: reference,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      items: (payload.items || []).map((it) => ({
+        productId: it.productId,
+        size: it.size || '',
+        design: it.design || '',
+        qty: it.qty,
+      })),
+      is_member: c.isMember === 'Yes' ? true : c.isMember === 'No' ? false : null,
+      lc: c.lc || '',
+      year: c.year || '',
+      notes: c.notes || '',
+      payment_method: payload.paymentMethod || '',
+      subtotal: Math.round(Number(payload.subtotal) || 0),
+      website: c.website || '',
     })
-    return { ok: true, reference }
   } catch (err) {
     return { ok: false, error: err.message || 'Network error' }
   }
-}
 
-// Read a File as a base64 string (without the data: prefix) for upload to Drive.
-export function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = String(reader.result || '')
-      const comma = result.indexOf(',')
-      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+  const ref = order?.ref || reference
+  let receiptAttached = false
+  if (order?.duplicate) {
+    receiptAttached = true // the first submission handled it
+  } else if (payload.screenshot && order?.id && order?.receipt_path) {
+    try {
+      const blob = await resizeImage(payload.screenshot, RECEIPT_MAX_PX)
+      await restUpload('receipts', order.receipt_path, blob, 'image/jpeg')
+      const attached = await restRpc('order_receipt_attached', { id: order.id, ref })
+      receiptAttached = Boolean(attached?.ok)
+    } catch {
+      // The order is in; the success screen asks the buyer to send the receipt.
+      receiptAttached = false
     }
-    reader.onerror = () => reject(reader.error || new Error('Read failed'))
-    reader.readAsDataURL(file)
-  })
+  }
+  return { ok: true, reference: ref, receiptAttached }
 }

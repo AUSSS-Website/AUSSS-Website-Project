@@ -11,7 +11,7 @@ import {
   takeDroppedLines,
 } from '../lib/cart.js'
 import { productById } from '../data/merchProducts.js'
-import { submitOrder, fileToBase64 } from '../lib/orders.js'
+import { submitOrder } from '../lib/orders.js'
 import {
   ORDERS_OPEN,
   availablePaymentMethods,
@@ -52,6 +52,7 @@ export default function CheckoutPage() {
     lc: '', // populated only when isMember === 'No'
     year: '',
     notes: '',
+    website: '', // honeypot: hidden, stays blank for people
   })
   const [paymentMethod, setPaymentMethod] = useState(
     availablePaymentMethods[0]?.id || '',
@@ -156,24 +157,12 @@ export default function CheckoutPage() {
     }
     setSubmitting(true)
 
-    let screenshotBase64
-    try {
-      if (screenshot) {
-        screenshotBase64 = await fileToBase64(screenshot)
-      }
-    } catch (err) {
-      setSubmitting(false)
-      setResult({ ok: false, error: 'Could not read screenshot. Try again.' })
-      return
-    }
-
     const payload = {
       contact,
       items: cart.items,
       subtotal,
       paymentMethod,
-      screenshotBase64,
-      screenshotFilename: screenshot?.name,
+      screenshot,
     }
 
     const res = await submitOrder(payload)
@@ -215,8 +204,9 @@ export default function CheckoutPage() {
           <form
             onSubmit={onSubmit}
             noValidate
-            className="space-y-10 lg:col-span-7"
+            className="relative space-y-10 lg:col-span-7"
           >
+            <Honeypot value={contact.website} onChange={(v) => updateContact('website', v)} />
             {/* Contact */}
             <fieldset className="rounded-2xl border border-white/10 bg-forest-900 p-6 sm:p-8">
               <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-medical-light">
@@ -672,6 +662,25 @@ function CopyableValue({ value }) {
   )
 }
 
+// An off-screen field people never see; a bot that fills it is quietly ignored
+// by the database.
+function Honeypot({ value, onChange }) {
+  return (
+    <div className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+      <label htmlFor="website">Website</label>
+      <input
+        id="website"
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  )
+}
+
 function Spinner() {
   return (
     <svg
@@ -712,6 +721,18 @@ function OrderSuccess({ result, contact }) {
               {result.reference}
             </span>
           </div>
+          {result.receiptAttached === false && (
+            <p
+              role="alert"
+              className="mx-auto mt-5 max-w-sm rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs leading-relaxed text-amber-200"
+            >
+              Your order is in, but the receipt screenshot did not upload. Please{' '}
+              <Link to="/contact" className="font-semibold underline">
+                send it to us
+              </Link>{' '}
+              with this reference so we can match your payment.
+            </p>
+          )}
           <p className="mx-auto mt-4 max-w-sm text-xs leading-relaxed text-silver/55">
             Keep this reference. If you don&rsquo;t hear from us within 48
             hours,{' '}

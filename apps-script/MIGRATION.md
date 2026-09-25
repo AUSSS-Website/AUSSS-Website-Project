@@ -35,6 +35,13 @@
 > `AUSSS Officer Photos` folder shared anyone-with-link until every committee has
 > re-uploaded its photos through the portal.
 >
+> **2026-09-25:** `orders.gs`, `signups.gs` and `stories.gs` are retired too
+> (portal Phase 5, `docs/RUNBOOK.md` section 18): the three forms write to
+> Supabase and the EB reads them in the portal under Submissions. No web app in
+> this folder is called by the site any more. Accept the pending transfers so the
+> Sheets and the receipts folder are society-owned, mark the Sheets read-only,
+> and do **not** redeploy anything; step 3 below is history.
+>
 > ### Signups endpoint: fixed 2026-09-24
 >
 > `Website Sign Up's` is a **standalone** script and its live code used to have

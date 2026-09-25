@@ -5,11 +5,9 @@
 // the form. Useful between drops.
 export const ORDERS_OPEN = true
 
-// The Apps Script web app deployed from apps-script/orders.gs. It emails each
-// order to aussswebsite@gmail.com; change TEAM_EMAIL there and redeploy to
-// reroute them.
-export const ORDERS_WEBAPP_URL =
-  'https://script.google.com/macros/s/AKfycbygftItgPl5_dOdQFlOllM8XzATj3SEgBoy4bVc1OIflJWmeBImzbWc5WkTDwEqmVJE/exec'
+// Orders land in Supabase (`orders`, priced by the `merch_products` price
+// book, which must match src/data/merchProducts.js) and the EB handles them in
+// the portal under Submissions > Orders.
 
 // ── Payment methods ─────────────────────────────────────────────────────
 // Each entry is a tile on the checkout page. Set `available: false` to hide

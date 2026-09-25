@@ -11,8 +11,10 @@ Faculty of Medicine, Ain Shams University. Live at
   the public reads that need live data (membership lookup, committee page
   overrides, site settings, open calls, the photo gallery, the magazine shelf
   and its reading statistics)
-- **Google Apps Script** web apps for the remaining public forms (merch orders,
-  exchange stories, sign-ups); see [`apps-script/`](./apps-script)
+- The public forms (merch orders, exchange stories, the recruitment waitlist)
+  write to Supabase too and are triaged in the portal under Submissions; the
+  Apps Script web apps that used to serve them are retired (see
+  [`apps-script/`](./apps-script), kept for the roster sync and as an archive)
 - Hosted on **Vercel** through the GitHub integration; `vercel.json` holds the
   headers, CSP and the SPA rewrite
 
@@ -38,7 +40,8 @@ back to its static content.
 | Join-page FAQ | `src/data/faq.js` |
 | Magazine editions | The portal magazine editor (`/portal/magazine`, CBSD and EB) |
 | Merch catalogue, payment handles, shop switch | `src/data/merchProducts.js`, `src/data/merchConfig.js` |
-| Form switches and Apps Script URLs | `src/data/*Config.js` |
+| Form switches (waitlist, stories, orders) | `src/data/*Config.js` |
+| Merch orders, exchange stories, waitlist sign-ups | The portal Submissions page (`/portal/submissions`, EB; exchange officers for stories) |
 | Gallery albums | The portal gallery editor (`/portal/gallery`, PNSD and EB) |
 | Public page list, titles, descriptions, sitemap | `src/seo/pages.js` |
 | Colours and animations | `tailwind.config.js` |

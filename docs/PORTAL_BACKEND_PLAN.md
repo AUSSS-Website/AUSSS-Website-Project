@@ -1,6 +1,6 @@
 # AUSSS Member Portal: long-term backend plan
 
-Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phases 3 and later pending. Companion documents: `apps-script/MIGRATION.md`
+Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phase 5 completed 2026-09-25: gallery and magazine editors, magazine counters, and the last three public forms (sign-ups, stories, orders) on Supabase; no Apps Script web app is called by production (RUNBOOK sections 16 to 18). Companion documents: `apps-script/MIGRATION.md`
 (the current backend and its account move) and `apps-script/officers.README.md`
 (the officer editor as it exists today).
 
@@ -430,19 +430,23 @@ Order, chosen so each step unblocks the next and nothing loses data:
    edit.
 3. **Open calls and applications.** Import both sheets. This removes the only
    reason Open Calls had to live in `officers.gs`.
-4. **Signups** (currently broken in production per `MIGRATION.md`; this is the
-   fix).
-5. **Exchange stories**, with the moderation queue moving into the portal.
-6. **Merch orders**, receipts to the private bucket, a fulfilment board for the
-   merch officer.
+4. **Signups.** Built 2026-09-25 (`signups`, `rpc/submit_signup`; the EB reads
+   the waitlist under Submissions and exports it as CSV).
+5. **Exchange stories.** Built 2026-09-25 (`stories`, `rpc/submit_story`; the
+   exchange officers and the EB triage them under Submissions, and each new
+   story reaches them through the notifications feed and the digest).
+6. **Merch orders.** Built 2026-09-25 (`orders` priced from `merch_products`,
+   `rpc/submit_order`, the receipt in the private `receipts` bucket; the EB
+   works the orders under Submissions: status, notes, receipt, CSV).
 7. **Gallery**, replacing the admin-key takedown page and the static photo
    pipeline with the portal gallery editor (section 8).
 8. **Magazine engagement counters.** Built 2026-09-24 (migration
    `20260924170001_magazine_engagement`): totals plus reading depth per session,
    shown to the CBSD officers on the edition page (RUNBOOK section 17).
 
-When all eight are flipped, `apps-script/` moves to `apps-script/_retired/`
-with a README, the Sheets are marked read-only archives, and the CSP loses
+All eight are flipped (2026-09-25): the retired scripts stay in `apps-script/`
+with a RETIRED header (the folder also holds the live `roster-sync.gs`), the
+Sheets can be marked read-only archives, and the CSP no longer allows
 `script.google.com`. The in-flight account migration should still be finished
 first. It costs nothing and keeps the current site healthy during the build.
 
@@ -458,7 +462,7 @@ use, not a demo.
 | **2. Officer parity** | 2 | Site settings, committee page editor, open calls and applications on Supabase (migration steps 1 to 3) | `officers.gs` is no longer called by production. |
 | **3. Portal core** | 3 | Dashboard, tasks, updates, read receipts, notifications feed, email digest | One committee runs a real month of work through it. |
 | **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster, per-committee officer roster (assign members, officer notes, membership fields read-only); **discoverability** (added 2026-09-22): make the site show up in normal Google searches and in AI answers (Google AI Overviews, ChatGPT, Perplexity, Claude): check indexing and submit the sitemap in Search Console, register with Bing Webmaster Tools (feeds ChatGPT and Copilot), per-route titles/descriptions and pre-rendered HTML for the public pages (one SPA `index.html` today), richer JSON-LD (committees, events, contact), `llms.txt`, robots.txt explicitly allowing the AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended), and backlinks from IFMSA/IFMSA-Egypt and the faculty site. **Built 2026-09-23:** every public page (35 URLs incl. committees and albums) is pre-rendered HTML at build time with its own title, description, canonical, Open Graph card and JSON-LD; sitemap.xml and llms.txt are generated from the same list; robots.txt names the AI crawlers; `spa.html` is the fallback shell (RUNBOOK section 15). Left: Search Console sitemap resubmission + indexing requests, Bing Webmaster Tools, backlinks | 100 members with accounts, verification backlog under a day; searching "AUSSS" or "Ain Shams medical students society" returns the site on page one in Google and in an AI answer. |
-| **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired; **gallery editor** for PNSD + EB (added 2026-09-22: add/remove photos by drag-and-drop or file picker, add/remove/reorder albums with title, blurb and hero photo; each album has its own shareable link with its own preview card; see section 8); **magazine editor** for CBSD + EB (added 2026-09-24: add an edition from a PDF, pick its hero page, write its blurb, reorder the shelf; see section 8) | No Apps Script URL left in `src/data`; a PNSD officer publishes a new album with photos from the portal without a developer. |
+| **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired; **gallery editor** for PNSD + EB (added 2026-09-22: add/remove photos by drag-and-drop or file picker, add/remove/reorder albums with title, blurb and hero photo; each album has its own shareable link with its own preview card; see section 8); **magazine editor** for CBSD + EB (added 2026-09-24: add an edition from a PDF, pick its hero page, write its blurb, reorder the shelf; see section 8). **Built 2026-09-25:** sign-ups, stories and orders on Supabase (migration `20260925090001_submissions`), triaged in the portal under Submissions, receipts in the private `receipts` bucket, `apps-script/` retired except the roster sync (RUNBOOK section 18) | No Apps Script URL left in `src/data`; a PNSD officer publishes a new album with photos from the portal without a developer. |
 | **6. Site management** | 4, then ongoing | Schema-driven editor; EB, FAQ, magazine, merch, events and home sections editable; content snapshot pipeline | An officer publishes a magazine issue with no developer involved. |
 | **7. Sustain** | ongoing | Term-rollover wizard, backups and a restore rehearsal, runbook, monitoring, the Pro plan decision | The first rollover to 2027-28 is done by the EB alone. |
 

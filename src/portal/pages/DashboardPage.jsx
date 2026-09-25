@@ -4,6 +4,7 @@ import Button from '../../components/ui/Button.jsx'
 import { useAuth } from '../../auth/AuthProvider.jsx'
 import { useMyVerification, usePendingVerifications } from '../queries.js'
 import { isPostLive, usePosts, useTasks } from '../workQueries.js'
+import { useSubmissionCounts } from '../submissionsQueries.js'
 import { PageHeader, Panel, StatusBadge } from '../portalUi.jsx'
 import { CommitteeTag, DueLabel, PriorityPill, UnreadDot } from '../workUi.jsx'
 
@@ -82,6 +83,36 @@ function UpdatesPanel({ uid }) {
   )
 }
 
+// New orders, stories and sign-ups waiting for a first look. Stories only for
+// the exchange officers; everything for the EB.
+function SubmissionsPanel({ isEB, canStories }) {
+  const counts = useSubmissionCounts()
+  const c = counts.data
+  const parts = c
+    ? [
+        isEB && c.orders > 0 && `${c.orders} new order${c.orders === 1 ? '' : 's'}`,
+        canStories && c.stories > 0 && `${c.stories} new stor${c.stories === 1 ? 'y' : 'ies'}`,
+        isEB && c.signups > 0 && `${c.signups} new sign-up${c.signups === 1 ? '' : 's'}`,
+      ].filter(Boolean)
+    : []
+  return (
+    <Panel title="Submissions">
+      <p className="mt-4 text-sm text-silver/70">
+        {counts.isPending
+          ? 'Checking what came in…'
+          : counts.error
+            ? 'Couldn’t load the submissions.'
+            : parts.length === 0
+              ? 'Nothing new from the website forms.'
+              : `${parts.join(', ')} waiting for a first look.`}
+      </p>
+      <Link to="/portal/submissions" className={moreLinkCls}>
+        Open submissions &rarr;
+      </Link>
+    </Panel>
+  )
+}
+
 const STATUS_BLURB = {
   unverified:
     'We haven’t matched you to the membership roster yet. Request verification and an EB member will confirm you.',
@@ -131,6 +162,7 @@ export default function DashboardPage() {
     .filter((a) => a.position?.level === 'officer' && a.position?.committee)
     .map((a) => a.position.committee)
   const canEditCommittees = isEB || officerCommittees.length > 0
+  const canStories = isEB || officerOf('scope') || officerOf('score')
   const myVer = useMyVerification(user.id)
   const pending = usePendingVerifications(isEB)
 
@@ -251,6 +283,8 @@ export default function DashboardPage() {
             </Link>
           </Panel>
         )}
+
+        {canStories && <SubmissionsPanel isEB={isEB} canStories={canStories} />}
 
         {isEB && (
           <Panel title="Executive Board">

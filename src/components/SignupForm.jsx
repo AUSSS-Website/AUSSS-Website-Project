@@ -9,6 +9,7 @@ export default function SignupForm({
   const uid = useId()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [website, setWebsite] = useState('') // honeypot: hidden, stays blank for people
   const [state, setState] = useState('idle') // idle | busy | done | error
   const [error, setError] = useState('')
 
@@ -20,7 +21,7 @@ export default function SignupForm({
     }
     setState('busy')
     setError('')
-    const res = await submitSignup({ name, email })
+    const res = await submitSignup({ name, email, website })
     if (res.ok) {
       setState('done')
     } else {
@@ -44,7 +45,7 @@ export default function SignupForm({
     'w-full rounded-xl border border-white/15 bg-forest-950 px-4 py-3 text-sm text-white placeholder:text-silver/40 focus-visible:border-medical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto flex w-full max-w-sm flex-col gap-3 text-left">
+    <form onSubmit={onSubmit} className="relative mx-auto flex w-full max-w-sm flex-col gap-3 text-left">
       <div>
         <label htmlFor={`${uid}-name`} className="sr-only">
           Your name
@@ -74,6 +75,18 @@ export default function SignupForm({
           aria-invalid={state === 'error'}
           aria-describedby={error ? `${uid}-error` : undefined}
           className={inputCls}
+        />
+      </div>
+      <div className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+        <label htmlFor={`${uid}-website`}>Website</label>
+        <input
+          id={`${uid}-website`}
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
         />
       </div>
       {error && (
