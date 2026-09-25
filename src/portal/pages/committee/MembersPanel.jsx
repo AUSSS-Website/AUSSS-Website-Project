@@ -12,6 +12,8 @@ import {
 import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
 import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
+import { MEMBERSHIP_LABELS } from '../../constants.js'
+import ExportButtons from '../../ExportButtons.jsx'
 
 // The "Members" tab of /portal/committees/:slug: the people the Executive
 // Board has linked to this committee on the membership roster, whether or not
@@ -229,6 +231,18 @@ function Member({ member, committee, positions, open, onToggle }) {
   )
 }
 
+const MEMBER_COLUMNS = [
+  { label: 'Name', value: (m) => m.full_name },
+  { label: 'Email', value: (m) => m.email },
+  { label: 'Status', value: (m) => MEMBERSHIP_LABELS[m.status] || m.status },
+  { label: 'Joined', value: (m) => m.joined_year },
+  { label: 'LGAs', value: (m) => m.lgas },
+  { label: 'NGAs', value: (m) => m.ngas },
+  { label: 'Position', value: (m) => m.position?.title || m.current_position || '' },
+  { label: 'Contact person', value: (m) => (m.is_contact_person ? 'yes' : '') },
+  { label: 'Signed in', value: (m) => (m.profile_id ? 'yes' : '') },
+]
+
 export default function MembersPanel({ committee }) {
   const roster = useCommitteeRoster(committee.id)
   const positions = usePositions().data || []
@@ -289,6 +303,16 @@ export default function MembersPanel({ committee }) {
           {members.length} {members.length === 1 ? 'member' : 'members'}
         </span>
         {roster.isFetching && <Spinner className="h-4 w-4" />}
+        <span className="ml-auto">
+          <ExportButtons
+            title={`${committee.abbr} members`}
+            subtitle={`${committee.name}: everyone the membership roster places in the committee${q ? `, matching “${q}”` : ''}.`}
+            filename={`ausss-${committee.slug}-members`}
+            columns={MEMBER_COLUMNS}
+            rows={members}
+            landscape
+          />
+        </span>
       </div>
       {members.length === 0 ? (
         <Panel>

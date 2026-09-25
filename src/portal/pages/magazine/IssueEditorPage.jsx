@@ -22,6 +22,7 @@ import {
   primaryBtnCls,
 } from '../../portalUi.jsx'
 import { ConfirmButton } from '../gallery/galleryUi.jsx'
+import ExportButtons from '../../ExportButtons.jsx'
 import { MagazineGate, STATUS_LABEL } from './MagazinePage.jsx'
 
 // /portal/magazine/:slug. One edition: its text and links, its status, the
@@ -248,8 +249,35 @@ function ReadersPanel({ issue }) {
   const tracked = d?.tracked || 0
   const maxReach = d?.reach?.[0]?.readers || 0
   const pct = (n) => (tracked ? Math.round((100 * n) / tracked) : 0)
+  const reachColumns = [
+    { label: 'Page', value: (r) => r.page },
+    { label: 'Readers who reached it', value: (r) => r.readers },
+    { label: 'Share of tracked sessions', value: (r) => `${pct(r.readers)}%` },
+  ]
+  const summary = d
+    ? [
+        ['Reads', d.views],
+        ['Likes', d.likes],
+        ['Downloads', d.downloads],
+        ['Tracked reading sessions', tracked],
+        ['Read to the end', tracked ? `${d.finished} (${pct(d.finished)}%)` : 'not tracked yet'],
+        ['Median page reached', tracked ? `${Math.round(d.median_page || 0)} of ${issue.page_count}` : 'not tracked yet'],
+      ]
+    : []
   return (
     <Panel title="Readers" className="mb-6">
+      {d && (
+        <div className="mt-3">
+          <ExportButtons
+            title={`Readers: ${issue.title}`}
+            subtitle="Reads, likes, downloads and how far readers get, as recorded by the website."
+            filename={`ausss-magazine-${issue.slug}-readers`}
+            columns={reachColumns}
+            rows={d.reach || []}
+            summary={summary}
+          />
+        </div>
+      )}
       {q.isPending ? (
         <p className="mt-3 text-sm text-silver/60">Loading…</p>
       ) : q.error ? (

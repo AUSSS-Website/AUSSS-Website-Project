@@ -15,7 +15,8 @@ import {
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
-import { smallInputCls } from '../../workUi.jsx'
+import { smallInputCls, when } from '../../workUi.jsx'
+import ExportButtons from '../../ExportButtons.jsx'
 
 // Officer-side Open Calls management for the portal.
 //
@@ -784,6 +785,25 @@ function ApplicationRow({ app, onPatch }) {
   )
 }
 
+// One export column per field of an application, the call's questions folded
+// into one "Answers" block.
+const APPLICATION_COLUMNS = [
+  { label: 'Name', value: (a) => a.name },
+  { label: 'Applied', value: (a) => when(a.created_at) },
+  { label: 'Reference', value: (a) => a.ref },
+  { label: 'Status', value: (a) => APPLICATION_STATUSES.find(([v]) => v === a.status)?.[1] || a.status },
+  { label: 'Email', value: (a) => a.email },
+  { label: 'Phone', value: (a) => a.phone },
+  { label: 'Year', value: (a) => a.year },
+  { label: 'Positions', value: (a) => (Array.isArray(a.positions) ? a.positions.join(', ') : '') },
+  { label: 'Motivation', value: (a) => a.motivation },
+  {
+    label: 'Answers',
+    value: (a) => (Array.isArray(a.answers) ? a.answers.map((x) => `${x.label}: ${x.value}`).join('\n') : ''),
+  },
+  { label: 'Notes', value: (a) => a.notes },
+]
+
 function ApplicationsList({ call, onBack }) {
   const applications = useApplications(call.id)
   const updateApplication = useUpdateApplication(call.id)
@@ -794,7 +814,17 @@ function ApplicationsList({ call, onBack }) {
 
   return (
     <div className="space-y-8">
-      <BackButton onClick={onBack} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <BackButton onClick={onBack} />
+        <ExportButtons
+          title={`Applications: ${call.title}`}
+          subtitle="Everyone who applied to this call through the website, newest first."
+          filename={`ausss-applications-${(call.title || 'call').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}`}
+          columns={APPLICATION_COLUMNS}
+          rows={rows}
+          layout="records"
+        />
+      </div>
 
       <Section label="Applications" hint={`${call.title}, newest first.`}>
         {applications.isPending && <Spinner />}

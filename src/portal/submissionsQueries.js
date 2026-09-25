@@ -121,29 +121,8 @@ export async function receiptUrl(path) {
   return data.signedUrl
 }
 
-// ---- CSV export --------------------------------------------------------------
-
-function csvCell(v) {
-  const s = v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v)
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-
-export function toCsv(columns, rows) {
-  const head = columns.map((c) => csvCell(c.label)).join(',')
-  const body = rows.map((r) => columns.map((c) => csvCell(c.value(r))).join(','))
-  return '﻿' + [head, ...body].join('\r\n')
-}
-
-export function downloadText(filename, text, type = 'text/csv;charset=utf-8') {
-  const url = URL.createObjectURL(new Blob([text], { type }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
+// ---- exports ---------------------------------------------------------------
+// (the CSV / PDF builders are in exportFile.js; this is the one order-specific formatter)
 
 // One readable line per order item, for a spreadsheet cell.
 export function itemsSummary(items) {

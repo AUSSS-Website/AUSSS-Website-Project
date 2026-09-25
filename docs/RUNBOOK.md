@@ -868,6 +868,13 @@ new, contacted, featured, declined; `signups`: new, contacted, archived) and pri
 (`officer_notes` on orders). Filter chips, a search box and *Export CSV* (the filtered rows,
 UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes.
 
+**Exports.** Every list of collected data in the portal has *Export PDF* and *Export CSV*
+buttons (`src/portal/ExportButtons.jsx`, `exportFile.js`): the three Submissions tabs, a call's
+applications (Committees > Open calls), the membership roster (EB), a committee's Members tab,
+the verification queue, and an edition's Readers panel. They export the rows on screen,
+filters included. The PDF is made in the browser (jsPDF, loaded on demand); its built-in fonts
+cover Latin scripts only, so a name typed in Arabic shows as boxes in the PDF (the CSV keeps it).
+
 **Checks.** Anonymous: `rpc/submit_signup` with a valid email answers `{ok: true}`;
 `/rest/v1/orders` is refused. Signed in as the webmaster: `/portal/submissions` lists the
 three tabs; a test order placed on localhost shows its receipt through *View receipt*; delete

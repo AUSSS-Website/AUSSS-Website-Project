@@ -2,14 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
-import {
-  downloadText,
-  itemsSummary,
-  receiptUrl,
-  toCsv,
-  useSubmissionMutations,
-  useSubmissions,
-} from '../../submissionsQueries.js'
+import { itemsSummary, receiptUrl, useSubmissionMutations, useSubmissions } from '../../submissionsQueries.js'
+import ExportButtons from '../../ExportButtons.jsx'
 import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import { chipBtnCls, smallInputCls, when } from '../../workUi.jsx'
 import { ConfirmButton } from '../gallery/galleryUi.jsx'
@@ -43,12 +37,14 @@ const STATUSES = {
 
 const TAB_LABEL = { orders: 'Orders', stories: 'Stories', signups: 'Waitlist' }
 
-const CSV_COLUMNS = {
+// Shared by the CSV and the PDF. The first column heads each block in the PDF's
+// records layout, so it is the person's name for orders and stories.
+const EXPORT_COLUMNS = {
   orders: [
-    { label: 'Date', value: (r) => r.created_at },
+    { label: 'Name', value: (r) => r.name },
+    { label: 'Date', value: (r) => when(r.created_at) },
     { label: 'Reference', value: (r) => r.ref },
     { label: 'Status', value: (r) => r.status },
-    { label: 'Name', value: (r) => r.name },
     { label: 'Email', value: (r) => r.email },
     { label: 'Phone', value: (r) => r.phone },
     { label: 'AUSSS member', value: (r) => (r.is_member == null ? '' : r.is_member ? 'Yes' : 'No') },
@@ -63,10 +59,10 @@ const CSV_COLUMNS = {
     { label: 'Officer notes', value: (r) => r.officer_notes },
   ],
   stories: [
-    { label: 'Date', value: (r) => r.created_at },
+    { label: 'Name', value: (r) => r.name },
+    { label: 'Date', value: (r) => when(r.created_at) },
     { label: 'Reference', value: (r) => r.ref },
     { label: 'Status', value: (r) => r.status },
-    { label: 'Name', value: (r) => r.name },
     { label: 'Email', value: (r) => r.email },
     { label: 'Phone', value: (r) => r.phone },
     { label: 'Destination', value: (r) => r.destination },
@@ -76,7 +72,7 @@ const CSV_COLUMNS = {
     { label: 'Notes', value: (r) => r.notes },
   ],
   signups: [
-    { label: 'Date', value: (r) => r.created_at },
+    { label: 'Date', value: (r) => when(r.created_at) },
     { label: 'Kind', value: (r) => r.kind },
     { label: 'Status', value: (r) => r.status },
     { label: 'Name', value: (r) => r.name },
@@ -403,10 +399,8 @@ function SubmissionList({ kind, canDelete }) {
   const onPatch = (id, patch) => update.mutateAsync({ id, patch })
   const onRemove = (id) =>
     remove.mutateAsync({ id, receiptPath: rows.find((r) => r.id === id)?.receipt_path })
-  const exportCsv = () => {
-    const stamp = new Date().toISOString().slice(0, 10)
-    downloadText(`ausss-${kind}-${stamp}.csv`, toCsv(CSV_COLUMNS[kind], shown))
-  }
+  const filterLabel =
+    status === 'all' ? '' : STATUSES[kind].find(([v]) => v === status)?.[1]?.toLowerCase() || status
 
   if (list.isPending) {
     return (
@@ -444,9 +438,16 @@ function SubmissionList({ kind, canDelete }) {
           aria-label="Search"
           className={`${smallInputCls} ml-auto max-w-xs`}
         />
-        <button type="button" onClick={exportCsv} disabled={shown.length === 0} className={outlineBtnCls}>
-          Export CSV
-        </button>
+        <ExportButtons
+          title={TAB_LABEL[kind]}
+          subtitle={`${filterLabel ? `Status ${filterLabel}` : 'Everything'} submitted through the website${
+            q ? `, matching “${query.trim()}”` : ''
+          }.`}
+          filename={`ausss-${kind}`}
+          columns={EXPORT_COLUMNS[kind]}
+          rows={shown}
+          layout={kind === 'signups' ? 'table' : 'records'}
+        />
       </div>
 
       {shown.length === 0 ? (
@@ -467,7 +468,7 @@ function SubmissionList({ kind, canDelete }) {
         </ul>
       )}
       {rows.length >= 500 && (
-        <p className="text-xs text-silver/45">Showing the newest 500. Export the CSV for the full list.</p>
+        <p className="text-xs text-silver/45">Showing the newest 500.</p>
       )}
     </div>
   )

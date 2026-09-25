@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import ExportButtons from '../../ExportButtons.jsx'
 import {
   PAGE_SIZE,
   useDeleteRosterEntry,
@@ -18,7 +19,7 @@ import {
 } from '../../rosterQueries.js'
 import { parseRosterFile } from '../../rosterFile.js'
 import { prepareRoster, searchRoster } from '../../rosterSearch.js'
-import { ROSTER_STATUSES as STATUSES } from '../../constants.js'
+import { ROSTER_STATUSES as STATUSES, MEMBERSHIP_LABELS } from '../../constants.js'
 import { useCommittees } from '../../officerQueries.js'
 import { when } from '../../workUi.jsx'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
@@ -529,6 +530,35 @@ export default function RosterPage() {
   }, [prepared, term, status, committee])
   const total = matches.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const committeeAbbr = useMemo(() => Object.fromEntries(committees.map((c) => [c.id, c.abbr])), [committees])
+  const exportColumns = useMemo(
+    () => [
+      { label: 'Name', value: (r) => r.full_name },
+      { label: 'Email', value: (r) => r.email },
+      { label: 'Status', value: (r) => MEMBERSHIP_LABELS[r.status] || r.status },
+      { label: 'Joined', value: (r) => r.joined_year },
+      { label: 'Years', value: (r) => r.years_spent },
+      { label: 'LGAs', value: (r) => r.lgas },
+      { label: 'NGAs', value: (r) => r.ngas },
+      { label: 'Committee', value: (r) => committeeAbbr[r.committee_id] || '' },
+      { label: 'Position', value: (r) => r.current_position },
+      { label: 'Contact person', value: (r) => (r.is_contact_person ? 'yes' : '') },
+    ],
+    [committeeAbbr],
+  )
+  const exportSubtitle = [
+    term ? `matching “${term}”` : '',
+    status ? `status ${MEMBERSHIP_LABELS[status] || status}` : '',
+    committee === 'none'
+      ? 'no committee'
+      : committee === 'contact'
+        ? 'contact persons'
+        : committee
+          ? committeeAbbr[committee]
+          : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
   const visible = matches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   return (
@@ -636,6 +666,16 @@ export default function RosterPage() {
           {roster.isPending ? '' : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
         </span>
         {roster.isFetching && <Spinner className="h-4 w-4" />}
+        <span className="ml-auto">
+          <ExportButtons
+            title="Membership roster"
+            subtitle={exportSubtitle ? `Members ${exportSubtitle}.` : 'The whole membership roster.'}
+            filename="ausss-roster"
+            columns={exportColumns}
+            rows={matches}
+            landscape
+          />
+        </span>
       </div>
 
       {roster.error ? (

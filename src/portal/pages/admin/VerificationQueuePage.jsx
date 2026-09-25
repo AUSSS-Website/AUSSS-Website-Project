@@ -12,6 +12,8 @@ import {
   primaryBtnCls,
 } from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
+import { MEMBERSHIP_LABELS } from '../../constants.js'
+import ExportButtons from '../../ExportButtons.jsx'
 
 // /portal/admin/verification (EB only, gated by RequireEB). Approve sets the
 // member active; decline leaves them unverified. Both go through the
@@ -66,6 +68,14 @@ function Row({ req, onDecide, busyId, error }) {
   )
 }
 
+const REQUEST_COLUMNS = [
+  { label: 'Name', value: (r) => r.profile?.full_name || '' },
+  { label: 'Email', value: (r) => r.profile?.email || '' },
+  { label: 'Status', value: (r) => MEMBERSHIP_LABELS[r.profile?.membership_status] || r.profile?.membership_status || '' },
+  { label: 'Requested', value: (r) => when(r.created_at) },
+  { label: 'Message', value: (r) => r.message || '' },
+]
+
 export default function VerificationQueuePage() {
   usePageTitle('Verification queue')
   const pending = usePendingVerifications(true)
@@ -95,6 +105,15 @@ export default function VerificationQueuePage() {
         eyebrow="Executive Board"
         title="Verification queue"
         subtitle="People who signed in but aren’t on the roster. Approve makes them an active member."
+        action={
+          <ExportButtons
+            title="Verification queue"
+            subtitle="Members waiting for the Executive Board to confirm them."
+            filename="ausss-verification-queue"
+            columns={REQUEST_COLUMNS}
+            rows={pending.data || []}
+          />
+        }
       />
 
       {pending.isPending ? (
