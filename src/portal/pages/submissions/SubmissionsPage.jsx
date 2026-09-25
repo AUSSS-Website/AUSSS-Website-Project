@@ -25,7 +25,7 @@ const STATUSES = {
   stories: [
     ['new', 'New'],
     ['contacted', 'Contacted'],
-    ['featured', 'Featured'],
+    ['published', 'Published'],
     ['declined', 'Declined'],
   ],
   signups: [
@@ -69,6 +69,10 @@ const EXPORT_COLUMNS = {
     { label: 'Programme', value: (r) => r.programme },
     { label: 'Year', value: (r) => r.year },
     { label: 'Story', value: (r) => r.story },
+    { label: 'Featured', value: (r) => (r.featured ? 'yes' : '') },
+    { label: 'Name on the site', value: (r) => (r.status === 'published' ? r.public_name : '') },
+    { label: 'Story on the site', value: (r) => (r.status === 'published' ? r.public_story : '') },
+    { label: 'Published', value: (r) => (r.published_at ? when(r.published_at) : '') },
     { label: 'Notes', value: (r) => r.notes },
   ],
   signups: [
@@ -162,6 +166,9 @@ function Triage({ kind, row, notesField, onPatch, onRemove, canDelete }) {
           ))}
         </select>
         {busy === 'status' && <span className="text-xs text-silver/50">Saving…</span>}
+        {kind === 'stories' && row.status !== 'published' && (
+          <span className="text-xs text-silver/45">Published = shown on the exchange page</span>
+        )}
         {canDelete && (
           <span className="ml-auto">
             <ConfirmButton
@@ -297,11 +304,104 @@ function OrderCard({ row, onPatch, onRemove, canDelete }) {
 
 // ── Stories ──────────────────────────────────────────────────────────────────
 
+// What the site shows once a story is published: the name and the text can be
+// tidied here (blank = as submitted), and Featured pins it to the top of the
+// exchange page with a highlight.
+function PublishPanel({ row, onPatch }) {
+  const [name, setName] = useState(row.public_name || '')
+  const [story, setStory] = useState(row.public_story || '')
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const dirty = name !== (row.public_name || '') || story !== (row.public_story || '')
+
+  const run = async (what, fn) => {
+    setBusy(what)
+    setError('')
+    try {
+      await fn()
+    } catch (e) {
+      setError(e?.message || 'Could not save that change.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-medical/30 bg-medical/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-medical-light">
+          On the exchange page
+        </p>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-white">
+          <input
+            type="checkbox"
+            checked={Boolean(row.featured)}
+            disabled={Boolean(busy)}
+            onChange={(e) => run('featured', () => onPatch(row.id, { featured: e.target.checked }))}
+            className="h-4 w-4 accent-medical"
+          />
+          Featured
+          <span className="text-xs text-silver/50">(pinned first, highlighted)</span>
+        </label>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr]">
+        <label className="text-xs text-silver/60">
+          Name shown
+          <input
+            type="text"
+            value={name}
+            maxLength={140}
+            placeholder={row.name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${smallInputCls} mt-1`}
+          />
+        </label>
+        <label className="text-xs text-silver/60">
+          Story shown <span className="text-silver/40">(tidy typos, keep their voice)</span>
+          <textarea
+            value={story}
+            maxLength={4000}
+            rows={4}
+            placeholder={row.story}
+            onChange={(e) => setStory(e.target.value)}
+            className={`${smallInputCls} mt-1 resize-y`}
+          />
+        </label>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={Boolean(busy) || !dirty}
+          onClick={() => run('text', () => onPatch(row.id, { public_name: name, public_story: story }))}
+          className={outlineBtnCls}
+        >
+          {busy === 'text' ? 'Saving…' : 'Save what the site shows'}
+        </button>
+        {row.published_at && (
+          <span className="text-xs text-silver/50">Published {when(row.published_at)}</span>
+        )}
+      </div>
+      <ErrorText>{error}</ErrorText>
+    </div>
+  )
+}
+
 function StoryCard({ row, onPatch, onRemove, canDelete }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+    <article
+      className={`rounded-2xl border bg-forest-800 p-5 ${
+        row.status === 'published' && row.featured ? 'border-medical/50' : 'border-white/10'
+      }`}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-base font-semibold text-white">{row.name}</p>
+        <p className="text-base font-semibold text-white">
+          {row.name}
+          {row.status === 'published' && (
+            <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-medical-light">
+              {row.featured ? 'Featured' : 'Live'}
+            </span>
+          )}
+        </p>
         <Meta row={row} />
       </div>
       <Contact row={row} />
@@ -315,6 +415,7 @@ function StoryCard({ row, onPatch, onRemove, canDelete }) {
         <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">Their story</p>
         <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">{row.story}</p>
       </div>
+      {row.status === 'published' && <PublishPanel key={row.updated_at} row={row} onPatch={onPatch} />}
       <Triage
         kind="stories"
         row={row}

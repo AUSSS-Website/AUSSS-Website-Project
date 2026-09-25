@@ -863,8 +863,16 @@ it. Deleting an order (EB) removes its receipt too.
 email digest (section 13). Sign-ups do not notify (they arrive in bulk); the dashboard panel
 and the Waitlist tab show the count.
 
+**Stories on the site.** A story is private until an exchange officer or the EB sets it to
+`published`; it then appears under "Exchange stories" on `/exchange/outgoings` and
+`/exchange/incomings` (read through `rpc/stories_public()`, published rows and public fields
+only, baked into the pre-rendered pages and refreshed live). The officer can tidy the name and
+the text the site shows (blank = as submitted; the submission itself is never edited) and tick
+*Featured*, which pins the story first with a highlight. Declining or moving it back to
+`contacted` takes it off the site at once (the pre-rendered copy updates on the next deploy).
+
 **Triage.** Each row has a status (`orders`: new, confirmed, collected, cancelled; `stories`:
-new, contacted, featured, declined; `signups`: new, contacted, archived) and private notes
+new, contacted, published, declined; `signups`: new, contacted, archived) and private notes
 (`officer_notes` on orders). Filter chips, a search box and *Export CSV* (the filtered rows,
 UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes.
 

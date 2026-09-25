@@ -30,7 +30,7 @@ const SELECT = {
   orders:
     'id, ref, status, name, email, phone, is_member, lc, year, payment_method, items, subtotal, client_subtotal, price_flag, notes, officer_notes, receipt_path, created_at, updated_at',
   stories:
-    'id, ref, status, name, email, phone, destination, programme, year, story, notes, created_at, updated_at',
+    'id, ref, status, name, email, phone, destination, programme, year, story, notes, featured, public_name, public_story, published_at, created_at, updated_at',
   signups: 'id, kind, status, name, email, phone, notes, created_at, updated_at',
 }
 

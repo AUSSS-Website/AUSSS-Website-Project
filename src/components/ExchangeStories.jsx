@@ -1,14 +1,19 @@
 import { Link } from 'react-router-dom'
 import { testimonials } from '../data/society.js'
+import { useExchangeStories } from '../lib/exchangeStories.js'
 
 // Exchange stories from students who've been through it. Direction-agnostic,
 // someone who went abroad and someone who hosted both have one, so this sits
 // on both /exchange/outgoings and /exchange/incomings.
 //
-// Until real quotes are published it renders the empty state, which is what
-// keeps /exchange/share reachable from browsing.
+// Two sources: stories sent through /exchange/share and set to published by the
+// exchange officers in the portal (src/lib/exchangeStories.js, featured ones
+// first and highlighted), then the hand-written testimonials in society.js
+// (with photos). With nothing published it renders the empty state, which is
+// what keeps /exchange/share reachable from browsing.
 export default function ExchangeStories() {
-  const visible = testimonials.filter((t) => t.published !== false)
+  const live = useExchangeStories()
+  const visible = [...live, ...testimonials.filter((t) => t.published !== false)]
 
   return (
     <section className="reveal mx-auto max-w-4xl">
@@ -37,9 +42,16 @@ export default function ExchangeStories() {
           <div className="mt-10 space-y-8">
             {visible.map((t, idx) => (
               <figure
-                key={idx}
-                className="overflow-hidden rounded-3xl border border-white/10 bg-forest-800"
+                key={t.id || idx}
+                className={`relative overflow-hidden rounded-3xl border bg-forest-800 ${
+                  t.featured ? 'border-medical/60 shadow-[0_0_0_1px_rgba(91,141,184,0.25)]' : 'border-white/10'
+                }`}
               >
+                {t.featured && (
+                  <span className="absolute right-4 top-4 rounded-full bg-medical px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-forest-950">
+                    Featured
+                  </span>
+                )}
                 <div className="grid gap-0 md:grid-cols-[minmax(0,18rem)_1fr]">
                   {t.photo && (
                     <img

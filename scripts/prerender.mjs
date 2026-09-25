@@ -151,6 +151,20 @@ async function loadIssues(vite) {
   }
 }
 
+// And the published exchange stories (src/lib/exchangeStories.js) for the
+// exchange pages.
+async function loadStories(vite) {
+  const mod = await vite.ssrLoadModule('/src/lib/exchangeStories.js')
+  try {
+    const live = await mod.fetchExchangeStories()
+    console.log('prerender: ' + live.length + ' published exchange stories from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the exchange stories (' + err.message + '); none this build')
+    return []
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -178,13 +192,14 @@ async function main() {
     const { publicPages } = await vite.ssrLoadModule('/src/seo/pages.js')
     const albums = await loadAlbums(vite)
     const issues = await loadIssues(vite)
+    const stories = await loadStories(vite)
     const pages = publicPages(albums, issues)
 
     const seen = new Set()
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues)
+      const appHtml = await render(page.path, albums, issues, stories)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }

@@ -3,7 +3,7 @@
 -- exchange officers read stories, other officers and members read nothing, and the receipt
 -- bucket accepts one file per fresh order.
 begin;
-select plan(33);
+select plan(39);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -197,6 +197,38 @@ select is((select count(*) from public.signups), 1::bigint, 'the EB reads the si
 select lives_ok(
   $$ update public.stories set status = 'contacted', notes = 'called' where ref = 'STORY-ABC123' $$,
   'the EB triages a story'
+);
+-- publishing: nothing is public until an officer says so; the public fields fill themselves in
+select tests.clear_auth();
+select tests.authenticate_as_anon();
+select is(public.stories_public() -> 'stories', '[]'::jsonb, 'nothing is public before review');
+select tests.clear_auth();
+select tests.authenticate_as('leo@pgtap.test');
+select lives_ok(
+  $$ update public.stories set status = 'published', featured = true where ref = 'STORY-ABC123' $$,
+  'the exchange officer publishes and features a story'
+);
+select lives_ok(
+  $$ update public.stories set status = 'published', public_name = ' Sara, SCOPE 2025 ', public_story = 'Tidied.'
+     where email = 'sara2@example.com' $$,
+  'the officer publishes another with its own public text'
+);
+select throws_ok(
+  $$ update public.stories set email = 'x@example.com' where ref = 'STORY-ABC123' $$,
+  '42501', null,
+  'the submitted contact details cannot be edited'
+);
+select tests.clear_auth();
+select tests.authenticate_as_anon();
+select is(
+  (select jsonb_agg(s -> 'name') from jsonb_array_elements(public.stories_public() -> 'stories') s),
+  '["Sara", "Sara, SCOPE 2025"]'::jsonb,
+  'the site gets the published stories, featured first, with the name as submitted when none was set'
+);
+select is(
+  (select s ? 'email' or s ? 'phone' from jsonb_array_elements(public.stories_public() -> 'stories') s limit 1),
+  false,
+  'the site never sees the contact details'
 );
 select tests.clear_auth();
 select tests.authenticate_as('leo@pgtap.test');
