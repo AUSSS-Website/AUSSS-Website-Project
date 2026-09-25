@@ -872,8 +872,11 @@ UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes.
 buttons (`src/portal/ExportButtons.jsx`, `exportFile.js`): the three Submissions tabs, a call's
 applications (Committees > Open calls), the membership roster (EB), a committee's Members tab,
 the verification queue, and an edition's Readers panel. They export the rows on screen,
-filters included. The PDF is made in the browser (jsPDF, loaded on demand); its built-in fonts
-cover Latin scripts only, so a name typed in Arabic shows as boxes in the PDF (the CSV keeps it).
+filters included. The PDF is made in the browser (jsPDF, loaded on demand) with IBM Plex Sans
+Arabic embedded (`src/portal/fonts`, OFL, about 480 KB fetched once per session), so names and
+text typed in Arabic come out joined and complete. jsPDF shapes Arabic through the Unicode
+presentation forms, so any replacement font must carry those glyphs (Plex and Amiri do; Tajawal
+and Cairo do not and lose letters).
 
 **Checks.** Anonymous: `rpc/submit_signup` with a valid email answers `{ok: true}`;
 `/rest/v1/orders` is refused. Signed in as the webmaster: `/portal/submissions` lists the
