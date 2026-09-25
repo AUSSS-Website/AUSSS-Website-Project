@@ -169,6 +169,8 @@ select throws_ok(
 );
 
 -- ---- the receipt -----------------------------------------------------------------------------
+-- (as postgres: the subselects read orders, which anon may not)
+select tests.clear_auth();
 select ok(
   app.receipt_upload_ok((select o.id::text || '.jpg' from public.orders o where o.ref = 'AUSSS-XYZ')),
   'the buyer may upload the receipt for a fresh order'
