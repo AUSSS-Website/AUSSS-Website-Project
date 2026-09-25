@@ -69,7 +69,7 @@ select is(
   'STORY-ABC123',
   'a story keeps the client reference (upper-cased)'
 );
-select like(
+select alike(
   public.submit_story('bad ref', 'Sara', 'sara2@example.com', '01000000000', 'Another one.') ->> 'ref',
   'STORY-________',
   'a bad reference is replaced'
@@ -151,7 +151,7 @@ select is(
   '800 | Alex | 20',
   'quantities are clamped and a non-member keeps their LC'
 );
-select like(
+select alike(
   (select o.price_flag from public.orders o where o.ref = 'AUSSS-XYZ'),
   'price mismatch%unknown items dropped)',
   'a wrong total is flagged for the officers'
