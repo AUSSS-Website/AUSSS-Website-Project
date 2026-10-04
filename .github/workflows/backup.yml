@@ -73,16 +73,21 @@ jobs:
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      # The three files of Supabase's own backup guide, plus the migration
-      # history so a restored project knows which migrations it already has.
-      # The data dump includes the auth and storage tables (accounts, object
-      # records); the files themselves are mirrored in the next steps.
+      # The three files of Supabase's own backup guide
+      # (supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore),
+      # command for command, plus the migration history so a restored project
+      # knows which migrations it already has. The data dump includes the auth
+      # and storage tables (accounts, object records); the files themselves are
+      # mirrored in the next steps. The two -x tables are Storage's internal
+      # vector-bucket tables, which the guide leaves out because the postgres
+      # role may read them but never write them, on any project.
       - name: Dump the database
         run: |
           mkdir -p backup/db
           supabase db dump --linked -f backup/db/roles.sql --role-only
           supabase db dump --linked -f backup/db/schema.sql
-          supabase db dump --linked -f backup/db/data.sql --data-only --use-copy
+          supabase db dump --linked -f backup/db/data.sql --data-only --use-copy \
+            -x "storage.buckets_vectors" -x "storage.vector_indexes"
           supabase db dump --linked -f backup/db/history_schema.sql --schema supabase_migrations
           supabase db dump --linked -f backup/db/history_data.sql --data-only --use-copy --schema supabase_migrations
 

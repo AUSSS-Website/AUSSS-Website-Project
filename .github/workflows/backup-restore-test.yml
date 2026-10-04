@@ -5,8 +5,11 @@
 # into a new Supabase project.
 #
 # The scratch database is the local Supabase stack on the runner, started
-# with no migrations so it is as empty as a new project. It is thrown away
-# when the job ends; nothing touches the hosted project.
+# with no migrations so it is as empty as a new project, and at the same
+# Postgres, Auth and Storage versions as the hosted project (the link step
+# reads them), because a backup only fits a project that is at least as new
+# as the one it came from. It is thrown away when the job ends. The hosted
+# project is only read for those version numbers, never written.
 name: backup-restore-test
 
 on:
@@ -32,6 +35,9 @@ jobs:
       actions: read
     env:
       BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       GH_TOKEN: ${{ github.token }}
       RUN_ID: ${{ inputs.run_id }}
       DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
@@ -65,6 +71,15 @@ jobs:
           done
           ls -lh restore/db
           test -f restore/storage/manifest.json
+
+      # Linking records the hosted project's service versions under
+      # supabase/.temp, and `supabase start` then runs those versions instead
+      # of the ones this CLI release shipped with. Without it the local Auth
+      # and Storage are older than the backup and lack tables it holds.
+      - name: Match the hosted project's versions
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          for f in supabase/.temp/*-version; do echo "$(basename "$f"): $(cat "$f")"; done
 
       # No migrations and no seed: the auth and storage services still create
       # their own schemas, which is the state of a brand-new hosted project.
