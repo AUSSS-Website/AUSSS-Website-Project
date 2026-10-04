@@ -1,6 +1,11 @@
 // The society's people, committees and page copy, in one place. Officers can
 // override parts of a committee page from the portal; everything else on the
 // public site reads from here.
+//
+// Inboxes: `email` is a role's Gmail inbox, `alias` its address on the
+// society's domain. Pages show whichever publicEmail() picks, see
+// emailConfig.js.
+import { publicEmail } from './emailConfig.js'
 
 export const executiveBoard = [
   {
@@ -8,6 +13,7 @@ export const executiveBoard = [
     photo: '/assets/team/amr-hesham.jpg',
     role: 'President',
     email: 'the.president.ausss@gmail.com',
+    alias: 'president',
     candidature: '/assets/eb-candidatures/amr-hesham-candidature.pdf',
     tier: 'lead',
     blurb:
@@ -18,6 +24,7 @@ export const executiveBoard = [
     photo: '/assets/team/sara-galal.jpg',
     role: 'Vice President, Internal Affairs',
     email: 'vpi.ausss@gmail.com',
+    alias: 'vpi',
     candidature: '/assets/eb-candidatures/sara-galal-candidature.pdf',
     tier: 'vp',
     blurb: 'Oversees committees, member development, and internal operations.',
@@ -27,6 +34,7 @@ export const executiveBoard = [
     photo: '/assets/team/mark-karam.jpg',
     role: 'Vice President, External Affairs',
     email: 'vpe.ausss@gmail.com',
+    alias: 'vpe',
     candidature: '/assets/eb-candidatures/mark-karam-candidature.pdf',
     tier: 'vp',
     blurb: 'Leads partnerships and inter-university relations.',
@@ -36,6 +44,7 @@ export const executiveBoard = [
     photo: '/assets/team/alyaa-ashraf.jpg',
     role: 'Secretary General',
     email: 'ausss.secgen@gmail.com',
+    alias: 'secgen',
     candidature: '/assets/eb-candidatures/alyaa-ashraf-candidature.pdf',
     tier: 'officer',
     blurb: 'Manages records, governance documentation, and board coordination.',
@@ -89,8 +98,8 @@ export const committees = [
     // (order here = display order). Single-officer ones use
     // `officer` (title) + `officerAbbr` + `holder` (the person).
     officers: [
-      { name: 'Reem Serry', abbr: 'LEO-Out', photo: '/assets/team/reem-serry.jpg', email: 'leolore.out.ausss@gmail.com' },
-      { name: 'Ahmed Abdelfatah', abbr: 'LEO-In', photo: '/assets/team/ahmed-abdelfatah.jpg', email: 'leolore.in.ausss@gmail.com' },
+      { name: 'Reem Serry', abbr: 'LEO-Out', photo: '/assets/team/reem-serry.jpg', email: 'leolore.out.ausss@gmail.com', alias: 'leo-out' },
+      { name: 'Ahmed Abdelfatah', abbr: 'LEO-In', photo: '/assets/team/ahmed-abdelfatah.jpg', email: 'leolore.in.ausss@gmail.com', alias: 'leo-in' },
     ],
     description:
       'Manages clinical clerkship exchanges and incoming/outgoing student logistics.',
@@ -137,6 +146,7 @@ export const committees = [
     officerAbbr: 'LORE',
     holder: 'Hassan Haitham',
     email: 'loreausss@gmail.com',
+    alias: 'lore',
     photo: '/assets/team/hassan-haitham.jpg',
     tagline: 'Research clerkships across the world.',
     description:
@@ -184,6 +194,7 @@ export const committees = [
     officerAbbr: 'LOME',
     holder: 'Sama ElKady',
     email: 'ausss.lome@gmail.com',
+    alias: 'lome',
     photo: '/assets/team/sama-elkady.jpg',
     tagline: 'Students shaping medical education.',
     description:
@@ -232,6 +243,7 @@ export const committees = [
     officerAbbr: 'LORP',
     holder: 'Wafaa Rasool',
     email: 'lorpausss@gmail.com',
+    alias: 'lorp',
     photo: '/assets/team/wafaa-rasool.jpg',
     tagline: 'Medicine in the service of human rights and peace.',
     description: 'Advocates for ethics in medicine and humanitarian engagement.',
@@ -279,6 +291,7 @@ export const committees = [
     officerAbbr: 'LPO',
     holder: 'Shahi Ezzeldin',
     email: 'lpoausss@gmail.com',
+    alias: 'lpo',
     photo: '/assets/team/shahi-ezzeldin.jpg',
     tagline: 'Building healthier communities.',
     description:
@@ -326,6 +339,7 @@ export const committees = [
     officerAbbr: 'LORA',
     holder: 'Noha Khalil',
     email: 'loraausss@gmail.com',
+    alias: 'lora',
     photo: '/assets/team/noha-khalil.jpg',
     tagline: 'Peer education for sexual & reproductive health and rights.',
     description:
@@ -351,6 +365,7 @@ export const committees = [
     officerAbbr: 'PSDD',
     holder: 'Amr Kamel',
     email: 'psddausss@gmail.com',
+    alias: 'psdd',
     photo: '/assets/team/amr-kamel.jpg',
     tagline: 'Quality and impact across every project.',
     description:
@@ -374,6 +389,7 @@ export const committees = [
     officerAbbr: 'PNSDD',
     holder: 'Ahmed Serry',
     email: 'aussspnsdd@gmail.com',
+    alias: 'pnsdd',
     photo: '/assets/team/ahmed-serry.jpg',
     tagline: 'The voice and visual identity of AUSSS.',
     description:
@@ -397,6 +413,7 @@ export const committees = [
     officerAbbr: 'CBSDD',
     holder: 'Ahmed Ezzat',
     email: 'aussscbsdd@gmail.com',
+    alias: 'cbsdd',
     photo: '/assets/team/ahmed-ezzat.jpg',
     tagline: 'Trainers, leaders and lifelong skills.',
     description:
@@ -420,6 +437,7 @@ export const committees = [
     officerAbbr: 'RSDD',
     holder: 'Sayma Rahman',
     email: 'rsddausss@gmail.com',
+    alias: 'rsdd',
     photo: '/assets/team/sayma-rahman.jpg',
     tagline: 'Methodology, training and scientific output.',
     description:
@@ -451,7 +469,7 @@ export const society = {
   name: "Ain Shams University Students' Scientific Society",
   // Public contact is the Secretary General (correspondence and member
   // communication per Constitution §4.2.2 / §8).
-  contactEmail: 'ausss.secgen@gmail.com',
+  contactEmail: publicEmail(executiveBoard.find((m) => m.role === 'Secretary General')),
 }
 
 // --- Official social channels (Constitution §14.2) ---------------------
@@ -782,6 +800,7 @@ export const exchange = {
         slug: 'scope',
         color: '#0181c1',
         email: 'leolore.in.ausss@gmail.com',
+        alias: 'leo-in',
         about:
           'Owns the incoming half of the programme: placing arriving students in departments at the Ain Shams Specialized Hospital, pairing each of them with a contact person, and making sure the month works end to end, from landing to certificate.',
       },
@@ -792,6 +811,7 @@ export const exchange = {
         slug: 'scope',
         color: '#0181c1',
         email: 'leolore.out.ausss@gmail.com',
+        alias: 'leo-out',
         about:
           'Owns the outgoing half: running the exchange exam and interviews, matching selected students to their contracts, and preparing them (documents, pre-departure orientation) for the clerkship abroad.',
       },
@@ -802,6 +822,7 @@ export const exchange = {
         slug: 'score',
         color: '#2e4a9c',
         email: 'loreausss@gmail.com',
+        alias: 'lore',
         about:
           'The research side of exchange. Handles SCORE rather than clinical placements, matching students to laboratories and mentors abroad, and hosting incoming research students here at Ain Shams.',
       },

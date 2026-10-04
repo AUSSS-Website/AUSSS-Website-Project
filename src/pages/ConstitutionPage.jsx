@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import PdfFrame from '../components/PdfFrame.jsx'
+import { society } from '../data/society.js'
 
 const CONSTITUTION_PDF = '/assets/docs/AUSSS-Constitution-and-Bylaws.pdf'
-const SECGEN_EMAIL = 'ausss.secgen@gmail.com'
+const SECGEN_EMAIL = society.contactEmail
 
 // How the document is amended, summarised straight from the Constitution &
 // Bylaws (section references in parentheses), so members know the real process.

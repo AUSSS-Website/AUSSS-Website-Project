@@ -8,6 +8,7 @@ import {
   socials,
   slugFor,
 } from '../data/society.js'
+import { publicEmail } from '../data/emailConfig.js'
 import SocialIcon from '../components/SocialIcon.jsx'
 
 const isSupport = (g) => /support|division|psd|pnsd|cbsd/i.test(g || '')
@@ -65,7 +66,7 @@ export default function ContactPage() {
     const people =
       Array.isArray(c.officers) && c.officers.length > 0
         ? c.officers
-        : [{ name: c.holder, role: c.officer, email: c.email }]
+        : [{ name: c.holder, role: c.officer }]
     return people.map((p, i) => (
       <Row
         key={(p.abbr || p.name || i) + '-' + i}
@@ -74,7 +75,7 @@ export default function ContactPage() {
           /·\s*$/,
           '',
         )}
-        email={p.email ?? c.email}
+        email={publicEmail(p) || publicEmail(c)}
       />
     ))
   }
@@ -144,7 +145,7 @@ export default function ContactPage() {
 
         <Group title="Executive Board">
           {executiveBoard.map((m, i) => (
-            <Row key={i} name={m.name} role={m.role} email={m.email} />
+            <Row key={i} name={m.name} role={m.role} email={publicEmail(m)} />
           ))}
         </Group>
 

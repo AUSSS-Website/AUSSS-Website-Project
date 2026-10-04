@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { readableAccent, rgba } from '../lib/color.js'
+import { publicEmail } from '../data/emailConfig.js'
 
 // One position in the exchange hierarchy, with its explanation in a card that
 // appears on hover.
@@ -15,6 +16,7 @@ export default function RoleNode({ role, tier = 'officer' }) {
   const wrapRef = useRef(null)
   const accent = readableAccent(role.color)
   const isOfficer = tier === 'officer'
+  const email = publicEmail(role)
 
   useEffect(() => {
     if (!open) return
@@ -97,12 +99,12 @@ export default function RoleNode({ role, tier = 'officer' }) {
           <p className="mt-2.5 text-sm leading-relaxed text-silver/80">
             {role.about}
           </p>
-          {role.email && (
+          {email && (
             <a
-              href={`mailto:${role.email}`}
+              href={`mailto:${email}`}
               className="mt-3 inline-block text-xs font-semibold text-medical-light underline-offset-2 hover:text-white hover:underline"
             >
-              {role.email}
+              {email}
             </a>
           )}
         </div>
