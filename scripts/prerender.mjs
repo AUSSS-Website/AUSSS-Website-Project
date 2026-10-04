@@ -22,6 +22,11 @@
 //
 // sitemap.xml is generated from the same page list, so a new committee, album
 // or page is listed the moment it is added there.
+//
+// Three small files are written next to it: page-hashes.json and
+// indexnow-urls.json (which pages changed since the live build, for
+// scripts/indexnow.mjs) and .well-known/security.txt.
+import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createServer } from 'vite'
@@ -73,6 +78,15 @@ function buildHtml(template, page, appHtml) {
   html = html.replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/i, '')
   html = html.replace('</head>', `    ${page.jsonLd.map(jsonLdScript).join('\n    ')}\n  </head>`)
 
+  // The hero logo is the largest paint on the home page only, so only that
+  // page asks for it early (anywhere else the preload would go unused).
+  if (page.path === '/') {
+    html = html.replace(
+      '</head>',
+      '    <link rel="preload" as="image" href="/assets/brand/ausss-vertical-white.png" fetchpriority="high" />\n  </head>',
+    )
+  }
+
   const marker = '<div id="root"></div>'
   if (!html.includes(marker)) throw new Error('index.html has no empty #root')
   html = html.replace(marker, `<div id="root">${appHtml}</div>`)
@@ -89,7 +103,7 @@ function sitemapXml(pages) {
 
 // llms.txt (https://llmstxt.org): a plain-text map of the site for AI
 // assistants, generated from the same page list so it never goes stale.
-function llmsTxt(pages) {
+function llmsTxt(pages, contactEmail) {
   const line = (p) => `- [${p.title || 'Home'}](${p.url}): ${p.description}`
   const top = pages.filter((p) => !p.path.startsWith('/committees/') && !p.path.startsWith('/gallery/'))
   const committees = pages.filter((p) => p.path.startsWith('/committees/'))
@@ -99,7 +113,7 @@ function llmsTxt(pages) {
     '',
     "> The student-run scientific society of the Faculty of Medicine, Ain Shams University, Cairo, Egypt, founded in 1971. Motto: Life Savers, Change Makers. AUSSS is an autonomous affiliate of IFMSA-Egypt, the Egyptian member of the International Federation of Medical Students' Associations (IFMSA). It runs six IFMSA standing committees (SCOPE, SCORE, SCOME, SCORP, SCOPH, SCORA) and four support divisions (PSD, PNSD, CBSD, RSD): medical research, public health campaigns, medical education, human rights, sexual and reproductive health, and international clinical and research exchanges.",
     '',
-    'Also referred to as the Ain Shams University Student Scientific Society, AUSSS Ain Shams, or IFMSA Ain Shams (it is the IFMSA society of Ain Shams University). Official site: https://ausss-ainshams.org (every page below is served as full HTML). Contact: ausss.secgen@gmail.com (Secretary General). Instagram, Facebook and TikTok: @ausss_ainshams.',
+    `Also referred to as the Ain Shams University Student Scientific Society, AUSSS Ain Shams, or IFMSA Ain Shams (it is the IFMSA society of Ain Shams University). Official site: https://ausss-ainshams.org (every page below is served as full HTML). Contact: ${contactEmail} (Secretary General). Instagram, Facebook and TikTok: @ausss_ainshams.`,
     '',
     '## Pages',
     '',
@@ -117,6 +131,48 @@ function llmsTxt(pages) {
     '',
     '- The members portal at /portal is sign-in only and not for indexing.',
     '- Membership is open to students of the Faculty of Medicine, Ain Shams University; see /join.',
+    '',
+  ].join('\n')
+}
+
+// What a reader sees of one page: its title, description and pre-rendered
+// body. The rest of the <head> is left out because its script and stylesheet
+// names change on every build, which would mark every page as changed.
+function contentHash(html) {
+  const title = html.match(/<title>[^<]*<\/title>/i)?.[0] || ''
+  const description = html.match(/<meta\s+name="description"[^>]*>/i)?.[0] || ''
+  const start = html.indexOf('<div id="root">')
+  const body = (start === -1 ? html : html.slice(start)).replace(/<script[\s\S]*?<\/script>/gi, '')
+  return createHash('sha256').update(title).update(description).update(body).digest('hex')
+}
+
+// The URLs whose content differs from the build that is live now, which
+// published its own hashes as /page-hashes.json. Every URL counts as changed
+// when the live site has no such file yet; none does when the site cannot be
+// reached, so a build without network never floods IndexNow on the next run.
+async function changedSinceLive(siteUrl, hashes) {
+  let live
+  try {
+    const res = await fetch(`${siteUrl}/page-hashes.json`, { signal: AbortSignal.timeout(10000) })
+    live = res.ok ? await res.json().catch(() => ({})) : {}
+  } catch (err) {
+    console.warn(`prerender: could not read the live page hashes (${err.message}); no IndexNow list this build`)
+    return []
+  }
+  if (!live || typeof live !== 'object' || Array.isArray(live)) live = {}
+  return Object.keys(hashes).filter((url) => live[url] !== hashes[url])
+}
+
+// RFC 9116: where to report a security problem. Expires is required and must
+// stay in the future, so it is stamped a year ahead on every build.
+function securityTxt(siteUrl) {
+  const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+  expires.setUTCHours(0, 0, 0, 0)
+  return [
+    'Contact: mailto:aussswebsite@gmail.com',
+    `Expires: ${expires.toISOString()}`,
+    'Preferred-Languages: en, ar',
+    `Canonical: ${siteUrl}/.well-known/security.txt`,
     '',
   ].join('\n')
 }
@@ -189,13 +245,15 @@ async function main() {
   })
   try {
     const { render } = await vite.ssrLoadModule('/src/entry-server.jsx')
-    const { publicPages } = await vite.ssrLoadModule('/src/seo/pages.js')
+    const { publicPages, SITE_URL } = await vite.ssrLoadModule('/src/seo/pages.js')
+    const { society } = await vite.ssrLoadModule('/src/data/society.js')
     const albums = await loadAlbums(vite)
     const issues = await loadIssues(vite)
     const stories = await loadStories(vite)
     const pages = publicPages(albums, issues)
 
     const seen = new Set()
+    const hashes = {}
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
@@ -208,11 +266,18 @@ async function main() {
           ? path.join(dist, 'index.html')
           : path.join(dist, ...page.path.slice(1).split('/'), 'index.html')
       await fs.mkdir(path.dirname(out), { recursive: true })
-      await fs.writeFile(out, buildHtml(template, page, appHtml))
+      const html = buildHtml(template, page, appHtml)
+      await fs.writeFile(out, html)
+      hashes[page.url] = contentHash(html)
     }
     await fs.writeFile(path.join(dist, 'sitemap.xml'), sitemapXml(pages))
-    await fs.writeFile(path.join(dist, 'llms.txt'), llmsTxt(pages))
-    console.log(`prerender: ${pages.length} pages written; sitemap.xml and llms.txt list ${pages.length} URLs`)
+    await fs.writeFile(path.join(dist, 'llms.txt'), llmsTxt(pages, society.contactEmail))
+    const changed = await changedSinceLive(SITE_URL, hashes)
+    await fs.writeFile(path.join(dist, 'page-hashes.json'), JSON.stringify(hashes))
+    await fs.writeFile(path.join(dist, 'indexnow-urls.json'), JSON.stringify(changed))
+    await fs.mkdir(path.join(dist, '.well-known'), { recursive: true })
+    await fs.writeFile(path.join(dist, '.well-known', 'security.txt'), securityTxt(SITE_URL))
+    console.log(`prerender: ${pages.length} pages written; sitemap.xml and llms.txt list ${pages.length} URLs; ${changed.length} changed since the live build`)
   } finally {
     await vite.close()
   }

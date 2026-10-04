@@ -31,3 +31,16 @@ jobs:
           curl -fsS "$SUPABASE_URL/rest/v1/terms?select=id&limit=1" \
             -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY"
+
+  alert:
+    needs: ping
+    if: failure()
+    uses: ./.github/workflows/notify.yml
+    with:
+      subject: 'AUSSS website: the database keep-alive ping failed'
+      body: >-
+        The daily read that keeps the free Supabase project awake did not get
+        an answer. The project may be paused, or a key was rotated without
+        updating the repo secrets (RUNBOOK sections 6 and 7).
+    secrets:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

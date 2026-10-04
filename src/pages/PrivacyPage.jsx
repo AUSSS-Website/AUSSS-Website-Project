@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
+import { society } from '../data/society.js'
+import { domainEmailsLive } from '../data/emailConfig.js'
 
 // Plain-language privacy policy for ausss-ainshams.org and the members portal.
 // Written to be read by a medical student in two minutes, not by a lawyer.
 // Keep it truthful: every item below maps to a real form, table or service in
 // this repo. Update LAST_UPDATED whenever the substance changes.
-const LAST_UPDATED = '24 September 2026'
+const LAST_UPDATED = '4 October 2026'
 // (newsletter sign-up removed the same day; only the waitlist form remains)
-const SECGEN_EMAIL = 'ausss.secgen@gmail.com'
+const SECGEN_EMAIL = society.contactEmail
 const IFMSA_EXCHANGES_PRIVACY = 'https://ifmsa.org/exchanges-privacy/'
 const IFMSA_PRIVACY = 'https://ifmsa.org/privacy/'
 
@@ -27,7 +29,7 @@ const SECTIONS = [
     body: [
       'You can read every public page without an account and without giving us any information.',
       'We do not use advertising cookies or trackers. Vercel Web Analytics counts page views without cookies and without identifying you.',
-      'Some pages embed content from Google Drive, Canva and Google Maps. When such an embed loads, that provider receives your browser request under its own privacy policy.',
+      'Every page embeds a map from Google Maps in its footer, and the magazine page can embed an edition from Canva. When such an embed loads, that provider receives your browser request and may set its own cookies, under its own privacy policy.',
     ],
   },
   {
@@ -75,6 +77,9 @@ const SECTIONS = [
       'Vercel hosts the website and counts page views.',
       'Google provides sign-in, and Google Sheets and Drive hold form submissions and society documents.',
       'Resend delivers sign-in and notification emails.',
+      ...(domainEmailsLive
+        ? ['Squarespace, our domain registrar, forwards mail sent to an @ausss-ainshams.org address to the officer’s Google inbox.']
+        : []),
     ],
     after:
       'Each of these processes data on our instructions. We do not sell or rent your information, and we do not share it with anyone for advertising.',

@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "preview:prerendered": "node scripts/serve-dist.mjs",
     "preview:host": "vite preview --host",
+    "walk": "node scripts/page-walk.mjs",
     "db": "node scripts/db/supa.mjs",
     "db:new": "node scripts/db/supa.mjs migration new",
     "db:link": "node scripts/db/supa.mjs link --project-ref wjijkqrdaakiwbtdssio",
@@ -39,10 +40,11 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "playwright": "^1.63.0",
     "postcss": "^8.4.49",
     "supabase": "2.117.0",
     "tailwindcss": "^3.4.17",
     "vite": "^5.4.11",
-    "xlsx": "0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

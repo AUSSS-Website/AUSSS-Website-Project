@@ -1,0 +1,168 @@
+# Nightly backup of the hosted Supabase project: the database (roles, schema,
+# data, migration history) and every Storage bucket. docs/RUNBOOK.md section 20
+# has the restore steps.
+#
+# This repository is public, so nothing leaves the runner unencrypted: both
+# archives are encrypted with the repo secret BACKUP_PASSPHRASE (AES-256)
+# before they are uploaded as workflow artifacts, kept for 90 days. Without
+# the passphrase a backup cannot be read; it lives in the society vault.
+#
+# When the repo secret RCLONE_CONF exists (an rclone config with a remote
+# named "drive"), the same two files are also copied to the society Google
+# Drive, folder "AUSSS backups", and files older than 90 days are removed
+# there.
+#
+# A failed run emails the society inbox (notify.yml).
+name: backup
+
+on:
+  schedule:
+    # 01:40 UTC, the quiet hours in Cairo.
+    - cron: '40 1 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency: backup
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      # The CLI loads config.toml, which enables Google sign-in and SMTP through
+      # env() placeholders and rejects empty values. Nothing here is sent anywhere.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      RESEND_API_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      # A backup that quietly does nothing is worse than none, so a missing
+      # secret fails the run (and sends the alert) instead of skipping.
+      - name: Check secrets
+        run: |
+          missing=""
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID SUPABASE_URL SUPABASE_SECRET_KEY BACKUP_PASSPHRASE; do
+            test -n "${!v}" || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::backup cannot run, repo secrets not set:$missing"
+            exit 1
+          fi
+          echo "STAMP=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Keep in sync with the "supabase" devDependency in package.json.
+          version: 2.117.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      # The three files of Supabase's own backup guide, plus the migration
+      # history so a restored project knows which migrations it already has.
+      # The data dump includes the auth and storage tables (accounts, object
+      # records); the files themselves are mirrored in the next steps.
+      - name: Dump the database
+        run: |
+          mkdir -p backup/db
+          supabase db dump --linked -f backup/db/roles.sql --role-only
+          supabase db dump --linked -f backup/db/schema.sql
+          supabase db dump --linked -f backup/db/data.sql --data-only --use-copy
+          supabase db dump --linked -f backup/db/history_schema.sql --schema supabase_migrations
+          supabase db dump --linked -f backup/db/history_data.sql --data-only --use-copy --schema supabase_migrations
+
+      # An empty or truncated dump must not pass as a backup.
+      - name: Check the dump
+        run: |
+          grep -q 'CREATE TABLE' backup/db/schema.sql || { echo "::error::schema.sql has no tables"; exit 1; }
+          tables=$(grep -c '^COPY ' backup/db/data.sql || true)
+          test "$tables" -ge 10 || { echo "::error::data.sql holds only $tables tables"; exit 1; }
+          grep -Eq '^COPY "?public"?[.]"?profiles"?' backup/db/data.sql || { echo "::error::data.sql has no public.profiles"; exit 1; }
+          echo "data.sql: $tables tables, $(du -h backup/db/data.sql | cut -f1)"
+
+      # The mirror is carried from run to run so only new or changed objects are
+      # downloaded (Storage egress is capped on the free plan). If the cache is
+      # gone, one run downloads everything again.
+      - name: Restore the storage mirror
+        uses: actions/cache/restore@v4
+        with:
+          path: backup/storage
+          key: storage-mirror-${{ github.run_id }}
+          restore-keys: storage-mirror-
+
+      - name: Mirror the storage buckets
+        run: node scripts/backup/storage.mjs backup/storage
+
+      - name: Save the storage mirror
+        uses: actions/cache/save@v4
+        with:
+          path: backup/storage
+          key: storage-mirror-${{ github.run_id }}
+
+      # The passphrase is read from a file descriptor, never from the command line.
+      - name: Encrypt
+        run: |
+          mkdir -p out
+          for part in db storage; do
+            tar -czf - -C backup "$part" \
+              | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
+                    --symmetric --cipher-algo AES256 \
+                    -o "out/ausss-$part-$STAMP.tar.gz.gpg" 3<<<"$BACKUP_PASSPHRASE"
+          done
+          ls -lh out
+
+      - name: Upload the database backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ausss-db-${{ env.STAMP }}
+          path: out/ausss-db-${{ env.STAMP }}.tar.gz.gpg
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload the storage backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ausss-storage-${{ env.STAMP }}
+          path: out/ausss-storage-${{ env.STAMP }}.tar.gz.gpg
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Copy to Google Drive
+        if: env.RCLONE_CONF != ''
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq rclone
+          conf="$RUNNER_TEMP/rclone.conf"
+          printf '%s' "$RCLONE_CONF" > "$conf"
+          rclone --config "$conf" copy out "drive:AUSSS backups"
+          rclone --config "$conf" delete "drive:AUSSS backups" --min-age 90d
+          rm -f "$conf"
+
+  alert:
+    needs: backup
+    if: failure()
+    uses: ./.github/workflows/notify.yml
+    with:
+      subject: 'AUSSS website: the nightly backup failed'
+      body: >-
+        Last night's backup of the database and the Storage buckets did not
+        complete, so the newest restorable copy is the previous one. Open the
+        run to see which step failed (RUNBOOK section 20).
+    secrets:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

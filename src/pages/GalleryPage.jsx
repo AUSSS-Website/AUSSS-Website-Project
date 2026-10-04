@@ -23,12 +23,16 @@ export default function GalleryPage() {
   if (redirectTo) return <Navigate to={`/gallery/${redirectTo}`} replace />
   if (slug && !album) return loading ? <LoadingAlbum /> : <NotFoundAlbum slug={slug} />
 
-  return album ? <AlbumView album={album} /> : <GalleryIndex albums={albums} trail={trail} />
+  return album ? (
+    <AlbumView album={album} />
+  ) : (
+    <GalleryIndex albums={albums} trail={trail} loading={loading} />
+  )
 }
 
 // ───────────────────────── Index view ─────────────────────────
 
-function GalleryIndex({ albums, trail }) {
+function GalleryIndex({ albums, trail, loading }) {
   useReveal()
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
@@ -94,7 +98,16 @@ function GalleryIndex({ albums, trail }) {
 
       {/* Albums grid */}
       <div className="container-prose pb-20 pt-12">
-        {albums.length === 0 ? (
+        {albums.length === 0 && loading ? (
+          // First visit: nothing cached yet and the live list is on its way.
+          <div className="flex justify-center py-10">
+            <span
+              className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light"
+              role="status"
+              aria-label="Loading albums"
+            />
+          </div>
+        ) : albums.length === 0 ? (
           <p className="mx-auto max-w-xl rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center text-sm text-silver/60">
             No albums to show yet. Check back soon.
           </p>

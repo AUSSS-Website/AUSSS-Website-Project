@@ -26,6 +26,8 @@ export default function Footer() {
               <img
                 src="/assets/brand/ausss-horizontal-white.png"
                 alt="AUSSS, Ain Shams University Students' Scientific Society"
+                width="900"
+                height="449"
                 loading="lazy"
                 decoding="async"
                 className="h-24 w-auto"
@@ -134,6 +136,8 @@ export default function Footer() {
               <img
                 src="/assets/ifmsa/ifmsa-egypt-horizontal-white.png"
                 alt=""
+                width="13414"
+                height="2316"
                 loading="lazy"
                 decoding="async"
                 className="h-10 w-auto opacity-60 transition-opacity hover:opacity-100 sm:h-12"
@@ -148,6 +152,8 @@ export default function Footer() {
               <img
                 src="/assets/ifmsa/ifmsa-horizontal-white.png"
                 alt=""
+                width="5409"
+                height="1262"
                 loading="lazy"
                 decoding="async"
                 className="h-9 w-auto opacity-60 transition-opacity hover:opacity-100 sm:h-11"

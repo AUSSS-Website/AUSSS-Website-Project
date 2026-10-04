@@ -41,7 +41,7 @@ before; `apps-script/MIGRATION.md` records the recovery.
 | Repository | `github.com/AUSSS-Website/AUSSS-Website-Project` |
 | Login and recovery codes | Society vault |
 | Second person | Webmaster, added as a collaborator with admin rights |
-| Holds | All source, `supabase/migrations`, GitHub Actions (`db-ci`, `db-deploy`, `keepalive`), the repository secrets in section 5 |
+| Holds | All source, `supabase/migrations`, GitHub Actions (`db-ci`, `db-deploy`, `keepalive`, `backup`, `backup-restore-test`, `after-deploy`, `notify`), the nightly backups as encrypted run artifacts (RUNBOOK section 20), the repository secrets in section 5 |
 | Transfer at rollover | Add the new webmaster as admin collaborator, remove the old one; rotate the vault entry |
 
 Because it is a user account it cannot have two owners. Do not convert it to an
@@ -108,7 +108,8 @@ The client secret is a secret. Rotating it means updating Supabase Auth and
 | Registrar | Squarespace Domains (nameservers `nsb1..4.squarespacedns.com`), bought 2026-09-15 by `aussswebsite@gmail.com` |
 | Registrant account login | Society vault |
 | Renewal date and payment method | TODO. Set a calendar reminder two months ahead; an expired domain takes the site, the email domain and the OAuth redirect down together |
-| DNS records that matter | apex `A 76.76.21.21` and `www CNAME cname.vercel-dns.com` (Vercel); later the Resend domain-verification and DKIM/SPF records; anything the Google Form or Calendar needs |
+| DNS records that matter | apex `A 76.76.21.21` and `www CNAME cname.vercel-dns.com` (Vercel); the Resend records (`resend._domainkey` TXT, the `send` records); the MX and TXT records Squarespace adds for email forwarding |
+| Email forwarding | Role addresses such as `president@ausss-ainshams.org` forward to the role Gmail inboxes. Rules are under Email > Email forwarding in the Squarespace domain dashboard; the list and the go-live steps are in RUNBOOK section 19 |
 
 ### 2.7 The `aussswebsite@gmail.com` Google account
 
@@ -211,11 +212,18 @@ seat. RUNBOOK section 8 covers that.
 
 | Secret | Used by | Where it comes from |
 | --- | --- | --- |
-| `SUPABASE_ACCESS_TOKEN` | `db-deploy.yml` (`supabase link`, `db push`) | Supabase dashboard, Account, Access Tokens (`supabase.com/dashboard/account/tokens`). Create one named `github-actions-ausss`, owned by the webmaster's own Supabase login |
-| `SUPABASE_DB_PASSWORD` | `db-deploy.yml` (`supabase link`) | Supabase dashboard, Project Settings, Database. Reset there if lost; that is also how it is rotated |
-| `SUPABASE_PROJECT_ID` | `db-deploy.yml` | The project ref: `wjijkqrdaakiwbtdssio` |
-| `SUPABASE_URL` | `keepalive.yml` | `https://wjijkqrdaakiwbtdssio.supabase.co` |
+| `SUPABASE_ACCESS_TOKEN` | `db-deploy.yml`, `backup.yml` (`supabase link`, `db push`, `db dump`) | Supabase dashboard, Account, Access Tokens (`supabase.com/dashboard/account/tokens`). Create one named `github-actions-ausss`, owned by the webmaster's own Supabase login |
+| `SUPABASE_DB_PASSWORD` | `db-deploy.yml`, `backup.yml` (`supabase link`) | Supabase dashboard, Project Settings, Database. Reset there if lost; that is also how it is rotated |
+| `SUPABASE_PROJECT_ID` | `db-deploy.yml`, `backup.yml` | The project ref: `wjijkqrdaakiwbtdssio` |
+| `SUPABASE_URL` | `keepalive.yml`, `backup.yml` | `https://wjijkqrdaakiwbtdssio.supabase.co` |
 | `SUPABASE_PUBLISHABLE_KEY` | `keepalive.yml` | Supabase dashboard, Project Settings, API Keys, the `sb_publishable_...` key |
+| `SUPABASE_SECRET_KEY` | `backup.yml` (reads every Storage bucket, the private one included) | Supabase dashboard, Project Settings, API Keys, the `sb_secret_...` key. It bypasses row-level security: a repo secret and the vault are the only places it may live |
+| `BACKUP_PASSPHRASE` | `backup.yml`, `backup-restore-test.yml` (encrypts and decrypts the nightly backups) | Made up by the webmaster: 30 or more random characters from the vault's generator. Store it in the vault before setting it here; a backup cannot be read without it (RUNBOOK section 20) |
+| `RESEND_API_KEY` | `notify.yml` (the email when a backup, the keep-alive or a deploy fails) | Resend dashboard, API Keys: a new key with sending access only, named `github-alerts` |
+| `RCLONE_CONF` (optional) | `backup.yml` (second copy of each backup in the society Google Drive) | The contents of an rclone config file with one remote named `drive`, made with `rclone config` on the webmaster's machine while signed in as `aussswebsite@gmail.com` |
+
+One repository variable (same page, Variables tab), optional: `ALERT_EMAIL`, the inbox
+the failure emails go to. Without it they go to `aussswebsite@gmail.com`.
 
 Vercel environment variables (Project Settings, Environment Variables, both
 Production and Preview):
@@ -290,6 +298,9 @@ Exact SQL is in RUNBOOK section 9. In order:
 - [ ] Insert the `society.webmaster` invite for the incoming webmaster.
 - [ ] Verify: each incoming officer signs in at `/portal` and sees their
       position chip; the public committee pages show the right names.
+- [ ] If a role moves to a different Gmail inbox, change the destination of its
+      forwarding rule in Squarespace (RUNBOOK section 19); the address on the
+      domain stays the same.
 - [ ] Also update the names, photos and role mailboxes in `src/data/society.js`:
       the public site still renders it as the static fallback under the
       officer-edited `committees.page` overrides, and `npm run db:gen-reference`
@@ -300,6 +311,11 @@ Exact SQL is in RUNBOOK section 9. In order:
 - [ ] The `keepalive` GitHub Action ran in the last 24 hours (Actions tab).
       GitHub disables scheduled workflows after 60 days without repository
       activity; a rollover commit resets that clock.
+- [ ] The `backup` GitHub Action ran last night and its run holds two artifacts
+      (the same 60-day rule applies to it).
+- [ ] Run `backup-restore-test` (Actions tab, Run workflow) and see it go green:
+      the proof that the backups can be restored (RUNBOOK section 20).
+- [ ] Go through the security checklist (RUNBOOK section 22).
 - [ ] Supabase project is not paused (dashboard shows Active).
 - [ ] Vercel production deploy is green and `/portal/sign-in` loads.
 - [ ] Domain renewal date is more than 60 days away.
@@ -312,10 +328,13 @@ Order of recovery, each step unlocks the next:
 2. `aussswebsite@gmail.com` restores Google Cloud, Drive, Apps Script and the
    Supabase organisation.
 3. Supabase dashboard: reset the database password; if the project was deleted,
-   create a new one and run every file in `supabase/migrations` in order (the
-   schema is fully reproducible from the repository), then re-import the roster
-   (RUNBOOK section 4). Auth users are not reproducible; members sign in again
-   and are re-claimed by email.
+   create a new one and restore the latest nightly backup into it (RUNBOOK
+   section 20; it needs the backup passphrase from the vault). That brings back
+   the accounts, the data and the files. With no usable backup, run every file
+   in `supabase/migrations` in order instead (the schema is fully reproducible
+   from the repository) and re-import the roster (RUNBOOK section 4); members
+   then sign in again and are re-claimed by email, and everything else they
+   entered is gone.
 4. GitHub `AUSSS-Website` restores the code and CI; Vercel redeploys from it.
 5. Update the redirect URIs, env vars and CI secrets in section 5 if any URL or
    key changed, then redeploy.

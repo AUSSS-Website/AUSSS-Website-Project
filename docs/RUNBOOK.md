@@ -722,7 +722,10 @@ and `curl -s https://ausss-ainshams.org/portal | grep '<title>'` the base title.
 
 **robots.txt** (`public/robots.txt`) names every search and AI crawler explicitly and
 allows all of them; it disallows the portal, the admin/checkout surfaces and
-`/spa.html`. **llms.txt** follows https://llmstxt.org: a description of the society and
+`/spa.html`. It is one group: every `User-agent` line shares the rules that follow, with
+no blank line in between. A crawler obeys only the group that names it most specifically,
+so a rule placed under one name binds that crawler alone (until 2026-10-04 the
+`Disallow` lines sat under the last name, `CCBot`, and applied to nobody else). **llms.txt** follows https://llmstxt.org: a description of the society and
 the annotated page list, for AI assistants that look for it.
 
 **Search Console** (property `ausss-ainshams.org`, owner aussswebsite@gmail.com,
@@ -731,6 +734,36 @@ pages, open Sitemaps, resubmit `https://ausss-ainshams.org/sitemap.xml`, and use
 Inspection > Request indexing on the pages that matter. **Bing Webmaster Tools**
 (feeds Bing, Copilot, ChatGPT search and DuckDuckGo): sign in with the same Google
 account and import the site from Search Console; it takes the sitemap from there.
+
+**IndexNow** tells Bing which pages changed after every production deploy, with nobody
+doing anything. The build hashes each pre-rendered page (title, description and body),
+compares the hashes with the ones the live site published at its own build
+(`/page-hashes.json`) and writes the difference to `/indexnow-urls.json`. When Vercel
+reports the deploy as successful, `.github/workflows/after-deploy.yml` runs
+`scripts/indexnow.mjs`, which submits that list. The key is the file
+`public/28ef8fbf5f626f384f1d1a3a23725e6d.txt`; it is not a secret (IndexNow checks that
+the site serves it). To rotate it, rename the file, put the new key inside and change
+`KEY` in the script. To resubmit everything: Actions > after-deploy > Run workflow with
+"all" ticked. Content edited in the portal (albums, editions, stories) reaches the pages
+only at the next build, so it is reported then.
+
+**Search rank baseline, 2026-10-04** (position of the first `ausss-ainshams.org` result
+on the first page; "none" = not on it). Repeat monthly from a signed-out window; the
+pages that answer the last three queries arrive with the incomings page in phase 6.
+
+| Query | Google | Bing | DuckDuckGo |
+| --- | --- | --- | --- |
+| AUSSS | 2 (after the Facebook page) | 1 | none |
+| IFMSA Ain Shams | 2 | none | none |
+| Ain Shams medical students | none | none | none |
+| Ain Shams medicine exchange | none | none | none |
+| study medicine at Ain Shams | none | none | none |
+
+Bing already lists the home page without Webmaster Tools; `site:ausss-ainshams.org` there
+returned nothing else, so the inner pages are what the sitemap submission and IndexNow are
+for. Google lists the IFMSA page as `/IFMSA` (capital letters), an address that is served
+by the app shell with the home page's canonical link: worth a redirect to `/ifmsa` when
+the routing is next touched.
 
 ## 16. Gallery editor (Phase 5)
 
@@ -890,3 +923,284 @@ and Cairo do not and lose letters).
 `/rest/v1/orders` is refused. Signed in as the webmaster: `/portal/submissions` lists the
 three tabs; a test order placed on localhost shows its receipt through *View receipt*; delete
 the test rows afterwards (the order's receipt disappears from the bucket with it).
+
+## 19. Role addresses on the domain (email forwarding)
+
+Every role has an address on `ausss-ainshams.org` that forwards to the role's Gmail inbox.
+Nothing is stored on the domain: no mailboxes and no passwords, only forwarding rules. It
+is the free forwarding that comes with the Squarespace domain (up to 100 rules, one
+destination per rule).
+
+| Address | Forwards to |
+| --- | --- |
+| `president@` | `the.president.ausss@gmail.com` |
+| `vpi@` | `vpi.ausss@gmail.com` |
+| `vpe@` | `vpe.ausss@gmail.com` |
+| `secgen@` | `ausss.secgen@gmail.com` |
+| `leo-out@` | `leolore.out.ausss@gmail.com` |
+| `leo-in@` | `leolore.in.ausss@gmail.com` |
+| `lore@` | `loreausss@gmail.com` |
+| `lome@` | `ausss.lome@gmail.com` |
+| `lorp@` | `lorpausss@gmail.com` |
+| `lpo@` | `lpoausss@gmail.com` |
+| `lora@` | `loraausss@gmail.com` |
+| `psdd@` | `psddausss@gmail.com` |
+| `pnsdd@` | `aussspnsdd@gmail.com` |
+| `cbsdd@` | `aussscbsdd@gmail.com` |
+| `rsdd@` | `rsddausss@gmail.com` |
+| `portal@` | `aussswebsite@gmail.com` (so a reply to a sign-in link or the digest lands somewhere) |
+
+**Where the rules live.** Squarespace > Domains > `ausss-ainshams.org` > Email > Email
+forwarding > Add rule ("Forward from" = the alias, "Forward to" = the inbox). Squarespace
+emails a verification link to each destination; a rule forwards nothing until its inbox
+owner clicks it, and Squarespace allows up to 48 hours after that. It adds its own MX and
+TXT records to the DNS when the first rule is created.
+
+**Keep the Resend records.** Sign-in links and the digest leave through Resend, which
+depends on the `resend._domainkey` TXT record and the `send` records. After creating the
+first rule, check both still answer and that a sign-in link still arrives:
+
+```sh
+nslookup -type=MX ausss-ainshams.org 8.8.8.8
+nslookup -type=TXT resend._domainkey.ausss-ainshams.org 8.8.8.8
+```
+
+**The site.** `src/data/society.js` gives each role an `email` (the Gmail inbox) and an
+`alias`; `publicEmail()` in `src/data/emailConfig.js` picks which one a page shows. The
+switch `domainEmailsLive` is false until forwarding is proven. To go live:
+
+1. The MX lookup above answers, and every rule shows as verified in Squarespace.
+2. Send a message to each address from an account outside the society and confirm it
+   arrives in the right inbox.
+3. Set `domainEmailsLive = true`, bump `LAST_UPDATED` in `src/pages/PrivacyPage.jsx` (the
+   policy gains the line about forwarding), commit and deploy.
+
+A role whose inbox owner has not verified yet can be held back by removing its `alias`
+in `society.js`; it keeps showing the Gmail inbox.
+
+**Limits.** Forwarding is receive-only: a reply leaves from the Gmail address. Portal
+sign-in and invites keep using the Gmail inbox (`email`), never the alias, because the
+generator (section 3) reads `email` and a sign-in from the alias would create a second
+profile.
+
+**At rollover.** The alias stays with the role. If the new holder uses a different inbox,
+change the rule's destination in Squarespace (the new inbox verifies again) and the
+`email` in `society.js`.
+
+## 20. Backups, the restore rehearsal and failure alerts (Phase 5a)
+
+The free Supabase plan keeps no backups we can reach, so the repository makes its own
+every night. Three workflows do the work:
+
+| Workflow | When | What it does |
+| --- | --- | --- |
+| `backup.yml` | 01:40 UTC every night, or by hand | Dumps the database, mirrors every Storage bucket, encrypts both and stores them for 90 days |
+| `backup-restore-test.yml` | By hand, once a term | Decrypts the latest backup and loads it into an empty database on the runner |
+| `notify.yml` | Called by the others | Emails the society inbox when a job fails |
+
+**What a backup holds.** `ausss-db-<date>.tar.gz.gpg` has five SQL files: `roles.sql`,
+`schema.sql`, `data.sql` (every table's rows, including the accounts in `auth` and the
+object records in `storage`), and the migration history (`history_schema.sql`,
+`history_data.sql`). `ausss-storage-<date>.tar.gz.gpg` has every file of every bucket as
+`storage/<bucket>/<path>` plus `storage/manifest.json` (size, type and version of each
+file). Not in a backup, because they live outside the dump: the two Vault secrets
+(`roster_cron_secret`, `digest_cron_secret`), the three scheduled jobs (`roster-sheet-sync`,
+`roster-years-spent`, `email-digest`), the Edge Function and its secrets, and the Auth
+settings in the dashboard. The migrations recreate the first two; section 5 and section 13
+cover the rest.
+
+**Where it goes.** The repository is public, so both archives are encrypted on the runner
+(AES-256, `gpg --symmetric`) with the repo secret `BACKUP_PASSPHRASE` before anything is
+uploaded. They are stored as artifacts of the workflow run (Actions > backup > a run >
+Artifacts), kept 90 days. If the repo secret `RCLONE_CONF` exists, the same files are also
+copied to the folder "AUSSS backups" in the society Google Drive and removed there after 90
+days. **Without the passphrase a backup is unreadable. It is in the society vault; never
+change the secret without storing the new value there first, and keep the old value for
+90 days, since older backups still need it.**
+
+**Secrets the backup needs** (HANDOVER section 5): `SUPABASE_ACCESS_TOKEN`,
+`SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+`BACKUP_PASSPHRASE`; optional `RCLONE_CONF` and `RESEND_API_KEY` (for the alert email). A
+missing secret fails the run on purpose: a backup that quietly does nothing is worse than
+none.
+
+**Storage egress.** The mirror is cached between runs (`scripts/backup/storage.mjs`
+compares each file's version tag), so a normal night downloads only new or changed files.
+A full download is about the size of the buckets (56 MB on 2026-10-04) and happens only
+when the cache has expired.
+
+**The rehearsal.** Actions > backup-restore-test > Run workflow. It downloads the latest
+successful backup, decrypts it, starts the local Supabase stack with no migrations (as
+empty as a new project), restores the three SQL files and checks that accounts, profiles
+and the roster came back, that every public table still has row-level security, and that
+the storage archive holds every file its manifest lists. Run it once a term and after any
+change to `backup.yml`. A green run is the proof that the backups are usable.
+
+**A real restore, into a new Supabase project.** This is for the day the project is lost
+or its data is damaged beyond a manual fix.
+
+1. Create a new project (same region). Note its ref, database password and keys.
+2. Download the two artifacts of the backup you want and decrypt each one:
+
+   ```sh
+   gpg --decrypt ausss-db-2026-10-05.tar.gz.gpg | tar -xz
+   gpg --decrypt ausss-storage-2026-10-05.tar.gz.gpg | tar -xz
+   ```
+
+3. Restore the database with `psql` (any machine that has it; the connection string is
+   under Connect in the dashboard, session pooler):
+
+   ```sh
+   psql "$NEW_DB_URL" --single-transaction --variable ON_ERROR_STOP=1 \
+     --file db/roles.sql --file db/schema.sql \
+     --command 'SET session_replication_role = replica' \
+     --file db/data.sql
+   psql "$NEW_DB_URL" --file db/history_schema.sql --file db/history_data.sql
+   ```
+
+4. Recreate what the dump does not carry: run the `vault.create_secret` and
+   `cron.schedule` statements from migrations `20260919210001`, `20260920110001` and
+   `20260920210001` in the SQL editor; deploy the `email-digest` function and set its
+   secrets (section 13); set the Auth providers, SMTP and redirect URLs (section 5).
+5. Upload the files: for each bucket folder under `storage/`, upload its contents to the
+   bucket of the same name (the dashboard's Storage page takes a folder drag, or use
+   `supabase storage cp -r`). The object rows restored in step 3 are replaced by the
+   uploads, so clear `storage.objects` first if the dashboard reports duplicates.
+6. Point the site at the new project: the two `VITE_SUPABASE_*` variables in Vercel, the
+   repo secrets of HANDOVER section 5, the project host in the Content-Security-Policy of
+   `vercel.json` (twice in `connect-src`), then redeploy.
+7. Sign in to the portal, open the roster, a committee page and the gallery.
+
+**Alerts.** `notify.yml` sends one email through Resend to the repo variable `ALERT_EMAIL`
+(default `aussswebsite@gmail.com`) when the backup fails, when the keep-alive ping fails,
+and when a production deploy fails (`after-deploy.yml` listens to the deployment status
+Vercel posts to GitHub). It needs the repo secret `RESEND_API_KEY` (a sending-only key is
+enough); without it the failed run only shows in the Actions tab. Vercel also emails its
+own account owner about failed deployments.
+
+## 21. The page walk (Phase 5a)
+
+`scripts/page-walk.mjs` opens every public page and every portal page at a list of widths
+and in both themes, saves a full-page screenshot of each and records what the browser
+console and its Issues list print. It is the tool for the console sweep, the design pass,
+a smoke test after a deploy and the website guide's screenshots.
+
+```sh
+npx playwright install chromium        # once per machine
+npm run walk                           # everything, against npm run dev (localhost:5173)
+npm run walk -- --public-only --base https://ausss-ainshams.org
+npm run walk -- --widths 320,1280 --themes dark --only /gallery
+npm run walk -- --no-shots --strict    # console only; exit 1 on a message of our own
+```
+
+- **Pages.** The public list is the sitemap (the base's own, else the one in `dist/`, else
+  production's) plus the checkout, the quiz and the sign-in page. The portal list is in the
+  script (`PORTAL_FIXED`, `PORTAL_DETAIL`); add a route there when the portal gains one.
+- **Portal pages need a session.** `npm run walk -- --login` opens a browser window on the
+  sign-in page; sign in there (if Google refuses the automated browser, ask for the email
+  link and paste it into that window). The session is saved to `.page-walk/auth.json`.
+  That file is a live sign-in: it is gitignored, treat it like a password and delete it
+  when the walk is done. Without it the walk covers the public pages and says so.
+- **It never writes to the database.** The dev server talks to production data, so the
+  script answers every Supabase call that is not a read (a magazine view being counted, a
+  notification marked read) itself and lists what it held back. A new read-only RPC must be
+  added to `READ_RPCS` or its page shows empty in the walk.
+- **Output.** `.page-walk/<run>/<theme>-<width>/<page>.png` and `report.json`. The summary
+  sorts each message as ours, an embed's or the browser's; `--strict` fails on ours.
+- **In a Git Bash shell on Windows** a value that starts with a slash is rewritten into a
+  file path; prefix the command with `MSYS_NO_PATHCONV=1` when using `--only /something`.
+- **Checking a header change before it is deployed:** `npm run build`, then
+  `npm run preview:prerendered` (it sends the headers of `vercel.json`), then
+  `npm run walk -- --base http://localhost:4174 --public-only`.
+
+**Console state on 2026-10-04.** Public pages, both themes, 390 and 1280 px, with the
+headers of `vercel.json`: no errors, no warnings and no policy violations of our own. What
+remains belongs to others and stays:
+
+| Message | Whose | Why it stays |
+| --- | --- | --- |
+| `LazyLoadImageIssue` in the Issues list | The browser | A note that images below the fold load lazily, which is intended |
+| Third-party cookie notices and errors that name `google.com` or `canva.com` | Google Maps (the map in every page's footer), Canva | Printed by the embed inside its own frame, which our code cannot reach. Loading the map only on request would remove them; that was tried on 2026-10-04 and the webmaster chose to keep the map always visible |
+
+The portal was checked the same day in a signed-in browser against the built site served
+with the same headers (`PORT=5173 npm run preview:prerendered`, the port the sign-in
+redirect allows): all 18 portal pages rendered with no policy violation, no error and no
+broken image, and the pdf.js worker started. Uploads, exports and the receipt viewer were
+not exercised. The scripted walk of the portal (screenshots at every width) still needs
+the one-time `--login`; Google refuses that automated window, so use the email link.
+
+## 22. Security checklist (Phase 5a)
+
+Repeat this once a term and before the member rollout. Each line says how to check it; a
+ticked line passed on 2026-10-04.
+
+**Response headers** (`vercel.json`; check with `curl -sI https://ausss-ainshams.org/`).
+
+- [x] `Content-Security-Policy` allows scripts only from the site itself (no
+      `'unsafe-inline'`; the theme bootstrap is the file `public/theme-init.js` for that
+      reason, and JSON-LD blocks are data, not scripts), connections only to the site and
+      the Supabase project, frames only from the site, Google Maps and Canva, forms only to
+      the site, and no plugins. Inline styles stay allowed: React writes them. A new embed
+      or API host must be added here or the browser blocks it; the page walk shows that as
+      a message of our own.
+- [x] `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
+      `X-Frame-Options: SAMEORIGIN` (with `frame-ancestors 'self'`),
+      `Referrer-Policy: strict-origin-when-cross-origin`,
+      `Cross-Origin-Opener-Policy: same-origin`, and a `Permissions-Policy` that turns off
+      camera, microphone, location, payment and USB.
+- [x] `/.well-known/security.txt` exists and its `Expires` date is in the future (the
+      build stamps it a year ahead; it only goes stale if nothing is deployed for a year).
+
+**Cross-site scripting.**
+
+- [x] No `dangerouslySetInnerHTML`, `innerHTML` or `eval` in `src/`
+      (`grep -rn "dangerouslySetInnerHTML\|innerHTML\|eval(" src`). Everything a visitor or
+      officer types (stories, applications, task and post bodies, committee pages, album
+      and edition text) is rendered by React as text.
+- [x] Links made from typed text accept only `http(s)` (`RichText` in
+      `src/portal/workUi.jsx`); the magazine's download and Canva links are held to
+      `https://` by a table constraint; committee photos are refused as `data:` URIs and
+      are only ever used as image sources.
+
+**The anonymous API.**
+
+- [x] Visitors can write only through the `submit_*` functions, `magazine_track` and
+      `order_receipt_attached`; each validates its input, carries a honeypot or a cap, and
+      is covered by the pgTAP files 080, 180 and 190. `anon` holds `SELECT` on six
+      reference tables and views and no write privilege on any table.
+- [x] Every table in `public` and `app` has row-level security on, and every
+      `SECURITY DEFINER` function pins its `search_path`
+      (`supabase/tests/200-security-baseline.sql` fails CI otherwise).
+- [x] Storage: `gallery`, `magazine` and `committee-media` are public to read and writable
+      only by their editors; `receipts` is private, takes one upload per fresh order and is
+      readable by the EB alone. Size and image-type limits are set on every bucket.
+- [x] Supabase security advisors (dashboard > Advisors, or the MCP `get_advisors`): no
+      errors. The warnings are expected: the public RPCs are `SECURITY DEFINER` by design
+      (each checks its caller itself), five tables have row-level security and no policy on
+      purpose (only functions reach them), and leaked-password protection does not apply
+      (sign-in is Google or an email link, never a password).
+
+**Accounts and settings** (dashboards; not checkable from the repository).
+
+- [ ] Supabase > Authentication > URL configuration: the site URL is
+      `https://ausss-ainshams.org` and the redirect list holds only that domain and
+      `http://localhost:5173`.
+- [ ] Supabase > Authentication > Providers: only Google and email are on.
+- [ ] Two-step verification is on for the GitHub, Vercel, Supabase, Squarespace, Resend and
+      Google accounts of HANDOVER section 2 (Squarespace showed its "set up two-factor"
+      banner on 2026-10-04).
+- [ ] GitHub > Settings > Code security: secret scanning and push protection are on.
+
+**The repository.**
+
+- [x] No secret in the history: a pattern scan of every commit (Supabase secret keys and
+      tokens, Resend and Google keys, JWTs, private keys, database URLs with passwords)
+      found none, and only the two `.env.example` templates were ever committed.
+- [x] `npm audit --omit=dev` reports nothing. What `npm audit` still lists (7 on
+      2026-10-04) sits in the build tools (Vite 5, Tailwind 3 and their file-watching
+      helpers), never reaches a visitor, and needs major-version upgrades to clear; do
+      those as their own piece of work. `xlsx` is installed from SheetJS's own server
+      (`cdn.sheetjs.com`) because the fixed versions are not published to npm.
+- [x] `public/robots.txt` keeps the portal and the account pages out of search results
+      for every crawler. It is a note to crawlers, not a control: the protection is the
+      row-level security above.

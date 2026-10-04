@@ -1,0 +1,50 @@
+# Emails the society inbox when a scheduled job or a deploy fails. Called by
+# the other workflows (backup, keepalive, after-deploy); it does nothing on
+# its own.
+#
+# The mail leaves through Resend, the same sender as the portal's sign-in
+# links. Until the repo secret RESEND_API_KEY exists it only prints a warning.
+# The recipient is the repo variable ALERT_EMAIL, or the webmaster inbox when
+# that is not set.
+name: notify
+
+on:
+  workflow_call:
+    inputs:
+      subject:
+        required: true
+        type: string
+      body:
+        required: true
+        type: string
+    secrets:
+      RESEND_API_KEY:
+        required: false
+
+permissions: {}
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Everything goes through env and jq, so nothing a caller passes can
+      # become part of the shell command or break the JSON.
+      - name: Send through Resend
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ vars.ALERT_EMAIL || 'aussswebsite@gmail.com' }}
+          SUBJECT: ${{ inputs.subject }}
+          BODY: ${{ inputs.body }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then
+            echo "::warning::no alert email sent, repo secret RESEND_API_KEY is not set"
+            exit 0
+          fi
+          jq -n --arg to "$ALERT_EMAIL" --arg subject "$SUBJECT" --arg body "$BODY" --arg run "$RUN_URL" \
+            '{from: "AUSSS Portal <portal@ausss-ainshams.org>", to: [$to], subject: $subject, text: ($body + "\n\n" + $run)}' \
+            | curl -fsS https://api.resend.com/emails \
+                -H "Authorization: Bearer $RESEND_API_KEY" \
+                -H 'Content-Type: application/json' \
+                --data-binary @-

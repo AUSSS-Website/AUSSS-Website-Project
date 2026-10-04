@@ -53,7 +53,8 @@
     will-change: opacity, transform;
   }
 
-  .reveal.is-visible {
+  .reveal.is-visible,
+  .no-reveal .reveal {
     opacity: 1;
     transform: translateY(0);
   }

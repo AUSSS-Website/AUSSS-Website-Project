@@ -27,3 +27,6 @@ supabase/.branches/
 
 # Vercel CLI project link (created by `vercel link`)
 .vercel
+
+# Page-walk output (scripts/page-walk.mjs): screenshots, and auth.json, a live portal session
+.page-walk/

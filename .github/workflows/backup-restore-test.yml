@@ -1,0 +1,104 @@
+# The restore rehearsal: proves that last night's backup can actually be
+# decrypted and loaded into an empty database. Run it by hand once a term
+# (Actions > backup-restore-test > Run workflow) and after any change to
+# backup.yml. docs/RUNBOOK.md section 20 has the same steps for a real restore
+# into a new Supabase project.
+#
+# The scratch database is the local Supabase stack on the runner, started
+# with no migrations so it is as empty as a new project. It is thrown away
+# when the job ends; nothing touches the hosted project.
+name: backup-restore-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Backup run to restore (blank = the latest successful one)
+        type: string
+        default: ''
+
+permissions: {}
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ inputs.run_id }}
+      DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      RESEND_API_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Keep in sync with the "supabase" devDependency in package.json.
+          version: 2.117.0
+
+      - name: Download the backup
+        run: |
+          test -n "$BACKUP_PASSPHRASE" || { echo "::error::repo secret BACKUP_PASSPHRASE is not set"; exit 1; }
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow backup.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          test -n "$RUN_ID" || { echo "::error::no successful backup run found"; exit 1; }
+          echo "Restoring from backup run $RUN_ID"
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --dir download
+
+      - name: Decrypt
+        run: |
+          mkdir -p restore
+          for file in download/*/*.tar.gz.gpg; do
+            gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 --decrypt "$file" 3<<<"$BACKUP_PASSPHRASE" \
+              | tar -xzf - -C restore
+          done
+          ls -lh restore/db
+          test -f restore/storage/manifest.json
+
+      # No migrations and no seed: the auth and storage services still create
+      # their own schemas, which is the state of a brand-new hosted project.
+      - name: Start an empty stack
+        run: |
+          mkdir -p "$RUNNER_TEMP/aside"
+          mv supabase/migrations "$RUNNER_TEMP/aside/"
+          mkdir supabase/migrations
+          if [ -f supabase/seed.sql ]; then mv supabase/seed.sql "$RUNNER_TEMP/aside/"; fi
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime
+
+      - name: Restore
+        run: |
+          psql "$DB_URL" --single-transaction --variable ON_ERROR_STOP=1 \
+            --file restore/db/roles.sql \
+            --file restore/db/schema.sql \
+            --command 'SET session_replication_role = replica' \
+            --file restore/db/data.sql
+
+      # What a restore must bring back: accounts, the people and their work,
+      # and a storage record for every file in the storage archive.
+      - name: Check what came back
+        run: |
+          count() { psql "$DB_URL" -At -c "select count(*) from $1"; }
+          for t in auth.users public.profiles public.roster_entries public.committees public.albums public.gallery_photos public.orders public.stories public.signups public.tasks storage.objects; do
+            echo "$t: $(count "$t")"
+          done
+          test "$(count auth.users)" -gt 0 || { echo "::error::no accounts were restored"; exit 1; }
+          test "$(count public.profiles)" -gt 0 || { echo "::error::no profiles were restored"; exit 1; }
+          test "$(count public.roster_entries)" -gt 0 || { echo "::error::the roster was not restored"; exit 1; }
+          rls_off=$(psql "$DB_URL" -At -c "select count(*) from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass where t.schemaname = 'public' and not c.relrowsecurity")
+          test "$rls_off" -eq 0 || { echo "::error::$rls_off public tables came back without row-level security"; exit 1; }
+          files=$(jq '[.[] | .objects | length] | add // 0' restore/storage/manifest.json)
+          on_disk=$(find restore/storage -type f ! -name manifest.json | wc -l)
+          echo "storage archive: $files objects in the manifest, $on_disk files"
+          test "$files" -eq "$on_disk" || { echo "::error::the storage archive is missing files"; exit 1; }
+          test "$files" -eq "$(count storage.objects)" || echo "::warning::storage.objects and the storage archive differ (an upload or delete between the two steps of the backup explains a small gap)"
+
+      - name: Stop the stack
+        if: always()
+        run: supabase stop --no-backup

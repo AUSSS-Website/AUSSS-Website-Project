@@ -1,6 +1,6 @@
 # AUSSS Member Portal: long-term backend plan
 
-Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phase 5 completed 2026-09-25: gallery and magazine editors, magazine counters, and the last three public forms (sign-ups, stories, orders) on Supabase; no Apps Script web app is called by production (RUNBOOK sections 16 to 18). Companion documents: `apps-script/MIGRATION.md`
+Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phase 5 completed 2026-09-25: gallery and magazine editors, magazine counters, and the last three public forms (sign-ups, stories, orders) on Supabase; no Apps Script web app is called by production (RUNBOOK sections 16 to 18). The remaining work was reordered on 2026-10-04, when fifteen requests from the webmaster joined it: phases 5a to 5d, then 6 and 7, in build order in section 12.2, with section 12.4 showing where each task moved. Companion documents: `apps-script/MIGRATION.md`
 (the current backend and its account move) and `apps-script/officers.README.md`
 (the officer editor as it exists today).
 
@@ -368,15 +368,22 @@ copy, footer and contact details, feature flags.
 An EB-only wizard: create the next term, end all current assignments, invite
 the incoming officers by email with their positions pre-set, mark outgoing
 officers as members or alumni, archive open tasks and expired posts. The
-public committee pages update themselves from the assignments.
+public committee pages update themselves from the assignments. The wizard also
+archives the term's gallery albums so the new term starts with an empty
+gallery (added 2026-10-04; section 12.3, phase 7, request 12).
 
 ### Backups
 
-- Nightly `pg_dump` and a Storage bucket sync via GitHub Actions, written to a
-  private repository release and to the society Google Drive. Kept for 90
-  days.
-- A restore is rehearsed once per term into a scratch project. The steps live
-  in `docs/RUNBOOK.md`.
+- Nightly database dump and a Storage bucket sync via GitHub Actions. The
+  repository is public, so each backup is encrypted with a passphrase from the
+  vault before it is stored as a workflow artifact, and optionally copied to
+  the society Google Drive. Kept for 90 days.
+- A restore is rehearsed once per term, by a workflow that loads the latest
+  backup into an empty database on the runner. The steps for a real restore
+  live in `docs/RUNBOOK.md` section 20.
+- Built 2026-10-04 (phase 5a, section 12.2), brought forward from the last
+  phase because production has held real data since 2026-09-25. It starts
+  running once the repository secrets are set.
 
 ### Testing and CI
 
@@ -455,6 +462,8 @@ first. It costs nothing and keeps the current site healthy during the build.
 Estimates assume one part-time developer. Each phase ends with something in
 use, not a demo.
 
+### 12.1 Shipped: phases 0 to 5
+
 | Phase | Weeks | Delivers | Done when |
 | --- | --- | --- | --- |
 | **0. Foundations** | 1 | Supabase org and project, GitHub org, Vercel env vars, a `supabase/` folder with CLI config, CI running migrations on a shadow database, first draft of `HANDOVER.md` | A teammate can clone, run `supabase start`, and see the seeded committees. |
@@ -463,11 +472,374 @@ use, not a demo.
 | **3. Portal core** | 3 | Dashboard, tasks, updates, read receipts, notifications feed, email digest | One committee runs a real month of work through it. |
 | **4. Everyone in** | 2 | Invites, verification queue, directory, profile, member-facing rollout to the roster, per-committee officer roster (assign members, officer notes, membership fields read-only); **discoverability** (added 2026-09-22): make the site show up in normal Google searches and in AI answers (Google AI Overviews, ChatGPT, Perplexity, Claude): check indexing and submit the sitemap in Search Console, register with Bing Webmaster Tools (feeds ChatGPT and Copilot), per-route titles/descriptions and pre-rendered HTML for the public pages (one SPA `index.html` today), richer JSON-LD (committees, events, contact), `llms.txt`, robots.txt explicitly allowing the AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended), and backlinks from IFMSA/IFMSA-Egypt and the faculty site. **Built 2026-09-23:** every public page (35 URLs incl. committees and albums) is pre-rendered HTML at build time with its own title, description, canonical, Open Graph card and JSON-LD; sitemap.xml and llms.txt are generated from the same list; robots.txt names the AI crawlers; `spa.html` is the fallback shell (RUNBOOK section 15). Left: Search Console sitemap resubmission + indexing requests, Bing Webmaster Tools, backlinks | 100 members with accounts, verification backlog under a day; searching "AUSSS" or "Ain Shams medical students society" returns the site on page one in Google and in an AI answer. |
 | **5. Retire the rest** | 3 | Signups, stories, orders, gallery, magazine on Supabase; Sheets mirrors; `apps-script/` retired; **gallery editor** for PNSD + EB (added 2026-09-22: add/remove photos by drag-and-drop or file picker, add/remove/reorder albums with title, blurb and hero photo; each album has its own shareable link with its own preview card; see section 8); **magazine editor** for CBSD + EB (added 2026-09-24: add an edition from a PDF, pick its hero page, write its blurb, reorder the shelf; see section 8). **Built 2026-09-25:** sign-ups, stories and orders on Supabase (migration `20260925090001_submissions`), triaged in the portal under Submissions, receipts in the private `receipts` bucket, `apps-script/` retired except the roster sync (RUNBOOK section 18) | No Apps Script URL left in `src/data`; a PNSD officer publishes a new album with photos from the portal without a developer. |
-| **6. Site management** | 4, then ongoing | Schema-driven editor; EB, FAQ, magazine, merch, events and home sections editable; content snapshot pipeline | An officer publishes a magazine issue with no developer involved. |
-| **7. Sustain** | ongoing | Term-rollover wizard, backups and a restore rehearsal, runbook, monitoring, the Pro plan decision | The first rollover to 2027-28 is done by the EB alone. |
 
-Roughly 17 weeks of part-time work to the end of phase 6, with visible value
-from the end of phase 2.
+A few pieces of these phases are still open. None is lost: each is scheduled
+in section 12.2, and the table in 12.4 says where.
+
+- **Phase 3:** file attachments on tasks, and the pilot its "done when" asks
+  for (one committee running a real month of work through the portal).
+- **Phase 4:** the invites screen, the directory, the member-facing rollout,
+  and the search follow-ups (Bing Webmaster Tools, indexing requests,
+  backlinks).
+- **Phase 5:** Sheets mirrors, which decision 6 keeps for the day someone
+  asks (section 12.5).
+
+### 12.2 What is left, in build order
+
+The order was reworked on 2026-10-04, when fifteen requests from the
+webmaster joined the leftovers above and the old phases 6 and 7. Nothing was
+dropped; similar tasks were merged. Four rules decided the order:
+
+1. **Start the clocks first.** Work that only takes effect days or weeks
+   later (search engines crawling, a pilot month, a step that waits on a
+   person) starts as early as it can and runs in the background.
+2. **Protect the data before changing more.** Production has held real
+   orders, receipts, stories and the roster since 2026-09-25, on a plan with
+   no point-in-time recovery, so backups move from the last phase to the
+   first.
+3. **Touch each file once.** Requests that change the same screen or the same
+   file are merged and built together.
+4. **Audit before adding.** The passes that walk every page (console,
+   security, sizing, light mode) come before new pages are built, so each new
+   page is made to the finished rules and nothing is audited twice.
+
+| Phase | Weeks | Delivers | Done when |
+| --- | --- | --- | --- |
+| **5a. Stabilise and secure** | 2 | Search engines told about the site (Bing, and through it DuckDuckGo); nightly backups with one rehearsed restore, and failure alerts; the two quick bugs (gallery loading blank, the Google logo); a page-walk script that opens every page; the console clean-up and the security review done as one job | A backup has been restored into a scratch project; the gallery opens on ten cold loads in a row; the console shows none of our own errors on any page; the security checklist is in the RUNBOOK with every line passed; Bing Webmaster Tools shows the sitemap processed. |
+| **5b. Portal and people** | 3 | The portal header redone once (notifications bell and new order); tasks finished (date default, duplicate warning, file attachments); the invites screen; one source of truth for people (profile name and photo everywhere, the executive board, the directory) with a rebuild whenever something is published | An officer attaches a file to a new task and is warned about a repeat; the bell shows and clears unread notifications; an officer changes their photo in the portal and the public pages show it with no developer involved. |
+| **5c. One design pass** | 3 | Fluid sizing and light mode done together in one walk of every page, then the deeper magazine page-flip | The page-walk screenshots show every public and portal page reading well from a 320 px phone to a wide desktop, in both themes. |
+| **5d. Pilot and rollout** | 1 of work, across about 6 weeks | A pre-rollout gate (security checklist re-run, backups healthy, DuckDuckGo check); one committee piloting for a month; the member-facing rollout to the roster; the Pro plan decision | One committee has run a real month of work through the portal; 100 members have accounts and the verification backlog is under a day; the Pro plan decision is recorded in section 13. |
+| **6. Site management** | 5, then ongoing | The schema-driven editor; the incomings exchange page as the first page built on it; then FAQ, merch, events, home sections, exchange and IFMSA copy, footer and contact details, and feature flags editable | An officer publishes a change to the FAQ, an event and the incomings page with no developer involved; the LC's link in the exchange portal points at `/exchange/incomings`. |
+| **7. Sustain** | 2, then ongoing | The term-rollover wizard with the gallery archive as one of its steps; the checks repeated every term (restore rehearsal, security checklist, handover review); documentation; the website guide | The first rollover to 2027-28 is done by the EB alone, and it leaves an empty gallery with last term's albums still reachable. |
+
+Roughly 14 weeks of part-time work remain to the end of phase 6. Phase 5d is
+mostly waiting on people, so it overlaps phase 6. Phase 7 has one fixed
+deadline: the wizard must exist before the 2026-27 term ends.
+
+### 12.3 The phases in detail
+
+Steps are listed in the order they are built. A number in bold followed by
+"request" (for example **request 4**) is the webmaster's own numbering of the
+fifteen requests of 2026-10-04.
+
+#### Phase 5a. Stabilise and secure
+
+**Status, 2026-10-04: built, not yet deployed; four things wait on the
+webmaster.** Built and checked locally: `robots.txt` as one group, IndexNow
+(build-time change list, `after-deploy.yml`), the search rank baseline (RUNBOOK
+section 15); the nightly backup, the restore rehearsal and the failure alerts
+(`backup.yml`, `backup-restore-test.yml`, `notify.yml`, RUNBOOK section 20); the
+gallery fix (the cause was the scroll-reveal hook, which never saw cards that
+mounted after the first paint; fixed in `useReveal.js` for every page) and the
+Google mark; the page walk (`scripts/page-walk.mjs`, RUNBOOK section 21); the
+console sweep and the security review (script-src without `'unsafe-inline'`,
+dependency fixes, a pgTAP baseline, the
+checklist in RUNBOOK section 22). Waiting: (1) the repo secrets of HANDOVER
+section 5, after which the first backup runs and the rehearsal can be run, which
+is what "done when" asks for; (2) Bing Webmaster Tools (sign in and import from
+Search Console) and the Search Console indexing requests; (3) the four
+dashboard lines of the security checklist. The portal was checked under the
+new headers in a signed-in browser the same day (RUNBOOK section 21); its
+scripted walk with screenshots waits for a `--login` and is needed for 5c. The backlinks stay with the
+President and the VPE (section 12.5).
+
+1. **Start the search clocks (request 2, the Phase 4 search follow-ups, and
+   the `robots.txt` part of request 7).** The site does not appear on
+   DuckDuckGo. DuckDuckGo takes most of its results from Bing, and
+   registering with Bing Webmaster Tools is the step left open in Phase 4, so
+   it goes first of all: crawling takes days to weeks, and that wait should
+   run while everything else is built. Verify the domain there (import from
+   Search Console), submit the sitemap, add IndexNow so each deploy tells
+   Bing which pages changed, make the Search Console indexing requests, and
+   ask for the backlinks (IFMSA-Egypt, the faculty site, the society's social
+   profiles). The same step fixes `public/robots.txt`, since the crawlers
+   are about to read it: the `Disallow` lines for `/portal`, `/login`,
+   `/account` and `/merch/checkout` sit under the last named crawler, so they
+   bind that crawler alone. They move under `User-agent: *` (and are repeated
+   for the named groups). The file is a note to crawlers, never a security
+   control; the protection is the row-level security behind the portal.
+   For fun, the site then competes with the main Ain Shams University site
+   for searches a medical student would make ("Ain Shams medical students",
+   "Ain Shams medicine exchange", "study medicine at Ain Shams"): a short
+   list of queries has its rank on Google, Bing and DuckDuckGo noted now as
+   the baseline and once a month after that. The pages that answer those
+   questions arrive with the incomings page in phase 6.
+2. **Backups and alerts (from Phase 7).** The nightly `pg_dump` and Storage
+   bucket sync of section 10, one restore rehearsed into a scratch project
+   with the steps written into the RUNBOOK, and failure emails to the society
+   inbox for the backup, the keep-alive ping and Vercel deploys. It comes
+   before any further change to production data.
+3. **The two quick bugs.**
+   - **Request 4, gallery loads blank.** `/gallery` often opens as an empty
+     page and only appears after a refresh. Reproduce it first (cold cache,
+     throttled network, a direct visit and a visit through the header), then
+     fix the cause in the snapshot, cache and live read of
+     `src/lib/gallery.js` instead of adding a retry on top.
+   - **Request 11, Google logo.** The portal sign-in button uses Google's
+     current "G" mark, drawn to Google's sign-in branding guidelines
+     (`src/portal/pages/SignInPage.jsx`).
+4. **The page-walk script (the Playwright smoke test of section 10, brought
+   forward).** One script that opens every public page and every portal page
+   at a list of widths and in both themes, saves a screenshot of each and
+   records what the console prints. It is built once and used four times: for
+   the console sweep in the next step, for the design pass in 5c, as the
+   smoke test on every deploy from then on, and later for the screenshots of
+   the website guide (section 12.5).
+5. **Console and security, one job (requests 5 and 7).** The two are merged
+   because they share their evidence and their fixes: most console errors
+   are the Content-Security-Policy reporting something, and both are settled
+   in the headers of `vercel.json`.
+   - **Request 5, console errors.** The console shows cookie warnings and a
+     few security errors. Using the page-walk output, sort each message into
+     ours, an embed's or the browser's, and fix all of ours (a policy
+     violation is fixed at its cause, never by loosening the policy further
+     than the page needs). Anything left that belongs to a third-party embed
+     is listed in the RUNBOOK with the reason it stays.
+   - **Request 7, security overhaul.** A review against the common attacks,
+     written up as a checklist in the RUNBOOK so the next webmaster can
+     repeat it each term: response headers (the CSP, HSTS, frame, referrer
+     and permissions headers, tightened where the console sweep allows),
+     cross-site scripting through anything a visitor or officer can type
+     (stories, applications, task and post bodies, committee pages), the anon
+     RPCs (validation, rate caps, honeypots), Storage bucket policies,
+     Supabase Auth settings and its redirect list, the Supabase security
+     advisors, `npm audit`, a scan of the repository history for secrets,
+     and a pgTAP check that every table still has row-level security on. A
+     `/.well-known/security.txt` with a contact address is added alongside.
+
+#### Phase 5b. Portal and people
+
+Everything the portal itself still needs, finished before members are invited
+into it.
+
+1. **The header, changed once (requests 13 and 14).** Both requests change
+   `src/portal/PortalLayout.jsx`, so they are one piece of work.
+   - **Request 13, notifications bell.** Notifications leave the row of page
+     links and become a button of their own at the side of the header, with
+     a red dot while anything is unread. Clicking it opens a panel with a
+     one-line summary of each notification (click one to go to its task,
+     story or order), a "Mark all as read" action and a "Clear all" action.
+     The full `/portal/notifications` page stays, reached from "See all" in
+     the panel.
+   - **Request 14, header order.** The header is regrouped so it reads in
+     the order people work: Dashboard, Tasks, Updates; then the editing pages
+     a person's positions give them (Committees, Gallery, Magazine,
+     Submissions); then the EB's admin pages (Roster, Verification, Site
+     settings); with the bell, Profile and Sign out together at the side.
+2. **Tasks, finished (requests 3 and 9, and the Phase 3 attachments).** All
+   three change `TaskEditor.jsx`.
+   - **Request 3, date defaults to today.** A new task opens with today's
+     date (the Cairo day) in the date field, which starts empty today.
+     Editing an existing task keeps its own date.
+   - **Request 9, duplicate-task warning.** Before a task is saved, the
+     portal checks the open tasks of that committee for one with the same
+     title and the same assignees, and asks "This task already exists, create
+     it again?" with the existing task linked. It warns and never blocks,
+     since a repeat can be deliberate. The save button also locks while a
+     save is in flight, which stops the double-click duplicate.
+   - **File attachments (Phase 3).** Officers attach files when creating a
+     task and assignees attach them to an update, stored in the private
+     `task-files` bucket and readable by the people who can see the task.
+3. **The invites screen (Phase 4).** Officers invite by email with a position
+   pre-set (section 7), see the invites still pending, withdraw one, and
+   remove a position from the Members tab.
+4. **People, one source of truth (request 10, the executive board from old
+   phase 6, the directory from Phase 4, and the rebuild trigger of the
+   content snapshot pipeline).** These are merged because they are one
+   change seen from four sides: the site showing people from their profiles
+   and positions, not from a file.
+   - **Request 10, profile name and photo everywhere.** When an officer
+     changes their name or photo in the portal, every place that shows them
+     follows: the committee page, the executive board, the exchange team,
+     task and update bylines. Today the public pages read officer names and
+     photos from `src/data/society.js` and the committee page overrides, so
+     the profile is not their source. The fix is one source of truth: the
+     profile of whoever holds the position this term, with the static entry
+     as the fallback for a position nobody has claimed. Photos live in the
+     `avatars` bucket, which also ends the dependence on Drive-hosted officer
+     photos.
+   - **Executive board editable.** With the board drawn from this term's
+     assignments, changing it is assigning a position, and no separate editor
+     is needed. The term-rollover wizard in phase 7 relies on the same thing.
+   - **Directory.** Opted-in members with their positions, searchable, built
+     on the same read.
+   - **Rebuild on publish.** A deploy hook fired when published content
+     changes, plus a nightly rebuild (section 6), so the pre-rendered pages
+     follow a profile change, a new album or a published story without a
+     developer. The pre-render already bakes the gallery, the magazine shelf
+     and the published stories at build time; this adds the trigger.
+
+#### Phase 5c. One design pass
+
+It comes after 5b so the new header, bell and directory are audited in their
+final form, and before phase 6 so every new page is built to the finished
+sizing and colour rules.
+
+1. **Sizing and light mode together (requests 6 and 15).** Both mean walking
+   every page of the public site and the portal, so the walk is done once,
+   with the page-walk script producing each page at 320, 375, 768, 1024, 1440
+   and 1920 px in both themes.
+   - **Request 6, fluid sizing.** Every page adapts to the screen it is on:
+     type and spacing that scale with the viewport (`clamp()` instead of
+     fixed steps), no horizontal scrolling at 320 px, content that neither
+     stretches into long lines nor sits in a narrow strip on a wide monitor,
+     and portal tables that turn into cards on a phone.
+   - **Request 15, light mode.** Light mode is reworked across the whole
+     site and the portal: a light palette with proper contrast (WCAG AA for
+     text), and fixes for whatever was designed only for the dark theme
+     (white text on pale cards, borders that vanish, images and logos that
+     need a light variant, the flipbook and the gallery viewer).
+2. **Request 8, magazine flip.** The page-flip gets more depth: a shadow
+   along the spine, a shadow cast by the lifting page that follows the fold,
+   a soft shadow under the open book, and visible page edges so the stack
+   looks thick. It follows the light-mode work because the shadows have to
+   be tuned against both themes. The incomings booklet uses the same reader
+   (`Flipbook.jsx`) and gains it too. It keeps respecting reduced-motion
+   settings and must stay smooth on a mid-range phone.
+
+#### Phase 5d. Pilot and rollout
+
+Little development, mostly people and calendar time, so it runs alongside
+phase 6. It finishes what Phases 3 and 4 set as their goals.
+
+1. **Gate before inviting anyone.** Re-run the security checklist over what
+   5b added (attachments, invites, the directory), confirm the nightly backup
+   has run every night since 5a, confirm the Google consent screen is still
+   "In production" (HANDOVER), and check that the site now appears on
+   DuckDuckGo for "AUSSS"; if it does not, look into it here.
+2. **Pilot (Phase 3).** One committee that wants it runs a real month of
+   work through tasks, updates and the digest. What it trips over is fixed
+   before the rollout.
+3. **Member-facing rollout (Phase 4).** The roster is invited in. Target: 100
+   members with accounts and a verification backlog under a day.
+4. **The Pro plan decision (from Phase 7).** Made here, on real usage
+   figures (database size, Storage, egress, Resend's daily count), since
+   section 3 ties it to the portal being in daily use.
+
+#### Phase 6. Site management
+
+1. **The editor foundation.** Field schemas, the `RecordEditor`,
+   `content_blocks` with draft and published states, the sanitising markdown
+   renderer (section 9), Vitest for the editor and `src/lib`, and the audit
+   log screen for the webmaster.
+2. **Request 1, the incomings exchange page, as the first page built on the
+   editor.** Building it here, and not earlier as a static page, means it is
+   built once. `/exchange/incomings` grows from today's short page with the
+   welcome booklet into a proper page for students thinking of coming to Ain
+   Shams: a pitch for the LC (the hospitals, the departments, the social
+   programme, Cairo), the LEO-In's and the LORE's contact details (drawn
+   from their profiles, 5b step 4), photos of our work with incomings, the
+   incomings welcome booklet embedded in the reader (it is there today,
+   collapsed behind a cover card), and a link to the AUSSS page of the
+   national IFMSA-Egypt exchange welcome booklet. The photos are a gallery
+   album shown on the page, so they are managed with the gallery editor that
+   already exists and no second upload tool is built. The exchange officers
+   edit the copy themselves. This page is also the content half of request
+   2: it is the page that answers "Ain Shams medicine exchange".
+   **Reminder when it goes live:** change the LC's website link in the
+   exchange portal so it points straight at
+   `https://ausss-ainshams.org/exchange/incomings` and not at the home page.
+3. **The remaining editors, in order of value:** FAQ, the merch catalogue and
+   availability (the `merch_products` table exists; the shop page still
+   reads the file), events, home page sections, exchange and IFMSA copy,
+   footer and contact details, and feature flags (the switches that live in
+   config files today, `callsLiveEnabled`, `magazineCountersVisible` and
+   `domainEmailsLive`, become site settings). Magazine issues, the first aim
+   of this phase when the plan was written, have been editable since Phase 5.
+
+#### Phase 7. Sustain
+
+1. **The term-rollover wizard, with the gallery archive as one of its steps
+   (request 12).** The wizard of section 10: create the next term, end the
+   current assignments, invite the incoming officers, archive open tasks and
+   expired posts. **Request 12, gallery archive per term:** at the end of a
+   term, all the gallery's albums are archived in one action so the new term
+   starts with an empty gallery. Albums gain a term and an archived state;
+   archived albums leave the main gallery and move to an archive grouped by
+   term, and their `/gallery/<slug>` links keep working. Storage is the
+   constraint (1 GB on the free plan, and each photo is stored twice, as a
+   thumbnail and a full-size copy), so archiving re-encodes the full-size
+   copies to a smaller modern format and exports the term's originals as one
+   bundle to the society Drive, alongside the backups. The exact format and
+   sizes are decided at build time from the real figures for 2026-27. The
+   wizard must be ready before the 2026-27 term ends.
+2. **Every term:** a restore rehearsal, the security checklist, the
+   `HANDOVER.md` review, and the monthly search ranks of request 2 looked at
+   as a trend.
+3. **Documentation:** `docs/ARCHITECTURE.md` and the RUNBOOK kept current
+   (each phase above adds its own RUNBOOK section as it ships).
+4. **The website guide**, once development has ended (section 12.5).
+
+### 12.4 Where everything went
+
+Every open task, where it sat before the reorder of 2026-10-04 and where it
+sits now.
+
+| Task | Was in | Now in |
+| --- | --- | --- |
+| Request 1, incomings exchange page | New, 2026-10-04 | Phase 6, step 2 |
+| Request 2, DuckDuckGo and the race with the university | New, 2026-10-04 | 5a step 1 (registration, baseline ranks), 6 step 2 (the content), 7 step 2 (the trend) |
+| Request 3, task date defaults to today | New, 2026-10-04 | 5b step 2, merged with request 9 and attachments |
+| Request 4, gallery loads blank | New, 2026-10-04 | 5a step 3 |
+| Request 5, console errors | New, 2026-10-04 | 5a step 5, merged with request 7 |
+| Request 6, fluid sizing | New, 2026-10-04 | 5c step 1, merged with request 15 |
+| Request 7, security overhaul and `robots.txt` | New, 2026-10-04 | 5a step 5 (the review), 5a step 1 (`robots.txt`), re-run in 5d and every term |
+| Request 8, magazine flip | New, 2026-10-04 | 5c step 2 |
+| Request 9, duplicate-task warning | New, 2026-10-04 | 5b step 2 |
+| Request 10, profile name and photo everywhere | New, 2026-10-04 | 5b step 4, merged with the executive board and the directory |
+| Request 11, Google logo | New, 2026-10-04 | 5a step 3 |
+| Request 12, gallery archive per term | New, 2026-10-04 | 7 step 1, merged into the rollover wizard |
+| Request 13, notifications bell | New, 2026-10-04 | 5b step 1, merged with request 14 |
+| Request 14, header order | New, 2026-10-04 | 5b step 1 |
+| Request 15, light mode | New, 2026-10-04 | 5c step 1 |
+| Task file attachments | Phase 3, not built | 5b step 2 |
+| One-committee pilot month | Phase 3, "done when" | 5d step 2 |
+| Invites screen | Phase 4, not built | 5b step 3 |
+| Directory | Phase 4, not built | 5b step 4 |
+| Member-facing rollout | Phase 4, not started | 5d step 3 |
+| Bing Webmaster Tools, indexing requests, backlinks | Phase 4, left over | 5a step 1, merged with request 2 |
+| Sheets mirrors | Phase 5, deferred by decision 6 | 12.5, on request |
+| Schema-driven editor | Phase 6 | 6 step 1 |
+| Executive board editable | Phase 6 | 5b step 4 |
+| FAQ, merch, events and home sections editable | Phase 6 | 6 step 3 |
+| Magazine editable | Phase 6 | Shipped in Phase 5 |
+| Content snapshot pipeline | Phase 6 | 5b step 4 (the rebuild trigger; the build-time snapshot shipped with the pre-render) |
+| Backups and a restore rehearsal | Phase 7 | 5a step 2, rehearsal repeated in 7 step 2 |
+| Monitoring | Phase 7 | 5a step 2 |
+| The Pro plan decision | Phase 7 | 5d step 4 |
+| Term-rollover wizard | Phase 7 | 7 step 1 |
+| Runbook | Phase 7 | Every phase, kept current in 7 step 3 |
+| Playwright smoke tests | Section 10, unscheduled | 5a step 4 |
+| Vitest | Section 10, unscheduled | 6 step 1 |
+
+### 12.5 Waiting on people, and parked
+
+These do not block the build order above. The parked ideas were noted in
+earlier sessions and are listed so the roadmap is whole; none is scheduled.
+
+Waiting on people:
+
+- **Backlinks** from IFMSA-Egypt's LC list (requested by the President or
+  the VPE) and the faculty site (5a step 1).
+- **Role addresses on the domain:** built behind `domainEmailsLive`, waiting
+  on the forwarding rules at the registrar and each inbox owner's
+  verification (RUNBOOK section 19).
+- **The exchange portal link:** changed by the exchange officers when the
+  incomings page goes live (phase 6, step 2).
+
+Parked:
+
+- **The portal inside the site:** staying signed in while browsing the public
+  pages and applying to Open Calls as a member, together with turning the
+  public Open Calls cards on (`callsLiveEnabled`). Its earliest sensible
+  place is after 5d, when members have accounts.
+- **The website guide:** one PDF with screenshots of every page and portal
+  feature, parked until development ends (phase 7, step 4). The page-walk
+  script of 5a is its screenshot tool.
+- **IFMSA calls from email to the calendar,** and **the walking mascot:**
+  backburner ideas, not designed.
+- **Sheets mirrors** (decision 6) and **a shared task board per committee**
+  (decision 5): built when someone asks.
 
 ## 13. Risks and open decisions
 

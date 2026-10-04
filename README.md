@@ -24,7 +24,8 @@ Faculty of Medicine, Ain Shams University. Live at
 npm install
 npm run dev                  # http://localhost:5173
 npm run build                # production bundle in /dist, then pre-renders every public page
-npm run preview:prerendered  # serve /dist the way Vercel does (pre-rendered pages + spa.html fallback)
+npm run preview:prerendered  # serve /dist the way Vercel does (pre-rendered pages + spa.html fallback, same response headers)
+npm run walk                 # open every page at several widths in both themes: screenshots + console report (docs/RUNBOOK.md section 21)
 npm run preview              # Vite's preview (SPA only: it does not show the pre-rendered pages)
 ```
 

@@ -47,8 +47,6 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Hero logo is the LCP element on first paint, so fetch it early. -->
-    <link rel="preload" as="image" href="/assets/brand/ausss-vertical-white.png" fetchpriority="high" />
     <link
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
@@ -78,18 +76,9 @@
         }
       }
     </script>
-    <script>
-      // No-flash theme bootstrap, runs before React mounts.
-      // Reads explicit user choice from localStorage, falls back to OS preference.
-      (function () {
-        try {
-          var saved = localStorage.getItem('theme')
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-          var isDark = saved === 'dark' || (!saved && prefersDark)
-          document.documentElement.classList.toggle('dark', isDark)
-        } catch (_) {}
-      })()
-    </script>
+    <!-- No-flash theme bootstrap, runs before React mounts. A file, not an inline
+         script: the Content-Security-Policy allows no inline scripts (vercel.json). -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
