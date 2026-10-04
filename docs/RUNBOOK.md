@@ -1051,6 +1051,9 @@ or its data is damaged beyond a manual fix.
    under Connect in the dashboard, session pooler):
 
    ```sh
+   # roles.sql also holds settings of the platform's own roles, which only
+   # Supabase may change; drop those lines or the restore stops at the first.
+   sed -i -E '/^ALTER ROLE "(supabase_[a-z_]+|dashboard_user|pgbouncer)" /d' db/roles.sql
    psql "$NEW_DB_URL" --single-transaction --variable ON_ERROR_STOP=1 \
      --file db/roles.sql --file db/schema.sql \
      --command 'SET session_replication_role = replica' \

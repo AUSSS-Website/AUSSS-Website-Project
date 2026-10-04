@@ -72,8 +72,14 @@ jobs:
           if [ -f supabase/seed.sql ]; then mv supabase/seed.sql "$RUNNER_TEMP/aside/"; fi
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime
 
+      # roles.sql also carries settings of the platform's own roles (supabase_admin
+      # and friends), which nobody but the platform may change, here or on a hosted
+      # project. A real restore drops the same lines (RUNBOOK section 20).
       - name: Restore
         run: |
+          reserved='^ALTER ROLE "(supabase_[a-z_]+|dashboard_user|pgbouncer)" '
+          echo "Skipping $(grep -cE "$reserved" restore/db/roles.sql || true) settings of platform roles"
+          sed -i -E "/$reserved/d" restore/db/roles.sql
           psql "$DB_URL" --single-transaction --variable ON_ERROR_STOP=1 \
             --file restore/db/roles.sql \
             --file restore/db/schema.sql \

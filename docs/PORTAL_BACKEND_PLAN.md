@@ -524,8 +524,10 @@ fifteen requests of 2026-10-04.
 
 #### Phase 5a. Stabilise and secure
 
-**Status, 2026-10-04: built, not yet deployed; four things wait on the
-webmaster.** Built and checked locally: `robots.txt` as one group, IndexNow
+**Status, 2026-10-04: built and deployed (commit 5c98481); three things wait
+on the webmaster.** On that deploy the new headers were confirmed live, db-ci
+passed with the security baseline test, and `after-deploy` made its first
+IndexNow submission. Built: `robots.txt` as one group, IndexNow
 (build-time change list, `after-deploy.yml`), the search rank baseline (RUNBOOK
 section 15); the nightly backup, the restore rehearsal and the failure alerts
 (`backup.yml`, `backup-restore-test.yml`, `notify.yml`, RUNBOOK section 20); the
