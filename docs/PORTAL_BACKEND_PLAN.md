@@ -524,8 +524,12 @@ fifteen requests of 2026-10-04.
 
 #### Phase 5a. Stabilise and secure
 
-**Status, 2026-10-04: built and deployed (commit 5c98481); three things wait
-on the webmaster.** On that deploy the new headers were confirmed live, db-ci
+**Status, 2026-10-04: built and deployed (commit 5c98481); backups running
+and a restore rehearsed; two things wait on the webmaster.** The repo secrets
+were set the same day, the first backups ran, and the rehearsal restored one
+into an empty database with every count equal to production, after three
+causes of failure were fixed where the backup is made (RUNBOOK section 20).
+On that deploy the new headers were confirmed live, db-ci
 passed with the security baseline test, and `after-deploy` made its first
 IndexNow submission. Built: `robots.txt` as one group, IndexNow
 (build-time change list, `after-deploy.yml`), the search rank baseline (RUNBOOK
@@ -536,10 +540,8 @@ mounted after the first paint; fixed in `useReveal.js` for every page) and the
 Google mark; the page walk (`scripts/page-walk.mjs`, RUNBOOK section 21); the
 console sweep and the security review (script-src without `'unsafe-inline'`,
 dependency fixes, a pgTAP baseline, the
-checklist in RUNBOOK section 22). Waiting: (1) the repo secrets of HANDOVER
-section 5, after which the first backup runs and the rehearsal can be run, which
-is what "done when" asks for; (2) Bing Webmaster Tools (sign in and import from
-Search Console) and the Search Console indexing requests; (3) the four
+checklist in RUNBOOK section 22). Waiting: (1) Bing Webmaster Tools (sign in and import from
+Search Console) and the Search Console indexing requests; (2) the four
 dashboard lines of the security checklist. The portal was checked under the
 new headers in a signed-in browser the same day (RUNBOOK section 21); its
 scripted walk with screenshots waits for a `--login` and is needed for 5c. The backlinks stay with the

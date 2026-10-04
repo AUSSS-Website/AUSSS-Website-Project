@@ -995,7 +995,7 @@ every night. Three workflows do the work:
 | Workflow | When | What it does |
 | --- | --- | --- |
 | `backup.yml` | 01:40 UTC every night, or by hand | Dumps the database, mirrors every Storage bucket, encrypts both and stores them for 90 days |
-| `backup-restore-test.yml` | By hand, once a term | Decrypts the latest backup and loads it into an empty database on the runner |
+| `backup-restore-test.yml` | Every Sunday 03:10 UTC, or by hand | Decrypts the latest backup and loads it into an empty database on the runner |
 | `notify.yml` | Called by the others | Emails the society inbox when a job fails |
 
 **What a backup holds.** `ausss-db-<date>.tar.gz.gpg` has five SQL files: `roles.sql`,
@@ -1029,12 +1029,34 @@ compares each file's version tag), so a normal night downloads only new or chang
 A full download is about the size of the buckets (56 MB on 2026-10-04) and happens only
 when the cache has expired.
 
-**The rehearsal.** Actions > backup-restore-test > Run workflow. It downloads the latest
-successful backup, decrypts it, starts the local Supabase stack with no migrations (as
-empty as a new project), restores the three SQL files and checks that accounts, profiles
-and the roster came back, that every public table still has row-level security, and that
-the storage archive holds every file its manifest lists. Run it once a term and after any
-change to `backup.yml`. A green run is the proof that the backups are usable.
+**The rehearsal.** It runs by itself every Sunday and emails if it fails; start it by hand
+(Actions > backup-restore-test > Run workflow) after any change to `backup.yml`. It
+downloads the latest successful backup, decrypts it, starts the local Supabase stack with
+no migrations (as empty as a new project) at the hosted project's own Postgres, Auth and
+Storage versions, and restores the three SQL files with the command of step 3 below,
+nothing edited. Then it checks that accounts, profiles, the roster and the buckets came
+back, that every public table still has row-level security, and that the storage archive
+holds every file its manifest lists. A green run is the proof that the backups are
+usable. First green run: 2026-10-04, every count equal to production.
+
+**When the rehearsal fails.** Run it again with "List every restore error" ticked: it
+prints the role file and every error of a tolerant pass, instead of stopping at the first.
+Fix the cause where the backup is made (`backup.yml`), never by editing files at restore
+time, because a real restore happens on a bad day with nobody to remember the edits. The
+three causes found on the first day, for reference:
+
+- *Tables postgres cannot write.* The data dump must leave out
+  `storage.buckets_vectors` and `storage.vector_indexes`, as Supabase's backup guide does
+  (`-x`): the project's role may read them but not write them. If Supabase adds another
+  such table, the rehearsal fails with "permission denied for table"; add it to the `-x`
+  list after checking the guide.
+- *A scratch database older than the backup.* Without the link step the local Auth and
+  Storage are the versions the CLI release shipped with, and miss tables and columns the
+  backup holds ("relation does not exist"). The link step makes them match.
+- *Statements about the platform's own roles in `roles.sql`.* Only Supabase's superuser
+  may run them, on any project, and the CLI (2.117.0 to 2.119.0) lets two kinds through.
+  `backup.yml` removes them when the file is made and fails if anything else names a
+  platform role. When a newer CLI stops emitting them, that step can go.
 
 **A real restore, into a new Supabase project.** This is for the day the project is lost
 or its data is damaged beyond a manual fix.
@@ -1051,9 +1073,6 @@ or its data is damaged beyond a manual fix.
    under Connect in the dashboard, session pooler):
 
    ```sh
-   # roles.sql also holds settings of the platform's own roles, which only
-   # Supabase may change; drop those lines or the restore stops at the first.
-   sed -i -E '/^ALTER ROLE "(supabase_[a-z_]+|dashboard_user|pgbouncer)" /d' db/roles.sql
    psql "$NEW_DB_URL" --single-transaction --variable ON_ERROR_STOP=1 \
      --file db/roles.sql --file db/schema.sql \
      --command 'SET session_replication_role = replica' \

@@ -313,7 +313,7 @@ Exact SQL is in RUNBOOK section 9. In order:
       activity; a rollover commit resets that clock.
 - [ ] The `backup` GitHub Action ran last night and its run holds two artifacts
       (the same 60-day rule applies to it).
-- [ ] Run `backup-restore-test` (Actions tab, Run workflow) and see it go green:
+- [ ] The weekly `backup-restore-test` is green (Actions tab; run it by hand if not):
       the proof that the backups can be restored (RUNBOOK section 20).
 - [ ] Go through the security checklist (RUNBOOK section 22).
 - [ ] Supabase project is not paused (dashboard shows Active).
