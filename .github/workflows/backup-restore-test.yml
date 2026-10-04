@@ -1,8 +1,10 @@
-# The restore rehearsal: proves that last night's backup can actually be
-# decrypted and loaded into an empty database. Run it by hand once a term
-# (Actions > backup-restore-test > Run workflow) and after any change to
-# backup.yml. docs/RUNBOOK.md section 20 has the same steps for a real restore
-# into a new Supabase project.
+# The restore rehearsal: proves that the latest backup can actually be
+# decrypted and loaded into an empty database, with the same command a real
+# restore uses and nothing edited in between. It runs every Sunday, so a
+# change at Supabase that breaks restores is found within a week and emailed
+# (notify.yml); run it by hand after any change to backup.yml (Actions >
+# backup-restore-test > Run workflow). docs/RUNBOOK.md section 20 has the
+# steps for a real restore into a new Supabase project.
 #
 # The scratch database is the local Supabase stack on the runner, started
 # with no migrations so it is as empty as a new project, and at the same
@@ -13,6 +15,9 @@
 name: backup-restore-test
 
 on:
+  schedule:
+    # Sundays 03:10 UTC, after that night's backup (01:40).
+    - cron: '10 3 * * 0'
   workflow_dispatch:
     inputs:
       run_id:
@@ -133,10 +138,11 @@ jobs:
       - name: Check what came back
         run: |
           count() { psql "$DB_URL" -At -c "select count(*) from $1"; }
-          for t in auth.users public.profiles public.roster_entries public.committees public.albums public.gallery_photos public.orders public.stories public.signups public.tasks storage.objects; do
+          for t in auth.users public.profiles public.roster_entries public.committees public.albums public.gallery_photos public.orders public.stories public.signups public.tasks storage.buckets storage.objects; do
             echo "$t: $(count "$t")"
           done
           test "$(count auth.users)" -gt 0 || { echo "::error::no accounts were restored"; exit 1; }
+          test "$(count storage.buckets)" -gt 0 || { echo "::error::the storage buckets were not restored"; exit 1; }
           test "$(count public.profiles)" -gt 0 || { echo "::error::no profiles were restored"; exit 1; }
           test "$(count public.roster_entries)" -gt 0 || { echo "::error::the roster was not restored"; exit 1; }
           rls_off=$(psql "$DB_URL" -At -c "select count(*) from pg_tables t join pg_class c on c.oid = format('%I.%I', t.schemaname, t.tablename)::regclass where t.schemaname = 'public' and not c.relrowsecurity")
@@ -150,3 +156,16 @@ jobs:
       - name: Stop the stack
         if: always()
         run: supabase stop --no-backup
+
+  alert:
+    needs: restore
+    if: failure() && github.event_name == 'schedule'
+    uses: ./.github/workflows/notify.yml
+    with:
+      subject: 'AUSSS website: the weekly restore rehearsal failed'
+      body: >-
+        The latest backup could not be restored into an empty database, so the
+        backups may not be usable as they are. Run the rehearsal by hand with
+        "List every restore error" ticked to see why (RUNBOOK section 20).
+    secrets:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

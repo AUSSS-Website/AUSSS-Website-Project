@@ -91,6 +91,30 @@ jobs:
           supabase db dump --linked -f backup/db/history_schema.sql --schema supabase_migrations
           supabase db dump --linked -f backup/db/history_data.sql --data-only --use-copy --schema supabase_migrations
 
+      # The role file must hold only what the project's own postgres role can
+      # restore. The CLI comments out every statement about the platform's
+      # internal roles (only Supabase's superuser may touch them, on any
+      # project, and a new project gets them from the platform), but two kinds
+      # get past it (CLI 2.117.0 to 2.119.0): a setting of such a role that is
+      # on the CLI's "safe" list (ALTER ROLE "supabase_admin" SET
+      # "statement_timeout"), and a parameter privilege granted to one (GRANT
+      # SET ON PARAMETER ... TO "supabase_realtime_admin"). Either stops a
+      # restore at the first line. They are removed here, where the file is
+      # made, so the stored backup restores with the guide's command as it is.
+      # Anything else that names a platform role fails the backup, so a new
+      # kind is looked at instead of being stored or dropped unseen.
+      - name: Keep platform-only statements out of the role file
+        run: |
+          platform='supabase_[a-z_]+|dashboard_user|pgbouncer|cli_login_[a-z_]+|pgsodium_[a-z]+|pgtle_admin'
+          sed -i -E "/^ALTER ROLE \"($platform)\" /d; /^GRANT SET ON PARAMETER .* TO \"($platform)\";/d" backup/db/roles.sql
+          if grep -nE "\"($platform)\"" backup/db/roles.sql; then
+            echo "::error::roles.sql still names a platform role (lines above); that statement would stop a restore"
+            exit 1
+          fi
+          echo "::group::roles.sql as stored (role names and settings, no passwords)"
+          grep -v '^$' backup/db/roles.sql
+          echo "::endgroup::"
+
       # An empty or truncated dump must not pass as a backup.
       - name: Check the dump
         run: |
