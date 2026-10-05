@@ -26,6 +26,7 @@ npm run dev                  # http://localhost:5173
 npm run build                # production bundle in /dist, then pre-renders every public page
 npm run preview:prerendered  # serve /dist the way Vercel does (pre-rendered pages + spa.html fallback, same response headers)
 npm run walk                 # open every page at several widths in both themes: screenshots + console report (docs/RUNBOOK.md section 21)
+npm test                     # unit tests (Vitest): the markdown reader and the content schemas
 npm run preview              # Vite's preview (SPA only: it does not show the pre-rendered pages)
 ```
 
@@ -38,7 +39,8 @@ back to its static content.
 | What | Where |
 | --- | --- |
 | People, committees and page copy | `src/data/society.js` |
-| Join-page FAQ | `src/data/faq.js` |
+| Join-page FAQ | The portal content editor (`/portal/content`, EB); `src/data/faq.js` is the copy shown until one is published |
+| Parts of pages edited from the portal | Schemas in `src/content/`, documents in `content_blocks` (`docs/RUNBOOK.md` section 25) |
 | Magazine editions | The portal magazine editor (`/portal/magazine`, CBSD and EB) |
 | Merch catalogue, payment handles, shop switch | `src/data/merchProducts.js`, `src/data/merchConfig.js` |
 | Form switches (waitlist, stories, orders) | `src/data/*Config.js` |
@@ -63,7 +65,7 @@ Headings are set in **Cormorant Garamond**, everything else in **Inter**.
 ## Docs
 
 - [`docs/RUNBOOK.md`](./docs/RUNBOOK.md): day-to-day operations (migrations,
-  roster, term rollover, discoverability)
+  roster, term rollover, discoverability, the content editor)
 - [`docs/HANDOVER.md`](./docs/HANDOVER.md): every account the site depends on
   and who holds it
 - [`docs/PORTAL_BACKEND_PLAN.md`](./docs/PORTAL_BACKEND_PLAN.md): the portal

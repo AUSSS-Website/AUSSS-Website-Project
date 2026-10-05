@@ -708,8 +708,8 @@ It comes after 5b so the new header, bell and directory are audited in their
 final form, and before phase 6 so every new page is built to the finished
 sizing and colour rules.
 
-**Status, 2026-10-05: built on branch `phase-5c`; RUNBOOK section 24 has the
-rules.** The whole site and the portal moved from dark-only colours to theme
+**Status, 2026-10-05: built and live (PR #7, main at 20925f5); RUNBOOK
+section 24 has the rules.** The whole site and the portal moved from dark-only colours to theme
 tokens, so light mode is a real theme and the dark theme is unchanged (proved
 by comparing screenshots before and after). The 37 public pages pass the page
 walk at 320, 375, 768, 1024, 1440 and 1920 px in both themes: none scrolls
@@ -759,6 +759,19 @@ themes, which needs the webmaster to sign in once
 Little development, mostly people and calendar time, so it runs alongside
 phase 6. It finishes what Phases 3 and 4 set as their goals.
 
+**Status, 2026-10-05: the gate of step 1 was run; one line failed and waits
+on the webmaster.** The security checklist passed again over what 5b added
+(headers, no unsafe HTML, the two new buckets, row-level security on every
+table, no advisor errors, no vulnerable dependency). The nightly backup has
+run on its own once since the secrets were set (2026-10-05, green). The
+Google consent screen is "In production". The site is the first result on
+DuckDuckGo for "AUSSS". **Failed:** the sign-in redirect list on Supabase
+holds wildcard `vercel.app` addresses that a stranger's project could match;
+RUNBOOK section 22 says which lines to delete. Nobody should be invited
+before that is done. Three dashboard lines of the checklist (two-step
+verification on every account, GitHub secret scanning) are still the
+webmaster's to tick.
+
 1. **Gate before inviting anyone.** Re-run the security checklist over what
    5b added (attachments, invites, the directory), confirm the nightly backup
    has run every night since 5a, confirm the Google consent screen is still
@@ -772,8 +785,30 @@ phase 6. It finishes what Phases 3 and 4 set as their goals.
 4. **The Pro plan decision (from Phase 7).** Made here, on real usage
    figures (database size, Storage, egress, Resend's daily count), since
    section 3 ties it to the portal being in daily use.
+5. **The storage limit on Vercel (noted by the webmaster, 2026-10-05).** The
+   site is passing, or about to pass, a storage limit on Vercel's Hobby
+   plan. To do: read the Usage page of the `ausss-ainshams` project to see
+   which limit it is and what is filling it, then bring it back under (or
+   decide to pay), and write the figure and the fix into RUNBOOK. It sits
+   beside the Pro plan decision because both are read off the same usage
+   figures.
 
 #### Phase 6. Site management
+
+**Status, 2026-10-05: step 1 is built on branch `phase-6-editor`; RUNBOOK
+section 25 has the rules.** The table `content_blocks` holds each edited
+part of a page as a document with a draft and a published copy. The portal
+has a "Site content" page that lists the blocks a person may edit and opens
+each in one form drawn from its field schema, with a live preview made of
+the page's own component, and "Save draft", "Publish" and "Discard draft".
+Long text is markdown, read by a small renderer that never produces HTML.
+The webmaster has an "Audit log" page. Vitest runs on every pull request.
+The questions on `/join` are the first block, so the step ends with
+something in use: the EB can change the FAQ with no developer. Where the
+build differs from section 9: the schemas live in `src/content/schemas`
+(not `src/admin/schemas`) because the public pages read their documents
+through the same files; and a block's row is created by a migration, with
+its editors named in the row, so the database decides who may publish.
 
 1. **The editor foundation.** Field schemas, the `RecordEditor`,
    `content_blocks` with draft and published states, the sanitising markdown

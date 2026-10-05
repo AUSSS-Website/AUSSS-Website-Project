@@ -22,7 +22,8 @@
     "db:config-push": "node scripts/db/supa.mjs config push",
     "db:gen-reference": "node scripts/db/gen-reference-data.mjs",
     "db:import-roster": "node --env-file-if-exists=.env.local scripts/db/import-roster.mjs",
-    "db:import-roster:dry": "node --env-file-if-exists=.env.local scripts/db/import-roster.mjs --dry-run"
+    "db:import-roster:dry": "node --env-file-if-exists=.env.local scripts/db/import-roster.mjs --dry-run",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.116.0",
@@ -47,6 +48,7 @@
     "supabase": "2.117.0",
     "tailwindcss": "^3.4.17",
     "vite": "^5.4.11",
+    "vitest": "^3.2.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

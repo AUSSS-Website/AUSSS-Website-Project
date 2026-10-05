@@ -13,7 +13,9 @@
 // /account, /merch/checkout, /social, /quiz and the singular exchange aliases
 // (all redirects or private surfaces).
 import { committees, slugFor, society, socials, exchange } from '../data/society.js'
-import { joinFaqs } from '../data/faq.js'
+import joinFaqSchema from '../content/schemas/joinFaq.js'
+import { resolveDoc } from '../content/schema.js'
+import { markdownToText } from '../lib/markdown.js'
 
 export const SITE_URL = 'https://ausss-ainshams.org'
 export const SITE_NAME = 'AUSSS'
@@ -132,7 +134,8 @@ function faqJsonLd(faqs) {
     mainEntity: faqs.map((f) => ({
       '@type': 'Question',
       name: f.q,
-      acceptedAnswer: { '@type': 'Answer', text: f.a },
+      // Answers may carry the editor's markdown; search engines get plain text.
+      acceptedAnswer: { '@type': 'Answer', text: markdownToText(f.a) },
     })),
   }
 }
@@ -174,7 +177,10 @@ function albumJsonLd(a, path) {
 // static fallback).
 // `issues` is the magazine shelf (src/lib/magazine.js shape); the latest edition's
 // cover page becomes the /magazine share card.
-export function publicPages(albums = [], issues = []) {
+// `content` is the documents published from the portal's content editor
+// (src/lib/content.js shape), for the data that is built from them.
+export function publicPages(albums = [], issues = [], content = {}) {
+  const joinFaqs = resolveDoc(joinFaqSchema, content[joinFaqSchema.key]).items
   const latest = issues.find((i) => !i.missing && (i.pages?.count || i.canva)) || null
   const latestCover = latest && latest.pages?.count
     ? abs(latest.pages.base + '/' + String(latest.heroPage || 1).padStart(3, '0') + '.jpg')

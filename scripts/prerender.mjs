@@ -236,6 +236,21 @@ async function loadPeople(vite) {
   }
 }
 
+// And the documents published from the portal's content editor
+// (src/lib/content.js): the FAQ and, later, the other edited pages. With
+// none, every block renders the copy that ships in the code.
+async function loadContent(vite) {
+  const mod = await vite.ssrLoadModule('/src/lib/content.js')
+  try {
+    const live = await mod.fetchContentBlocks()
+    console.log('prerender: ' + Object.keys(live).length + ' published content blocks from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the edited content (' + err.message + '); the pages use the shipped copy this build')
+    return {}
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -266,14 +281,15 @@ async function main() {
     const issues = await loadIssues(vite)
     const stories = await loadStories(vite)
     const people = await loadPeople(vite)
-    const pages = publicPages(albums, issues)
+    const content = await loadContent(vite)
+    const pages = publicPages(albums, issues, content)
 
     const seen = new Set()
     const hashes = {}
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues, stories, people)
+      const appHtml = await render(page.path, albums, issues, stories, people, content)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }

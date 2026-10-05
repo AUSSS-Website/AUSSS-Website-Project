@@ -57,6 +57,9 @@ const PORTAL_FIXED = [
   '/portal/admin/settings',
   '/portal/admin/roster',
   '/portal/admin/verification',
+  '/portal/content',
+  '/portal/content/join.faq',
+  '/portal/admin/audit',
 ]
 const PORTAL_DETAIL = [
   { list: '/portal/tasks', prefix: '/portal/tasks/' },
@@ -183,6 +186,7 @@ function classify(entry) {
 const READ_RPCS = new Set([
   'check_membership',
   'committee_roster',
+  'content_public',
   'gallery_public',
   'people_public',
   'magazine_insights',
