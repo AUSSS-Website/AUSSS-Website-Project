@@ -23,13 +23,13 @@ export default function ExchangeJoinPage() {
   const { officers, assistants, contactPersons } = exchange.team
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-12 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+              'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
@@ -39,7 +39,7 @@ export default function ExchangeJoinPage() {
             The exchange team
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
             Join the exchange team
           </h1>
         </div>
@@ -58,7 +58,7 @@ export default function ExchangeJoinPage() {
             it for every card at once. */}
         <section className="reveal relative z-20 mx-auto max-w-5xl">
           <TierLabel>Officers</TierLabel>
-          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-silver/60">
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/60">
             Elected roles. Each one owns a direction of the programme outright.
           </p>
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
@@ -70,7 +70,7 @@ export default function ExchangeJoinPage() {
           <Connector />
 
           <TierLabel>Assistants</TierLabel>
-          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-silver/60">
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/60">
             One for each side of the clinical programme. Both also support the
             LORE, who runs research exchange in both directions.
           </p>
@@ -83,7 +83,7 @@ export default function ExchangeJoinPage() {
           <Connector />
 
           <TierLabel>Contact persons</TierLabel>
-          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-silver/60">
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/60">
             As many seats as there are arrivals. Open to any member each
             season, and where most people start.
           </p>
@@ -97,13 +97,13 @@ export default function ExchangeJoinPage() {
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
             <Link
               to="/exchange/outgoings"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
               Going abroad instead
             </Link>
             <Link
               to="/exchange/incomings"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
               Hosting in Cairo instead
             </Link>
@@ -116,7 +116,7 @@ export default function ExchangeJoinPage() {
 
 function TierLabel({ children }) {
   return (
-    <h2 className="flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-[0.24em] text-medical-light">
+    <h2 className="flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-[0.24em] text-accent">
       <span className="h-px w-10 bg-medical/40" />
       {children}
       <span className="h-px w-10 bg-medical/40" />

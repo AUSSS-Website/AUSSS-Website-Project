@@ -20,7 +20,7 @@ const EMPTY = []
 const SHOWN = 8
 
 const linkBtnCls =
-  'text-xs font-semibold text-medical-light transition-colors hover:text-white disabled:opacity-40'
+  'text-xs font-semibold text-accent transition-colors hover:text-ink disabled:opacity-40'
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false)
@@ -87,20 +87,20 @@ export default function NotificationBell() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+        className={`relative flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
           open
-            ? 'border-white/40 bg-white/10 text-white'
-            : 'border-white/20 text-silver/80 hover:bg-white/10 hover:text-white'
+            ? 'border-line/40 bg-veil/10 text-ink'
+            : 'border-line/20 text-soft/80 hover:bg-veil/10 hover:text-ink'
         }`}
       >
-        <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </svg>
         {unread > 0 && (
           <span
             aria-hidden="true"
-            className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-forest-950"
+            className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-page"
           />
         )}
       </button>
@@ -109,10 +109,10 @@ export default function NotificationBell() {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 z-50 mt-3 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/15 bg-forest-900 shadow-2xl shadow-black/50"
+          className="absolute right-0 z-50 mt-3 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line/15 bg-sunk shadow-2xl shadow-black/50"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+          <div className="flex items-center justify-between gap-3 border-b border-line/10 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
               Notifications
             </p>
             {unread > 0 && (
@@ -132,11 +132,11 @@ export default function NotificationBell() {
               <Spinner className="h-5 w-5" />
             </div>
           ) : rows.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-silver/60">
+            <p className="px-4 py-6 text-sm text-soft/60">
               Nothing here. You’ll be told when a task involves you.
             </p>
           ) : (
-            <ul className="max-h-[min(24rem,60vh)] divide-y divide-white/5 overflow-y-auto">
+            <ul className="max-h-[min(24rem,60vh)] divide-y divide-line/5 overflow-y-auto">
               {shown.map((n) => {
                 const { line, detail } = describeNotification(n, names)
                 return (
@@ -144,19 +144,19 @@ export default function NotificationBell() {
                     <button
                       type="button"
                       onClick={() => openOne(n)}
-                      className="flex w-full items-start gap-2.5 px-4 py-3 text-left transition-colors hover:bg-white/5"
+                      className="flex w-full items-start gap-2.5 px-4 py-3 text-left transition-colors hover:bg-veil/5"
                     >
                       <span className="mt-1.5 w-2 shrink-0">{!n.read_at && <UnreadDot />}</span>
                       <span className="min-w-0 flex-1">
                         <span
                           className={`block truncate text-sm ${
-                            n.read_at ? 'text-silver/70' : 'font-semibold text-white'
+                            n.read_at ? 'text-soft/70' : 'font-semibold text-ink'
                           }`}
                         >
                           {line}
-                          {detail && <span className="font-normal text-silver/55"> · {detail}</span>}
+                          {detail && <span className="font-normal text-soft/55"> · {detail}</span>}
                         </span>
-                        <span className="mt-0.5 block text-xs text-silver/40">{when(n.created_at)}</span>
+                        <span className="mt-0.5 block text-xs text-soft/40">{when(n.created_at)}</span>
                       </span>
                     </button>
                   </li>
@@ -166,12 +166,12 @@ export default function NotificationBell() {
           )}
 
           {error && (
-            <div className="border-t border-white/10 px-4 py-2">
+            <div className="border-t border-line/10 px-4 py-2">
               <ErrorText>{error.message}</ErrorText>
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-t border-line/10 px-4 py-3">
             <Link to="/portal/notifications" onClick={close} className={linkBtnCls}>
               See all{rows.length > SHOWN ? ` (${rows.length})` : ''} &rarr;
             </Link>
@@ -182,7 +182,7 @@ export default function NotificationBell() {
                     type="button"
                     disabled={clear.isPending}
                     onClick={() => clear.mutate(undefined, { onSuccess: () => setConfirming(false) })}
-                    className="text-xs font-semibold text-red-300 transition-colors hover:text-red-200 disabled:opacity-40"
+                    className="text-xs font-semibold text-danger transition-colors hover:text-danger disabled:opacity-40"
                   >
                     {clear.isPending ? 'Clearing…' : 'Yes, clear notifications'}
                   </button>

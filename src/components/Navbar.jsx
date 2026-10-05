@@ -116,7 +116,7 @@ function NavMenu({ item, solid }) {
                 className={({ isActive }) =>
                   `block rounded-xl px-4 py-3 transition-colors ${
                     isActive
-                      ? 'bg-medical/10 text-medical dark:text-medical-light'
+                      ? 'bg-medical/10 text-accent'
                       : 'text-forest-900 hover:bg-forest-600/5 dark:text-silver dark:hover:bg-white/5'
                   }`
                 }
@@ -260,7 +260,7 @@ export default function Navbar() {
             <li>
               <Link
                 to="/magazine"
-                className="whitespace-nowrap rounded-full bg-medical px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-medical/20 transition-colors duration-300 hover:bg-medical-light 2xl:px-6 2xl:py-2.5 2xl:text-base"
+                className="whitespace-nowrap rounded-full bg-medical px-5 py-2 text-sm font-semibold text-forest-950 shadow-lg shadow-medical/20 transition-colors duration-300 hover:bg-medical-light 2xl:px-6 2xl:py-2.5 2xl:text-base"
               >
                 {MAGAZINE_CTA}
               </Link>
@@ -337,7 +337,7 @@ export default function Navbar() {
                         className={({ isActive }) =>
                           `block w-full py-2.5 text-left text-base ${
                             isActive
-                              ? 'font-semibold text-medical dark:text-medical-light'
+                              ? 'font-semibold text-accent'
                               : 'font-medium text-forest-900 dark:text-silver'
                           }`
                         }
@@ -357,7 +357,7 @@ export default function Navbar() {
                 className={({ isActive }) =>
                   `block w-full border-b border-forest-600/10 py-4 text-left text-base dark:border-white/10 ${
                     isActive
-                      ? 'font-semibold text-medical dark:text-medical-light'
+                      ? 'font-semibold text-accent'
                       : 'font-medium text-forest-900 dark:text-silver'
                   }`
                 }
@@ -371,7 +371,7 @@ export default function Navbar() {
             <li className="pt-4">
               <Link
                 to="/magazine"
-                className="block w-full rounded-full bg-medical py-3 text-center text-sm font-semibold text-white"
+                className="block w-full rounded-full bg-medical py-3 text-center text-sm font-semibold text-forest-950"
               >
                 {MAGAZINE_CTA}
               </Link>

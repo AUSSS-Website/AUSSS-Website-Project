@@ -16,7 +16,7 @@ export default function CanvaFrame({ src, title, ratio = 1.4142, maxVh = 95 }) {
       style={{ maxWidth: `calc(${maxVh}vh / ${ratio})` }}
     >
       <div
-        className="relative h-0 w-full overflow-hidden rounded-2xl border border-white/10 bg-forest-800 shadow-lg shadow-black/20"
+        className="relative h-0 w-full overflow-hidden rounded-2xl border border-line/10 bg-card shadow-lg shadow-black/20"
         style={{ paddingTop: `${ratio * 100}%` }}
       >
         <iframe

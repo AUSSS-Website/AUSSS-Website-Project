@@ -52,19 +52,19 @@ export default function VerifyPage() {
       <Panel>
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={status} />
-          <p className="text-sm text-silver/70">You’re already verified. There’s nothing to do here.</p>
+          <p className="text-sm text-soft/70">You’re already verified. There’s nothing to do here.</p>
         </div>
       </Panel>
     )
   } else if (latest?.status === 'pending') {
     body = (
       <Panel title="Request pending">
-        <p className="mt-4 text-sm text-silver/70">
+        <p className="mt-4 text-sm text-soft/70">
           Sent {when(latest.created_at)}. An EB member will check you against the
           membership records. You’ll see your badge change on the dashboard.
         </p>
         {latest.message && (
-          <blockquote className="mt-4 border-l-2 border-white/15 pl-4 text-sm text-silver/55">
+          <blockquote className="mt-4 border-l-2 border-line/15 pl-4 text-sm text-soft/55">
             {latest.message}
           </blockquote>
         )}
@@ -83,15 +83,15 @@ export default function VerifyPage() {
     body = (
       <form onSubmit={submit} className="max-w-2xl">
         {latest?.status === 'declined' && (
-          <p className="mb-5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+          <p className="mb-5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-warn">
             Your request from {when(latest.created_at)} was declined
             {latest.decided_at ? ` on ${when(latest.decided_at)}` : ''}. You can send
             another with more detail.
           </p>
         )}
         <Panel className="space-y-5">
-          <p className="text-sm text-silver/70">
-            You signed in as <span className="text-white">{user.email}</span>. If the
+          <p className="text-sm text-soft/70">
+            You signed in as <span className="text-ink">{user.email}</span>. If the
             roster has you under a different email, say so below so the EB can match you.
           </p>
           <Field
@@ -129,14 +129,14 @@ export default function VerifyPage() {
         subtitle="Verified members see their positions and appear to their officers."
       />
       {mine.error && (
-        <p role="alert" className="mb-5 text-sm text-red-400">
+        <p role="alert" className="mb-5 text-sm text-danger">
           Couldn’t check earlier requests: {mine.error.message}
         </p>
       )}
       {body}
       <Link
         to="/portal"
-        className="mt-8 inline-block text-sm font-semibold text-silver/60 transition-colors hover:text-white"
+        className="mt-8 inline-block text-sm font-semibold text-soft/60 transition-colors hover:text-ink"
       >
         &larr; Back to dashboard
       </Link>

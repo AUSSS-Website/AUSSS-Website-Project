@@ -37,14 +37,14 @@ function Audience({ postId }) {
   const read = audience.data.filter((p) => p.read_at)
   const list = (people) => people.map((p) => p.full_name || 'No name yet').join(', ')
   return (
-    <div className="space-y-3 text-xs text-silver/70">
+    <div className="space-y-3 text-xs text-soft/70">
       <p>
-        <span className="font-semibold text-white">Not yet ({unread.length}):</span>{' '}
+        <span className="font-semibold text-ink">Not yet ({unread.length}):</span>{' '}
         {unread.length ? list(unread) : 'Everyone has read it.'}
       </p>
       {read.length > 0 && (
         <p>
-          <span className="font-semibold text-white">Read ({read.length}):</span> {list(read)}
+          <span className="font-semibold text-ink">Read ({read.length}):</span> {list(read)}
         </p>
       )}
     </div>
@@ -67,20 +67,20 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
   }
 
   return (
-    <li className={`rounded-2xl border bg-forest-800 p-5 ${isRead || !live ? 'border-white/10' : 'border-medical/50'}`}>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-silver/55">
+    <li className={`rounded-2xl border bg-card p-5 ${isRead || !live ? 'border-line/10' : 'border-medical/50'}`}>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-soft/55">
         {!isRead && live && <UnreadDot />}
         <CommitteeTag committee={post.committee} />
-        <span className="font-semibold uppercase tracking-[0.14em] text-medical-light">
+        <span className="font-semibold uppercase tracking-[0.14em] text-accent">
           {POST_KIND_LABEL[post.kind] || post.kind}
         </span>
-        {post.pinned && <span className="font-semibold text-amber-300">Pinned</span>}
-        {label && <span className="font-semibold text-amber-300">{label}</span>}
+        {post.pinned && <span className="font-semibold text-warn">Pinned</span>}
+        {label && <span className="font-semibold text-warn">{label}</span>}
         {levels.length > 0 && <span>For {levels.join(', ').toLowerCase()}</span>}
       </div>
 
-      <h2 className="mt-3 text-lg font-semibold text-white">{post.title}</h2>
-      <p className="mt-1.5 flex items-center gap-2 text-xs text-silver/50">
+      <h2 className="mt-3 text-lg font-semibold text-ink">{post.title}</h2>
+      <p className="mt-1.5 flex items-center gap-2 text-xs text-soft/50">
         <Avatar name={personName(names, post.author_id, 'AUSSS')} src={names[post.author_id]?.avatar_url} size="sm" />
         <span>
           {personName(names, post.author_id, 'AUSSS')} · {when(post.publish_at || post.created_at)}
@@ -91,10 +91,10 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
         <>
           <RichText
             text={long && !open ? `${post.body.slice(0, LONG).trimEnd()}…` : post.body}
-            className="mt-4 text-sm text-silver/85"
+            className="mt-4 text-sm text-soft/85"
           />
           {long && !open && (
-            <button type="button" onClick={expand} className="mt-2 text-sm font-semibold text-medical-light hover:text-white">
+            <button type="button" onClick={expand} className="mt-2 text-sm font-semibold text-accent hover:text-ink">
               Read more &rarr;
             </button>
           )}
@@ -113,11 +113,11 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
               type="button"
               aria-expanded={showAudience}
               onClick={() => setShowAudience((v) => !v)}
-              className="text-xs font-semibold text-silver/60 hover:text-white"
+              className="text-xs font-semibold text-soft/60 hover:text-ink"
             >
               Read by {post.reads.length} · {showAudience ? 'hide who' : 'show who'}
             </button>
-            <button type="button" onClick={() => onEdit(post)} className="text-xs font-semibold text-silver/60 hover:text-white">
+            <button type="button" onClick={() => onEdit(post)} className="text-xs font-semibold text-soft/60 hover:text-ink">
               Edit
             </button>
             {confirming ? (
@@ -126,16 +126,16 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
                   type="button"
                   disabled={deleting}
                   onClick={() => onDelete(post.id)}
-                  className="text-xs font-semibold text-red-300 hover:text-red-200"
+                  className="text-xs font-semibold text-danger hover:text-danger"
                 >
                   {deleting ? 'Deleting…' : 'Yes, delete'}
                 </button>
-                <button type="button" onClick={() => setConfirming(false)} className="text-xs font-semibold text-silver/60 hover:text-white">
+                <button type="button" onClick={() => setConfirming(false)} className="text-xs font-semibold text-soft/60 hover:text-ink">
                   Keep
                 </button>
               </>
             ) : (
-              <button type="button" onClick={() => setConfirming(true)} className="text-xs font-semibold text-silver/60 hover:text-white">
+              <button type="button" onClick={() => setConfirming(true)} className="text-xs font-semibold text-soft/60 hover:text-ink">
                 Delete
               </button>
             )}
@@ -144,7 +144,7 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
       </div>
 
       {canManage && showAudience && (
-        <div className="mt-4 border-t border-white/10 pt-4">
+        <div className="mt-4 border-t border-line/10 pt-4">
           <Audience postId={post.id} />
         </div>
       )}
@@ -237,7 +237,7 @@ export default function UpdatesPage() {
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             {canPost ? 'Nothing posted yet. Write the first update.' : 'No updates for you yet.'}
           </p>
         </Panel>

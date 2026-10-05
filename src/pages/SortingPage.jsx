@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { committees, slugFor } from '../data/society.js'
-import { readableAccent, rgba } from '../lib/color.js'
+import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import {
   QUESTIONS,
   QUIZ_BASIS,
@@ -99,13 +99,13 @@ export default function SortingPage() {
   }, [stage, winner])
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="relative min-h-screen overflow-hidden pb-24 pt-32 sm:pt-40">
         {/* Same quiet dotted backdrop as /join */}
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
-            backgroundImage: 'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
@@ -139,14 +139,14 @@ function Intro({ saved, onBegin }) {
         The Sorting Ceremony
         <span className="h-px w-8 bg-medical" />
       </span>
-      <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
+      <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
         Where do you belong?
       </h1>
-      <p className="mx-auto mt-6 max-w-xl text-lg font-light leading-relaxed text-silver/75">
+      <p className="mx-auto mt-6 max-w-xl text-lg font-light leading-relaxed text-soft/75">
         Six standing committees, four support divisions. Find out which one is
         yours.
       </p>
-      <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-silver/60">
+      <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-soft/60">
         There’s no talking hat here, just a handful of questions and a
         remarkably perceptive alligator. There are no wrong answers, and no
         committee you can’t belong to. Answer as yourself and Dash will take
@@ -154,16 +154,16 @@ function Intro({ saved, onBegin }) {
       </p>
       <button
         onClick={onBegin}
-        className="mt-10 inline-flex items-center gap-2 rounded-full bg-medical px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-medical/20 transition-colors hover:bg-medical-light"
+        className="mt-10 inline-flex items-center gap-2 rounded-full bg-medical px-8 py-3.5 text-sm font-semibold text-forest-950 shadow-lg shadow-medical/20 transition-colors hover:bg-medical-light"
       >
         Begin the Sorting
         <span aria-hidden="true">→</span>
       </button>
-      <p className="mt-5 text-xs text-silver/45">
+      <p className="mt-5 text-xs text-soft/45">
         It takes about two minutes. Dash is gentle.
       </p>
       {savedCommittee && (
-        <p className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-forest-800/80 px-5 py-2.5 text-sm text-silver/70">
+        <p className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-line/10 bg-card/80 px-5 py-2.5 text-sm text-soft/70">
           Last time, Dash said
           <Link
             to={`/committees/${slugFor(savedCommittee)}`}
@@ -183,11 +183,11 @@ function Question({ qIndex, answers, picked, onChoose, onBack }) {
   const progress = (qIndex / QUESTIONS.length) * 100
   return (
     <div key={qIndex} className="mx-auto max-w-2xl animate-fade-up">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-silver/60">
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-soft/60">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+          className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
         >
           <span aria-hidden="true">←</span> Back
         </button>
@@ -196,7 +196,7 @@ function Question({ qIndex, answers, picked, onChoose, onBack }) {
         </span>
       </div>
       <div
-        className="mt-4 h-1 overflow-hidden rounded-full bg-white/10"
+        className="mt-4 h-1 overflow-hidden rounded-full bg-veil/10"
         role="progressbar"
         aria-valuenow={qIndex + 1}
         aria-valuemin={1}
@@ -211,11 +211,11 @@ function Question({ qIndex, answers, picked, onChoose, onBack }) {
 
       <h2
         aria-live="polite"
-        className="heading-serif mt-10 text-2xl leading-snug text-white sm:text-3xl"
+        className="heading-serif mt-10 text-2xl leading-snug text-ink sm:text-3xl"
       >
         {q.question}
       </h2>
-      {q.note && <p className="mt-3 text-sm italic text-medical-light/80">{q.note}</p>}
+      {q.note && <p className="mt-3 text-sm italic text-accent/80">{q.note}</p>}
 
       <div className="mt-8 grid gap-3">
         {q.options.map((opt, i) => {
@@ -228,8 +228,8 @@ function Question({ qIndex, answers, picked, onChoose, onBack }) {
               onClick={() => onChoose(i)}
               className={`rounded-2xl border p-5 text-left text-base leading-relaxed transition-all duration-200 ${
                 isPicked || wasChosen
-                  ? 'border-medical bg-medical/15 text-white'
-                  : 'border-white/10 bg-forest-800 text-silver/85 hover:border-white/30 hover:bg-forest-800/70'
+                  ? 'border-medical bg-medical/15 text-ink'
+                  : 'border-line/10 bg-card text-soft/85 hover:border-line/30 hover:bg-card/70'
               }`}
             >
               {opt.text}
@@ -268,7 +268,7 @@ function Reveal({ onDone }) {
         {/* Placeholder icon while Dash deliberates (swap for Dash art when ready) */}
         <svg
           viewBox="0 0 24 24"
-          className="h-8 w-8 text-medical-light"
+          className="h-8 w-8 text-accent"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -283,13 +283,13 @@ function Reveal({ onDone }) {
       </span>
       <p
         key={lineIdx}
-        className="mt-10 animate-reveal font-serif text-2xl italic leading-relaxed text-silver/85 sm:text-3xl"
+        className="mt-10 animate-reveal font-serif text-2xl italic leading-relaxed text-soft/85 sm:text-3xl"
       >
         {REVEAL_LINES[lineIdx]}
       </p>
       <button
         onClick={() => done.current()}
-        className="mt-12 text-xs font-semibold uppercase tracking-[0.2em] text-silver/40 transition-colors hover:text-white"
+        className="mt-12 text-xs font-semibold uppercase tracking-[0.2em] text-soft/40 transition-colors hover:text-ink"
       >
         Skip
       </button>
@@ -321,7 +321,7 @@ function Result({ winner, ranked, answers, onRetake }) {
 
   return (
     <div className="mx-auto max-w-2xl text-center animate-fade-up">
-      <p className="font-serif text-2xl italic text-silver/70">Better be…</p>
+      <p className="font-serif text-2xl italic text-soft/70">Better be…</p>
 
       <div
         className="relative mx-auto mt-8 grid h-28 w-28 place-items-center rounded-full border"
@@ -335,20 +335,20 @@ function Result({ winner, ranked, answers, onRetake }) {
           src={winner.logo}
           alt=""
           aria-hidden="true"
-          className="relative h-16 w-16 object-contain"
+          className="logo-ink relative h-16 w-16 object-contain"
         />
       </div>
 
       <h1 className="heading-serif mt-8 text-5xl sm:text-7xl" style={{ color: accent }}>
         {winner.abbr}!
       </h1>
-      <p className="mt-3 text-lg text-white">
+      <p className="mt-3 text-lg text-ink">
         {winner.name}
-        <span className="mx-2 text-silver/40">·</span>
-        <span className="text-silver/60">{winner.group}</span>
+        <span className="mx-2 text-soft/40">·</span>
+        <span className="text-soft/60">{winner.group}</span>
       </p>
       {winner.nickname && (
-        <p className="mt-4 text-base text-silver/75">
+        <p className="mt-4 text-base text-soft/75">
           Welcome to the{' '}
           <span className="font-semibold" style={{ color: accent }}>
             {winner.nickname}
@@ -356,7 +356,7 @@ function Result({ winner, ranked, answers, onRetake }) {
           {winner.mascot?.emoji ? ` ${winner.mascot.emoji}` : ''}
         </p>
       )}
-      <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-silver/70">
+      <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-soft/70">
         {winner.tagline} {winner.description}
       </p>
 
@@ -370,15 +370,15 @@ function Result({ winner, ranked, answers, onRetake }) {
         </Link>
         <button
           onClick={share}
-          className="rounded-full border border-white/20 px-7 py-3 text-sm font-semibold text-white transition-colors hover:border-white/45"
+          className="rounded-full border border-line/20 px-7 py-3 text-sm font-semibold text-ink transition-colors hover:border-line/45"
         >
           {copied ? 'Copied!' : 'Share your result'}
         </button>
       </div>
 
       {runnersUp.length > 0 && (
-        <div className="mx-auto mt-14 max-w-xl rounded-3xl border border-white/10 bg-forest-800/60 p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+        <div className="mx-auto mt-14 max-w-xl rounded-3xl border border-line/10 bg-card/60 p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
             Dash also heard echoes of
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -386,11 +386,11 @@ function Result({ winner, ranked, answers, onRetake }) {
               <Link
                 key={c.abbr}
                 to={`/committees/${slugFor(c)}`}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-forest-900/70 px-4 py-2 text-sm text-silver/80 transition-colors hover:border-white/30 hover:text-white"
+                className="inline-flex items-center gap-2 rounded-full border border-line/10 bg-sunk/70 px-4 py-2 text-sm text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
               >
                 <span
                   className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
-                  style={{ background: rgba(c.color, 0.2), color: readableAccent(c.color) }}
+                  style={{ background: rgba(c.color, 0.2), color: chipAccent(c.color) }}
                 >
                   {c.abbr}
                 </span>
@@ -402,28 +402,28 @@ function Result({ winner, ranked, answers, onRetake }) {
       )}
 
       {profile.interests.length > 0 && (
-        <div className="mx-auto mt-8 max-w-xl rounded-3xl border border-white/10 bg-forest-800/40 p-7">
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+        <div className="mx-auto mt-8 max-w-xl rounded-3xl border border-line/10 bg-card/40 p-7">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-accent">
             What Dash heard in you
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             {profile.interests.map((it) => (
               <span
                 key={it.axis}
-                className="inline-flex flex-col items-center rounded-2xl border border-white/10 bg-forest-900/60 px-5 py-3"
+                className="inline-flex flex-col items-center rounded-2xl border border-line/10 bg-sunk/60 px-5 py-3"
               >
-                <span className="text-sm font-bold text-white">{it.name}</span>
-                <span className="text-xs text-silver/55">{it.label}</span>
+                <span className="text-sm font-bold text-ink">{it.name}</span>
+                <span className="text-xs text-soft/55">{it.label}</span>
               </span>
             ))}
             {profile.trait && (
-              <span className="inline-flex flex-col items-center rounded-2xl border border-white/10 bg-forest-900/60 px-5 py-3">
-                <span className="text-sm font-bold text-white">{profile.trait.name}</span>
-                <span className="text-xs text-silver/55">{profile.trait.label}</span>
+              <span className="inline-flex flex-col items-center rounded-2xl border border-line/10 bg-sunk/60 px-5 py-3">
+                <span className="text-sm font-bold text-ink">{profile.trait.name}</span>
+                <span className="text-xs text-soft/55">{profile.trait.label}</span>
               </span>
             )}
           </div>
-          <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-silver/50">
+          <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-soft/50">
             A leaning toward {profile.interests[0].blurb}
             {profile.trait ? `, and ${profile.trait.blurb}` : ''}. It’s a nudge
             toward {winner.abbr}, not a verdict.
@@ -431,21 +431,21 @@ function Result({ winner, ranked, answers, onRetake }) {
         </div>
       )}
 
-      <details className="group mx-auto mt-6 max-w-xl rounded-3xl border border-white/10 bg-forest-800/40 text-left">
+      <details className="group mx-auto mt-6 max-w-xl rounded-3xl border border-line/10 bg-card/40 text-left">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-6 [&::-webkit-details-marker]:hidden">
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-ink">
             The science behind the Sorting
           </span>
           <span
             aria-hidden="true"
-            className="text-medical-light transition-transform duration-300 group-open:rotate-180"
+            className="text-accent transition-transform duration-300 group-open:rotate-180"
           >
             ▾
           </span>
         </summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-5">
-          <p className="text-sm leading-relaxed text-silver/70">{QUIZ_BASIS}</p>
-          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+        <div className="border-t border-line/10 px-6 pb-6 pt-5">
+          <p className="text-sm leading-relaxed text-soft/70">{QUIZ_BASIS}</p>
+          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Go deeper
           </p>
           <ul className="mt-3 space-y-3">
@@ -455,11 +455,11 @@ function Result({ winner, ranked, answers, onRetake }) {
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-semibold text-medical-light transition-colors hover:text-white"
+                  className="text-sm font-semibold text-accent transition-colors hover:text-ink"
                 >
                   {s.label} ↗
                 </a>
-                <p className="text-xs leading-relaxed text-silver/50">{s.note}</p>
+                <p className="text-xs leading-relaxed text-soft/50">{s.note}</p>
               </li>
             ))}
           </ul>
@@ -469,18 +469,18 @@ function Result({ winner, ranked, answers, onRetake }) {
       <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm">
         <button
           onClick={onRetake}
-          className="font-semibold text-medical-light transition-colors hover:text-white"
+          className="font-semibold text-accent transition-colors hover:text-ink"
         >
           Retake the Sorting
         </button>
         <Link
           to="/join"
-          className="font-semibold text-medical-light transition-colors hover:text-white"
+          className="font-semibold text-accent transition-colors hover:text-ink"
         >
           How to join AUSSS →
         </Link>
       </div>
-      <p className="mx-auto mt-8 max-w-md text-xs leading-relaxed text-silver/40">
+      <p className="mx-auto mt-8 max-w-md text-xs leading-relaxed text-soft/40">
         Sorted by a few honest questions, not by destiny. Every committee and
         division welcomes every member, whatever Dash says.
       </p>

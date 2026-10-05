@@ -10,7 +10,7 @@ import { useCartDrawerOpen, closeCartDrawer } from '../lib/cart.js'
 export default function Layout() {
   const cartOpen = useCartDrawerOpen()
   return (
-    <div className="min-h-screen bg-cream dark:bg-forest-950">
+    <div className="min-h-screen bg-page">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>

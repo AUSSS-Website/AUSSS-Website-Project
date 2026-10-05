@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { committeeBySlug, slugFor } from '../data/society.js'
-import { readableAccent, rgba } from '../lib/color.js'
+import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import { driveImg } from '../lib/img.js'
 import { useOfficerOverrides } from '../hooks/useOfficerOverrides.js'
 import { useCalls } from '../hooks/useCalls.js'
@@ -75,21 +75,21 @@ export default function CommitteePage() {
     : []
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       {/* Brand hero */}
       <header className="relative overflow-hidden pb-20 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'linear-gradient(#C9D6DF 1px, transparent 1px), linear-gradient(90deg, #C9D6DF 1px, transparent 1px)',
+              'linear-gradient(rgb(var(--c-soft)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '64px 64px',
           }}
         />
         <div className="container-prose relative text-center">
           <Link
             to="/#officials"
-            className="mb-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
+            className="mb-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -102,10 +102,10 @@ export default function CommitteePage() {
               <img
                 src={c.logo}
                 alt={`${c.abbr} logo`}
-                className="max-h-28 w-auto object-contain drop-shadow"
+                className="logo-ink max-h-28 w-auto object-contain drop-shadow"
               />
             ) : (
-              <span className="heading-serif text-5xl text-white">
+              <span className="heading-serif text-5xl text-ink">
                 {c.abbr}
               </span>
             )}
@@ -120,16 +120,16 @@ export default function CommitteePage() {
           </p>
           {/* Title shows the committee's informal nickname (e.g. SCOPEnguins)
               when one exists, with the formal name kept as a subtitle. */}
-          <h1 className="heading-serif mt-3 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-3 text-4xl text-ink sm:text-6xl">
             {c.nickname || c.name}
           </h1>
           {c.nickname && (
-            <p className="heading-serif mt-2 text-xl text-silver/80 sm:text-2xl">
+            <p className="heading-serif mt-2 text-xl text-soft/80 sm:text-2xl">
               {c.name}
             </p>
           )}
           {(tagline || c.officer) && (
-            <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-silver/75">
+            <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
               {tagline || c.officer}
             </p>
           )}
@@ -141,7 +141,7 @@ export default function CommitteePage() {
         {about.length > 0 && (
           <section className="reveal mx-auto max-w-5xl">
             <SectionLabel accent={accent}>Who we are</SectionLabel>
-            <div className="mt-6 space-y-5 text-lg leading-relaxed text-silver/80">
+            <div className="mt-6 space-y-5 text-lg leading-relaxed text-soft/80">
               {about.map((p, idx) => (
                 <p key={idx}>{p}</p>
               ))}
@@ -156,7 +156,7 @@ export default function CommitteePage() {
         {openCalls.length > 0 && (
           <section className="reveal mx-auto max-w-5xl">
             <SectionLabel accent={accent}>Open Calls</SectionLabel>
-            <p className="mt-6 max-w-2xl text-sm leading-relaxed text-silver/60">
+            <p className="mt-6 max-w-2xl text-sm leading-relaxed text-soft/60">
               Opportunities {c.abbr} is recruiting for right now. Applications go
               straight to the team running them.
             </p>
@@ -181,7 +181,7 @@ export default function CommitteePage() {
           <section className="reveal mx-auto max-w-5xl">
             <SectionLabel accent={accent}>From IFMSA · mission and pillars</SectionLabel>
             <div
-              className="mt-8 rounded-3xl border bg-forest-900/60 p-8 sm:p-10"
+              className="mt-8 rounded-3xl border bg-sunk/60 p-8 sm:p-10"
               style={{ borderColor: rgba(c.color, 0.3) }}
             >
               <blockquote>
@@ -192,21 +192,21 @@ export default function CommitteePage() {
                 >
                   &ldquo;
                 </span>
-                <p className="-mt-3 text-xl font-light italic leading-relaxed text-silver/90 sm:text-2xl">
+                <p className="-mt-3 text-xl font-light italic leading-relaxed text-soft/90 sm:text-2xl">
                   {c.ifmsa.mission}
                 </p>
               </blockquote>
 
               {c.ifmsa.pillars?.length > 0 && (
                 <>
-                  <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.2em] text-silver/45">
+                  <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/45">
                     Objectives and focus areas
                   </p>
                   <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
                     {c.ifmsa.pillars.map((item, idx) => (
                       <li
                         key={idx}
-                        className="flex gap-3 text-sm leading-relaxed text-silver/80"
+                        className="flex gap-3 text-sm leading-relaxed text-soft/80"
                       >
                         <span
                           className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
@@ -224,7 +224,7 @@ export default function CommitteePage() {
                 href={c.ifmsa.source}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-8 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-silver/50 transition-colors hover:text-white"
+                className="mt-8 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors hover:text-ink"
               >
                 Mission and objectives as published by IFMSA
                 <svg
@@ -252,15 +252,15 @@ export default function CommitteePage() {
               {whatWeDo.map((item, idx) => (
                 <li
                   key={idx}
-                  className="flex gap-4 rounded-2xl border border-white/10 bg-forest-800 p-6"
+                  className="flex gap-4 rounded-2xl border border-line/10 bg-card p-6"
                 >
                   <span
                     className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold"
-                    style={{ background: rgba(c.color, 0.18), color: accent }}
+                    style={{ background: rgba(c.color, 0.18), color: chipAccent(c.color) }}
                   >
                     {idx + 1}
                   </span>
-                  <p className="min-w-0 break-words text-sm leading-relaxed text-silver/80">
+                  <p className="min-w-0 break-words text-sm leading-relaxed text-soft/80">
                     {item}
                   </p>
                 </li>
@@ -275,7 +275,7 @@ export default function CommitteePage() {
         {c.mascot && (
           <section className="reveal mx-auto max-w-3xl">
             <SectionLabel accent={accent} noRule>Our mascot</SectionLabel>
-            <div className="mt-8 flex flex-col items-center gap-6 rounded-3xl border border-white/10 bg-forest-800 p-8 text-center sm:flex-row sm:items-start sm:gap-8 sm:p-10 sm:text-left">
+            <div className="mt-8 flex flex-col items-center gap-6 rounded-3xl border border-line/10 bg-card p-8 text-center sm:flex-row sm:items-start sm:gap-8 sm:p-10 sm:text-left">
               <div
                 className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl text-5xl"
                 style={{ background: rgba(c.color, 0.16) }}
@@ -284,24 +284,24 @@ export default function CommitteePage() {
                 {c.mascot.emoji}
               </div>
               <div className="min-w-0">
-                <h3 className="heading-serif text-2xl text-white">
+                <h3 className="heading-serif text-2xl text-ink">
                   {c.nickname}
                   {c.mascot.animal && (
-                    <span className="text-silver/50"> · the {c.mascot.animal}</span>
+                    <span className="text-soft/50"> · the {c.mascot.animal}</span>
                   )}
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-silver/80">
+                <p className="mt-3 text-sm leading-relaxed text-soft/80">
                   {c.mascot.body}
                 </p>
                 {c.mascot.sources?.length > 0 && (
-                  <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-silver/45">
+                  <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-soft/45">
                     {c.mascot.sources.map((s) => (
                       <a
                         key={s.href}
                         href={s.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline underline-offset-2 transition-colors hover:text-white"
+                        className="underline underline-offset-2 transition-colors hover:text-ink"
                       >
                         {s.label}
                       </a>
@@ -326,7 +326,7 @@ export default function CommitteePage() {
           </div>
           {/* The rest of the team, below */}
           {members.length > 0 && (
-            <div className="mx-auto mt-12 max-w-3xl border-t border-white/10 pt-12">
+            <div className="mx-auto mt-12 max-w-3xl border-t border-line/10 pt-12">
               <div className="flex flex-wrap justify-center gap-x-10 gap-y-10">
                 {members.map((m, idx) => (
                   <PersonCard key={`m-${idx}`} person={m} color={c.color} />
@@ -339,7 +339,7 @@ export default function CommitteePage() {
         <div className="reveal text-center">
           <Link
             to="/#officials"
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
           >
             Back to all committees and divisions
           </Link>

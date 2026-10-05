@@ -50,10 +50,10 @@ export default function CommitteeEditorPage() {
   if (!committee.data || !staticCommittee) {
     return (
       <Panel>
-        <p className="text-sm text-silver/70">Unknown committee ({slug}).</p>
+        <p className="text-sm text-soft/70">Unknown committee ({slug}).</p>
         <Link
           to="/portal/committees"
-          className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+          className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
         >
           &larr; Choose another committee
         </Link>
@@ -63,14 +63,14 @@ export default function CommitteeEditorPage() {
   if (!officerOf(slug)) {
     return (
       <Panel>
-        <p className="text-sm text-silver/70">
+        <p className="text-sm text-soft/70">
           Only {committee.data.abbr}&rsquo;s officers and the Executive Board can
           edit this page. If you think you should have access, ask the webmaster
           to check your assignment for this term.
         </p>
         <Link
           to="/portal"
-          className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+          className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
         >
           &larr; Back to your dashboard
         </Link>
@@ -84,7 +84,7 @@ export default function CommitteeEditorPage() {
     <>
       <PageHeader
         eyebrow={
-          <Link to="/portal/committees" className="hover:text-white">
+          <Link to="/portal/committees" className="hover:text-ink">
             &larr; Your committees
           </Link>
         }
@@ -92,10 +92,10 @@ export default function CommitteeEditorPage() {
           <span className="flex items-center gap-3">
             {c.logo && (
               <span
-                className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-forest-950 p-1"
-                style={{ borderColor: c.color || 'rgba(255,255,255,0.15)' }}
+                className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-page p-1"
+                style={{ borderColor: c.color || 'rgb(var(--c-line) / 0.15)' }}
               >
-                <img src={c.logo} alt="" className="h-full w-full object-contain" />
+                <img src={c.logo} alt="" className="logo-ink h-full w-full object-contain" />
               </span>
             )}
             {c.abbr}
@@ -107,7 +107,7 @@ export default function CommitteeEditorPage() {
             to={`/committees/${c.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/10"
+            className="rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10"
           >
             View public page ↗
           </Link>
@@ -125,7 +125,7 @@ export default function CommitteeEditorPage() {
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
               tab === key
                 ? 'bg-medical text-forest-950'
-                : 'border border-white/15 text-silver/70 hover:text-white'
+                : 'border border-line/15 text-soft/70 hover:text-ink'
             }`}
           >
             {label}

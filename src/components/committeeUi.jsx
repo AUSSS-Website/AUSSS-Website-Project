@@ -12,7 +12,7 @@ export function PersonCard({ person, color }) {
   return (
     <div className="flex w-36 flex-col items-center text-center">
       <div
-        className="grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-forest-950 text-lg font-semibold text-silver ring-2"
+        className="grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-page text-lg font-semibold text-soft ring-2"
         style={{ '--tw-ring-color': rgba(color, 0.55) }}
       >
         {person.photo && !imgFailed ? (
@@ -31,7 +31,7 @@ export function PersonCard({ person, color }) {
       </div>
       <span
         className={`mt-3 block text-sm font-semibold leading-tight ${
-          person.name?.trim() ? 'text-white' : 'italic text-silver/35'
+          person.name?.trim() ? 'text-ink' : 'italic text-soft/35'
         }`}
       >
         {person.name?.trim() || 'Name TBA'}

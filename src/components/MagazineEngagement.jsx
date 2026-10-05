@@ -21,16 +21,16 @@ export default function MagazineEngagement({ engagement, className = '' }) {
         aria-label={liked ? 'Liked' : 'Like this issue'}
         className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
           liked
-            ? 'border-medical/40 bg-medical/15 text-medical-light'
-            : 'border-white/15 bg-forest-800 text-silver/80 hover:border-medical/40 hover:text-white'
+            ? 'border-medical/40 bg-medical/15 text-accent'
+            : 'border-line/15 bg-card text-soft/80 hover:border-medical/40 hover:text-ink'
         }`}
       >
         <HeartIcon filled={liked} />
         {liked ? 'Liked' : 'Like'}
-        <span className="tabular-nums text-silver/60">{counts.likes}</span>
+        <span className="tabular-nums text-soft/60">{counts.likes}</span>
       </button>
 
-      <span className="inline-flex items-center gap-1.5 text-sm text-silver/55">
+      <span className="inline-flex items-center gap-1.5 text-sm text-soft/55">
         <EyeIcon />
         <span className="tabular-nums">{counts.views}</span>
         {counts.views === 1 ? 'read' : 'reads'}

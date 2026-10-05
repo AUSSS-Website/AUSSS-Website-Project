@@ -33,8 +33,8 @@ function BooleanSetting({ def, value, onChange, busy }) {
   return (
     <div className="flex items-start justify-between gap-6">
       <div>
-        <p className="text-sm font-semibold text-white">{def.label}</p>
-        <p className="mt-1 text-xs text-silver/55">{def.hint}</p>
+        <p className="text-sm font-semibold text-ink">{def.label}</p>
+        <p className="mt-1 text-xs text-soft/55">{def.hint}</p>
       </div>
       <Toggle checked={on} onChange={onChange} label={def.label} disabled={busy} />
     </div>
@@ -60,7 +60,7 @@ function RawSetting({ k, value, onSave, busy }) {
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
       <div className="min-w-0 flex-1">
-        <p className="mb-2 font-mono text-xs text-silver/70">{k}</p>
+        <p className="mb-2 font-mono text-xs text-soft/70">{k}</p>
         <input value={text} onChange={(e) => setText(e.target.value)} className={inputCls} />
         <ErrorText>{err}</ErrorText>
       </div>
@@ -81,18 +81,18 @@ function RebuildPanel() {
   const waiting = s.requested_at && (!s.fired_at || s.fired_at < s.requested_at)
   return (
     <Panel title="Public pages">
-      <p className="mt-4 text-sm text-silver/75">
+      <p className="mt-4 text-sm text-soft/75">
         {s.fired_at ? `Last rebuilt ${when(s.fired_at)}.` : 'Not rebuilt from the portal yet.'}{' '}
         {waiting
           ? 'A change is waiting; the next rebuild starts within a few minutes of the last edit.'
           : 'Nothing is waiting.'}
       </p>
-      <p className="mt-2 text-xs text-silver/50">
+      <p className="mt-2 text-xs text-soft/50">
         Visitors always see the latest names, photos, albums and stories straight away. The rebuild
         is for search engines and link previews, which read the saved copy of each page.
       </p>
       {!s.hook && (
-        <p className="mt-3 text-xs text-amber-300">
+        <p className="mt-3 text-xs text-warn">
           The rebuild is not connected yet: the webmaster still has to save the deploy hook
           (RUNBOOK section 23). Until then the pages are rebuilt on each code release only.
         </p>
@@ -165,7 +165,7 @@ export default function SiteSettingsPage() {
           <RebuildPanel />
 
           {save.error && <ErrorText>{save.error.message}</ErrorText>}
-          {msg && <p className="text-xs font-semibold text-medical-light">{msg}</p>}
+          {msg && <p className="text-xs font-semibold text-accent">{msg}</p>}
         </div>
       )}
     </>

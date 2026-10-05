@@ -12,25 +12,25 @@ import { formatDeadline } from '../hooks/useCalls.js'
 // the call, rendered by type.
 
 const inputBase =
-  'w-full rounded-xl border bg-forest-950 px-4 py-2.5 text-sm text-white placeholder:text-silver/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
+  'w-full rounded-xl border bg-page px-4 py-2.5 text-sm text-ink placeholder:text-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
 const inputClass = (error) =>
-  `${inputBase} ${error ? 'border-red-400/70' : 'border-white/15 focus-visible:border-medical'}`
+  `${inputBase} ${error ? 'border-red-400/70' : 'border-line/15 focus-visible:border-medical'}`
 
 function Field({ label, htmlFor, error, hint, required, children }) {
   return (
     <div>
       <label
         htmlFor={htmlFor}
-        className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-silver/70"
+        className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-soft/70"
       >
         {label}
-        {required && <span className="text-medical-light"> *</span>}
+        {required && <span className="text-accent"> *</span>}
       </label>
-      {hint && <p className="mb-2 text-xs text-silver/45">{hint}</p>}
+      {hint && <p className="mb-2 text-xs text-soft/45">{hint}</p>}
       {children}
       {error && (
-        <p role="alert" className="mt-1.5 text-xs text-red-300">
+        <p role="alert" className="mt-1.5 text-xs text-danger">
           {error}
         </p>
       )}
@@ -132,9 +132,9 @@ export default function ApplyModal({ call, color, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="apply-title"
-        className="my-8 w-full max-w-2xl rounded-3xl border border-white/15 bg-forest-900 shadow-2xl"
+        className="my-8 w-full max-w-2xl rounded-3xl border border-line/15 bg-sunk shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 p-6 sm:p-8">
+        <div className="flex items-start justify-between gap-4 border-b border-line/10 p-6 sm:p-8">
           <div className="min-w-0">
             <p
               className="text-[11px] font-semibold uppercase tracking-[0.2em]"
@@ -142,11 +142,11 @@ export default function ApplyModal({ call, color, onClose }) {
             >
               Applying for
             </p>
-            <h2 id="apply-title" className="heading-serif mt-2 text-2xl text-white">
+            <h2 id="apply-title" className="heading-serif mt-2 text-2xl text-ink">
               {call.title}
             </h2>
             {call.deadline && (
-              <p className="mt-1 text-xs text-silver/50">
+              <p className="mt-1 text-xs text-soft/50">
                 Applications close {formatDeadline(call.deadline)}
               </p>
             )}
@@ -155,7 +155,7 @@ export default function ApplyModal({ call, color, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/15 text-silver/70 transition-colors hover:bg-white/10 hover:text-white"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line/15 text-soft/70 transition-colors hover:bg-veil/10 hover:text-ink"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
@@ -165,20 +165,20 @@ export default function ApplyModal({ call, color, onClose }) {
 
         {state === 'done' ? (
           <div className="p-6 text-center sm:p-10">
-            <p className="heading-serif text-2xl text-white">Application sent</p>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-silver/75">
+            <p className="heading-serif text-2xl text-ink">Application sent</p>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-soft/75">
               Thanks. The {call.title} team has been notified and will get back to
               you by email.
             </p>
             {result?.ref && (
-              <p className="mt-4 text-xs uppercase tracking-[0.18em] text-silver/45">
+              <p className="mt-4 text-xs uppercase tracking-[0.18em] text-soft/45">
                 Reference {result.ref}
               </p>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="mt-8 rounded-full border border-white/20 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className="mt-8 rounded-full border border-line/20 px-6 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
             >
               Close
             </button>
@@ -186,7 +186,7 @@ export default function ApplyModal({ call, color, onClose }) {
         ) : (
           <form onSubmit={onSubmit} noValidate className="space-y-6 p-6 sm:p-8">
             <fieldset className="space-y-4">
-              <legend className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
                 About you
               </legend>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -236,16 +236,16 @@ export default function ApplyModal({ call, color, onClose }) {
 
             {positions.length > 0 && (
               <fieldset>
-                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-silver/70">
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-soft/70">
                   Position(s) you&rsquo;re applying for
-                  <span className="text-medical-light"> *</span>
+                  <span className="text-accent"> *</span>
                 </legend>
-                <p className="mb-3 text-xs text-silver/45">Pick as many as you like.</p>
+                <p className="mb-3 text-xs text-soft/45">Pick as many as you like.</p>
                 <div className="space-y-2">
                   {positions.map((p) => (
                     <label
                       key={p.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-forest-950 p-3.5 transition-colors hover:border-white/25"
+                      className="flex cursor-pointer items-start gap-3 rounded-xl border border-line/10 bg-page p-3.5 transition-colors hover:border-line/25"
                     >
                       <input
                         type="checkbox"
@@ -254,14 +254,14 @@ export default function ApplyModal({ call, color, onClose }) {
                         className="mt-0.5 h-4 w-4 shrink-0 accent-medical"
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-white">
+                        <span className="block text-sm font-semibold text-ink">
                           {p.title}
                           {p.slots && (
-                            <span className="font-normal text-silver/50"> · {p.slots}</span>
+                            <span className="font-normal text-soft/50"> · {p.slots}</span>
                           )}
                         </span>
                         {p.blurb && (
-                          <span className="mt-0.5 block text-xs leading-relaxed text-silver/60">
+                          <span className="mt-0.5 block text-xs leading-relaxed text-soft/60">
                             {p.blurb}
                           </span>
                         )}
@@ -270,7 +270,7 @@ export default function ApplyModal({ call, color, onClose }) {
                   ))}
                 </div>
                 {errors.positions && (
-                  <p role="alert" className="mt-1.5 text-xs text-red-300">
+                  <p role="alert" className="mt-1.5 text-xs text-danger">
                     {errors.positions}
                   </p>
                 )}
@@ -296,7 +296,7 @@ export default function ApplyModal({ call, color, onClose }) {
 
             {questions.length > 0 && (
               <fieldset className="space-y-4">
-                <legend className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+                <legend className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
                   A few more questions
                 </legend>
                 {questions.map((q) => {
@@ -362,16 +362,16 @@ export default function ApplyModal({ call, color, onClose }) {
             </div>
 
             {submitError && (
-              <p role="alert" className="text-sm text-red-300">
+              <p role="alert" className="text-sm text-danger">
                 {submitError}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-white/10 pt-6">
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line/10 pt-6">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                className="rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
               >
                 Cancel
               </button>

@@ -14,16 +14,16 @@ export default function PdfFrame({ src, title, heightClass = 'h-[82vh]', fit = '
   const view = `${src}#toolbar=0&navpanes=0&view=${fit === 'page' ? 'Fit' : 'FitH'}`
   return (
     <div className="reveal">
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-forest-800">
+      <div className="overflow-hidden rounded-2xl border border-line/10 bg-card">
         <iframe src={view} title={title} loading="lazy" className={`block w-full ${heightClass}`} />
       </div>
-      <p className="mt-3 text-center text-xs text-silver/55">
+      <p className="mt-3 text-center text-xs text-soft/55">
         Can’t see the document?{' '}
         <a
           href={src}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-semibold text-medical-light underline-offset-2 hover:text-white hover:underline"
+          className="font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
         >
           Open it in a new tab
         </a>

@@ -71,7 +71,7 @@ const BLANK = {
 }
 
 const tagCls =
-  'inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-silver/60'
+  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
 
 function toForm(row) {
   const f = {}
@@ -88,7 +88,7 @@ function toForm(row) {
 // what a roster row says (migration 20261005170001).
 function RecordOnlyNote({ what }) {
   return (
-    <p className="mt-2 text-xs text-silver/60" role="note">
+    <p className="mt-2 text-xs text-soft/60" role="note">
       A title only. This member&rsquo;s own email stays a normal member&rsquo;s: access to {what}
       belongs to the position&rsquo;s work email and can be given to no other address.
     </p>
@@ -136,7 +136,7 @@ function Editor({ row, committees, positions, board, onClose }) {
         }
         run(() => save.mutateAsync({ id: row?.id, values: form }))
       }}
-      className="mt-4 space-y-5 border-t border-white/10 pt-5"
+      className="mt-4 space-y-5 border-t border-line/10 pt-5"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Full name" htmlFor="r-name">
@@ -221,7 +221,7 @@ function Editor({ row, committees, positions, board, onClose }) {
               </option>
             ))}
           </select>
-          <label className="mt-3 flex items-center gap-2 text-sm text-silver/75">
+          <label className="mt-3 flex items-center gap-2 text-sm text-soft/75">
             <input
               type="checkbox"
               checked={form.is_contact_person}
@@ -307,7 +307,7 @@ function Editor({ row, committees, positions, board, onClose }) {
           {row &&
             (confirmDelete ? (
               <>
-                <button type="button" disabled={busy} onClick={() => run(() => remove.mutateAsync(row.id))} className={`${outlineBtnCls} border-red-400/50 text-red-300`}>
+                <button type="button" disabled={busy} onClick={() => run(() => remove.mutateAsync(row.id))} className={`${outlineBtnCls} border-red-400/50 text-danger`}>
                   Yes, remove {row.full_name}
                 </button>
                 <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)} className={outlineBtnCls}>
@@ -349,14 +349,14 @@ function Row({ row, committees, positions, board, open, onToggle }) {
   const committee = boardPosition ? { abbr: BOARD_LABEL } : unitOf(committees, row.committee_id)
   const position = boardPosition || positions.find((p) => p.id === row.position_id)
   return (
-    <li className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+    <li className="rounded-2xl border border-line/10 bg-card p-5">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-left">
         <span className="min-w-0">
-          <span className="block truncate text-base font-semibold text-white">{row.full_name}</span>
-          <span className="block truncate text-sm text-silver/60">{row.email || 'No email on file'}</span>
+          <span className="block truncate text-base font-semibold text-ink">{row.full_name}</span>
+          <span className="block truncate text-sm text-soft/60">{row.email || 'No email on file'}</span>
         </span>
-        <span className="flex flex-wrap items-center gap-2 text-xs text-silver/70">
-          <span className="font-semibold text-medical-light">{row.status || 'No status'}</span>
+        <span className="flex flex-wrap items-center gap-2 text-xs text-soft/70">
+          <span className="font-semibold text-accent">{row.status || 'No status'}</span>
           {committee && (
             <span className={tagCls}>
               {committee.abbr}
@@ -384,14 +384,14 @@ function RunSummary({ result }) {
     [result.skipped_invalid, 'rows without a name skipped'],
   ].filter(([n]) => n > 0)
   return (
-    <div className="text-sm text-silver/75">
+    <div className="text-sm text-soft/75">
       <p>{parts.map(([n, l]) => `${n} ${l}`).join(' · ') || 'Nothing to do.'}</p>
       {result.missing_from_sheet > 0 && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-amber-200">
+          <summary className="cursor-pointer text-warn">
             {result.missing_from_sheet} on the roster but not in this file (nothing was removed)
           </summary>
-          <p className="mt-2 text-xs text-silver/60">
+          <p className="mt-2 text-xs text-soft/60">
             {(result.missing_names || []).join(', ')}
             {result.missing_from_sheet > (result.missing_names || []).length ? ' …' : ''}
           </p>
@@ -424,9 +424,9 @@ function SheetConnection({ onResult, onError }) {
 
   return (
     <div className="mt-5">
-      <p className="text-sm font-semibold text-white">
+      <p className="text-sm font-semibold text-ink">
         Google Sheet{' '}
-        <span className="font-normal text-silver/60">
+        <span className="font-normal text-soft/60">
           {info.isPending
             ? ''
             : active
@@ -511,33 +511,33 @@ function SpreadsheetPanel() {
 
   return (
     <Panel title="Spreadsheet" className="mt-10">
-      <p className="mt-3 text-sm text-silver/65">
+      <p className="mt-3 text-sm text-soft/65">
         While the membership Google Sheet is still being edited, bring its changes in here. Rows
         edited in the portal are never overwritten, and nobody is removed by an import.
       </p>
 
       <SheetConnection onResult={setLast} onError={setError} />
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-white/10 pt-5">
+      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line/10 pt-5">
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFile} className="hidden" />
         <button type="button" disabled={importRoster.isPending} onClick={() => fileRef.current?.click()} className={outlineBtnCls}>
           {importRoster.isPending ? 'Importing…' : 'Import an .xlsx or .csv'}
         </button>
-        <span className="text-xs text-silver/50">In the sheet: File → Download → Microsoft Excel.</span>
+        <span className="text-xs text-soft/50">In the sheet: File → Download → Microsoft Excel.</span>
       </div>
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>
         <RunSummary result={last} />
       </div>
 
-      <div className="mt-6 border-t border-white/10 pt-5">
-        <p className="text-sm font-semibold text-white">
+      <div className="mt-6 border-t border-line/10 pt-5">
+        <p className="text-sm font-semibold text-ink">
           Push from the sheet instead{' '}
-          <span className="font-normal text-silver/60">
+          <span className="font-normal text-soft/60">
             {token.isPending ? '' : active ? `· on since ${when(token.data.created_at)}` : '· off'}
           </span>
         </p>
-        <p className="mt-1 text-xs text-silver/55">
+        <p className="mt-1 text-xs text-soft/55">
           For a sheet the server cannot read: its owner installs the script in
           apps-script/roster-sync.gs, which sends the roster here every hour using this token.
           Issuing a new token switches the old one off.
@@ -553,11 +553,11 @@ function SpreadsheetPanel() {
           )}
         </div>
         {newToken && (
-          <div className="mt-4 rounded-xl border border-amber-400/30 bg-forest-900 p-4">
-            <p className="text-xs text-amber-200">
+          <div className="mt-4 rounded-xl border border-amber-400/30 bg-sunk p-4">
+            <p className="text-xs text-warn">
               Copy this now and paste it into the script’s SYNC_TOKEN property. It is not shown again.
             </p>
-            <code className="mt-2 block break-all text-xs text-white">{newToken}</code>
+            <code className="mt-2 block break-all text-xs text-ink">{newToken}</code>
             <button
               type="button"
               onClick={async () => {
@@ -577,12 +577,12 @@ function SpreadsheetPanel() {
       </div>
 
       {runs.data?.length > 0 && (
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <p className="text-sm font-semibold text-white">Recent imports</p>
+        <div className="mt-6 border-t border-line/10 pt-5">
+          <p className="text-sm font-semibold text-ink">Recent imports</p>
           <ul className="mt-3 space-y-3">
             {runs.data.map((r) => (
               <li key={r.id}>
-                <p className="text-xs text-silver/50">
+                <p className="text-xs text-soft/50">
                   {when(r.at)} ·{' '}
                   {r.source === 'sheet' ? 'Google Sheet' : r.source === 'upload' ? 'file upload' : 'script'}
                   {r.batch ? ` · ${r.batch}` : ''}
@@ -733,7 +733,7 @@ export default function RosterPage() {
           handed out here, by address, the same way a committee invites. */}
       {showBoard && (
         <div className="mb-8">
-          <p className="pb-4 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+          <p className="pb-4 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Executive Board and webmaster
           </p>
           <PositionsPanel />
@@ -792,7 +792,7 @@ export default function RosterPage() {
           <option value="none">No committee</option>
           <option value="contact">Contact persons</option>
         </select>
-        <span className="text-xs text-silver/50" aria-live="polite">
+        <span className="text-xs text-soft/50" aria-live="polite">
           {roster.isPending ? '' : `${total.toLocaleString()} ${total === 1 ? 'member' : 'members'}`}
         </span>
         {roster.isFetching && <Spinner className="h-4 w-4" />}
@@ -818,7 +818,7 @@ export default function RosterPage() {
         </div>
       ) : total === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             {term || status || committee
               ? 'Nobody matches that.'
               : 'The roster is empty. Import the membership spreadsheet below to fill it.'}
@@ -832,7 +832,7 @@ export default function RosterPage() {
             ))}
           </ul>
           {pages > 1 && (
-            <div className="flex items-center justify-center gap-4 pt-6 text-xs text-silver/60">
+            <div className="flex items-center justify-center gap-4 pt-6 text-xs text-soft/60">
               <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)} className={outlineBtnCls}>
                 Previous
               </button>

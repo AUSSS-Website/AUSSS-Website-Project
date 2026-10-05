@@ -32,8 +32,8 @@ const PortalRoot = lazy(() => import('./portal/PortalRoot.jsx'))
 // the dark hero so there's no white flash on inner-page navigation.
 function RouteFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-forest-950">
-      <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light" />
+    <div className="flex min-h-screen items-center justify-center bg-page">
+      <span className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent" />
     </div>
   )
 }

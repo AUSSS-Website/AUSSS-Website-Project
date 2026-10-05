@@ -10,11 +10,11 @@ const isSupport = (g) => /support|division|psd|pnsd|cbsd/i.test(g || '')
 
 function EmailValue({ email }) {
   if (!email)
-    return <span className="text-sm italic text-silver/35">Email TBA</span>
+    return <span className="text-sm italic text-soft/35">Email TBA</span>
   return (
     <a
       href={`mailto:${email}`}
-      className="text-sm text-medical-light underline-offset-4 transition-colors hover:text-white hover:underline"
+      className="text-sm text-accent underline-offset-4 transition-colors hover:text-ink hover:underline"
     >
       {email}
     </a>
@@ -23,13 +23,13 @@ function EmailValue({ email }) {
 
 function Row({ name, role, email }) {
   return (
-    <div className="flex flex-col gap-1 border-b border-white/10 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-1 border-b border-line/10 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="text-sm font-semibold text-white">
+        <p className="text-sm font-semibold text-ink">
           {name?.trim() || 'Name TBA'}
         </p>
         {role && (
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-silver/50">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-soft/50">
             {role}
           </p>
         )}
@@ -42,8 +42,8 @@ function Row({ name, role, email }) {
 function Group({ title, children }) {
   return (
     <section className="reveal">
-      <h2 className="heading-serif text-2xl text-white sm:text-3xl">{title}</h2>
-      <div className="mt-4 rounded-2xl border border-white/10 bg-forest-800/60 px-6">
+      <h2 className="heading-serif text-2xl text-ink sm:text-3xl">{title}</h2>
+      <div className="mt-4 rounded-2xl border border-line/10 bg-card/60 px-6">
         {children}
       </div>
     </section>
@@ -78,7 +78,7 @@ export default function ContactPage() {
   }
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-16 pt-32 sm:pt-40">
         <div className="container-prose relative text-center">
           <span className="eyebrow justify-center">
@@ -86,17 +86,17 @@ export default function ContactPage() {
             Get in touch
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-5 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Contact us
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-silver/75">
+          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
             Reach the Executive Board, a standing committee or a support
             division directly, or follow us on our official channels.
           </p>
           {society.contactEmail && (
             <a
               href={`mailto:${society.contactEmail}`}
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-colors hover:bg-silver-light"
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
             >
               {society.contactEmail}
             </a>
@@ -107,10 +107,10 @@ export default function ContactPage() {
       <div className="container-prose space-y-14 pb-28 sm:pb-36">
         {/* Follow us, merged in from the former /social page. */}
         <section className="reveal">
-          <h2 className="heading-serif text-2xl text-white sm:text-3xl">
+          <h2 className="heading-serif text-2xl text-ink sm:text-3xl">
             Follow AUSSS
           </h2>
-          <p className="mt-2 text-sm text-silver/65">
+          <p className="mt-2 text-sm text-soft/65">
             Events, announcements and campaigns. Keep up with the society on
             our official channels.
           </p>
@@ -121,18 +121,18 @@ export default function ContactPage() {
                 href={s.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex flex-col items-center rounded-3xl border border-white/10 bg-forest-800 p-8 text-center transition-all duration-500 hover:-translate-y-1.5 hover:border-medical/40 hover:shadow-2xl hover:shadow-forest-950/40"
+                className="group flex flex-col items-center rounded-3xl border border-line/10 bg-card p-8 text-center transition-all duration-500 hover:-translate-y-1.5 hover:border-medical/40 hover:shadow-2xl hover:shadow-forest-950/40"
               >
-                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-forest-950 text-medical-light transition-colors group-hover:bg-medical group-hover:text-white">
+                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-page text-accent transition-colors group-hover:bg-medical group-hover:text-forest-950">
                   <SocialIcon name={s.key} className="h-8 w-8" />
                 </span>
-                <h3 className="heading-serif mt-6 text-2xl text-white">
+                <h3 className="heading-serif mt-6 text-2xl text-ink">
                   {s.name}
                 </h3>
-                <p className="mt-2 break-words text-sm font-medium text-medical-light">
+                <p className="mt-2 break-words text-sm font-medium text-accent">
                   {s.handle}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed text-silver/65">
+                <p className="mt-3 text-sm leading-relaxed text-soft/65">
                   {s.blurb}
                 </p>
               </a>
@@ -158,11 +158,11 @@ export default function ContactPage() {
           ))}
         </Group>
 
-        <p className="reveal text-center text-sm text-silver/45">
+        <p className="reveal text-center text-sm text-soft/45">
           Looking for a specific committee?{' '}
           <Link
             to="/#officials"
-            className="text-medical-light hover:text-white"
+            className="text-accent hover:text-ink"
           >
             Browse all committees and divisions →
           </Link>

@@ -13,6 +13,7 @@ export default function Flipbook({ pages, title, onPage }) {
   const [ratio, setRatio] = useState(null) // page height ÷ width
   const [page, setPage] = useState(0)
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const bookRef = useRef(null)
 
   useEffect(() => {
@@ -76,13 +77,13 @@ export default function Flipbook({ pages, title, onPage }) {
     return (
       <div
         role="status"
-        className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-white/10 bg-forest-800"
+        className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-line/10 bg-card"
       >
         <span
           aria-hidden="true"
-          className="h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-medical-light"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-line/15 border-t-accent"
         />
-        <p className="mt-4 text-sm text-silver/60">Opening the magazine…</p>
+        <p className="mt-4 text-sm text-soft/60">Opening the magazine…</p>
       </div>
     )
   }
@@ -93,9 +94,18 @@ export default function Flipbook({ pages, title, onPage }) {
   // its exact two-page sizing.
   const maxW = isMobile ? 1200 : 728
 
+  // How thick the stack of pages looks on each side (0 to 1): everything is
+  // on the right under the closed front cover, and it moves to the left as
+  // the reader goes. A side with any pages at all keeps a visible edge.
+  const read = pages.length > 1 ? page / (pages.length - 1) : 0
+  const stack = (share) => (share <= 0 ? 0 : 0.2 + 0.8 * share)
+
   return (
     <div className="flex w-full flex-col items-center">
-      <div className="magazine-frame mx-auto w-full max-w-[717px] md:max-w-[1496px]">
+      <div
+        className="magazine-frame flipbook mx-auto w-full max-w-[717px] md:max-w-[1496px]"
+        style={{ '--stack-left': stack(read), '--stack-right': stack(1 - read) }}
+      >
         <HTMLFlipBook
           ref={bookRef}
           width={baseW}
@@ -105,12 +115,14 @@ export default function Flipbook({ pages, title, onPage }) {
           maxWidth={maxW}
           minHeight={Math.round(300 * ratio)}
           maxHeight={Math.round(maxW * ratio)}
-          maxShadowOpacity={0.5}
+          // The shadow the lifting page casts along its fold.
+          maxShadowOpacity={0.75}
           showCover
           mobileScrollSupport
           usePortrait={isMobile}
           drawShadow
-          flippingTime={700}
+          // Reduced motion: the page still turns, but at once.
+          flippingTime={reduceMotion ? 120 : 700}
           onFlip={(e) => setPage(e.data)}
           className="mx-auto"
         >
@@ -154,7 +166,7 @@ export default function Flipbook({ pages, title, onPage }) {
           Next ›
         </button>
       </div>
-      <p className="mt-3 text-xs text-silver/60">
+      <p className="mt-3 text-xs text-soft/60">
         Drag a corner or use the arrows to flip.
       </p>
       <p className="sr-only" role="status" aria-live="polite">
@@ -165,4 +177,4 @@ export default function Flipbook({ pages, title, onPage }) {
 }
 
 const navBtn =
-  'inline-flex items-center gap-2 rounded-full border border-white/15 bg-forest-800 px-4 py-2 text-sm font-medium text-silver/80 transition-colors hover:border-medical/40 hover:text-white'
+  'inline-flex items-center gap-2 rounded-full border border-line/15 bg-card px-4 py-2 text-sm font-medium text-soft/80 transition-colors hover:border-medical/40 hover:text-ink'

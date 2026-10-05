@@ -13,10 +13,10 @@ export default function Footer() {
   // settling back into the solid forest. The footer stays its own section.
   const onMagazine = useLocation().pathname === '/magazine'
   return (
-    <footer className="relative overflow-hidden border-t border-white/10 bg-forest-950 py-14">
+    <footer className="dark relative overflow-hidden border-t border-line/10 bg-page py-14">
       {onMagazine && (
         <Suspense fallback={null}>
-          <GalleryAurora opacityClass="opacity-30" amplitude={1.1} blend={0.55} />
+          <GalleryAurora tone="dark" opacityClass="opacity-30" amplitude={1.1} blend={0.55} />
         </Suspense>
       )}
       <div className="container-prose relative z-10">
@@ -33,10 +33,10 @@ export default function Footer() {
                 className="h-24 w-auto"
               />
             </Link>
-            <p className="heading-serif text-base text-silver/75">
+            <p className="heading-serif text-base text-soft/75">
               Life Savers, Change Makers
             </p>
-            <p className="mt-1 max-w-xs text-xs leading-relaxed text-silver/55">
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-soft/55">
               Ain Shams University Students&rsquo; Scientific Society, the IFMSA
               society at the Faculty of Medicine, Ain Shams University.
             </p>
@@ -48,7 +48,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.name}
-                  className="grid h-9 w-9 place-items-center rounded-full border border-white/15 text-silver/70 transition-colors hover:border-medical hover:text-white"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-line/15 text-soft/70 transition-colors hover:border-medical hover:text-ink"
                 >
                   <SocialIcon name={s.key} className="h-4 w-4" />
                 </a>
@@ -58,32 +58,32 @@ export default function Footer() {
 
           <nav
             aria-label="Footer"
-            className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-silver/70"
+            className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-soft/70"
           >
-            <Link to="/" className="transition-colors hover:text-white">Home</Link>
-            <Link to="/merch" className="transition-colors hover:text-white">Merch</Link>
-            <Link to="/ifmsa" className="transition-colors hover:text-white">IFMSA</Link>
-            <Link to="/magazine" className="transition-colors hover:text-white">Magazine</Link>
-            <Link to="/contact" className="transition-colors hover:text-white">Contact</Link>
-            <Link to="/members" className="transition-colors hover:text-white">Members</Link>
-            <Link to="/constitution" className="transition-colors hover:text-white">
+            <Link to="/" className="transition-colors hover:text-ink">Home</Link>
+            <Link to="/merch" className="transition-colors hover:text-ink">Merch</Link>
+            <Link to="/ifmsa" className="transition-colors hover:text-ink">IFMSA</Link>
+            <Link to="/magazine" className="transition-colors hover:text-ink">Magazine</Link>
+            <Link to="/contact" className="transition-colors hover:text-ink">Contact</Link>
+            <Link to="/members" className="transition-colors hover:text-ink">Members</Link>
+            <Link to="/constitution" className="transition-colors hover:text-ink">
               Constitution
             </Link>
-            <Link to="/join" className="transition-colors hover:text-white">Join</Link>
-            <Link to="/sorting" className="transition-colors hover:text-white">Sorting quiz</Link>
-            <Link to="/portal/sign-in" className="transition-colors hover:text-white">
+            <Link to="/join" className="transition-colors hover:text-ink">Join</Link>
+            <Link to="/sorting" className="transition-colors hover:text-ink">Sorting quiz</Link>
+            <Link to="/portal/sign-in" className="transition-colors hover:text-ink">
               Members portal
             </Link>
-            <Link to="/privacy" className="transition-colors hover:text-white">Privacy</Link>
+            <Link to="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
           </nav>
         </div>
 
-        <div className="mt-12 border-t border-white/10 pt-10">
-          <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-silver/55">
+        <div className="mt-12 border-t border-line/10 pt-10">
+          <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/55">
             Find us
           </p>
           <div className="mx-auto grid max-w-3xl items-stretch gap-6 md:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl border border-white/10">
+            <div className="overflow-hidden rounded-2xl border border-line/10">
               <iframe
                 title="Faculty of Medicine, Ain Shams University on Google Maps"
                 src="https://maps.google.com/maps?q=Faculty%20of%20Medicine%2C%20Ain%20Shams%20University&z=16&output=embed"
@@ -92,11 +92,11 @@ export default function Footer() {
                 className="block h-64 w-full border-0 grayscale-[0.2] md:h-full"
               />
             </div>
-            <address className="flex flex-col justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-6 not-italic">
-              <p className="heading-serif text-base text-white">
+            <address className="flex flex-col justify-center gap-3 rounded-2xl border border-line/10 bg-veil/[0.02] p-6 not-italic">
+              <p className="heading-serif text-base text-ink">
                 Faculty of Medicine, Ain Shams University
               </p>
-              <p className="text-sm leading-relaxed text-silver/70">
+              <p className="text-sm leading-relaxed text-soft/70">
                 38 Abbassia, next to Al-Nour Mosque
                 <br />
                 Cairo 1181, Egypt
@@ -105,7 +105,7 @@ export default function Footer() {
                 href="https://maps.google.com/maps?q=Faculty%20of%20Medicine%2C%20Ain%20Shams%20University"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-1.5 text-sm text-silver/70 transition-colors hover:text-white"
+                className="mt-1 inline-flex items-center gap-1.5 text-sm text-soft/70 transition-colors hover:text-ink"
               >
                 <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
                   <path
@@ -122,8 +122,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center gap-5 border-t border-white/10 pt-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-silver/40">
+        <div className="mt-10 flex flex-col items-center gap-5 border-t border-line/10 pt-10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/40">
             An autonomous affiliate of
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
@@ -162,7 +162,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-8 text-center text-xs text-silver/40">
+        <div className="mt-10 border-t border-line/10 pt-8 text-center text-xs text-soft/40">
           © {new Date().getFullYear()} AUSSS · Faculty of Medicine, Ain Shams
           University · Cairo, Egypt
         </div>

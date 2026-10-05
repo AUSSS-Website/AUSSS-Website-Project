@@ -68,7 +68,7 @@ export function FileChooser({ files, onChange, disabled, id }) {
           type="button"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40"
         >
           <Clip className="h-3.5 w-3.5" />
           Attach files
@@ -76,16 +76,16 @@ export function FileChooser({ files, onChange, disabled, id }) {
         {files.map((f) => (
           <span
             key={`${f.name}-${f.size}`}
-            className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-forest-900 py-1 pl-3 pr-1.5 text-xs text-white"
+            className="inline-flex max-w-full items-center gap-2 rounded-full border border-line/15 bg-sunk py-1 pl-3 pr-1.5 text-xs text-ink"
           >
             <span className="min-w-0 truncate">{f.name}</span>
-            <span className="shrink-0 text-silver/50">{sizeLabel(f.size)}</span>
+            <span className="shrink-0 text-soft/50">{sizeLabel(f.size)}</span>
             <button
               type="button"
               disabled={disabled}
               onClick={() => onChange(files.filter((x) => x !== f))}
               aria-label={`Remove ${f.name}`}
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-silver/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-soft/60 transition-colors hover:bg-veil/10 hover:text-ink disabled:opacity-40"
             >
               &times;
             </button>
@@ -132,14 +132,14 @@ export function FileLinks({ files, canRemove, onRemove, removing, className = ''
               type="button"
               onClick={() => open(file)}
               disabled={busy === file.id}
-              className="inline-flex min-w-0 items-center gap-2 text-left text-medical-light transition-colors hover:text-white disabled:opacity-60"
+              className="inline-flex min-w-0 items-center gap-2 text-left text-accent transition-colors hover:text-ink disabled:opacity-60"
             >
               <Clip className="h-3.5 w-3.5 shrink-0" />
-              <span className="min-w-0 truncate underline decoration-white/20 underline-offset-2">
+              <span className="min-w-0 truncate underline decoration-line/20 underline-offset-2">
                 {file.name}
               </span>
             </button>
-            <span className="shrink-0 text-xs text-silver/45">{sizeLabel(file.size_bytes)}</span>
+            <span className="shrink-0 text-xs text-soft/45">{sizeLabel(file.size_bytes)}</span>
             {canRemove?.(file) &&
               (confirming === file.id ? (
                 <span className="ml-auto flex shrink-0 items-center gap-2 text-xs font-semibold">
@@ -147,11 +147,11 @@ export function FileLinks({ files, canRemove, onRemove, removing, className = ''
                     type="button"
                     disabled={removing}
                     onClick={() => onRemove(file)}
-                    className="text-red-300 hover:text-red-200 disabled:opacity-40"
+                    className="text-danger hover:text-danger disabled:opacity-40"
                   >
                     Remove
                   </button>
-                  <button type="button" onClick={() => setConfirming('')} className="text-silver/60 hover:text-white">
+                  <button type="button" onClick={() => setConfirming('')} className="text-soft/60 hover:text-ink">
                     Keep
                   </button>
                 </span>
@@ -160,7 +160,7 @@ export function FileLinks({ files, canRemove, onRemove, removing, className = ''
                   type="button"
                   onClick={() => setConfirming(file.id)}
                   aria-label={`Remove ${file.name}`}
-                  className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-silver/50 transition-colors hover:bg-white/10 hover:text-white"
+                  className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-soft/50 transition-colors hover:bg-veil/10 hover:text-ink"
                 >
                   &times;
                 </button>

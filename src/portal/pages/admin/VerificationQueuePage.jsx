@@ -23,19 +23,19 @@ function Row({ req, onDecide, busyId, error }) {
   const p = req.profile || {}
   const busy = busyId === req.id
   return (
-    <li className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+    <li className="rounded-2xl border border-line/10 bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-white">
+          <p className="truncate text-base font-semibold text-ink">
             {p.full_name || 'No name yet'}
           </p>
-          <p className="truncate text-sm text-silver/70">{p.email || req.profile_id}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-silver/50">
+          <p className="truncate text-sm text-soft/70">{p.email || req.profile_id}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-soft/50">
             <StatusBadge status={p.membership_status || 'unverified'} />
             <span>Requested {when(req.created_at)}</span>
           </div>
           {req.message && (
-            <blockquote className="mt-3 border-l-2 border-white/15 pl-4 text-sm text-silver/70">
+            <blockquote className="mt-3 border-l-2 border-line/15 pl-4 text-sm text-soft/70">
               {req.message}
             </blockquote>
           )}
@@ -126,7 +126,7 @@ export default function VerificationQueuePage() {
         </Panel>
       ) : pending.data.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">Nothing waiting. Nice.</p>
+          <p className="text-sm text-soft/70">Nothing waiting. Nice.</p>
         </Panel>
       ) : (
         <ul className="space-y-4">

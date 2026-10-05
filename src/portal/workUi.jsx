@@ -34,10 +34,10 @@ export const LEVEL_LABELS = [
 ]
 
 const STATUS_CLS = {
-  todo: 'bg-white/10 text-silver/80',
-  doing: 'bg-medical/20 text-medical-light',
-  blocked: 'bg-red-400/15 text-red-300',
-  done: 'bg-emerald-400/15 text-emerald-300',
+  todo: 'bg-veil/10 text-soft/80',
+  doing: 'bg-medical/20 text-accent',
+  blocked: 'bg-red-400/15 text-danger',
+  done: 'bg-emerald-400/15 text-ok',
 }
 
 const pillCls = 'rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]'
@@ -56,7 +56,7 @@ export function PriorityPill({ priority }) {
   return (
     <span
       className={`${pillCls} ${
-        priority === 'urgent' ? 'bg-red-400/15 text-red-300' : 'bg-amber-400/15 text-amber-300'
+        priority === 'urgent' ? 'bg-red-400/15 text-danger' : 'bg-amber-400/15 text-warn'
       }`}
     >
       {priority}
@@ -69,7 +69,7 @@ export function CommitteeTag({ committee }) {
   const hex6 = committee?.color && /^#[0-9a-f]{6}$/i.test(committee.color)
   return (
     <span
-      className="inline-flex items-center rounded-full border border-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-white"
+      className="inline-flex items-center rounded-full border border-line/15 px-2.5 py-0.5 text-[11px] font-semibold text-ink"
       style={hex6 ? { borderColor: committee.color, backgroundColor: `${committee.color}22` } : undefined}
       title={committee?.name || 'Whole society'}
     >
@@ -101,10 +101,10 @@ function dueInfo(task) {
 }
 
 const DUE_CLS = {
-  muted: 'text-silver/40',
-  late: 'text-red-300',
-  soon: 'text-amber-300',
-  normal: 'text-silver/60',
+  muted: 'text-soft/40',
+  late: 'text-danger',
+  soon: 'text-warn',
+  normal: 'text-soft/60',
 }
 
 export function DueLabel({ task }) {
@@ -180,7 +180,7 @@ export function RichText({ text, className = '' }) {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-medical-light underline decoration-white/20 underline-offset-2 hover:text-white"
+            className="text-accent underline decoration-line/20 underline-offset-2 hover:text-ink"
           >
             {part}
           </a>
@@ -197,11 +197,11 @@ export function UnreadDot({ label = 'Unread' }) {
 }
 
 export const smallInputCls =
-  'w-full rounded-lg border border-white/15 bg-forest-950 px-3 py-2 text-sm text-white placeholder:text-silver/40 focus:border-medical focus:outline-none'
+  'w-full rounded-lg border border-line/15 bg-page px-3 py-2 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none'
 
 export const chipBtnCls = (active) =>
   `rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
     active
-      ? 'border-medical bg-medical/15 text-white'
-      : 'border-white/15 text-silver/65 hover:border-white/30 hover:text-white'
+      ? 'border-medical bg-medical/15 text-ink'
+      : 'border-line/15 text-soft/65 hover:border-line/30 hover:text-ink'
   }`

@@ -33,7 +33,7 @@ export default function ProfilePage() {
       <>
         <PageHeader eyebrow="Profile" title="Your profile" />
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             Your profile hasn’t been created yet. Sign out and back in; if it
             still doesn’t appear, tell the webmaster.
           </p>
@@ -89,8 +89,8 @@ function PhotoPanel({ user, profile }) {
       <div className="flex flex-wrap items-center gap-5">
         <Avatar name={profile.full_name} src={profile.avatar_url} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-white">Your photo</p>
-          <p className="mt-1 max-w-md text-xs text-silver/55">
+          <p className="text-sm font-medium text-ink">Your photo</p>
+          <p className="mt-1 max-w-md text-xs text-soft/55">
             Shown beside your name in the portal and in the members directory. If you hold an
             officer or board position, it is also your photo on the public website.
           </p>
@@ -208,10 +208,10 @@ function ProfileForm({ user, profile }) {
             </select>
           </Field>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line/10 pt-6">
             <div className="max-w-md">
-              <p className="text-sm font-medium text-white">Email me a daily digest</p>
-              <p className="mt-1 text-xs text-silver/55">
+              <p className="text-sm font-medium text-ink">Email me a daily digest</p>
+              <p className="mt-1 text-xs text-soft/55">
                 At most one email a day, only when a task or an update is waiting
                 for you. Everything stays in the portal either way.
               </p>
@@ -229,7 +229,7 @@ function ProfileForm({ user, profile }) {
           <button type="submit" disabled={save.isPending} className={primaryBtnCls}>
             {save.isPending ? 'Saving…' : 'Save changes'}
           </button>
-          {msg && <p className="text-sm text-silver/70">{msg}</p>}
+          {msg && <p className="text-sm text-soft/70">{msg}</p>}
           <ErrorText>{save.error ? save.error.message || 'Could not save.' : ''}</ErrorText>
         </div>
       </form>

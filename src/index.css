@@ -3,22 +3,101 @@
 @tailwind utilities;
 
 @layer base {
+  /* The two palettes behind the theme tokens in tailwind.config.js. Values are
+     "R G B" so Tailwind's opacity steps (text-ink/80) keep working.
+
+     Light is the default; `.dark` on <html> switches the whole site. The same
+     class on any element makes that element and everything inside it dark in
+     both themes (the home hero, the footer, text over a photo). */
+  :root {
+    color-scheme: light;
+    --c-page: 250 252 251; /* cream */
+    --c-sunk: 240 245 242;
+    --c-card: 255 255 255;
+    --c-ink: 4 37 24; /* forest-900 */
+    --c-soft: 31 61 49;
+    /* Muted text: opacity 35%..100% becomes 73%..100%, so every step passes
+       WCAG AA (4.5:1) on page, band and card. */
+    --soft-k: 0;
+    --soft-c0: 0.58;
+    --soft-c1: 0.42;
+    --c-line: 6 64 43; /* forest */
+    --line-k: 1.6;
+    --c-veil: 6 64 43;
+    --veil-k: 1;
+    --c-solid: 6 64 43;
+    --c-solid-hover: 10 92 62; /* forest-600 */
+    --c-on-solid: 255 255 255;
+    --c-accent: 42 97 140;
+    --c-danger: 185 28 28;
+    --c-warn: 146 64 14;
+    --c-ok: 4 120 87;
+    /* Switches for a colour worked out in JavaScript (a committee's own
+       colour, src/lib/color.js), written as
+       `var(--theme-light, A) var(--theme-dark, B)`: the unset one yields
+       its fallback, the empty one yields nothing, so one colour is left. */
+    --theme-light: initial;
+    --theme-dark: ;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --c-page: 2 28 18; /* forest-950 */
+    --c-sunk: 4 37 24; /* forest-900 */
+    --c-card: 6 53 34; /* forest-800 */
+    --c-ink: 255 255 255;
+    --c-soft: 201 214 223; /* silver */
+    /* Opacity as written from 70% up; below that it is lifted to 62%..68%,
+       the least that passes AA on a card. */
+    --soft-k: 1;
+    --soft-c0: 0.55;
+    --soft-c1: 0.2;
+    --c-line: 255 255 255;
+    --line-k: 1;
+    --c-veil: 255 255 255;
+    --veil-k: 1;
+    --c-solid: 255 255 255;
+    --c-solid-hover: 238 242 245; /* silver-light */
+    --c-on-solid: 6 64 43;
+    --c-accent: 143 180 212; /* medical-light */
+    --c-danger: 252 165 165;
+    --c-warn: 253 230 138;
+    --c-ok: 110 231 183;
+    --theme-light: ;
+    --theme-dark: initial;
+    /* An always-dark block inside a light page must not inherit dark text. */
+    color: rgb(var(--c-soft));
+  }
+
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 7rem;
+    /* Fluid sizing. Every size on the site is in rem, so this one line scales
+       type and spacing together with the screen: 15px on a 320px phone, 16px
+       from 360px to 1280px, then rising steadily to 18px at 1920px and 20px
+       at 2560px. It is built on rem, so a reader's own browser font size
+       still applies on top. */
+    font-size: max(min(1rem, calc(0.4375rem + 2.5vw)), min(1.25rem, calc(0.75rem + 0.3125vw)));
+  }
+
+  /* iOS zooms the whole page in when a field whose text is under 16px takes
+     focus, and does not zoom back. On touch screens fields are never smaller
+     than that. */
+  @media (pointer: coarse) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+    select:not([hidden]),
+    textarea:not([hidden]) {
+      font-size: max(16px, 1em);
+    }
   }
 
   body {
-    @apply bg-cream text-forest-900 font-sans antialiased transition-colors duration-300;
+    @apply bg-page text-soft font-sans antialiased transition-colors duration-300;
     /* Force lining + tabular figures across the site. Cormorant Garamond
        defaults to oldstyle figures (3, 4, 5, 7, 9 sit below baseline) and
        proportional widths, which makes counts and animated counters jiggle.
        This keeps every digit on the same baseline at equal width. */
     font-variant-numeric: lining-nums tabular-nums;
-  }
-
-  .dark body {
-    @apply bg-forest-950 text-silver;
   }
 
   ::selection {
@@ -36,11 +115,20 @@
   }
 
   .eyebrow {
-    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-medical;
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-accent dark:text-medical;
   }
 
   .heading-serif {
     @apply font-serif font-semibold tracking-tight;
+  }
+
+  /* A logo drawn in white for dark backgrounds. On a light page it is
+     inverted, with the hue turned back so a red emblem stays red. */
+  .logo-ink {
+    filter: invert(1) hue-rotate(180deg);
+  }
+  .dark .logo-ink {
+    filter: none;
   }
 
   /* Reveal-on-scroll base state */
@@ -134,10 +222,80 @@
     auto,
     220px 220px;
   background-blend-mode: multiply;
+  /* The frame's own shadow on the page: deep on the dark theme, a lighter
+     green-grey on the light one, where black would look like a hole. */
   box-shadow:
     inset 0 0 70px rgba(140, 104, 56, 0.22),
-    0 30px 60px -24px rgba(0, 0, 0, 0.8);
+    0 30px 60px -24px var(--theme-light, rgba(20, 50, 38, 0.4)) var(--theme-dark, rgba(0, 0, 0, 0.8));
 }
+
+/* Depth for the book inside the frame (Flipbook.jsx). The page-flip library
+   marks every page it lays flat with `--simple` and its side with `--left` or
+   `--right`; a page in mid-turn is a clipped copy without `--simple`, so it
+   carries the gutter shading with it but none of the box shadows.
+
+   1. Page edges: stepped slivers of paper past the outer and bottom edge, so
+      the book looks as thick as the pages on that side. Flipbook.jsx sets
+      --stack-left and --stack-right (0 to 1) from how far the reader is.
+   2. A soft shadow under the open book, cast on the parchment.
+   3. The gutter: each page darkens toward the spine, as paper does where it
+      curves into the binding. */
+.flipbook {
+  --edge: 2px; /* one sliver of paper */
+}
+.flipbook .stf__item.\--simple {
+  --s: calc(var(--stack-right, 1) * var(--edge));
+  box-shadow:
+    calc(var(--s) * 1) calc(var(--s) * 0.5) 0 0 #ffffff,
+    calc(var(--s) * 2) calc(var(--s) * 1) 0 0 #a2977f,
+    calc(var(--s) * 3) calc(var(--s) * 1.5) 0 0 #fbf8f1,
+    calc(var(--s) * 4) calc(var(--s) * 2) 0 0 #978b72,
+    calc(var(--s) * 5) calc(var(--s) * 2.5) 0 0 #f7f3ea,
+    calc(var(--s) * 6) calc(var(--s) * 3) 0 0 #7f745d,
+    0 26px 34px -16px rgba(58, 38, 12, 0.6),
+    0 6px 12px -4px rgba(58, 38, 12, 0.35);
+}
+.flipbook .stf__item.\--simple.\--left {
+  --s: calc(var(--stack-left, 0) * var(--edge) * -1);
+  box-shadow:
+    calc(var(--s) * 1) calc(var(--s) * -0.5) 0 0 #ffffff,
+    calc(var(--s) * 2) calc(var(--s) * -1) 0 0 #a2977f,
+    calc(var(--s) * 3) calc(var(--s) * -1.5) 0 0 #fbf8f1,
+    calc(var(--s) * 4) calc(var(--s) * -2) 0 0 #978b72,
+    calc(var(--s) * 5) calc(var(--s) * -2.5) 0 0 #f7f3ea,
+    calc(var(--s) * 6) calc(var(--s) * -3) 0 0 #7f745d,
+    0 26px 34px -16px rgba(58, 38, 12, 0.6),
+    0 6px 12px -4px rgba(58, 38, 12, 0.35);
+}
+.flipbook .stf__item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(30, 18, 4, 0.34),
+    rgba(30, 18, 4, 0.14) 3.5%,
+    rgba(30, 18, 4, 0.05) 10%,
+    transparent 20%
+  );
+}
+.flipbook .stf__item.\--left::after {
+  background: linear-gradient(
+    to left,
+    rgba(30, 18, 4, 0.34),
+    rgba(30, 18, 4, 0.14) 3.5%,
+    rgba(30, 18, 4, 0.05) 10%,
+    transparent 20%
+  );
+}
+@media (max-width: 639px) {
+  /* The frame is 12px deep on a phone: thinner slivers so they stay inside. */
+  .flipbook {
+    --edge: 1px;
+  }
+}
+
 /* Antique-gold double rule (border + an outset second line). */
 .magazine-frame::before {
   content: '';

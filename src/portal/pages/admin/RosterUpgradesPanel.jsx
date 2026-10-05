@@ -64,11 +64,11 @@ export default function RosterUpgradesPanel() {
   return (
     <Panel className="mb-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-white">
+        <p className="text-sm text-ink">
           <span className="font-semibold">
             {rows.length} {rows.length === 1 ? 'member has' : 'members have'} the attendance for a higher status
           </span>
-          <span className="text-silver/60"> · only the Executive Board can grant it</span>
+          <span className="text-soft/60"> · only the Executive Board can grant it</span>
         </p>
         {rows.length > 0 && (
           <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={outlineBtnCls}>
@@ -77,38 +77,38 @@ export default function RosterUpgradesPanel() {
         )}
       </div>
       {note && (
-        <p className="mt-2 text-sm text-emerald-300" role="status">
+        <p className="mt-2 text-sm text-ok" role="status">
           {note}
         </p>
       )}
 
       {open && rows.length > 0 && (
         <>
-          <p className="mt-3 text-xs text-silver/55">
+          <p className="mt-3 text-xs text-soft/55">
             Based on GA counts only. Tick the members whose activity score also qualifies, then
             approve. “Not now” hides the ticked members from this list until next September.
           </p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-silver/60">
-            <button type="button" onClick={() => setPicked(new Set(rows.map((r) => r.id)))} className="font-semibold text-medical-light hover:text-white">
+          <div className="mt-3 flex items-center gap-3 text-xs text-soft/60">
+            <button type="button" onClick={() => setPicked(new Set(rows.map((r) => r.id)))} className="font-semibold text-accent hover:text-ink">
               Tick all
             </button>
-            <button type="button" onClick={() => setPicked(new Set())} className="font-semibold text-medical-light hover:text-white">
+            <button type="button" onClick={() => setPicked(new Set())} className="font-semibold text-accent hover:text-ink">
               Clear
             </button>
           </div>
           <ul className="mt-3 space-y-2">
             {rows.map((r) => (
               <li key={r.id}>
-                <label className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border border-white/10 bg-forest-900 px-4 py-3">
+                <label className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl border border-line/10 bg-sunk px-4 py-3">
                   <span className="flex min-w-0 items-center gap-3">
                     <input type="checkbox" checked={picked.has(r.id)} onChange={() => toggle(r.id)} />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm text-white">{r.full_name}</span>
-                      <span className="block truncate text-xs text-silver/55">{r.email || 'No email on file'}</span>
+                      <span className="block truncate text-sm text-ink">{r.full_name}</span>
+                      <span className="block truncate text-xs text-soft/55">{r.email || 'No email on file'}</span>
                     </span>
                   </span>
-                  <span className="text-xs text-silver/70">
-                    <span className="font-semibold text-amber-200">{STEP[r.next] || r.next}</span> · {r.lgas} Local,{' '}
+                  <span className="text-xs text-soft/70">
+                    <span className="font-semibold text-warn">{STEP[r.next] || r.next}</span> · {r.lgas} Local,{' '}
                     {r.ngas} National
                   </span>
                 </label>

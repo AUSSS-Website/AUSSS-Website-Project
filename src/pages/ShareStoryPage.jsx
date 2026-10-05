@@ -66,7 +66,7 @@ export default function ShareStoryPage() {
   }
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="container-prose pb-12 pt-32 sm:pt-40">
         <div className="reveal text-center">
           <span className="eyebrow justify-center">
@@ -74,10 +74,10 @@ export default function ShareStoryPage() {
             Exchange stories
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-5 text-4xl text-white sm:text-5xl">
+          <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
             Share your exchange story
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base font-light text-silver/75">
+          <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/75">
             Been on a SCOPE or SCORE exchange with AUSSS? Tell us what it was
             like. With your permission, we may feature it on the exchange pages
             for the next round of students.
@@ -93,8 +93,8 @@ export default function ShareStoryPage() {
         >
           <Honeypot value={form.website} onChange={(v) => update('website', v)} />
           {/* Who you are */}
-          <fieldset className="rounded-2xl border border-white/10 bg-forest-900 p-6 sm:p-8">
-            <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-medical-light">
+          <fieldset className="rounded-2xl border border-line/10 bg-sunk p-6 sm:p-8">
+            <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               About you
             </legend>
 
@@ -138,8 +138,8 @@ export default function ShareStoryPage() {
           </fieldset>
 
           {/* The exchange */}
-          <fieldset className="rounded-2xl border border-white/10 bg-forest-900 p-6 sm:p-8">
-            <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-medical-light">
+          <fieldset className="rounded-2xl border border-line/10 bg-sunk p-6 sm:p-8">
+            <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               Your exchange
             </legend>
 
@@ -199,7 +199,7 @@ export default function ShareStoryPage() {
                   }
                   className={inputClass(errors.story) + ' resize-y'}
                 />
-                <span className="self-end text-[11px] text-silver/55">
+                <span className="self-end text-[11px] text-soft/55">
                   {form.story.length} / {MAX_STORY_LENGTH}
                 </span>
               </Field>
@@ -207,7 +207,7 @@ export default function ShareStoryPage() {
           </fieldset>
 
           {result?.ok === false && (
-            <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
+            <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger">
               {result.error}. Please try again or email us if it keeps failing.
             </p>
           )}
@@ -215,14 +215,14 @@ export default function ShareStoryPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link
               to="/exchange"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-silver/70 transition-colors hover:text-white"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-soft/70 transition-colors hover:text-ink"
             >
               ← Back to exchange
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-forest transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-solid px-8 py-3.5 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
             >
               {submitting ? (
                 <>
@@ -243,8 +243,8 @@ export default function ShareStoryPage() {
 // ── Bits ─────────────────────────────────────────────────────────────────
 
 function inputClass(error) {
-  return `w-full rounded-lg border bg-forest-950 px-3.5 py-2.5 text-sm text-white placeholder:text-silver/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 ${
-    error ? 'border-red-400/50' : 'border-white/15 hover:border-white/25'
+  return `w-full rounded-lg border bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-soft/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 ${
+    error ? 'border-red-400/50' : 'border-line/15 hover:border-line/25'
   }`
 }
 
@@ -254,12 +254,12 @@ function Field({ label, htmlFor, error, span = 1, children }) {
       htmlFor={htmlFor}
       className={`flex flex-col gap-1.5 ${span === 2 ? 'sm:col-span-2' : ''}`}
     >
-      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-silver/70">
+      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-soft/70">
         {label}
       </span>
       {children}
       {error && (
-        <span id={`${htmlFor}-error`} role="alert" className="text-xs text-red-300">
+        <span id={`${htmlFor}-error`} role="alert" className="text-xs text-danger">
           {error}
         </span>
       )}
@@ -303,39 +303,39 @@ function Spinner() {
 
 function StorySuccess({ result, name }) {
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="container-prose pt-32 pb-24 sm:pt-40">
-        <div className="mx-auto max-w-xl rounded-2xl border border-medical/30 bg-forest-900 p-8 text-center sm:p-12">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-medical/15 text-medical-light">
+        <div className="mx-auto max-w-xl rounded-2xl border border-medical/30 bg-sunk p-8 text-center sm:p-12">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-medical/15 text-accent">
             <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="heading-serif mt-6 text-3xl text-white sm:text-4xl">
+          <h1 className="heading-serif mt-6 text-3xl text-ink sm:text-4xl">
             Thank you for sharing
           </h1>
-          <p className="mt-4 text-base text-silver/75">
+          <p className="mt-4 text-base text-soft/75">
             Thanks{name ? `, ${name.split(' ')[0]}` : ''}! We&rsquo;ve received
             your story and we&rsquo;ll reach out before featuring anything.
           </p>
-          <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-forest-950 px-6 py-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-silver/55">
+          <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-line/10 bg-page px-6 py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/55">
               Reference
             </span>
-            <span className="font-mono text-lg text-medical-light">
+            <span className="font-mono text-lg text-accent">
               {result.reference}
             </span>
           </div>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/exchange"
-              className="w-full rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-transform hover:scale-[1.02] sm:w-auto"
+              className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] sm:w-auto"
             >
               Back to exchange
             </Link>
             <Link
               to="/"
-              className="w-full rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
+              className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
             >
               Home
             </Link>
@@ -348,19 +348,19 @@ function StorySuccess({ result, name }) {
 
 function StoriesClosed() {
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="container-prose pt-32 pb-24 sm:pt-40">
-        <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-forest-900 p-8 text-center sm:p-12">
-          <h1 className="heading-serif text-3xl text-white sm:text-4xl">
+        <div className="mx-auto max-w-xl rounded-2xl border border-line/10 bg-sunk p-8 text-center sm:p-12">
+          <h1 className="heading-serif text-3xl text-ink sm:text-4xl">
             Story submissions are paused
           </h1>
-          <p className="mt-4 text-base text-silver/75">
+          <p className="mt-4 text-base text-soft/75">
             We&rsquo;re not collecting new exchange stories right now. Follow
             our channels to hear when submissions open again.
           </p>
           <Link
             to="/exchange"
-            className="mt-7 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-transform hover:scale-[1.02]"
+            className="mt-7 inline-flex rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02]"
           >
             Back to exchange
           </Link>

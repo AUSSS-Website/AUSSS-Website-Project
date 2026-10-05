@@ -17,7 +17,7 @@ function splitName(name) {
 
 function Connector() {
   return (
-    <div className="mx-auto my-6 h-12 w-px bg-gradient-to-b from-silver/40 to-transparent" />
+    <div className="mx-auto my-6 h-12 w-px bg-gradient-to-b from-line/30 to-transparent" />
   )
 }
 
@@ -25,7 +25,7 @@ function TierLabel({ children }) {
   return (
     <div className="flex items-center justify-center gap-4">
       <span className="h-px w-10 bg-medical/50" />
-      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
         {children}
       </span>
       <span className="h-px w-10 bg-medical/50" />
@@ -38,7 +38,7 @@ function Avatar({ person, color }) {
   const [failed, setFailed] = useState(false)
   return (
     <div
-      className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-forest-950 text-sm font-semibold text-silver ring-2 sm:h-16 sm:w-16"
+      className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-page text-sm font-semibold text-soft ring-2 sm:h-16 sm:w-16"
       style={{ '--tw-ring-color': rgba(color, 0.55) }}
     >
       {person.photo && !failed ? (
@@ -69,7 +69,7 @@ function CommitteeCard({ c, i, ov, holders }) {
   return (
     <Link
       to={`/committees/${slugFor(c)}`}
-      className="reveal group flex h-full flex-col rounded-2xl border border-white/10 bg-forest-800 p-3 text-center transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-forest-950/40 sm:p-6"
+      className="reveal group flex h-full flex-col rounded-2xl border border-line/10 bg-card p-3 text-center transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-forest-950/40 sm:p-6"
       style={{
         transitionDelay: `${(i % 5) * 70}ms`,
         '--brandGlow': c.color ? rgba(c.color, 0.22) : 'transparent',
@@ -92,16 +92,16 @@ function CommitteeCard({ c, i, ov, holders }) {
             src={c.logo}
             alt={`${c.abbr} logo`}
             loading="lazy"
-            className="relative max-h-14 w-auto object-contain drop-shadow sm:max-h-20"
+            className="logo-ink relative max-h-14 w-auto object-contain drop-shadow sm:max-h-20"
           />
         ) : (
-          <span className="heading-serif relative text-2xl tracking-wide text-medical-light sm:text-3xl">
+          <span className="heading-serif relative text-2xl tracking-wide text-accent sm:text-3xl">
             {c.abbr}
           </span>
         )}
       </div>
 
-      <h3 className="heading-serif mt-3 text-sm leading-snug text-white sm:mt-4 sm:text-lg">
+      <h3 className="heading-serif mt-3 text-sm leading-snug text-ink sm:mt-4 sm:text-lg">
         {(() => {
           const [top, bottom] = splitName(c.name)
           return bottom ? (
@@ -136,7 +136,7 @@ function CommitteeCard({ c, i, ov, holders }) {
             <Avatar person={o} color={c.color} />
             <span
               className={`mt-2 block text-sm font-medium leading-tight ${
-                o.name?.trim() ? 'text-silver' : 'italic text-silver/35'
+                o.name?.trim() ? 'text-soft' : 'italic text-soft/35'
               }`}
             >
               {o.name?.trim() || 'Name TBA'}
@@ -153,12 +153,12 @@ function CommitteeCard({ c, i, ov, holders }) {
         ))}
       </ul>
       {c.description && (
-        <p className="mt-4 text-xs leading-relaxed text-silver/65 sm:text-sm">
+        <p className="mt-4 text-xs leading-relaxed text-soft/65 sm:text-sm">
           {c.description}
         </p>
       )}
       <span
-        className="mt-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-silver/50 transition-colors group-hover:text-white"
+        className="mt-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors group-hover:text-ink"
       >
         View page
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -182,13 +182,13 @@ export default function TeamOfficials() {
   return (
     <section
       id="officials"
-      className="relative overflow-hidden bg-forest-950 pb-28 pt-4 sm:pb-36"
+      className="relative overflow-hidden bg-page pb-28 pt-4 sm:pb-36"
     >
       <div
         className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
-            'linear-gradient(#C9D6DF 1px, transparent 1px), linear-gradient(90deg, #C9D6DF 1px, transparent 1px)',
+            'linear-gradient(rgb(var(--c-soft)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-soft)) 1px, transparent 1px)',
           backgroundSize: '64px 64px',
         }}
       />
@@ -203,10 +203,10 @@ export default function TeamOfficials() {
             Team of Officials
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h2 className="heading-serif mt-5 text-4xl text-white sm:text-5xl">
+          <h2 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
             Committees and support divisions
           </h2>
-          <p className="mt-4 text-lg font-light text-silver/70">
+          <p className="mt-4 text-lg font-light text-soft/70">
             The teams that carry out the society&rsquo;s work. Open any of them
             to see who they are and what they do.
           </p>

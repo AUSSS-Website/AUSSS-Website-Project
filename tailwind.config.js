@@ -23,6 +23,32 @@ export default {
           light: '#EEF2F5',
         },
         cream: '#FAFCFB',
+        // Theme tokens: one name, two palettes. The values live in
+        // src/index.css (`:root` for light, `.dark` for dark), so a page is
+        // written once and follows the theme. Use these for anything that
+        // must change with the theme; the fixed colours above are for things
+        // that look the same in both (a blue button, a photo's scrim).
+        page: 'rgb(var(--c-page) / <alpha-value>)', // the page itself
+        sunk: 'rgb(var(--c-sunk) / <alpha-value>)', // inputs, alternate bands
+        card: 'rgb(var(--c-card) / <alpha-value>)', // raised panels
+        ink: 'rgb(var(--c-ink) / <alpha-value>)', // headings, strong text
+        // Body and muted text. Its opacity steps are remapped per theme so
+        // the faintest step still meets WCAG AA (see index.css).
+        soft: 'rgb(var(--c-soft) / max(calc(var(--soft-k) * <alpha-value>), calc(var(--soft-c0) + var(--soft-c1) * <alpha-value>)))',
+        // Hairlines (borders, dividers, rings) and translucent fills. Each
+        // has a strength multiplier, since a 10% line that reads on dark
+        // green is too faint on white.
+        line: 'rgb(var(--c-line) / calc(var(--line-k) * <alpha-value>))',
+        veil: 'rgb(var(--c-veil) / calc(var(--veil-k) * <alpha-value>))',
+        // The inverse button: a white pill with forest text on dark, a
+        // forest pill with white text on light.
+        solid: 'rgb(var(--c-solid) / <alpha-value>)',
+        'solid-hover': 'rgb(var(--c-solid-hover) / <alpha-value>)',
+        'on-solid': 'rgb(var(--c-on-solid) / <alpha-value>)',
+        accent: 'rgb(var(--c-accent) / <alpha-value>)', // blue text and links
+        danger: 'rgb(var(--c-danger) / <alpha-value>)',
+        warn: 'rgb(var(--c-warn) / <alpha-value>)',
+        ok: 'rgb(var(--c-ok) / <alpha-value>)',
       },
       fontFamily: {
         serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],

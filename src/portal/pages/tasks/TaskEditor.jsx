@@ -191,7 +191,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
           ) : people.error ? (
             <ErrorText>Couldn’t load people: {people.error.message}</ErrorText>
           ) : people.data.length === 0 ? (
-            <p className="text-sm text-silver/60">
+            <p className="text-sm text-soft/60">
               Nobody with an account holds a position there yet. You can save the task and assign
               it later.
             </p>
@@ -199,7 +199,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
             <ul className="grid gap-2 sm:grid-cols-2">
               {people.data.map((p) => (
                 <li key={p.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-forest-900 px-3 py-2 text-sm text-white hover:border-white/25">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line/10 bg-sunk px-3 py-2 text-sm text-ink hover:border-line/25">
                     <input
                       type="checkbox"
                       checked={assignees.includes(p.id)}
@@ -208,7 +208,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
                     />
                     <Avatar name={p.full_name} src={p.avatar_url} size="sm" />
                     <span className="min-w-0 flex-1 truncate">{p.full_name || 'No name yet'}</span>
-                    <span className="shrink-0 text-xs text-silver/50">{p.position_title}</span>
+                    <span className="shrink-0 text-xs text-soft/50">{p.position_title}</span>
                   </label>
                 </li>
               ))}
@@ -232,10 +232,10 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
           role="alert"
           className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-5"
         >
-          <p className="text-sm font-semibold text-amber-200">
+          <p className="text-sm font-semibold text-warn">
             This task already exists. Create it again?
           </p>
-          <p className="mt-1 text-xs text-silver/70">
+          <p className="mt-1 text-xs text-soft/70">
             {repeats.length === 1 ? 'An open task has' : `${repeats.length} open tasks have`} the same
             title and the same people.
           </p>
@@ -246,7 +246,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
                   to={`/portal/tasks/${t.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-medical-light underline decoration-white/20 underline-offset-2 hover:text-white"
+                  className="font-semibold text-accent underline decoration-line/20 underline-offset-2 hover:text-ink"
                 >
                   {t.title}
                 </Link>

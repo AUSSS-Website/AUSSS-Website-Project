@@ -232,7 +232,7 @@ function RevealButton({ onReveal, label }) {
   return (
     <button
       onClick={onReveal}
-      className="relative z-10 mt-7 text-xs font-semibold uppercase tracking-[0.18em] text-silver/55 underline-offset-4 transition-colors hover:text-white hover:underline"
+      className="relative z-10 mt-7 text-xs font-semibold uppercase tracking-[0.18em] text-soft/55 underline-offset-4 transition-colors hover:text-ink hover:underline"
     >
       {label}
     </button>
@@ -246,12 +246,12 @@ function AlsoServingAs({ positions, accent }) {
   if (!positions || positions.length === 0) return null
   return (
     <div className="relative mt-4 text-[11px] uppercase tracking-[0.18em]">
-      <p className="text-silver/45">Also serving as</p>
+      <p className="text-soft/45">Also serving as</p>
       <ul className="mt-2 flex flex-col items-center gap-1.5">
         {positions.map((p) => (
           <li
             key={p}
-            className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-semibold text-silver/80"
+            className="rounded-full border border-line/15 bg-veil/5 px-3 py-1 font-semibold text-soft/80"
             style={accent ? { color: accent, borderColor: 'rgba(255,255,255,0.18)' } : undefined}
           >
             {p}
@@ -265,7 +265,7 @@ function AlsoServingAs({ positions, accent }) {
 /* ── President: dry, sarcastic ───────────────────────────────────────── */
 function President({ onReveal, otherPositions }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-[#C9A33B]/30 bg-gradient-to-br from-forest-800 to-forest-950 p-10 text-center sm:p-14">
+    <div className="dark relative overflow-hidden rounded-3xl border border-[#C9A33B]/30 bg-gradient-to-br from-card to-page p-10 text-center sm:p-14">
       <span className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#C9A33B]/10 blur-3xl" />
       <div className="relative mx-auto h-32 w-32 sm:h-36 sm:w-36">
         <div className="h-full w-full overflow-hidden rounded-full bg-gradient-to-br from-[#C9A33B]/25 to-amber-300/10 ring-2 ring-[#E7C763]/45">
@@ -288,22 +288,22 @@ function President({ onReveal, otherPositions }) {
           <path d="M5 21h14" strokeLinecap="round" />
         </svg>
       </div>
-      <p className="heading-serif relative mt-4 text-2xl text-white sm:text-3xl">
+      <p className="heading-serif relative mt-4 text-2xl text-ink sm:text-3xl">
         Amr Hesham Shaker
       </p>
       <p className="relative mt-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#E7C763]">
         AUSSS · Office of the President
       </p>
-      <p className="relative mt-2 text-sm italic text-silver/65">
+      <p className="relative mt-2 text-sm italic text-soft/65">
         “Making AUSSS Great Again”
       </p>
-      <h2 className="heading-serif relative mt-4 text-4xl text-white sm:text-5xl">
+      <h2 className="heading-serif relative mt-4 text-4xl text-ink sm:text-5xl">
         You’re the President.
       </h2>
-      <p className="relative mx-auto mt-5 max-w-lg text-lg font-light leading-relaxed text-silver/80">
+      <p className="relative mx-auto mt-5 max-w-lg text-lg font-light leading-relaxed text-soft/80">
         …why are you looking up your own membership status? You run this place.
       </p>
-      <p className="relative mx-auto mt-3 max-w-lg text-sm text-silver/55">
+      <p className="relative mx-auto mt-3 max-w-lg text-sm text-soft/55">
         Constitution §9: “the organisation shall be managed by the Executive
         Board.” You’d know. You signed it.
       </p>
@@ -473,7 +473,7 @@ function Heba({ onReveal }) {
   return (
     <div
       ref={cardRef}
-      className="relative overflow-hidden rounded-3xl border border-[#D4A85C]/35 bg-gradient-to-br from-forest-800 via-forest-900 to-forest-950 p-10 text-center sm:p-14"
+      className="dark relative overflow-hidden rounded-3xl border border-[#D4A85C]/35 bg-gradient-to-br from-card via-sunk to-page p-10 text-center sm:p-14"
     >
       <span className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#D4A85C]/12 blur-3xl" />
       <span className="pointer-events-none absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-rose-300/10 blur-3xl" />
@@ -811,10 +811,10 @@ function Heba({ onReveal }) {
       <p className="relative mt-6 text-xs font-semibold uppercase tracking-[0.28em] text-[#E7C879]">
         AUSSS · Past and present
       </p>
-      <h2 className="heading-serif relative mt-4 text-4xl text-white sm:text-5xl">
+      <h2 className="heading-serif relative mt-4 text-4xl text-ink sm:text-5xl">
         Welcome back, Heba.
       </h2>
-      <p className="relative mx-auto mt-3 max-w-md text-[11px] uppercase leading-relaxed tracking-[0.08em] text-silver/55">
+      <p className="relative mx-auto mt-3 max-w-md text-[11px] uppercase leading-relaxed tracking-[0.08em] text-soft/55">
         &ldquo;&lsquo;What&rsquo; and &lsquo;if&rsquo; are two words as
         non&nbsp;threatening as words can be, but put them together
         side&nbsp;by&nbsp;side and they have the power to haunt you for
@@ -826,19 +826,19 @@ function Heba({ onReveal }) {
         <span className="rounded-full border border-[#D4A85C]/45 bg-[#D4A85C]/10 px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#F0D38A]">
           Supervising Council · 2025–2026
         </span>
-        <span className="rounded-full border border-white/15 bg-white/5 px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-silver/80">
+        <span className="rounded-full border border-line/15 bg-veil/5 px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-soft/80">
           International TEDA · 2025–2026
         </span>
-        <span className="rounded-full border border-white/[0.05] bg-white/[0.03] px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-silver/60">
+        <span className="rounded-full border border-line/[0.05] bg-veil/[0.03] px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-soft/60">
           AUSSS Past President · 2024–2025
         </span>
       </div>
 
-      <p className="relative mx-auto mt-7 max-w-lg text-lg font-light leading-relaxed text-silver/85">
+      <p className="relative mx-auto mt-7 max-w-lg text-lg font-light leading-relaxed text-soft/85">
         You handed the gavel down and stayed in the room. AUSSS still runs
         on the shape you gave it.
       </p>
-      <p className="relative mx-auto mt-3 max-w-lg text-sm leading-relaxed text-silver/60">
+      <p className="relative mx-auto mt-3 max-w-lg text-sm leading-relaxed text-soft/60">
         There’s no membership tier high enough for what you’ve already done
         for this society. Thank you, sincerely, for sticking around to
         watch over us.
@@ -848,7 +848,7 @@ function Heba({ onReveal }) {
         href="/assets/eb-candidatures/heba-ismail-candidature.pdf"
         target="_blank"
         rel="noopener noreferrer"
-        className="relative mt-7 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F0D38A] underline-offset-4 transition-colors hover:text-white hover:underline"
+        className="relative mt-7 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F0D38A] underline-offset-4 transition-colors hover:text-ink hover:underline"
       >
         Revisit her presidential candidature
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -876,7 +876,7 @@ function TeamMember({ entry, onReveal, otherPositions }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border bg-forest-900/60 p-10 text-center sm:p-14"
+      className="relative overflow-hidden rounded-3xl border bg-sunk/60 p-10 text-center sm:p-14"
       style={{ borderColor: rgba(color, 0.35) }}
     >
       <div
@@ -896,11 +896,11 @@ function TeamMember({ entry, onReveal, otherPositions }) {
             : '/assets/brand/ausss-vertical-white.png'
         }
         alt={isCommittee ? `${entry.abbr} logo` : 'AUSSS'}
-        className="relative mx-auto h-20 w-auto object-contain drop-shadow"
+        className="logo-ink relative mx-auto h-20 w-auto object-contain drop-shadow"
       />
 
       <div
-        className="relative mx-auto mt-6 grid h-28 w-28 place-items-center overflow-hidden rounded-full bg-forest-950 text-2xl font-semibold text-silver ring-4"
+        className="relative mx-auto mt-6 grid h-28 w-28 place-items-center overflow-hidden rounded-full bg-page text-2xl font-semibold text-soft ring-4"
         style={{ '--tw-ring-color': rgba(color, 0.5) }}
       >
         {showPhoto ? (
@@ -920,7 +920,7 @@ function TeamMember({ entry, onReveal, otherPositions }) {
       >
         Welcome back
       </p>
-      <h2 className="heading-serif relative mt-2 text-3xl text-white sm:text-4xl">
+      <h2 className="heading-serif relative mt-2 text-3xl text-ink sm:text-4xl">
         {displayName}
       </h2>
       <p
@@ -930,12 +930,12 @@ function TeamMember({ entry, onReveal, otherPositions }) {
         {entry.roleLabel}
       </p>
       {isCommittee && (
-        <p className="relative mt-1 text-sm text-silver/70">
+        <p className="relative mt-1 text-sm text-soft/70">
           {entry.committeeName}
         </p>
       )}
 
-      <p className="relative mx-auto mt-5 max-w-md text-sm leading-relaxed text-silver/65">
+      <p className="relative mx-auto mt-5 max-w-md text-sm leading-relaxed text-soft/65">
         You’re on the AUSSS Team of Officials. Membership status checks are
         for the rest of us.
       </p>

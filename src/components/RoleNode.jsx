@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { readableAccent, rgba } from '../lib/color.js'
+import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import { publicEmail } from '../data/emailConfig.js'
 
 // One position in the exchange hierarchy, with its explanation in a card that
@@ -53,24 +53,24 @@ export default function RoleNode({ role, tier = 'officer' }) {
         onBlur={(e) => {
           if (!wrapRef.current?.contains(e.relatedTarget)) setOpen(false)
         }}
-        className={`w-full rounded-2xl border bg-forest-800 text-left transition-colors ${
+        className={`w-full rounded-2xl border bg-card text-left transition-colors ${
           isOfficer ? 'p-6' : 'p-5'
-        } ${open ? 'border-white/30' : 'border-white/10 hover:border-white/25'}`}
+        } ${open ? 'border-line/30' : 'border-line/10 hover:border-line/25'}`}
       >
         <span
           className="inline-block rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
-          style={{ background: rgba(role.color, 0.2), color: accent }}
+          style={{ background: rgba(role.color, 0.2), color: chipAccent(role.color) }}
         >
           {role.committee || `Supports ${role.reportsTo}`}
         </span>
         <span
-          className={`heading-serif mt-3 block text-white ${
+          className={`heading-serif mt-3 block text-ink ${
             isOfficer ? 'text-2xl' : 'text-lg'
           }`}
         >
           {role.abbr}
         </span>
-        <span className="mt-1 block text-sm leading-snug text-silver/60">
+        <span className="mt-1 block text-sm leading-snug text-soft/60">
           {role.title}
         </span>
       </button>
@@ -90,19 +90,19 @@ export default function RoleNode({ role, tier = 'officer' }) {
         }`}
       >
         <div
-          className="rounded-2xl border bg-forest-900 p-5 shadow-2xl shadow-black/60 ring-1 ring-black/20"
+          className="rounded-2xl border bg-sunk p-5 shadow-2xl shadow-black/60 ring-1 ring-black/20"
           style={{ borderColor: rgba(role.color, 0.45) }}
         >
           <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: accent }}>
             {role.title}
           </p>
-          <p className="mt-2.5 text-sm leading-relaxed text-silver/80">
+          <p className="mt-2.5 text-sm leading-relaxed text-soft/80">
             {role.about}
           </p>
           {email && (
             <a
               href={`mailto:${email}`}
-              className="mt-3 inline-block text-xs font-semibold text-medical-light underline-offset-2 hover:text-white hover:underline"
+              className="mt-3 inline-block text-xs font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
             >
               {email}
             </a>

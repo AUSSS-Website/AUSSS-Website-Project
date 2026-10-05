@@ -8,6 +8,7 @@ import { initials } from '../lib/text.js'
 const SIZES = {
   sm: 'h-6 w-6 text-[9px]',
   md: 'h-9 w-9 text-xs',
+  nav: 'h-10 w-10 text-xs',
   row: 'h-12 w-12 text-sm',
   lg: 'h-20 w-20 text-xl',
 }
@@ -18,7 +19,7 @@ export function Avatar({ name, src, size = 'md', className = '' }) {
   return (
     <span
       aria-hidden="true"
-      className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-forest-950 font-semibold text-silver/80 ring-1 ring-white/15 ${SIZES[size] || SIZES.md} ${className}`}
+      className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-page font-semibold text-soft/80 ring-1 ring-line/15 ${SIZES[size] || SIZES.md} ${className}`}
     >
       {show ? (
         <img

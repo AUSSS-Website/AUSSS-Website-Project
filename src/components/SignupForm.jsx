@@ -34,7 +34,7 @@ export default function SignupForm({
     return (
       <p
         role="status"
-        className="rounded-2xl border border-medical/30 bg-medical/10 px-5 py-4 text-center text-sm text-medical-light"
+        className="rounded-2xl border border-medical/30 bg-medical/10 px-5 py-4 text-center text-sm text-accent"
       >
         {successText}
       </p>
@@ -42,7 +42,7 @@ export default function SignupForm({
   }
 
   const inputCls =
-    'w-full rounded-xl border border-white/15 bg-forest-950 px-4 py-3 text-sm text-white placeholder:text-silver/40 focus-visible:border-medical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
+    'w-full rounded-xl border border-line/15 bg-page px-4 py-3 text-sm text-ink placeholder:text-soft/40 focus-visible:border-medical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
   return (
     <form onSubmit={onSubmit} className="relative mx-auto flex w-full max-w-sm flex-col gap-3 text-left">
@@ -90,14 +90,14 @@ export default function SignupForm({
         />
       </div>
       {error && (
-        <p id={`${uid}-error`} role="alert" className="text-xs text-red-300">
+        <p id={`${uid}-error`} role="alert" className="text-xs text-danger">
           {error}
         </p>
       )}
       <button
         type="submit"
         disabled={state === 'busy'}
-        className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-colors hover:bg-silver-light disabled:opacity-50"
+        className="rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover disabled:opacity-50"
       >
         {state === 'busy' ? 'Sending…' : submitLabel}
       </button>

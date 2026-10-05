@@ -40,13 +40,13 @@ function GalleryIndex({ albums, trail, loading }) {
   const showTrail = isDesktop && !reduceMotion && hasTrail
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       {/* Hero */}
       <header className="relative isolate flex min-h-[80vh] items-center overflow-hidden pt-24 sm:min-h-[88vh]">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
-            backgroundImage: 'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
           aria-hidden="true"
@@ -74,21 +74,21 @@ function GalleryIndex({ albums, trail, loading }) {
         )}
 
         <div className="container-prose pointer-events-none relative z-10 w-full py-12 text-center">
-          <div className="pointer-events-auto mx-auto max-w-3xl rounded-3xl bg-forest-950/70 px-6 py-10 ring-1 ring-white/10 backdrop-blur-md sm:px-12 sm:py-14">
+          <div className="pointer-events-auto mx-auto max-w-3xl rounded-3xl bg-page/70 px-6 py-10 ring-1 ring-line/10 backdrop-blur-md sm:px-12 sm:py-14">
             <span className="eyebrow justify-center">
               <span className="h-px w-8 bg-medical" />
               Gallery
               <span className="h-px w-8 bg-medical" />
             </span>
-            <h1 className="heading-serif mt-6 text-4xl text-white sm:text-6xl">
+            <h1 className="heading-serif mt-6 text-4xl text-ink sm:text-6xl">
               55 years through your eyes
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base font-light leading-relaxed text-silver/80 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-xl text-base font-light leading-relaxed text-soft/80 sm:text-lg">
               Camps, exchanges, assemblies, and the small in-between moments
               that make AUSSS what it is.
             </p>
             {showTrail && (
-              <p className="mt-5 text-xs uppercase tracking-[0.2em] text-medical-light/80">
+              <p className="mt-5 text-xs uppercase tracking-[0.2em] text-accent/80">
                 Move your cursor →
               </p>
             )}
@@ -102,13 +102,13 @@ function GalleryIndex({ albums, trail, loading }) {
           // First visit: nothing cached yet and the live list is on its way.
           <div className="flex justify-center py-10">
             <span
-              className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light"
+              className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent"
               role="status"
               aria-label="Loading albums"
             />
           </div>
         ) : albums.length === 0 ? (
-          <p className="mx-auto max-w-xl rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center text-sm text-silver/60">
+          <p className="mx-auto max-w-xl rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center text-sm text-soft/60">
             No albums to show yet. Check back soon.
           </p>
         ) : (
@@ -137,7 +137,7 @@ function GalleryIndex({ albums, trail, loading }) {
         <div className="reveal mt-16 text-center">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
           >
             ← Back to AUSSS home
           </Link>
@@ -153,9 +153,9 @@ const AlbumCard = memo(function AlbumCard({ a }) {
   return (
     <Link
       to={`/gallery/${a.slug}`}
-      className="reveal group block overflow-hidden rounded-2xl border border-white/10 bg-forest-800 transition-colors hover:border-medical/40 sm:rounded-3xl"
+      className="reveal group block overflow-hidden rounded-2xl border border-line/10 bg-card transition-colors hover:border-medical/40 sm:rounded-3xl"
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className="dark relative aspect-[4/3] overflow-hidden">
         {a.cover ? (
           <img
             src={a.cover}
@@ -166,18 +166,18 @@ const AlbumCard = memo(function AlbumCard({ a }) {
         ) : (
           <div className="h-full w-full bg-forest-700" />
         )}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-forest-950/85 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-page/85 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-medical-light sm:text-[10px]">
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-accent sm:text-[10px]">
             {a.count} {a.count === 1 ? 'photo' : 'photos'}
           </p>
-          <h2 className="heading-serif mt-1 text-base text-white sm:text-xl">
+          <h2 className="heading-serif mt-1 text-base text-ink sm:text-xl">
             {a.title}
           </h2>
         </div>
       </div>
       {a.blurb && (
-        <p className="hidden px-5 py-4 text-sm leading-relaxed text-silver/70 sm:block">
+        <p className="hidden px-5 py-4 text-sm leading-relaxed text-soft/70 sm:block">
           {a.blurb}
         </p>
       )}
@@ -214,11 +214,11 @@ function AlbumView({ album }) {
   const gridOffset = featuredPhoto ? 1 : 0
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative isolate overflow-hidden pb-12 pt-32 text-center sm:pt-40">
         <GalleryAurora />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-gradient-to-t from-forest-950 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-gradient-to-t from-page to-transparent"
           aria-hidden="true"
         />
         <div className="container-prose relative z-10">
@@ -227,11 +227,11 @@ function AlbumView({ album }) {
             {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-6 text-4xl text-white sm:text-5xl">
+          <h1 className="heading-serif mt-6 text-4xl text-ink sm:text-5xl">
             {album.title}
           </h1>
           {album.blurb && (
-            <p className="mx-auto mt-4 max-w-xl text-base font-light leading-relaxed text-silver/75">
+            <p className="mx-auto mt-4 max-w-xl text-base font-light leading-relaxed text-soft/75">
               {album.blurb}
             </p>
           )}
@@ -244,7 +244,7 @@ function AlbumView({ album }) {
             <button
               type="button"
               onClick={() => setOpenIdx(0)}
-              className="group block w-full overflow-hidden rounded-2xl bg-forest-800 focus:outline-none focus:ring-2 focus:ring-medical sm:rounded-3xl"
+              className="group block w-full overflow-hidden rounded-2xl bg-card focus:outline-none focus:ring-2 focus:ring-medical sm:rounded-3xl"
               aria-label={`Open featured photo (${featuredPhoto.label || 'featured'}) of ${photos.length}`}
             >
               <img
@@ -257,11 +257,11 @@ function AlbumView({ album }) {
                 className="max-h-[72vh] w-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
               />
               <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-forest-950/70 to-transparent"
+                className="dark pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-page/70 to-transparent"
                 aria-hidden="true"
               />
               {featuredPhoto.label && (
-                <figcaption className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-forest-950/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-medical-light ring-1 ring-white/10 backdrop-blur-sm sm:bottom-5 sm:left-5 sm:text-xs">
+                <figcaption className="dark absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-page/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-accent ring-1 ring-line/10 backdrop-blur-sm sm:bottom-5 sm:left-5 sm:text-xs">
                   <span className="h-1.5 w-1.5 rounded-full bg-medical" />
                   {featuredPhoto.label}
                 </figcaption>
@@ -277,7 +277,7 @@ function AlbumView({ album }) {
                 <button
                   type="button"
                   onClick={() => setOpenIdx(i)}
-                  className="group block w-full overflow-hidden rounded-xl bg-forest-800 focus:outline-none focus:ring-2 focus:ring-medical"
+                  className="group block w-full overflow-hidden rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-medical"
                   aria-label={`Open photo ${i + 1} of ${photos.length}`}
                 >
                   <div className="relative aspect-square overflow-hidden">
@@ -299,13 +299,13 @@ function AlbumView({ album }) {
         <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
           <Link
             to="/gallery"
-            className="font-semibold text-medical-light transition-colors hover:text-white"
+            className="font-semibold text-accent transition-colors hover:text-ink"
           >
             ← All albums
           </Link>
           <Link
             to="/"
-            className="font-semibold text-silver/60 transition-colors hover:text-white"
+            className="font-semibold text-soft/60 transition-colors hover:text-ink"
           >
             AUSSS home
           </Link>
@@ -331,12 +331,12 @@ function AlbumView({ album }) {
 
 function GalleryDisclaimer() {
   return (
-    <p className="mx-auto mt-12 max-w-2xl text-center text-xs leading-relaxed text-silver/45">
+    <p className="mx-auto mt-12 max-w-2xl text-center text-xs leading-relaxed text-soft/45">
       These photos were taken at society events and shared by AUSSS members. If
       you&rsquo;d like a photo of you taken down, email{' '}
       <a
         href={`mailto:${society.contactEmail}?subject=Photo%20removal%20request`}
-        className="text-medical-light underline-offset-2 transition-colors hover:text-white hover:underline"
+        className="text-accent underline-offset-2 transition-colors hover:text-ink hover:underline"
       >
         {society.contactEmail}
       </a>{' '}
@@ -381,7 +381,7 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
   return (
     <div
       ref={trapRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-forest-950/95 backdrop-blur-sm"
+      className="dark fixed inset-0 z-[100] flex items-center justify-center bg-page/95 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={`Photo ${index + 1} of ${photos.length}`}
@@ -395,7 +395,7 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
           e.stopPropagation()
           onClose()
         }}
-        className="absolute right-4 top-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+        className="absolute right-4 top-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20"
         aria-label="Close"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
@@ -409,7 +409,7 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
           e.stopPropagation()
           onPrev()
         }}
-        className="absolute left-2 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-6"
+        className="absolute left-2 z-10 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20 sm:left-6"
         aria-label="Previous photo"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
@@ -423,7 +423,7 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
           e.stopPropagation()
           onNext()
         }}
-        className="absolute right-2 z-10 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-6"
+        className="absolute right-2 z-10 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20 sm:right-6"
         aria-label="Next photo"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
@@ -438,7 +438,7 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
         className="max-h-[88vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
       />
 
-      <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white">
+      <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-veil/10 px-4 py-1.5 text-xs font-semibold text-ink">
         {index + 1} / {photos.length}
       </p>
     </div>
@@ -451,10 +451,10 @@ function Lightbox({ photos, index, onClose, onNext, onPrev }) {
 // its way (a brand-new album opened from a shared link).
 function LoadingAlbum() {
   return (
-    <article className="relative isolate overflow-hidden bg-forest-950">
+    <article className="relative isolate overflow-hidden bg-page">
       <GalleryAurora />
       <div className="container-prose relative z-10 flex min-h-[60vh] items-center justify-center pt-32">
-        <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light" aria-label="Loading album" />
+        <span className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent" aria-label="Loading album" />
       </div>
     </article>
   )
@@ -462,15 +462,15 @@ function LoadingAlbum() {
 
 function NotFoundAlbum({ slug }) {
   return (
-    <article className="relative isolate overflow-hidden bg-forest-950">
+    <article className="relative isolate overflow-hidden bg-page">
       <GalleryAurora />
       <div className="container-prose relative z-10 flex min-h-[60vh] flex-col items-center justify-center pt-32 text-center">
-        <h1 className="heading-serif text-3xl text-white sm:text-4xl">
+        <h1 className="heading-serif text-3xl text-ink sm:text-4xl">
           Album not found
         </h1>
-        <p className="mt-3 text-silver/60">
+        <p className="mt-3 text-soft/60">
           We couldn&rsquo;t find an album called{' '}
-          <code className="text-medical-light">{slug}</code>.
+          <code className="text-accent">{slug}</code>.
         </p>
         <Link
           to="/gallery"

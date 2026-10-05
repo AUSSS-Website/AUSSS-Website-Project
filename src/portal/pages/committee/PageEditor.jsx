@@ -188,7 +188,7 @@ export default function PageEditor({ committee, staticCommittee }) {
           {/* Officer photo */}
           <Field label="Your photo">
             <div className="flex items-center gap-5">
-              <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full bg-forest-800 ring-2 ring-white/10">
+              <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full bg-card ring-2 ring-line/10">
                 {photo ? (
                   <img
                     src={driveImg(photo)}
@@ -197,7 +197,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-xs text-silver/40">No photo</span>
+                  <span className="text-xs text-soft/40">No photo</span>
                 )}
               </div>
               <div className="space-y-2">
@@ -211,7 +211,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                   <button
                     type="button"
                     onClick={() => patch({ photo: '' })}
-                    className="block text-xs font-semibold text-silver/55 hover:text-white"
+                    className="block text-xs font-semibold text-soft/55 hover:text-ink"
                   >
                     Remove photo
                   </button>
@@ -268,7 +268,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                 onChange={(e) => patch({ whatWeDoEnabled: e.target.checked })}
                 className="h-4 w-4 accent-medical"
               />
-              <span className="text-sm text-silver/80">
+              <span className="text-sm text-soft/80">
                 Show the “What we do” section on my committee page
               </span>
             </label>
@@ -297,7 +297,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                 onChange={(e) => patch({ membersEnabled: e.target.checked })}
                 className="h-4 w-4 accent-medical"
               />
-              <span className="text-sm text-silver/80">
+              <span className="text-sm text-soft/80">
                 Show the members section on my committee page
               </span>
             </label>
@@ -305,16 +305,16 @@ export default function PageEditor({ committee, staticCommittee }) {
             {membersEnabled && (
               <div className="mt-5 space-y-4">
                 {members.length === 0 && (
-                  <p className="text-sm text-silver/50">No members yet. Add your first below.</p>
+                  <p className="text-sm text-soft/50">No members yet. Add your first below.</p>
                 )}
                 {members.map((m, i) => {
                   const hint = `member-${m.id}`
                   return (
                     <div
                       key={m.id}
-                      className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/10 bg-forest-800 p-4"
+                      className="flex flex-wrap items-center gap-4 rounded-2xl border border-line/10 bg-card p-4"
                     >
-                      <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-forest-950 ring-2 ring-white/10">
+                      <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-page ring-2 ring-line/10">
                         {m.photo ? (
                           <img
                             src={driveImg(m.photo)}
@@ -323,7 +323,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <span className="text-[10px] text-silver/40">No photo</span>
+                          <span className="text-[10px] text-soft/40">No photo</span>
                         )}
                       </div>
                       <div className="flex min-w-[12rem] flex-1 flex-col gap-2">
@@ -356,7 +356,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                           <button
                             type="button"
                             onClick={() => updateMember(m.id, { photo: '' })}
-                            className="text-xs font-semibold text-silver/55 hover:text-white"
+                            className="text-xs font-semibold text-soft/55 hover:text-ink"
                           >
                             Remove photo
                           </button>
@@ -364,7 +364,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                         <button
                           type="button"
                           onClick={() => removeMember(m.id)}
-                          className="text-xs font-semibold text-red-400/80 hover:text-red-300"
+                          className="text-xs font-semibold text-danger/80 hover:text-danger"
                         >
                           Remove
                         </button>
@@ -408,10 +408,10 @@ export default function PageEditor({ committee, staticCommittee }) {
 
       {/* Sticky save bar. The parent hides this editor on other tabs so only
           one bar is ever on screen. */}
-      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-white/15 bg-forest-950/95 px-4 py-3 backdrop-blur-md">
+      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-line/15 bg-page/95 px-4 py-3 backdrop-blur-md">
         <div className="container-prose flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            {msg && <p className="text-sm text-silver/70">{msg}</p>}
+            {msg && <p className="text-sm text-soft/70">{msg}</p>}
             <ErrorText>{err}</ErrorText>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -419,7 +419,7 @@ export default function PageEditor({ committee, staticCommittee }) {
               <button
                 type="button"
                 onClick={() => setConfirmReset(false)}
-                className="text-xs font-semibold text-silver/55 hover:text-white"
+                className="text-xs font-semibold text-soft/55 hover:text-ink"
               >
                 Keep my page
               </button>
@@ -429,7 +429,7 @@ export default function PageEditor({ committee, staticCommittee }) {
               onClick={reset}
               disabled={busy || Boolean(uploading)}
               className={`${outlineBtnCls} py-2 ${
-                confirmReset ? 'border-red-400/60 text-red-300 hover:bg-red-400/10' : ''
+                confirmReset ? 'border-red-400/60 text-danger hover:bg-red-400/10' : ''
               }`}
             >
               {confirmReset ? 'Click again to reset' : 'Reset to defaults'}
@@ -454,9 +454,9 @@ function FileButton({ label, onFile, small, busy, disabled }) {
   return (
     <label
       aria-busy={busy || undefined}
-      className={`inline-flex items-center justify-center rounded-full border border-white/20 font-semibold text-white transition-colors ${
+      className={`inline-flex items-center justify-center rounded-full border border-line/20 font-semibold text-ink transition-colors ${
         small ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'
-      } ${off ? 'cursor-wait opacity-50' : 'cursor-pointer hover:bg-white/10'}`}
+      } ${off ? 'cursor-wait opacity-50' : 'cursor-pointer hover:bg-veil/10'}`}
     >
       {busy ? 'Uploading…' : label}
       <input
