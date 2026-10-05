@@ -28,11 +28,10 @@ const LINKS = [
 // Catchy CTA for the magazine, shown as a highlighted pill.
 const MAGAZINE_CTA = 'Read the latest issue of the AUSSS Magazine'
 
-// The pill's colours. On the dark theme it is the scientific blue with dark
-// text. On the light theme's cream bar that blue looks washed out, so there it
-// is a deep blue with white text.
+// The pill is the site's blue button (the cta tokens) with a soft glow of its
+// own colour under it.
 const MAGAZINE_PILL =
-  'bg-medical-deep text-white shadow-md shadow-medical-deep/30 hover:bg-medical-deeper dark:bg-medical dark:text-forest-950 dark:shadow-lg dark:shadow-medical/20 dark:hover:bg-medical-light'
+  'bg-cta text-on-cta shadow-md shadow-cta/30 hover:bg-cta-hover dark:shadow-lg dark:shadow-cta/20'
 
 function parseTo(to) {
   const [pathname, hash] = to.split('#')

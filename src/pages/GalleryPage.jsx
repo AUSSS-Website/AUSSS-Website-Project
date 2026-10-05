@@ -474,7 +474,7 @@ function NotFoundAlbum({ slug }) {
         </p>
         <Link
           to="/gallery"
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-medical px-6 py-3 text-sm font-semibold text-forest-950 hover:bg-medical-light"
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-cta px-6 py-3 text-sm font-semibold text-on-cta hover:bg-cta-hover"
         >
           See all albums
         </Link>

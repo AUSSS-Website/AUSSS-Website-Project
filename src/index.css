@@ -28,6 +28,9 @@
     --c-solid: 6 64 43;
     --c-solid-hover: 10 92 62; /* forest-600 */
     --c-on-solid: 255 255 255;
+    --c-cta: 42 97 140; /* white on it is 6.4:1 */
+    --c-cta-hover: 31 79 117;
+    --c-on-cta: 255 255 255;
     --c-accent: 42 97 140;
     --c-danger: 185 28 28;
     --c-warn: 146 64 14;
@@ -59,6 +62,9 @@
     --c-solid: 255 255 255;
     --c-solid-hover: 238 242 245; /* silver-light */
     --c-on-solid: 6 64 43;
+    --c-cta: 91 141 184; /* medical */
+    --c-cta-hover: 143 180 212; /* medical-light */
+    --c-on-cta: 2 28 18; /* forest-950 */
     --c-accent: 143 180 212; /* medical-light */
     --c-danger: 252 165 165;
     --c-warn: 253 230 138;
@@ -197,6 +203,14 @@
 .hb-bloom,
 .hb-sparkle {
   opacity: 0;
+}
+/* The garden is drawn in pastels for a dark card. On the light theme's white
+   card they are deepened, so the cream petals and the gold vine still show. */
+.hb-garden {
+  filter: brightness(0.8) saturate(1.45);
+}
+.dark .hb-garden {
+  filter: none;
 }
 .hb-ready .hb-spiral,
 .hb-ready .hb-branch,

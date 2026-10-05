@@ -32,7 +32,7 @@ export default function ExchangeStories() {
           </p>
           <Link
             to="/exchange/share"
-            className="mt-5 inline-flex items-center gap-2 rounded-full bg-medical px-5 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
           >
             Share your experience
           </Link>
@@ -48,7 +48,7 @@ export default function ExchangeStories() {
                 }`}
               >
                 {t.featured && (
-                  <span className="absolute right-4 top-4 rounded-full bg-medical px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-forest-950">
+                  <span className="absolute right-4 top-4 rounded-full bg-cta px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-on-cta">
                     Featured
                   </span>
                 )}

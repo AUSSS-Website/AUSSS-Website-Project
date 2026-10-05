@@ -1543,6 +1543,7 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
 | `veil` | translucent fills (`bg-veil/10`) | white | forest |
 | `accent` | blue text and links | medical-light | a deep blue |
 | `solid`, `on-solid`, `solid-hover` | the inverse button | white pill, forest text | forest pill, white text |
+| `cta`, `on-cta`, `cta-hover` | the blue button | medical blue, dark text | a deep blue, white text |
 | `danger`, `warn`, `ok` | status text | red, amber, emerald (pale) | the same hues, dark |
 
 - **Muted text always passes WCAG AA.** The opacity steps of `soft` are remapped in
@@ -1550,18 +1551,25 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
   4.5:1 on a page, a band or a card in both themes. Use the steps for hierarchy without
   checking each one. `line` and `veil` have a strength multiplier per theme for the same
   reason: a 10% white line on dark green and a 10% green line on white do not look alike.
-- **The fixed colours are for things that look the same in both themes:** a blue button
-  (`bg-medical` with `text-forest-950`, never white, which is 3.5:1), a green button
-  (`bg-forest text-white`), a photo's scrim, shadows. The navbar's magazine button is the
-  one blue button with a look per theme: on the light theme it is `bg-medical-deep` with
-  white text (6.4:1), on dark it is the usual blue.
+- **A blue button is always the three `cta` tokens together:**
+  `bg-cta text-on-cta hover:bg-cta-hover`. On dark that is the medical blue with dark
+  text; on light a deep blue with white text (6.4:1), because the medical blue looks
+  washed out on cream. Never white text on `bg-medical` (3.5:1). A button filled with a
+  committee's own colour takes `text-page`, which is dark on the lightened shade and
+  light on the darkened one.
+- **The fixed colours are for things that look the same in both themes:** a green button
+  (`bg-forest text-white`), the thin blue rules and dots (`bg-medical`), a photo's scrim,
+  shadows.
 - **A block that is dark in both themes** gets the class `dark` on its outer element: the
   text laid over a photo (album covers), the photo and merch
-  viewers, the two bespoke sorting results. Everything inside then resolves the tokens to
+  viewers. Everything inside then resolves the tokens to
   their dark values. A modal's backdrop is a fixed `bg-forest-950/85`. The home hero and
   the footer are not among these: both follow the theme. The hero is a cream stage with
   a dark logo on light, and its moving ECG trace (`ECGBackground.jsx`, a canvas) has a
-  palette per theme in `PALETTES`; the footer is a pale band with dark logos.
+  palette per theme in `PALETTES`; the footer is a pale band with dark logos. The two
+  bespoke member-lookup cards (the President's and Heba Ismail's, `SpecialResult.jsx`)
+  follow the theme as well: their pale golds have a deep-gold light variant, and Heba's
+  garden, drawn in pastels, is deepened on light by the `.hb-garden` filter.
 - **A white logo** (the committee marks, IFMSA, IFMSA-Egypt) gets the class `logo-ink`,
   which inverts it on a light page and keeps a red emblem red. Inside a `dark` block it is
   left white.

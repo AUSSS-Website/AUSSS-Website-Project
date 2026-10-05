@@ -89,7 +89,7 @@ export const authInputCls =
 
 // Blue primary pill and hairline outline pill.
 export const primaryBtnCls =
-  'rounded-full bg-medical px-6 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light disabled:opacity-40'
+  'rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover disabled:opacity-40'
 export const outlineBtnCls =
   'rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40'
 
