@@ -58,6 +58,8 @@ select is(
 );
 
 -- 2. a pending invite becomes an assignment on sign-up
+-- an officer's position is only ever taken up by its work email (test 270)
+select tests.work_email('invited@pgtap.test', 'score.lore');
 select tests.invite('invited@pgtap.test', 'score.lore');
 select ok(
   (select accepted_at is null from public.invites where email = 'invited@pgtap.test'),

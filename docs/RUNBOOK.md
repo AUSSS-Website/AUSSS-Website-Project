@@ -330,6 +330,10 @@ Position keys: `eb.president`, `eb.vp-internal`, `eb.vp-external`,
 `eb.secretary-general`, `society.webmaster`, officer keys such as `score.lore`
 or `scope.leo-out`, and `<committee-slug>.assistant` / `<committee-slug>.member`.
 List them with `select key, title, level from public.positions order by sort`.
+For an officer's, the board's or the webmaster's position the address must be the
+position's work email (`select p.key, w.email from public.position_work_emails w
+join public.positions p on p.id = w.position_id`); an invite to any other address
+is stored but never taken up.
 
 Check it took effect:
 
@@ -348,9 +352,10 @@ sign-in with that exact email (Google account or magic link).
 
 Since Phase 5b the portal does this without SQL: the "Invites" tab of a committee
 for its positions, and Roster page > "Executive Board" for the board and the
-webmaster (section 23). Invite the position's **work email**, never a personal
-one: an invite is the only thing that gives an officer's or the board's access,
-and a position on somebody's roster row gives none (section 14). The SQL here is
+webmaster (section 23). An officer's, a board member's or the webmaster's
+position can only be given to its **work email**: the invite form fills it in,
+and the database refuses any other address (section 14). A position on
+somebody's roster row gives no such access. The SQL here is
 for when nobody who could do it can sign in.
 
 To **remove** access, end the assignment rather than deleting it (history stays):
@@ -664,8 +669,24 @@ Members tab say "Recorded on the roster only" when such a position is chosen. Ac
 committee editors, the gallery and magazine editors, the submissions and the board's pages
 is given in one way: the Executive Board invites the position's work email (a committee's
 Invites tab for its officers, Roster page > Executive Board for the board and the
-webmaster). The rule is which door is used, not a list of allowed addresses: the database
-does not know which addresses are work emails, so whoever invites must use the right one.
+webmaster).
+
+**The work emails are enforced (migration `20261005180001_work_emails_enforced`, test
+`270-work-emails.sql`).** Every officer's, board member's and the webmaster's position has
+one work email in `public.position_work_emails`, and the database gives that position to the
+account of that address and to no other, at each of the three doors: an invite
+(`rpc/invite_to_position` answers "This position can only be given to its work email, ...",
+and a direct write of an invite is refused by its policy), the taking-up of an invite
+(`app.handle_new_invite` and `app.claim_for_profile` leave an offer to any other address
+unaccepted, however it got into the table), and a direct write of an assignment. A position
+with no work email cannot be given at all. The list was seeded from the role inboxes the
+reference data had invited (the `email` of each role in `src/data/society.js`). The
+Executive Board reads and changes it under "Work emails", on a committee's Invites tab and
+in the Executive Board panel of the Roster page; only the webmaster changes the
+webmaster's; officers and visitors cannot read it. **To move a position to a new address**
+(a role inbox is replaced): change the work email, Remove the current holder in "Holding a
+position", then Invite: the form fills in the new address by itself. Changing the address
+alone moves nothing, the old account keeps the position until it is removed.
 
 **The Executive Board on the Roster page (migration `20261005160001_board_on_roster`).** The
 Committee field and the committee filter offer "Executive Board" beside the committees. It

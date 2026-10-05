@@ -193,6 +193,31 @@ const withdrawInvite = async (id) => {
 const removePosition = async (assignment) =>
   unwrap(await supabase.rpc('remove_position', { assignment }))
 
+// ---- work emails (the Executive Board) --------------------------------------
+
+// { position id: address } for the positions that have one: every officer's,
+// every board member's and the webmaster's. Such a position can be given to
+// that address only (migration 20261005180001). Only the board can read the
+// list; anybody else gets an empty one.
+async function fetchWorkEmails() {
+  const rows = unwrap(await supabase.from('position_work_emails').select('position_id, email')) || []
+  return Object.fromEntries(rows.map((r) => [r.position_id, r.email]))
+}
+
+// Update first, insert when there was nothing to update: the table lets the
+// address be changed but never the position it belongs to, which an upsert
+// would try to write.
+async function setWorkEmail({ position_id, email }) {
+  const updated = unwrap(
+    await supabase.from('position_work_emails').update({ email }).eq('position_id', position_id).select('position_id'),
+  )
+  if (updated?.length) return
+  const inserted = unwrap(
+    await supabase.from('position_work_emails').insert({ position_id, email }).select('position_id'),
+  )
+  if (!inserted?.length) throw new Error('That work email could not be saved.')
+}
+
 // ---- position types ---------------------------------------------------------
 
 const POSITION_COLUMNS = 'id, key, committee_id, title, short_title, level, sort, active, can_assign_tasks'
@@ -348,6 +373,18 @@ export function usePositions() {
 
 export function useSocietyPositions(enabled = true) {
   return useQuery({ queryKey: ['positions', 'society'], queryFn: fetchSocietyPositions, enabled })
+}
+
+export function useWorkEmails(enabled = true) {
+  return useQuery({ queryKey: ['work-emails'], queryFn: fetchWorkEmails, enabled })
+}
+
+export function useSetWorkEmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: setWorkEmail,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['work-emails'] }),
+  })
 }
 
 export function useCommitteePositions(committeeId) {
