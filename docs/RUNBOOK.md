@@ -1634,8 +1634,8 @@ of `npm run walk:portal-sample`. A signed-in walk of the portal against the real
 
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
-Built 2026-10-05. Migration `20261005210001_content_blocks`, pgTAP file
-`290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+Built 2026-10-05. Migrations `20261005210001_content_blocks` and
+`20261005220001_incomings_block`, pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
 
 **What it is.** A part of a public page that is plain content (the questions on `/join`
 first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The
@@ -1669,13 +1669,30 @@ opens each in the same form, drawn from the block's field schema.
 - **Pictures** in an image field are shrunk in the browser and stored in the public bucket
   `content-media` under `<block key>/`, writable by that block's editors only.
 
+**The blocks so far.**
+
+| Block | Page | Edited by | Holds |
+| --- | --- | --- | --- |
+| `join.faq` | `/join` | the EB | the questions and answers |
+| `exchange.incomings` | `/exchange/incomings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the short points, the "Why Ain Shams" sections (heading, text, optional picture), which gallery album to show, whether to show the contact cards, the link to the IFMSA-Egypt welcome booklet, the links at the foot |
+
+On the incomings page three things are deliberately not in the block. The photos are a
+gallery album chosen in the editor, so they are managed in the Gallery editor and nothing
+is uploaded twice; the section shows the first eight and links to the album, and
+disappears if the album is deleted or empty. The contact cards (the LEO-In and the LORE)
+take the name and photo from whoever holds the position (section 23) and the email from
+`src/data/society.js`. The page's title and its search description stay in
+`src/data/society.js` and `src/seo/pages.js`, because the pre-rendered page and the
+browser tab must agree (section 15). The welcome booklet itself is
+`src/data/incomingsBooklet.js`.
+
 **Add an editable block.** Three files and one line:
 
 1. A migration that inserts the row: `insert into public.content_blocks (key, editors)
    values ('exchange.incomings', '{scope,score}') on conflict (key) do nothing;` The key
    is `<page>.<part>` in lower case.
 2. A schema file in `src/content/schemas/` (copy `joinFaq.js`). Field types: `text`,
-   `textarea`, `markdown`, `url`, `image`, `toggle`, `select`, `list`
+   `textarea`, `markdown`, `url`, `image`, `album`, `toggle`, `select`, `list`
    (`src/content/schema.js` documents each). Its `defaults` are what the page shows until
    someone publishes, so move the current copy there.
 3. Add it to the list in `src/content/index.js`.

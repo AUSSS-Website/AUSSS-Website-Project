@@ -795,8 +795,8 @@ webmaster's to tick.
 
 #### Phase 6. Site management
 
-**Status, 2026-10-05: step 1 is built on branch `phase-6-editor`; RUNBOOK
-section 25 has the rules.** The table `content_blocks` holds each edited
+**Status, 2026-10-05: steps 1 and 2 are built on branch `phase-6-editor`
+(pull request 8); RUNBOOK section 25 has the rules.** The table `content_blocks` holds each edited
 part of a page as a document with a draft and a published copy. The portal
 has a "Site content" page that lists the blocks a person may edit and opens
 each in one form drawn from its field schema, with a live preview made of
@@ -809,6 +809,21 @@ build differs from section 9: the schemas live in `src/content/schemas`
 (not `src/admin/schemas`) because the public pages read their documents
 through the same files; and a block's row is created by a migration, with
 its editors named in the row, so the database decides who may publish.
+Step 2: `/exchange/incomings` reads the block `exchange.incomings`, edited
+by the exchange officers and the EB. The page gained "Why Ain Shams"
+sections, the LEO-In's and the LORE's contact cards (name and photo from
+their profiles), a strip of photos from a gallery album chosen in the
+editor, and a link to the IFMSA-Egypt welcome booklet; the welcome booklet
+reader was already there. It ships with the copy it had, plus four short
+sections that only restate what the site and the booklet already say, so
+the pitch itself (the hospitals, the departments, the social programme,
+Cairo) is for the exchange officers to write in the portal. Two things are
+left for them: choosing or making the album, and pasting the address of
+the national booklet. The page's title is still "Hosting in Cairo", which
+speaks to our members more than to a student abroad; changing it is the
+webmaster's decision (it lives in `src/data/society.js` and
+`src/seo/pages.js`). The reminder of step 2 below stands for when the pull
+request is merged.
 
 1. **The editor foundation.** Field schemas, the `RecordEditor`,
    `content_blocks` with draft and published states, the sanitising markdown

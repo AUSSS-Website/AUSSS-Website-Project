@@ -4,7 +4,7 @@
 -- version is refused. Publishing asks for a rebuild of the public pages, and the audit log
 -- names the block.
 begin;
-select plan(27);
+select plan(28);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -31,6 +31,14 @@ select tests.assign('leo@pgtap.test', 'scope.leo-out');
 
 insert into public.content_blocks (key, editors)
 values ('pgtap.page', '{scope}'), ('pgtap.board', '{}');
+
+-- the blocks the site ships with, and who edits them
+select is(
+  (select jsonb_object_agg(key, to_jsonb(editors)) from public.content_blocks
+   where key in ('join.faq', 'exchange.incomings')),
+  '{"join.faq": [], "exchange.incomings": ["scope", "score"]}'::jsonb,
+  'the FAQ is the EB''s; the incomings page is also the exchange officers'''
+);
 
 -- anon: the RPC only, and nothing is published yet
 select tests.authenticate_as_anon();

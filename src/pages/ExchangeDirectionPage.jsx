@@ -5,15 +5,25 @@ import { exchange } from '../data/society.js'
 import IncomingsBooklet from '../components/IncomingsBooklet.jsx'
 import ExchangeTracks from '../components/ExchangeTracks.jsx'
 import ExchangeStories from '../components/ExchangeStories.jsx'
+import { IncomingsAlbum, IncomingsContacts, IncomingsWhy, NationalBookletLink } from '../components/IncomingsSections.jsx'
+import { useContentBlock } from '../lib/content.js'
+import incomingsSchema from '../content/schemas/exchangeIncomings.js'
 
 // One page per exchange direction, /exchange/outgoings and /exchange/incomings.
 // Both render from the same `exchange.directions` entry, so the two URLs stay in
 // step; what differs is what each direction actually has to say:
 //   • outgoing → the application timeline (how you get sent abroad)
-//   • incoming → the incomings booklet (what arrivals are handed)
+//   • incoming → why to come, who to write to, photos and the incomings
+//     booklet. Its copy is edited by the exchange officers in the portal
+//     (block `exchange.incomings`); society.js holds the copy it shipped with.
 // /exchange stays as the hub that points at both.
 export default function ExchangeDirectionPage({ dir }) {
-  const d = exchange.directions[dir]
+  const base = exchange.directions[dir]
+  const incoming = dir === 'incoming'
+  const edited = useContentBlock(incomingsSchema)
+  const d = incoming
+    ? { ...base, intro: edited.intro, points: edited.points.map((p) => p.text), links: edited.links }
+    : base
   const other = exchange.directions[dir === 'outgoing' ? 'incoming' : 'outgoing']
   usePageTitle(d.title, d.meta)
   useReveal()
@@ -47,6 +57,7 @@ export default function ExchangeDirectionPage({ dir }) {
 
       <div className="container-prose space-y-24 pb-28 sm:pb-36">
         {/* What this direction involves */}
+        {d.points.length > 0 && (
         <section className="reveal mx-auto max-w-3xl">
           <ul className="space-y-3">
             {d.points.map((p, idx) => (
@@ -62,6 +73,9 @@ export default function ExchangeDirectionPage({ dir }) {
             ))}
           </ul>
         </section>
+        )}
+
+        {incoming && <IncomingsWhy sections={edited.sections} />}
 
         {/* The application flow only describes going abroad. */}
         {dir === 'outgoing' && (
@@ -90,8 +104,14 @@ export default function ExchangeDirectionPage({ dir }) {
           </section>
         )}
 
+        {incoming && <IncomingsAlbum slug={edited.album} />}
+
         {/* The welcome booklet we hand students arriving at Ain Shams. */}
-        {dir === 'incoming' && <IncomingsBooklet />}
+        {incoming && <IncomingsBooklet />}
+
+        {incoming && <NationalBookletLink href={edited.nationalBooklet} />}
+
+        {incoming && edited.showContacts && <IncomingsContacts />}
 
         <ExchangeTracks />
 

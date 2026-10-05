@@ -21,6 +21,7 @@
 //   markdown   several lines, read by src/lib/markdown.js
 //   url        an address a link may point at (safeHref)
 //   image      the address of an uploaded picture
+//   album      a gallery album, kept as its address name (the editor lists the albums)
 //   toggle     true or false                       default?
 //   select     one of options: [{ value, label }]  default?
 //   list       rows of the same shape              fields, itemLabel, titleField?, min?, max?
@@ -63,6 +64,8 @@ function cleanField(field, v) {
     }
     case 'image':
       return cleanImage(v)
+    case 'album':
+      return typeof v === 'string' && /^[a-z0-9][a-z0-9-]{0,99}$/.test(v) ? v : ''
     case 'textarea':
     case 'markdown':
       return cleanString(v, { oneLine: false })
@@ -110,7 +113,7 @@ function checkField(field, v, path, errors) {
     })
     return
   }
-  if (field.type === 'toggle' || field.type === 'select') return
+  if (field.type === 'toggle' || field.type === 'select' || field.type === 'album') return
   const s = typeof v === 'string' ? v : ''
   if (!s) {
     if (field.required) errors[path] = `${label} is needed.`

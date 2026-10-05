@@ -3,8 +3,9 @@
 // ./schemas, a line here, and the page reading it with useContentBlock
 // (src/lib/content.js). RUNBOOK section 25 walks through it.
 import joinFaq from './schemas/joinFaq.js'
+import exchangeIncomings from './schemas/exchangeIncomings.js'
 
-export const contentSchemas = [joinFaq]
+export const contentSchemas = [joinFaq, exchangeIncomings]
 
 export function contentSchema(key) {
   return contentSchemas.find((s) => s.key === key) || null

@@ -67,6 +67,8 @@ const tables = {
   ],
   content_blocks: [
     { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
+    // nothing saved yet: the editor opens on the copy that ships in the code
+    { key: 'exchange.incomings', editors: ['scope', 'score'], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
   ],
   audit_log: [
     { id: 3, at: iso(0.1), actor: uid, table_name: 'content_blocks', row_id: 'join.faq', action: 'UPDATE', before: { key: 'join.faq', draft: null, updated_at: iso(1) }, after: { key: 'join.faq', draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the Faculty of Medicine.' }] }, updated_at: iso(0.1) } },
@@ -91,7 +93,7 @@ const ROUTES = [
   '/portal/notifications', '/portal/directory', '/portal/committees', '/portal/committees/scope',
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
   '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
-  '/portal/content', '/portal/content/join.faq', '/portal/admin/audit',
+  '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 
 function measureOverflow() {
@@ -152,6 +154,8 @@ for (const theme of themes) {
       let rows = tables[table] || []
       const idEq = url.searchParams.get('id')?.match(/^eq\.(.+)$/)?.[1]
       if (idEq) rows = rows.filter((r) => r.id === idEq)
+      const keyEq = url.searchParams.get('key')?.match(/^eq\.(.+)$/)?.[1]
+      if (keyEq) rows = rows.filter((r) => r.key === keyEq)
       if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${table === 'notifications' ? 1 : rows.length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' } })
       if ((req.headers().accept || '').includes('vnd.pgrst.object')) return json(rows[0] ?? {})
       return json(rows, { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}` })
