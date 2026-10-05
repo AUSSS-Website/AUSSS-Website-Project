@@ -10,18 +10,11 @@ export default function Home() {
   return (
     <>
       <Hero />
-      {/* Soft gradient seams so section background colours blend into each
-          other instead of hard-cutting. Each strip starts at the section
-          above's edge colour and ends at the one below's (light + dark). */}
-      <div
-        aria-hidden="true"
-        className="h-24 bg-gradient-to-b from-forest-950 to-page sm:h-32"
-      />
+      {/* Breathing room between the sections. The hero already ends in the
+          page's own colour in both themes, so no seam is needed. */}
+      <div aria-hidden="true" className="h-24 sm:h-32" />
       <About />
-      <div
-        aria-hidden="true"
-        className="h-24 sm:h-32"
-      />
+      <div aria-hidden="true" className="h-24 sm:h-32" />
       <ExecutiveBoard />
       <TeamOfficials />
     </>

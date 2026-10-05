@@ -1,7 +1,7 @@
 import { useTheme } from '../lib/theme.js'
 
-// `tone` matches the Navbar's `solid` state so the icon reads on both the
-// transparent-over-hero bar and the solid-on-scroll bar.
+// `tone` matches the Navbar's `solid` state: the bar is clear over the home
+// hero and solid once scrolled. Both tones follow the theme.
 export default function ThemeToggle({ tone = 'solid', className = '' }) {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
@@ -11,7 +11,7 @@ export default function ThemeToggle({ tone = 'solid', className = '' }) {
   const skin =
     tone === 'solid'
       ? 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/15 dark:text-silver dark:hover:bg-white/5'
-      : 'border-white/25 text-white hover:bg-white/10'
+      : 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10'
 
   return (
     <button

@@ -28,13 +28,10 @@ const LINKS = [
 // Catchy CTA for the magazine, shown as a highlighted pill.
 const MAGAZINE_CTA = 'Read the latest issue of the AUSSS Magazine'
 
-// The pill's colours. On a dark surface (the dark theme, and the bar while it
-// is clear over the home hero) it is the scientific blue with dark text. On
-// the light theme's cream bar that blue looks washed out, so there it is a
-// deep blue with white text.
-const MAGAZINE_ON_DARK =
-  'bg-medical text-forest-950 shadow-lg shadow-medical/20 hover:bg-medical-light'
-const MAGAZINE_ON_THEME =
+// The pill's colours. On the dark theme it is the scientific blue with dark
+// text. On the light theme's cream bar that blue looks washed out, so there it
+// is a deep blue with white text.
+const MAGAZINE_PILL =
   'bg-medical-deep text-white shadow-md shadow-medical-deep/30 hover:bg-medical-deeper dark:bg-medical dark:text-forest-950 dark:shadow-lg dark:shadow-medical/20 dark:hover:bg-medical-light'
 
 function parseTo(to) {
@@ -86,7 +83,7 @@ function NavMenu({ item, solid }) {
         className={`group relative flex items-center gap-1.5 text-sm font-medium transition-colors 2xl:text-base ${
           solid
             ? 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
-            : 'text-white hover:text-white'
+            : 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
         }`}
       >
         {item.label}
@@ -158,7 +155,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const onScroll = () => {
-      // On home the bar stays transparent over the black hero and only goes
+      // On home the bar stays clear over the hero and only goes
       // solid once the hero scrolls out and the green sections reach the bar
       // (96px = the h-24 header). Other pages are always solid via !isHome.
       const hero = document.getElementById('home')
@@ -217,12 +214,13 @@ export default function Navbar() {
         className="flex h-24 w-full items-center justify-between px-6 sm:px-10 lg:px-16 min-[1920px]:px-24"
       >
         <Link to="/" className="group flex items-center" aria-label="AUSSS home">
-          {/* Black logo only when bar is solid AND light mode; white otherwise. */}
+          {/* Black logo on the light theme, white on the dark one: the hero
+              behind the clear bar follows the theme too. */}
           <img
             src="/assets/brand/ausss-icon-black.png"
             alt="AUSSS, Ain Shams University Students' Scientific Society"
             className={`h-14 w-auto transition-opacity sm:h-16 2xl:h-[4.5rem] ${
-              solid ? 'block dark:hidden' : 'hidden'
+              'block dark:hidden'
             }`}
           />
           <img
@@ -230,7 +228,7 @@ export default function Navbar() {
             alt=""
             aria-hidden="true"
             className={`h-14 w-auto transition-opacity sm:h-16 2xl:h-[4.5rem] ${
-              solid ? 'hidden dark:block' : 'block'
+              'hidden dark:block'
             }`}
           />
         </Link>
@@ -247,7 +245,7 @@ export default function Navbar() {
                 className={`group relative text-sm font-medium transition-colors 2xl:text-base ${
                   solid
                     ? 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
-                    : 'text-white hover:text-white'
+                    : 'text-forest-900 hover:text-forest dark:text-white dark:hover:text-white'
                 }`}
               >
                 {({ isActive }) => (
@@ -270,7 +268,7 @@ export default function Navbar() {
               <Link
                 to="/magazine"
                 className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-semibold transition-colors duration-300 2xl:px-6 2xl:py-2.5 2xl:text-base ${
-                  solid ? MAGAZINE_ON_THEME : MAGAZINE_ON_DARK
+                  MAGAZINE_PILL
                 }`}
               >
                 {MAGAZINE_CTA}
@@ -287,7 +285,7 @@ export default function Navbar() {
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 2xl:px-6 2xl:py-2.5 2xl:text-base ${
                 solid
                   ? 'bg-forest-600 text-silver-light hover:bg-forest-500'
-                  : 'bg-white text-forest hover:bg-silver-light'
+                  : 'bg-forest-600 text-silver-light hover:bg-forest-500 dark:bg-white dark:text-forest dark:hover:bg-silver-light'
               }`}
             >
               Members
@@ -301,7 +299,7 @@ export default function Navbar() {
         <button
           ref={menuToggleRef}
           onClick={() => setOpen((v) => !v)}
-          className={solid ? 'text-forest dark:text-silver' : 'text-white'}
+          className={solid ? 'text-forest dark:text-silver' : 'text-forest dark:text-white'}
           aria-label="Toggle menu"
           aria-expanded={open}
           aria-controls="mobile-nav"
@@ -382,7 +380,7 @@ export default function Navbar() {
             <li className="pt-4">
               <Link
                 to="/magazine"
-                className={`block w-full rounded-full py-3 text-center text-sm font-semibold transition-colors ${MAGAZINE_ON_THEME}`}
+                className={`block w-full rounded-full py-3 text-center text-sm font-semibold transition-colors ${MAGAZINE_PILL}`}
               >
                 {MAGAZINE_CTA}
               </Link>

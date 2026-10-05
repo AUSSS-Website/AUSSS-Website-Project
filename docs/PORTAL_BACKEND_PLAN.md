@@ -715,9 +715,9 @@ by comparing screenshots before and after). The 37 public pages pass the page
 walk at 320, 375, 768, 1024, 1440 and 1920 px in both themes: none scrolls
 sideways and no text is below WCAG AA (341 texts were below it in dark and 352
 in light before). Sizing follows the screen through the root font size. The
-portal header has the navbar's dimensions and a theme toggle. The footer
-follows the theme too, and the navbar's magazine button has its own look on
-the light theme (the webmaster's two notes on the first look). The magazine
+portal header has the navbar's dimensions and a theme toggle. The home hero and
+the footer follow the theme too, and the navbar's magazine button has its own
+look on the light theme (the webmaster's three notes on the first look). The magazine
 reader has its depth. The 18 portal pages pass the same two measurements at
 the six widths in both themes when walked with sample data
 (`npm run walk:portal-sample`, which needs no sign-in); that walk found and
