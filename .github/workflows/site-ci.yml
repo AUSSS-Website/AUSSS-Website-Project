@@ -1,0 +1,46 @@
+# Site CI: the unit tests of the site's own logic (Vitest; `npm test`). They
+# cover the code where a mistake would be invisible on a screenshot: the
+# markdown reader that decides what a typed link may point at, and the content
+# schemas that decide which documents the public pages accept.
+#
+# The build itself is proven by Vercel on every push, and the database by
+# db-ci, so neither is repeated here.
+name: site-ci
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - '.github/workflows/site-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - '.github/workflows/site-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test

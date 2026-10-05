@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(89);
+select plan(96);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -123,6 +123,16 @@ select ok(has_function_privilege('anon', 'app.receipt_upload_ok(text)', 'execute
 select ok(not has_function_privilege('anon', 'app.can_triage(text)', 'execute'), 'anon cannot ask who may triage');
 select ok(has_function_privilege('anon', 'public.stories_public()', 'execute'), 'anon can read the published stories');
 select ok(not has_column_privilege('authenticated', 'public.stories', 'story', 'update'), 'the submitted story text cannot be edited (the public copy can)');
+
+-- content blocks: visitors read the RPC only; editors read their rows and write through the
+-- three functions, never the table
+select ok(not has_table_privilege('anon', 'public.content_blocks', 'select'), 'anon cannot read content_blocks');
+select ok(has_table_privilege('authenticated', 'public.content_blocks', 'select'), 'authenticated reads content_blocks (RLS narrows it to editors)');
+select ok(not has_table_privilege('authenticated', 'public.content_blocks', 'update'), 'authenticated cannot update content_blocks directly');
+select ok(not has_table_privilege('authenticated', 'public.content_blocks', 'insert'), 'authenticated cannot create a content block');
+select ok(has_function_privilege('anon', 'public.content_public()', 'execute'), 'anon can read the published content');
+select ok(not has_function_privilege('anon', 'public.publish_content(text, jsonb, timestamptz)', 'execute'), 'anon cannot publish content');
+select ok(not has_function_privilege('anon', 'app.can_edit_content(text)', 'execute'), 'anon cannot ask who may edit content');
 
 select * from finish();
 rollback;

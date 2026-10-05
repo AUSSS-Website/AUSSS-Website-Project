@@ -26,6 +26,9 @@ import AlbumEditorPage from './pages/gallery/AlbumEditorPage.jsx'
 import MagazineEditorPage from './pages/magazine/MagazinePage.jsx'
 import IssueEditorPage from './pages/magazine/IssueEditorPage.jsx'
 import SubmissionsPage from './pages/submissions/SubmissionsPage.jsx'
+import ContentPage from './pages/content/ContentPage.jsx'
+import ContentEditorPage from './pages/content/ContentEditorPage.jsx'
+import AuditLogPage from './pages/admin/AuditLogPage.jsx'
 
 // Lazy boundary for everything under /portal/*. This is the ONLY place the
 // public app touches the portal, so supabase-js and react-query stay out of
@@ -82,6 +85,13 @@ export default function PortalRoot() {
             <Route path="magazine/:slug" element={<IssueEditorPage />} />
             {/* Submissions: the EB (orders, stories, waitlist) and the exchange officers (stories). */}
             <Route path="submissions" element={<SubmissionsPage />} />
+            {/* Site content: the EB, and officers for the parts that name their
+                committee. The database returns only the blocks a person may edit. */}
+            <Route path="content" element={<ContentPage />} />
+            <Route path="content/:key" element={<ContentEditorPage />} />
+            {/* The audit log: the webmaster (the page says so to anyone else, and
+                the database returns them no rows). */}
+            <Route path="admin/audit" element={<AuditLogPage />} />
             <Route
               path="admin/settings"
               element={

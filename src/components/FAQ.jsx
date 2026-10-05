@@ -1,6 +1,9 @@
+import Markdown from './Markdown.jsx'
+
 // Accessible FAQ accordion built on native <details>/<summary>, keyboard- and
 // screen-reader-friendly with zero JS, and still works if scripts fail. Pass an
-// array of { q, a } items.
+// array of { q, a } items; an answer may use the portal editor's markdown
+// (bold, links, lists).
 export default function FAQ({ items, className = '' }) {
   return (
     <div className={`space-y-3 ${className}`}>
@@ -22,7 +25,7 @@ export default function FAQ({ items, className = '' }) {
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
           </summary>
-          <p className="pb-5 text-sm leading-relaxed text-soft/75">{item.a}</p>
+          <Markdown text={item.a} className="pb-5 text-sm leading-relaxed text-soft/75" />
         </details>
       ))}
     </div>

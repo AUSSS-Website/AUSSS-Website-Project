@@ -6,7 +6,8 @@ import { chipAccent, rgba } from '../lib/color.js'
 import SignupForm from '../components/SignupForm.jsx'
 import { WAITLIST_OPEN } from '../data/signupsConfig.js'
 import FAQ from '../components/FAQ.jsx'
-import { joinFaqs } from '../data/faq.js'
+import { useContentBlock } from '../lib/content.js'
+import joinFaqSchema from '../content/schemas/joinFaq.js'
 
 const WHY = [
   {
@@ -68,6 +69,8 @@ export default function JoinPage() {
     'Become part of AUSSS, the Ain Shams University Students’ Scientific Society. Join our committees for research, public health, and global student exchange.',
   )
   useReveal()
+  // The questions are edited from the portal (Site content).
+  const faq = useContentBlock(joinFaqSchema)
   const standing = committees.filter((c) => c.group === 'Standing Committee')
   const divisions = committees.filter((c) => c.group === 'Support Division')
 
@@ -202,7 +205,7 @@ export default function JoinPage() {
           <h2 className="heading-serif text-center text-3xl text-ink">
             Frequently asked questions
           </h2>
-          <FAQ items={joinFaqs} className="mt-8" />
+          <FAQ items={faq.items} className="mt-8" />
         </section>
 
         <div className="reveal text-center">

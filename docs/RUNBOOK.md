@@ -1290,7 +1290,8 @@ the one-time `--login`; Google refuses that automated window, so use the email l
 ## 22. Security checklist (Phase 5a)
 
 Repeat this once a term and before the member rollout. Each line says how to check it; a
-ticked line passed on 2026-10-04.
+ticked line passed on 2026-10-04 and again on 2026-10-05, when the list was re-run over what
+Phase 5b added (the gate of Phase 5d). The one line that failed that day is marked.
 
 **Response headers** (`vercel.json`; check with `curl -sI https://ausss-ainshams.org/`).
 
@@ -1331,19 +1332,41 @@ ticked line passed on 2026-10-04.
       (`supabase/tests/200-security-baseline.sql` fails CI otherwise).
 - [x] Storage: `gallery`, `magazine` and `committee-media` are public to read and writable
       only by their editors; `receipts` is private, takes one upload per fresh order and is
-      readable by the EB alone. Size and image-type limits are set on every bucket.
+      readable by the EB alone. `task-files` is private (10 MB a file, documents and images;
+      read and written through the task's own access rules) and `avatars` is public to read
+      (1 MB, images; each person writes only their own folder). `content-media` (Phase 6)
+      is public to read and writable only by the editors of the block a file belongs to.
+      Size and file-type limits
+      are set on every bucket (`select id, public, file_size_limit, allowed_mime_types from
+      storage.buckets`).
 - [x] Supabase security advisors (dashboard > Advisors, or the MCP `get_advisors`): no
       errors. The warnings are expected: the public RPCs are `SECURITY DEFINER` by design
-      (each checks its caller itself), five tables have row-level security and no policy on
-      purpose (only functions reach them), and leaked-password protection does not apply
+      (each checks its caller itself), six tables have row-level security and no policy on
+      purpose (only functions reach them; `app.site_rebuild` joined them in Phase 5b), and
+      leaked-password protection does not apply
       (sign-in is Google or an email link, never a password).
 
 **Accounts and settings** (dashboards; not checkable from the repository).
 
 - [ ] Supabase > Authentication > URL configuration: the site URL is
       `https://ausss-ainshams.org` and the redirect list holds only that domain and
-      `http://localhost:5173`.
-- [ ] Supabase > Authentication > Providers: only Google and email are on.
+      `http://localhost:5173`. **Failed on 2026-10-05:** the site URL is right, but the
+      list holds ten addresses, and four of them are wildcards over `vercel.app`
+      (`https://*-ausss-website.vercel.app/portal/callback` and the three
+      `ausss-ainshams-ausss-website` / `ausss-*-ainshams-ausss-website` lines). Anyone can
+      create a Vercel project whose address fits such a pattern (a project named
+      `x-ausss-website` gets `x-ausss-website.vercel.app`), and sign-in hands the session to
+      whatever allowed address a link names, so a crafted sign-in link could deliver a
+      member's session to a stranger's page. Delete those four lines and
+      `https://ausss-ainshams.vercel.app/portal/callback` (that address only redirects to
+      the domain now). Keep `https://ausss-ainshams.org/portal/callback`, the `www` one,
+      and the two `localhost` lines (5173 for `npm run dev`, 4173 for `vite preview`). The
+      cost is that sign-in stops working on Vercel preview addresses; test the portal on
+      localhost, as now.
+- [x] Supabase > Authentication > Providers: only Google and email are on.
+- [x] Google Cloud > Google Auth Platform > Audience: publishing status "In production"
+      (HANDOVER 2.4). The "100 user cap" shown there applies only to sensitive scopes; the
+      portal asks for name and email alone, so it does not limit sign-ins.
 - [ ] Two-step verification is on for the GitHub, Vercel, Supabase, Squarespace, Resend and
       Google accounts of HANDOVER section 2 (Squarespace showed its "set up two-factor"
       banner on 2026-10-04).
@@ -1608,3 +1631,75 @@ screenshots of the pages touched at 320 and 1920 px in both themes. State on 202
 the 37 public pages pass at all six widths in both themes, and so do the 18 portal pages
 of `npm run walk:portal-sample`. A signed-in walk of the portal against the real data
 (`npm run walk -- --login` first) has not been done yet.
+
+## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
+
+Built 2026-10-05. Migration `20261005210001_content_blocks`, pgTAP file
+`290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+
+**What it is.** A part of a public page that is plain content (the questions on `/join`
+first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The
+portal page **Site content** (`/portal/content`) lists the blocks a person may edit and
+opens each in the same form, drawn from the block's field schema.
+
+| Copy | Where | Who sees it |
+| --- | --- | --- |
+| The shipped copy | `defaults` in the schema file (from `src/data`) | visitors, until something is published |
+| The draft | `content_blocks.draft` | the block's editors only |
+| The published document | `content_blocks.published` | every visitor, through `rpc/content_public()` |
+
+- **Save draft** keeps the work without changing the site. **Publish** puts what is on
+  screen on the site and clears the draft. **Discard draft** throws the draft away.
+- Visitors see a published change on their next page load. Search engines and link
+  previews follow when the pages are rebuilt, which publishing asks for by itself
+  (section 23, "rebuild on publish").
+- Two people editing the same block: the second to save is refused with "Someone else
+  saved this while you were editing" and reloads to see the other version.
+- **Who may edit.** The EB edits every block. `content_blocks.editors` lists committee
+  slugs whose officers may edit and publish that one block too (`{scope,score}` for an
+  exchange page). The three write functions and the row-level security check it; the
+  `editors` list in the schema file only decides who sees the "Site content" link.
+- **Nothing typed can inject markup.** Every value is rendered by React as text. Markdown
+  fields go through `src/lib/markdown.js`, which builds a tree of plain objects (never
+  HTML) and keeps a link only when `safeHref` accepts its address: `http(s)`, `mailto`,
+  `tel`, a page of this site, or an anchor. The database holds a document to being a jsonb
+  object under 200 kB and knows nothing else about it; the page reads it through
+  `resolveDoc`, which drops unknown keys and falls back to the shipped copy when a
+  published document fails its own schema.
+- **Pictures** in an image field are shrunk in the browser and stored in the public bucket
+  `content-media` under `<block key>/`, writable by that block's editors only.
+
+**Add an editable block.** Three files and one line:
+
+1. A migration that inserts the row: `insert into public.content_blocks (key, editors)
+   values ('exchange.incomings', '{scope,score}') on conflict (key) do nothing;` The key
+   is `<page>.<part>` in lower case.
+2. A schema file in `src/content/schemas/` (copy `joinFaq.js`). Field types: `text`,
+   `textarea`, `markdown`, `url`, `image`, `toggle`, `select`, `list`
+   (`src/content/schema.js` documents each). Its `defaults` are what the page shows until
+   someone publishes, so move the current copy there.
+3. Add it to the list in `src/content/index.js`.
+4. In the page, `const doc = useContentBlock(schema)` (`src/lib/content.js`) and render
+   `doc`. For a preview in the editor, add an entry to
+   `src/portal/pages/content/previews.jsx` that draws the page's own component.
+
+Then `npm test` (a test checks every schema's shipped copy passes its own rules) and
+`npm run walk:portal-sample -- dark,light 320,1440 /portal/content`.
+
+**Undo a bad publish.** Open the block, fix it and publish again. For the exact earlier
+text, the webmaster opens **Audit log**, filters on "Site content", and copies the
+`published` value from the "Before" side of the entry. To go back to the shipped copy,
+set the row's `published` to null in the Supabase table editor.
+
+**The audit log** (`/portal/admin/audit`, webmaster only) reads `public.audit_log`, which
+a trigger fills on every change to the main tables: who, when, and the row before and
+after. Filter by what was changed and by the kind of change; open an entry to see the
+fields that differ. It is read-only, and the database returns its rows to the webmaster
+alone. Entries for `site_settings` and `content_blocks` carry the row's key as their row
+id (they had none before this migration). Drafts are logged too, so the log grows with
+every save; there is no trimming yet, which is a job for Phase 7 if the table grows large.
+
+**Tests.** `npm test` runs Vitest once (also on every pull request, workflow `site-ci`).
+The files sit beside what they test: `src/lib/markdown.test.js` (what a link may point
+at, what the reader understands), `src/content/schema.test.js` (documents are forced into
+their schema's shape; a broken published document is never rendered), `src/lib/text.test.js`.

@@ -5,6 +5,7 @@ import ThemeToggle from '../components/ThemeToggle.jsx'
 import { SIGN_IN_PATH } from './constants.js'
 import NotificationBell from './NotificationBell.jsx'
 import { Avatar } from './Avatar.jsx'
+import { contentSchemas } from '../content/index.js'
 
 // The portal's own chrome. It deliberately does not sit inside the public
 // <Layout/> (navbar, footer) so signed-in pages stay quiet and the public
@@ -46,7 +47,7 @@ function displayName(profile, user) {
 }
 
 export default function PortalLayout() {
-  const { user, profile, isEB, assignments, officerOf, signOut } = useAuth()
+  const { user, profile, isEB, isWebmaster, assignments, officerOf, signOut } = useAuth()
   // Officers (and the EB) get the committee editor in the nav; members don't.
   const canEditCommittees =
     isEB || assignments.some((a) => a.position?.level === 'officer' && a.position?.committee)
@@ -57,6 +58,9 @@ export default function PortalLayout() {
   // Submissions: the EB triages orders, stories and the waitlist; the exchange
   // officers (SCOPE, SCORE) see the stories.
   const canTriage = isEB || officerOf('scope') || officerOf('score')
+  // Site content: the EB edits every part; an officer sees the link when some
+  // part names their committee.
+  const canEditContent = isEB || contentSchemas.some((s) => s.editors.some((slug) => officerOf(slug)))
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [busy, setBusy] = useState(false)
@@ -72,12 +76,14 @@ export default function PortalLayout() {
       canEditCommittees && { to: '/portal/committees', label: 'Committees' },
       canEditGallery && { to: '/portal/gallery', label: 'Gallery' },
       canEditMagazine && { to: '/portal/magazine', label: 'Magazine' },
+      canEditContent && { to: '/portal/content', label: 'Site content' },
       canTriage && { to: '/portal/submissions', label: 'Submissions' },
     ],
     [
       isEB && { to: '/portal/admin/roster', label: 'Roster' },
       isEB && { to: '/portal/admin/verification', label: 'Verification' },
       isEB && { to: '/portal/admin/settings', label: 'Site settings' },
+      isWebmaster && { to: '/portal/admin/audit', label: 'Audit log' },
     ],
   ]
     .map((group) => group.filter(Boolean))

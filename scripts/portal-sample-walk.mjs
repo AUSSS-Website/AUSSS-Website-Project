@@ -65,6 +65,14 @@ const tables = {
     { id: 'r-2', full_name: 'Second Sample', email: 'member2@example.com', status: 'Candidate Member', joined_year: 2025, years_spent: 1, lgas: 1, ngas: 0, current_position: '', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: null, is_contact_person: false, position_id: null },
     { id: 'r-3', full_name: 'Third Sample', email: 'member3@example.com', status: 'Associate Member', joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: 'Local Member', origin: 'portal', portal_edited_at: iso(2), profile_id: null, import_batch: null, updated_at: iso(2), committee_id: 'c-scope', is_contact_person: false, position_id: null },
   ],
+  content_blocks: [
+    { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
+  ],
+  audit_log: [
+    { id: 3, at: iso(0.1), actor: uid, table_name: 'content_blocks', row_id: 'join.faq', action: 'UPDATE', before: { key: 'join.faq', draft: null, updated_at: iso(1) }, after: { key: 'join.faq', draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the Faculty of Medicine.' }] }, updated_at: iso(0.1) } },
+    { id: 2, at: iso(1), actor: other, table_name: 'tasks', row_id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', action: 'INSERT', before: null, after: { id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', title: 'Collect the incomings welcome booklet photos from every contact person', status: 'todo', priority: 'high' } },
+    { id: 1, at: iso(2), actor: null, table_name: 'roster_entries', row_id: 'a-row-id-long-enough-to-need-breaking-on-a-phone-0123456789', action: 'DELETE', before: { full_name: 'Sample Member With A Rather Long Four Part Name', email: 'member1@example.com', status: 'Full Member' }, after: null },
+  ],
 }
 const rpcs = {
   directory: [
@@ -83,6 +91,7 @@ const ROUTES = [
   '/portal/notifications', '/portal/directory', '/portal/committees', '/portal/committees/scope',
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
   '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
+  '/portal/content', '/portal/content/join.faq', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 
 function measureOverflow() {
