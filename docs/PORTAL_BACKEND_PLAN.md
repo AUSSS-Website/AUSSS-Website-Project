@@ -795,8 +795,8 @@ webmaster's to tick.
 
 #### Phase 6. Site management
 
-**Status, 2026-10-05: steps 1 and 2 are built on branch `phase-6-editor`
-(pull request 8); RUNBOOK section 25 has the rules.** The table `content_blocks` holds each edited
+**Status, 2026-10-05: steps 1 and 2 are built and live (pull request 8,
+main at 0ffabda); RUNBOOK section 25 has the rules.** The table `content_blocks` holds each edited
 part of a page as a document with a draft and a published copy. The portal
 has a "Site content" page that lists the blocks a person may edit and opens
 each in one form drawn from its field schema, with a live preview made of

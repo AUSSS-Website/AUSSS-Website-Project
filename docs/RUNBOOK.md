@@ -1545,9 +1545,12 @@ is for (at most 72 a day, in practice a handful).
 
 ## 24. Themes, colours and sizing (Phase 5c)
 
-The site and the portal have two themes, dark and light. A visitor's choice is kept in
-`localStorage.theme`; without one the device's preference decides
-(`public/theme-init.js`, `src/lib/theme.js`). The toggle is in the public navbar and in
+The site and the portal have two themes, dark and light. **Light is the default**: the
+site is dark only for a visitor who chose dark with the toggle, and that choice is kept in
+`localStorage.theme`. The device's own light or dark setting is not followed (the
+webmaster's decision, 2026-10-06; before it, a device set to dark opened the site dark).
+The colour of a phone browser's bar follows the theme too (`public/theme-init.js`,
+`src/lib/theme.js`). The toggle is in the public navbar and in
 the portal header.
 
 **Write a page once: use the theme tokens.** `tailwind.config.js` has a second set of
