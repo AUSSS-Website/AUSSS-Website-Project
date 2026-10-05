@@ -905,6 +905,16 @@ content columns only (column grants): ids, paths, authorship and timestamps are 
 triggers. Nobody but editors can read the tables; visitors read `rpc/gallery_public()`,
 one JSON document with the published albums that have at least one visible photo.
 
+**The order of the albums.** On `/portal/gallery` each album has a handle at its left
+edge (six dots). Drag it up or down with a mouse or a finger and let go: the others make
+room, the new order shows at once and is saved (`albums.sort_order`, every row written
+together), and the public gallery follows on its next load. Held near the top or bottom
+of the window, a dragged album scrolls the page, so a long shelf can be crossed. Without a
+pointer, focus the handle and press the up or down arrow key to move the album one place.
+If the save fails the albums go back to where they were and the error shows above the
+list. The list is `src/portal/SortableList.jsx`, written to be reused wherever a list is
+put in order by hand; the magazine shelf still uses its arrow buttons.
+
 **Hide, remove, bin.** *Hide* keeps the photo in the album but off the site (the old
 takedown list). *Remove* sets `deleted_at`: the photo shows in the album's bin with
 Restore and Delete for good; anything older than 30 days is purged (files then row) the

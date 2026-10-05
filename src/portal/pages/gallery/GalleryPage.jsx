@@ -14,11 +14,13 @@ import {
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
+import SortableList from '../../SortableList.jsx'
 import { ShareLinkButton, siteAlbumUrl } from './galleryUi.jsx'
 
 // /portal/gallery. The shelf: every album in the order visitors see it, with
 // its cover, photo count and shareable link. PNSD officers and the EB add
-// albums here and reorder them; the album itself is edited on its own page.
+// albums here and drag them into order (the handle at the left of each row;
+// the arrow keys work on it too); the album itself is edited on its own page.
 
 export function GalleryGate({ children }) {
   const { officerOf } = useAuth()
@@ -89,9 +91,10 @@ function NewAlbumForm({ onDone }) {
   )
 }
 
-function AlbumRow({ a, index, total, onMove, moving }) {
+function AlbumRow({ a, handle }) {
   return (
-    <li className="flex flex-wrap items-center gap-4 rounded-2xl border border-line/10 bg-card p-3 sm:flex-nowrap">
+    <div className="flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap sm:gap-4">
+      {handle}
       <Link to={`/portal/gallery/${a.slug}`} className="block h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-page">
         {a.cover ? (
           <img src={a.cover} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -116,29 +119,11 @@ function AlbumRow({ a, index, total, onMove, moving }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <ShareLinkButton slug={a.slug} />
-        <button
-          type="button"
-          className={outlineBtnCls}
-          onClick={() => onMove(index, index - 1)}
-          disabled={moving || index === 0}
-          aria-label={`Move ${a.title} up`}
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className={outlineBtnCls}
-          onClick={() => onMove(index, index + 1)}
-          disabled={moving || index === total - 1}
-          aria-label={`Move ${a.title} down`}
-        >
-          ↓
-        </button>
         <Link to={`/portal/gallery/${a.slug}`} className={outlineBtnCls}>
           Edit
         </Link>
       </div>
-    </li>
+    </div>
   )
 }
 
@@ -149,20 +134,12 @@ export default function GalleryPage() {
   const [adding, setAdding] = useState(false)
   const [created, setCreated] = useState(null)
 
-  const move = (from, to) => {
-    const ids = (albums.data || []).map((a) => a.id)
-    if (to < 0 || to >= ids.length) return
-    const [id] = ids.splice(from, 1)
-    ids.splice(to, 0, id)
-    reorder.mutate(ids)
-  }
-
   return (
     <GalleryGate>
       <PageHeader
         eyebrow="PNSD"
         title="Gallery"
-        subtitle="Albums in the order visitors see them. Changes are live on the site the moment they are saved."
+        subtitle="Albums in the order visitors see them. Drag an album by its handle to move it. Changes are live on the site the moment they are saved."
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -217,18 +194,15 @@ export default function GalleryPage() {
       ) : (
         <>
           {reorder.error && <ErrorText>{reorder.error.message}</ErrorText>}
-          <ul className="grid gap-3">
-            {albums.data.map((a, i) => (
-              <AlbumRow
-                key={a.id}
-                a={a}
-                index={i}
-                total={albums.data.length}
-                onMove={move}
-                moving={reorder.isPending}
-              />
-            ))}
-          </ul>
+          <SortableList
+            items={albums.data}
+            getId={(a) => a.id}
+            getLabel={(a) => a.title}
+            onReorder={(ids) => reorder.mutate(ids)}
+            className="grid gap-3"
+            itemClassName="min-w-0 rounded-2xl border border-line/10 bg-card"
+            renderItem={(a, handle) => <AlbumRow a={a} handle={handle} />}
+          />
         </>
       )}
     </GalleryGate>

@@ -93,11 +93,13 @@ async function deleteAlbum(id) {
   return id
 }
 
-// New shelf order: the array of album ids, first to last.
+// New shelf order: the array of album ids, first to last. The rows are written
+// together, so a drop is saved in one round trip's time however long the shelf.
 async function reorderAlbums(ids) {
-  for (let i = 0; i < ids.length; i++) {
-    unwrap(await supabase.from('albums').update({ sort_order: i }).eq('id', ids[i]))
-  }
+  const results = await Promise.all(
+    ids.map((id, i) => supabase.from('albums').update({ sort_order: i }).eq('id', id)),
+  )
+  results.forEach(unwrap)
   return ids
 }
 
@@ -107,7 +109,26 @@ export function useAlbumMutations() {
   const create = useMutation({ mutationFn: createAlbum, onSuccess: done })
   const update = useMutation({ mutationFn: ({ id, patch }) => updateAlbum(id, patch), onSuccess: done })
   const remove = useMutation({ mutationFn: deleteAlbum, onSuccess: done })
-  const reorder = useMutation({ mutationFn: reorderAlbums, onSuccess: done })
+  // The list shows the new order the moment a row is dropped: the cached shelf
+  // is put in that order first, and put back if the save fails. Either way the
+  // shelf is read again afterwards, so the screen ends on what the database holds.
+  const reorder = useMutation({
+    mutationFn: reorderAlbums,
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: galleryKeys.albums() })
+      const before = qc.getQueryData(galleryKeys.albums())
+      if (before) {
+        const byId = new Map(before.map((a) => [a.id, a]))
+        const next = ids.map((id, i) => byId.get(id) && { ...byId.get(id), sort_order: i }).filter(Boolean)
+        if (next.length === before.length) qc.setQueryData(galleryKeys.albums(), next)
+      }
+      return { before }
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.before) qc.setQueryData(galleryKeys.albums(), context.before)
+    },
+    onSettled: done,
+  })
   return { create, update, remove, reorder }
 }
 
