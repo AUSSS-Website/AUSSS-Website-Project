@@ -8,10 +8,12 @@ import { Centered, ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.
 import PageEditor from './PageEditor.jsx'
 import CallsPanel from './CallsPanel.jsx'
 import MembersPanel from './MembersPanel.jsx'
+import PositionsPanel from './PositionsPanel.jsx'
 
 // /portal/committees/:slug. What an officer manages for their committee:
-// the public page itself, the recruitment calls running on it, and the
-// committee's own members. The database decides what is allowed
+// the public page itself, the recruitment calls running on it, the
+// committee's own members, and the invites and positions of people who are
+// not on its members list. The database decides what is allowed
 // (save_committee_page and the calls policies); this page only decides what
 // to show, so a member who types the URL sees a polite refusal instead of a
 // broken editor.
@@ -20,6 +22,7 @@ const TABS = [
   ['page', 'Committee page'],
   ['calls', 'Open calls'],
   ['members', 'Members'],
+  ['invites', 'Invites'],
 ]
 
 export default function CommitteeEditorPage() {
@@ -111,7 +114,7 @@ export default function CommitteeEditorPage() {
         }
       />
 
-      <div role="tablist" aria-label="Committee editor" className="mb-8 flex gap-2">
+      <div role="tablist" aria-label="Committee editor" className="mb-8 flex flex-wrap gap-2">
         {TABS.map(([key, label]) => (
           <button
             key={key}
@@ -137,6 +140,7 @@ export default function CommitteeEditorPage() {
       </div>
       {tab === 'calls' && <CallsPanel committee={c} />}
       {tab === 'members' && <MembersPanel committee={c} />}
+      {tab === 'invites' && <PositionsPanel committee={c} />}
     </>
   )
 }

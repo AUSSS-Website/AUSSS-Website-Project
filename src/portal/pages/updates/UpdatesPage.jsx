@@ -12,6 +12,7 @@ import {
 import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import { CommitteeTag, LEVEL_LABELS, POST_KIND_LABEL, RichText, UnreadDot, personName, when } from '../../workUi.jsx'
 import PostEditor from './PostEditor.jsx'
+import { Avatar } from '../../Avatar.jsx'
 
 // /portal/updates. The feed of posts addressed to this person (the database
 // decides), newest first with pinned ones on top. Opening a long post, or pressing
@@ -79,8 +80,11 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
       </div>
 
       <h2 className="mt-3 text-lg font-semibold text-white">{post.title}</h2>
-      <p className="mt-1 text-xs text-silver/50">
-        {personName(names, post.author_id, 'AUSSS')} · {when(post.publish_at || post.created_at)}
+      <p className="mt-1.5 flex items-center gap-2 text-xs text-silver/50">
+        <Avatar name={personName(names, post.author_id, 'AUSSS')} src={names[post.author_id]?.avatar_url} size="sm" />
+        <span>
+          {personName(names, post.author_id, 'AUSSS')} · {when(post.publish_at || post.created_at)}
+        </span>
       </p>
 
       {post.body && (

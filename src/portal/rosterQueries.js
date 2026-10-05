@@ -15,6 +15,7 @@ const rosterKeys = {
   bulk: () => ['roster', 'bulk'],
   upgrades: () => ['roster', 'upgrades'],
   committee: (id) => ['roster', 'committee', id],
+  held: (id) => ['roster', 'held', id || 'society'],
   notes: (entryId, committeeId) => ['roster', 'notes', committeeId, entryId],
 }
 
@@ -171,9 +172,46 @@ const fetchCommitteeRoster = async (committeeId) =>
 const assignRosterMember = async ({ entry, position }) =>
   unwrap(await supabase.rpc('assign_roster_member', { entry, position }))
 
+// ---- positions held, and invites (officers; the EB for the society level) ----
+
+// { holders: [...], invites: [...] } for one committee this term; a null
+// committee means the society-level positions (the board, the webmaster).
+const fetchCommitteePositions = async (committeeId) =>
+  unwrap(await supabase.rpc('committee_positions', { committee: committeeId || null }))
+
+// 'assigned' (an account with that address exists) or 'invited'.
+const inviteToPosition = async ({ email, position }) =>
+  unwrap(await supabase.rpc('invite_to_position', { email, position }))
+
+// An invite nobody accepted yet is simply deleted. PostgREST answers a delete
+// the policy filtered out with no rows and no error, hence the check.
+const withdrawInvite = async (id) => {
+  const rows = unwrap(await supabase.from('invites').delete().eq('id', id).select('id'))
+  if (!rows?.length) throw new Error('That invite could not be withdrawn.')
+}
+
+const removePosition = async (assignment) =>
+  unwrap(await supabase.rpc('remove_position', { assignment }))
+
 // ---- position types ---------------------------------------------------------
 
 const POSITION_COLUMNS = 'id, key, committee_id, title, short_title, level, sort, active, can_assign_tasks'
+
+// The positions that belong to no committee: the Executive Board's and the
+// webmaster's. Handed out by the board on the Roster page.
+async function fetchSocietyPositions() {
+  return (
+    unwrap(
+      await supabase
+        .from('positions')
+        .select(POSITION_COLUMNS)
+        .is('committee_id', null)
+        .eq('active', true)
+        .order('level')
+        .order('sort'),
+    ) || []
+  )
+}
 
 // Every committee position (society-wide ones are not handed out from the roster).
 async function fetchPositions() {
@@ -298,6 +336,17 @@ export function usePositions() {
   return useQuery({ queryKey: ['positions'], queryFn: fetchPositions })
 }
 
+export function useSocietyPositions(enabled = true) {
+  return useQuery({ queryKey: ['positions', 'society'], queryFn: fetchSocietyPositions, enabled })
+}
+
+export function useCommitteePositions(committeeId) {
+  return useQuery({
+    queryKey: rosterKeys.held(committeeId),
+    queryFn: () => fetchCommitteePositions(committeeId),
+  })
+}
+
 function usePositionMutation(mutationFn) {
   const qc = useQueryClient()
   return useMutation({
@@ -350,5 +399,8 @@ export const useDismissUpgrades = () => useRosterMutation(dismissUpgrades)
 export const useSetSheet = () => useRosterMutation(setSheet)
 export const useSyncSheetNow = () => useRosterMutation(syncSheetNow)
 export const useAssignRosterMember = () => useRosterMutation(assignRosterMember)
+export const useInviteToPosition = () => useRosterMutation(inviteToPosition)
+export const useWithdrawInvite = () => useRosterMutation(withdrawInvite)
+export const useRemovePosition = () => useRosterMutation(removePosition)
 export const useAddMemberNote = () => useRosterMutation(addMemberNote)
 export const useDeleteMemberNote = () => useRosterMutation(deleteMemberNote)

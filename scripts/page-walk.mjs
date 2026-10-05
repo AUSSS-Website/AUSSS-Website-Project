@@ -40,6 +40,7 @@ const PORTAL_FIXED = [
   '/portal/tasks',
   '/portal/updates',
   '/portal/notifications',
+  '/portal/directory',
   '/portal/committees',
   '/portal/gallery',
   '/portal/magazine',

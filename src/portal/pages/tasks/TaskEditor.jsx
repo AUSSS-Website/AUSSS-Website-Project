@@ -1,12 +1,21 @@
-import { useState } from 'react'
-import { useAssignable, useTaskMutations } from '../../workQueries.js'
+import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { findDuplicateTasks, useAssignable, useTaskMutations } from '../../workQueries.js'
+import { todayCairo } from '../../officerQueries.js'
 import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
-import { TASK_PRIORITIES, chipBtnCls } from '../../workUi.jsx'
+import { DueLabel, TASK_PRIORITIES, chipBtnCls } from '../../workUi.jsx'
+import { FileChooser } from './TaskFiles.jsx'
+import { Avatar } from '../../Avatar.jsx'
 
 // Create or edit a task. `scopes` comes from useWorkScopes(): the committees
 // this person may hand work out in, plus `society` for the EB. A task never
 // changes committee once saved (the database pins it), so the picker is only
 // live on create.
+//
+// A new task opens with today's date (the Cairo day). Before it is created the
+// open tasks of that committee are checked for one with the same title and the
+// same people; a match is shown with a link and the person decides. It warns
+// and never blocks, since a repeat can be deliberate.
 
 const SOCIETY = 'society'
 
@@ -19,42 +28,82 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
   const [title, setTitle] = useState(task?.title || '')
   const [body, setBody] = useState(task?.body || '')
   const [priority, setPriority] = useState(task?.priority || 'normal')
-  const [dueOn, setDueOn] = useState(task?.due_on || '')
+  const [dueOn, setDueOn] = useState(task ? task.due_on || '' : todayCairo())
   const [assignees, setAssignees] = useState(previousAssignees)
+  const [files, setFiles] = useState([])
   const [error, setError] = useState('')
+  // Tasks that look like this one; set by the check, cleared by any change to
+  // what was checked.
+  const [repeats, setRepeats] = useState(null)
+  const [checking, setChecking] = useState(false)
+  // A second click lands before React has re-rendered the disabled button.
+  const saving = useRef(false)
 
   const committeeId = scope === SOCIETY ? null : scope
   const people = useAssignable(committeeId, Boolean(scope))
   const { create, update } = useTaskMutations()
-  const busy = create.isPending || update.isPending
+  const busy = checking || create.isPending || update.isPending
 
   const changeScope = (next) => {
     setScope(next)
     setAssignees([]) // people differ per committee
+    setRepeats(null)
   }
 
-  const toggle = (id) =>
-    setAssignees((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+  const changeTitle = (next) => {
+    setTitle(next)
+    setRepeats(null)
+  }
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const toggle = (id) => {
+    setAssignees((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+    setRepeats(null)
+  }
+
+  const save = async ({ confirmed = false } = {}) => {
+    if (saving.current) return
     setError('')
     if (!title.trim()) {
       setError('Give the task a title.')
       return
     }
+    saving.current = true
     const fields = { title, body, priority, due_on: dueOn || null }
     try {
       if (editing) {
         await update.mutateAsync({ id: task.id, ...fields, assignees, previousAssignees })
         onDone(task.id)
-      } else {
-        const row = await create.mutateAsync({ committee_id: committeeId, ...fields, assignees })
-        onDone(row.id)
+        return
       }
+      if (!confirmed) {
+        setChecking(true)
+        // If the check itself fails the task is still created: the warning is
+        // a courtesy, not a gate.
+        const found = await findDuplicateTasks({ committee_id: committeeId, title, assignees }).catch(
+          () => [],
+        )
+        setChecking(false)
+        if (found.length) {
+          setRepeats(found)
+          return
+        }
+      }
+      const row = await create.mutateAsync({ committee_id: committeeId, ...fields, assignees, files })
+      onDone(
+        row.id,
+        row.fileError && `The task was created, but its files were not attached. ${row.fileError}`,
+      )
     } catch (err) {
       setError(err?.message || 'Could not save the task.')
+    } finally {
+      setChecking(false)
+      saving.current = false
     }
+  }
+
+  const submit = (e) => {
+    e.preventDefault()
+    save()
   }
 
   return (
@@ -82,7 +131,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
           <input
             id="task-title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => changeTitle(e.target.value)}
             maxLength={200}
             placeholder="What needs doing?"
             className={inputCls}
@@ -151,6 +200,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
                       onChange={() => toggle(p.id)}
                       className="h-4 w-4 accent-medical"
                     />
+                    <Avatar name={p.full_name} src={p.avatar_url} size="sm" />
                     <span className="min-w-0 flex-1 truncate">{p.full_name || 'No name yet'}</span>
                     <span className="shrink-0 text-xs text-silver/50">{p.position_title}</span>
                   </label>
@@ -159,11 +209,63 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
             </ul>
           )}
         </Field>
+
+        {!editing && (
+          <Field
+            label="Files"
+            hint="Optional. Up to 5 files of 10 MB each: documents, sheets, slides, PDFs, images or a zip. Everyone on the task can open them."
+          >
+            <FileChooser files={files} onChange={setFiles} disabled={busy} />
+          </Field>
+        )}
       </Panel>
 
+      {repeats && (
+        <div
+          role="alert"
+          className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-5"
+        >
+          <p className="text-sm font-semibold text-amber-200">
+            This task already exists. Create it again?
+          </p>
+          <p className="mt-1 text-xs text-silver/70">
+            {repeats.length === 1 ? 'An open task has' : `${repeats.length} open tasks have`} the same
+            title and the same people.
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {repeats.slice(0, 5).map((t) => (
+              <li key={t.id} className="flex flex-wrap items-baseline gap-x-3 text-sm">
+                <Link
+                  to={`/portal/tasks/${t.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-medical-light underline decoration-white/20 underline-offset-2 hover:text-white"
+                >
+                  {t.title}
+                </Link>
+                <DueLabel task={t} />
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => save({ confirmed: true })}
+              className={outlineBtnCls}
+            >
+              {create.isPending ? 'Creating…' : 'Create it again'}
+            </button>
+            <button type="button" disabled={busy} onClick={() => setRepeats(null)} className={outlineBtnCls}>
+              Keep editing
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={busy} className={primaryBtnCls}>
-          {busy ? 'Saving…' : editing ? 'Save changes' : 'Create task'}
+        <button type="submit" disabled={busy || Boolean(repeats)} className={primaryBtnCls}>
+          {checking ? 'Checking…' : busy ? 'Saving…' : editing ? 'Save changes' : 'Create task'}
         </button>
         <button type="button" onClick={onCancel} disabled={busy} className={outlineBtnCls}>
           Cancel

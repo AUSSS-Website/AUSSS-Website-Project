@@ -132,7 +132,7 @@ export default function TasksPage() {
         <TaskEditor
           scopes={scopes}
           onCancel={() => setCreating(false)}
-          onDone={(id) => navigate(`/portal/tasks/${id}`)}
+          onDone={(id, notice) => navigate(`/portal/tasks/${id}`, notice ? { state: { notice } } : undefined)}
         />
       </>
     )

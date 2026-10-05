@@ -7,6 +7,7 @@ import { readableAccent, rgba } from '../lib/color.js'
 import { driveImg } from '../lib/img.js'
 import { useOfficerOverrides } from '../hooks/useOfficerOverrides.js'
 import { useCalls } from '../hooks/useCalls.js'
+import { committeeOfficers, usePeople } from '../lib/people.js'
 import { PersonCard, SectionLabel } from '../components/committeeUi.jsx'
 import CallCard from '../components/CallCard.jsx'
 import ApplyModal from '../components/ApplyModal.jsx'
@@ -17,6 +18,7 @@ export default function CommitteePage() {
   usePageTitle(c?.name || 'Committees')
   const { overrides } = useOfficerOverrides()
   const { calls } = useCalls()
+  const people = usePeople()
   // The call whose application form is open, if any.
   const [applyingTo, setApplyingTo] = useState(null)
   useReveal()
@@ -33,14 +35,10 @@ export default function CommitteePage() {
   // here, and an empty list simply hides the section.
   const openCalls = calls[slugFor(c)] || []
   const tagline = ov.tagline || c.tagline
-  const baseOfficers =
-    Array.isArray(c.officers) && c.officers.length > 0
-      ? c.officers
-      : [{ name: c.holder, abbr: c.officerAbbr, photo: c.photo }]
-  // The editable officer photo applies to the lead officer.
-  const officers = ov.photo
-    ? baseOfficers.map((o, i) => (i === 0 ? { ...o, photo: driveImg(ov.photo) } : o))
-    : baseOfficers
+  // Whoever holds each officer position this term (name and photo from their
+  // profile), society.js as the fallback, and the officer photo set on the
+  // page editor applied to the lead officer.
+  const officers = committeeOfficers(c, people, ov.photo)
   // Members: section is opt-in. When enabled, the officer-managed list
   // replaces the static one; when explicitly disabled, no member cards show.
   const membersHidden = ov.membersEnabled === false

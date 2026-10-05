@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useNames, useTask, useTaskMutations, useWorkScopes } from '../../workQueries.js'
@@ -16,6 +16,8 @@ import {
   when,
 } from '../../workUi.jsx'
 import TaskEditor from './TaskEditor.jsx'
+import { FileChooser, FileLinks } from './TaskFiles.jsx'
+import { Avatar } from '../../Avatar.jsx'
 
 // /portal/tasks/:id. The task, who has it, a status control for anyone
 // involved, and the timeline (comments plus what the triggers recorded).
@@ -42,31 +44,54 @@ function eventText(u, names) {
       return `${who} removed ${personName(names, u.meta?.profile_id, 'someone')}`
     case 'edited':
       return `${who} changed ${(u.meta?.fields || []).map((f) => FIELD_LABEL[f] || f).join(', ')}`
+    case 'files': {
+      const n = Number(u.meta?.files) || 1
+      return `${who} attached ${n === 1 ? 'a file' : `${n} files`}`
+    }
     default:
       return who
   }
 }
 
-function Timeline({ updates, names }) {
+// `files` are the task's files; each belongs to the timeline row it came with.
+function Timeline({ updates, names, files, fileProps }) {
+  const byUpdate = new Map()
+  for (const f of files) {
+    if (!byUpdate.has(f.update_id)) byUpdate.set(f.update_id, [])
+    byUpdate.get(f.update_id).push(f)
+  }
   return (
     <ol className="space-y-4">
-      {updates.map((u) =>
-        u.kind === 'comment' ? (
+      {updates.map((u) => {
+        const own = byUpdate.get(u.id) || []
+        return u.kind === 'comment' ? (
           <li key={u.id} className="rounded-2xl border border-white/10 bg-forest-800 p-4">
-            <p className="text-xs text-silver/50">
-              <span className="font-semibold text-white">{personName(names, u.author_id)}</span>
-              {' · '}
-              {when(u.created_at)}
+            <p className="flex items-center gap-2 text-xs text-silver/50">
+              <Avatar name={personName(names, u.author_id)} src={names[u.author_id]?.avatar_url} size="sm" />
+              <span>
+                <span className="font-semibold text-white">{personName(names, u.author_id)}</span>
+                {' · '}
+                {when(u.created_at)}
+              </span>
             </p>
             <RichText text={u.body} className="mt-2 text-sm text-silver/85" />
+            <FileLinks files={own} {...fileProps} className="mt-3" />
           </li>
         ) : (
-          <li key={u.id} className="flex flex-wrap items-baseline gap-x-2 pl-4 text-xs text-silver/50">
-            <span>{eventText(u, names)}</span>
-            <span className="text-silver/35">{when(u.created_at)}</span>
+          <li key={u.id} className="pl-4 text-xs text-silver/50">
+            <p className="flex flex-wrap items-baseline gap-x-2">
+              <span>{eventText(u, names)}</span>
+              <span className="text-silver/35">{when(u.created_at)}</span>
+            </p>
+            {u.kind === 'files' &&
+              (own.length ? (
+                <FileLinks files={own} {...fileProps} className="mt-2 max-w-xl" />
+              ) : (
+                <p className="mt-1 text-silver/35">Removed since.</p>
+              ))}
           </li>
-        ),
-      )}
+        )
+      })}
     </ol>
   )
 }
@@ -77,10 +102,12 @@ export default function TaskPage() {
   const { user } = useAuth()
   const scopes = useWorkScopes()
   const task = useTask(id)
-  const { update, remove, comment } = useTaskMutations()
+  const { update, remove, comment, removeFile } = useTaskMutations()
+  const notice = useLocation().state?.notice
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [draft, setDraft] = useState('')
+  const [draftFiles, setDraftFiles] = useState([])
   const [error, setError] = useState('')
   usePageTitle(task.data?.title || 'Task')
 
@@ -149,11 +176,19 @@ export default function TaskPage() {
 
   const postComment = (e) => {
     e.preventDefault()
-    if (!draft.trim()) return
+    if (!draft.trim() && !draftFiles.length) return
     run(async () => {
-      await comment.mutateAsync({ task_id: t.id, body: draft })
+      await comment.mutateAsync({ task_id: t.id, body: draft, files: draftFiles })
       setDraft('')
+      setDraftFiles([])
     }, 'Could not post the comment.')
+  }
+
+  // Whoever attached a file may take it back; so may a manager of the task.
+  const fileProps = {
+    canRemove: (file) => isManager || file.uploaded_by === user.id,
+    onRemove: (file) => run(() => removeFile.mutateAsync(file), 'Could not remove the file.'),
+    removing: removeFile.isPending,
   }
 
   const destroy = () =>
@@ -200,6 +235,12 @@ export default function TaskPage() {
         }
       />
 
+      {notice && (
+        <p role="alert" className="mb-5 max-w-3xl rounded-2xl border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-sm text-amber-200">
+          {notice}
+        </p>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-5">
           <Panel>
@@ -217,7 +258,7 @@ export default function TaskPage() {
 
           <section aria-label="Activity">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">Activity</p>
-            <Timeline updates={t.updates} names={names} />
+            <Timeline updates={t.updates} names={names} files={t.files} fileProps={fileProps} />
             <form onSubmit={postComment} className="mt-5">
               <label htmlFor="task-comment" className="sr-only">
                 Add a comment
@@ -231,9 +272,22 @@ export default function TaskPage() {
                 placeholder="Add a comment or a progress note…"
                 className={inputCls}
               />
+              <div className="mt-3">
+                <FileChooser files={draftFiles} onChange={setDraftFiles} disabled={comment.isPending} />
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-4">
-                <button type="submit" disabled={comment.isPending || !draft.trim()} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
-                  {comment.isPending ? 'Posting…' : 'Comment'}
+                <button
+                  type="submit"
+                  disabled={comment.isPending || (!draft.trim() && !draftFiles.length)}
+                  className={`${primaryBtnCls} px-5 py-2 text-xs`}
+                >
+                  {comment.isPending
+                    ? draftFiles.length
+                      ? 'Uploading…'
+                      : 'Posting…'
+                    : draft.trim() || !draftFiles.length
+                      ? 'Comment'
+                      : 'Attach'}
                 </button>
                 <ErrorText>{error}</ErrorText>
               </div>
@@ -268,9 +322,12 @@ export default function TaskPage() {
             ) : (
               <ul className="mt-4 space-y-2">
                 {t.assignees.map((a) => (
-                  <li key={a.profile_id} className="text-sm text-white">
-                    {personName(names, a.profile_id, '…')}
-                    {a.profile_id === user.id && <span className="text-silver/50"> (you)</span>}
+                  <li key={a.profile_id} className="flex items-center gap-2 text-sm text-white">
+                    <Avatar name={personName(names, a.profile_id, '')} src={names[a.profile_id]?.avatar_url} size="sm" />
+                    <span className="min-w-0 truncate">
+                      {personName(names, a.profile_id, '…')}
+                      {a.profile_id === user.id && <span className="text-silver/50"> (you)</span>}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -283,6 +340,16 @@ export default function TaskPage() {
               >
                 Change &rarr;
               </button>
+            )}
+          </Panel>
+
+          <Panel title={t.files.length ? `Files (${t.files.length})` : 'Files'}>
+            {t.files.length === 0 ? (
+              <p className="mt-4 text-sm text-silver/60">
+                None yet. Attach one from the comment box.
+              </p>
+            ) : (
+              <FileLinks files={t.files} {...fileProps} className="mt-4" />
             )}
           </Panel>
         </aside>

@@ -125,6 +125,46 @@ export function personName(names, id, fallback = 'Someone') {
   return names[id]?.full_name || fallback
 }
 
+// One notification as a headline and a detail line. Shared by the bell panel in
+// the header and the full /portal/notifications page.
+export function describeNotification(n, names) {
+  const p = n.payload || {}
+  const who = personName(names, p.actor_id, 'Someone')
+  switch (n.kind) {
+    case 'task_assigned':
+      return { line: `${who} assigned you a task`, detail: p.title }
+    case 'task_status':
+      return { line: `${who} moved a task to ${STATUS_LABEL[p.to] || p.to}`, detail: p.title }
+    case 'task_comment':
+      return { line: `${who} commented on “${p.title}”`, detail: p.excerpt }
+    case 'task_files':
+      return {
+        line: `${who} attached ${Number(p.count) > 1 ? `${p.count} files` : 'a file'} to “${p.title}”`,
+        detail: p.name,
+      }
+    case 'order_new':
+      return {
+        line: `New merch pre-order${p.flagged ? ' (check the amount)' : ''}`,
+        detail: `${p.name || 'Someone'} · ${p.ref || ''}${p.subtotal != null ? ` · ${p.subtotal} EGP` : ''}`,
+      }
+    case 'story_new':
+      return {
+        line: 'New exchange story',
+        detail: `${p.name || 'Someone'}${p.destination ? ` · ${p.destination}` : ''} · ${p.ref || ''}`,
+      }
+    default:
+      return { line: 'Something changed', detail: p.title }
+  }
+}
+
+// Where opening a notification leads; null when it has nowhere to go.
+export function notificationTarget(n) {
+  if (n.payload?.task_id) return `/portal/tasks/${n.payload.task_id}`
+  if (n.kind === 'order_new') return '/portal/submissions?tab=orders'
+  if (n.kind === 'story_new') return '/portal/submissions?tab=stories'
+  return null
+}
+
 // Bodies are plain text: keep the line breaks, make bare links clickable.
 const URL_RE = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/g
 

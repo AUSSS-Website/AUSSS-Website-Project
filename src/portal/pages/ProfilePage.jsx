@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useAuth } from '../../auth/AuthProvider.jsx'
-import { useUpdateProfile } from '../queries.js'
+import { useProfilePhoto, useUpdateProfile } from '../queries.js'
+import { resizeImageToBlob } from '../officerQueries.js'
+import { Avatar } from '../Avatar.jsx'
 import { FACULTY_YEARS } from '../constants.js'
 import {
   ErrorText,
@@ -10,12 +12,17 @@ import {
   Panel,
   Toggle,
   inputCls,
+  outlineBtnCls,
   primaryBtnCls,
 } from '../portalUi.jsx'
 
 // /portal/profile. Only the columns the database lets a member write are
 // editable here; membership status, tier and joined year are EB-only, and the
 // email follows the sign-in account (synced by a trigger), so it is read-only.
+//
+// The name and the photo set here are the ones shown everywhere: bylines in
+// the portal and, for whoever holds an officer or board position, the public
+// pages (src/lib/people.js).
 
 export default function ProfilePage() {
   usePageTitle('Your profile')
@@ -38,6 +45,81 @@ export default function ProfilePage() {
   // Keyed on the id (not updated_at): after a save the form already holds
   // the saved values, and remounting would wipe the "Saved." notice.
   return <ProfileForm key={profile.id} user={user} profile={profile} />
+}
+
+// The photo is saved on its own, the moment it is chosen: it is a file, not a
+// field of the form below.
+function PhotoPanel({ user, profile }) {
+  const photo = useProfilePhoto(user.id)
+  const inputRef = useRef(null)
+  const [error, setError] = useState('')
+  const busy = photo.set.isPending || photo.clear.isPending
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setError('')
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setError('Choose a JPEG, PNG or WebP image.')
+      return
+    }
+    try {
+      const blob = await resizeImageToBlob(file, 512, 0.85)
+      await photo.set.mutateAsync({ blob, previousPath: profile.photo_path })
+    } catch (err) {
+      setError(err?.message || 'Could not save the photo.')
+    }
+  }
+
+  const remove = async () => {
+    setError('')
+    try {
+      await photo.clear.mutateAsync({
+        previousPath: profile.photo_path,
+        fallbackUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+      })
+    } catch (err) {
+      setError(err?.message || 'Could not remove the photo.')
+    }
+  }
+
+  return (
+    <Panel className="mb-6 max-w-2xl">
+      <div className="flex flex-wrap items-center gap-5">
+        <Avatar name={profile.full_name} src={profile.avatar_url} size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-white">Your photo</p>
+          <p className="mt-1 max-w-md text-xs text-silver/55">
+            Shown beside your name in the portal. If you hold an officer or board position, it is
+            also your photo on the public website.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={pick}
+              className="sr-only"
+              tabIndex={-1}
+              aria-label="Choose a photo"
+            />
+            <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className={outlineBtnCls}>
+              {photo.set.isPending ? 'Saving…' : profile.photo_path ? 'Change photo' : 'Choose a photo'}
+            </button>
+            {profile.photo_path && (
+              <button type="button" disabled={busy} onClick={remove} className={outlineBtnCls}>
+                {photo.clear.isPending ? 'Removing…' : 'Remove'}
+              </button>
+            )}
+          </div>
+          <div className="mt-2">
+            <ErrorText>{error}</ErrorText>
+          </div>
+        </div>
+      </div>
+    </Panel>
+  )
 }
 
 function ProfileForm({ user, profile }) {
@@ -73,6 +155,7 @@ function ProfileForm({ user, profile }) {
         title="Your profile"
         subtitle="What officers and the EB see about you."
       />
+      <PhotoPanel user={user} profile={profile} />
       <form onSubmit={submit} className="max-w-2xl">
         <Panel className="space-y-6">
           <Field label="Full name" htmlFor="pf-name">
@@ -131,8 +214,8 @@ function ProfileForm({ user, profile }) {
             <div className="max-w-md">
               <p className="text-sm font-medium text-white">Show me in the members directory</p>
               <p className="mt-1 text-xs text-silver/55">
-                Off by default. When on, other verified members can see your name
-                and positions.
+                Off by default. When on, other verified members can see your name,
+                photo and positions in the directory.
               </p>
             </div>
             <Toggle

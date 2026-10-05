@@ -613,6 +613,22 @@ President and the VPE (section 12.5).
 
 #### Phase 5b. Portal and people
 
+**Status, 2026-10-05: built; RUNBOOK section 23 describes every part.** Four
+migrations (`20261005090001` to `20261005120001`) and three new test files.
+Decisions made while building, each of them the simpler of two options:
+attachments arrive as one timeline row per batch (a comment with files, or a
+"files" row), up to 5 a batch, 20 a task, 10 MB each; the duplicate check runs
+in the browser over the tasks the person can see; the invites screen is a tab
+of the committee editor, and the same panel on the Roster page hands out the
+board's positions, which is the whole of "executive board editable"; an invite
+sends no email (the inviter tells the person); a position the roster gave is
+changed on the roster and nowhere else; the public pages take a holder's name
+always and their photo only when they chose one on their profile, never the
+picture of their sign-in account; the rebuild trigger is a Vercel deploy hook
+kept in Vault and called by a scheduled database job. One thing waits on the
+webmaster: creating that deploy hook and saving it (RUNBOOK section 23,
+"One-time set-up"); until then pages are rebuilt on each code release only.
+
 Everything the portal itself still needs, finished before members are invited
 into it.
 

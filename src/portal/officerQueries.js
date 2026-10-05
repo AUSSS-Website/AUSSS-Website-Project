@@ -39,6 +39,15 @@ async function upsertSiteSetting(key, value) {
   )
 }
 
+// When the public pages were last rebuilt and whether a rebuild is waiting
+// (EB only; see "Rebuild on publish" in migration 20261005120001).
+export function useSiteRebuildStatus() {
+  return useQuery({
+    queryKey: ['site-rebuild'],
+    queryFn: async () => unwrap(await supabase.rpc('site_rebuild_status')),
+  })
+}
+
 export function useSiteSettingsAdmin(enabled = true) {
   return useQuery({
     queryKey: officerKeys.siteSettings(),

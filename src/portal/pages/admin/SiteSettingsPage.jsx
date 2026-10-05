@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import usePageTitle from '../../../hooks/usePageTitle.js'
-import { useSiteSettingsAdmin, useUpsertSiteSetting } from '../../officerQueries.js'
+import { useSiteRebuildStatus, useSiteSettingsAdmin, useUpsertSiteSetting } from '../../officerQueries.js'
+import { when } from '../../workUi.jsx'
 import {
   Centered,
   ErrorText,
@@ -70,6 +71,36 @@ function RawSetting({ k, value, onSave, busy }) {
   )
 }
 
+// The public pages are rebuilt on their own after something published changes
+// (a photo, an album, an edition, a story, who holds a position), and once a
+// night. This only reports on that; there is nothing to press.
+function RebuildPanel() {
+  const status = useSiteRebuildStatus()
+  const s = status.data
+  if (status.isPending || status.error || !s) return null
+  const waiting = s.requested_at && (!s.fired_at || s.fired_at < s.requested_at)
+  return (
+    <Panel title="Public pages">
+      <p className="mt-4 text-sm text-silver/75">
+        {s.fired_at ? `Last rebuilt ${when(s.fired_at)}.` : 'Not rebuilt from the portal yet.'}{' '}
+        {waiting
+          ? 'A change is waiting; the next rebuild starts within a few minutes of the last edit.'
+          : 'Nothing is waiting.'}
+      </p>
+      <p className="mt-2 text-xs text-silver/50">
+        Visitors always see the latest names, photos, albums and stories straight away. The rebuild
+        is for search engines and link previews, which read the saved copy of each page.
+      </p>
+      {!s.hook && (
+        <p className="mt-3 text-xs text-amber-300">
+          The rebuild is not connected yet: the webmaster still has to save the deploy hook
+          (RUNBOOK section 23). Until then the pages are rebuilt on each code release only.
+        </p>
+      )}
+    </Panel>
+  )
+}
+
 export default function SiteSettingsPage() {
   usePageTitle('Site settings')
   const settings = useSiteSettingsAdmin(true)
@@ -130,6 +161,8 @@ export default function SiteSettingsPage() {
               </div>
             </Panel>
           )}
+
+          <RebuildPanel />
 
           {save.error && <ErrorText>{save.error.message}</ErrorText>}
           {msg && <p className="text-xs font-semibold text-medical-light">{msg}</p>}
