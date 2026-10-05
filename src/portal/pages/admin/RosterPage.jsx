@@ -26,6 +26,7 @@ import RosterBulkPanel from './RosterBulkPanel.jsx'
 import RosterUpgradesPanel from './RosterUpgradesPanel.jsx'
 import PositionTypesPanel, { PositionOptions, localMemberOf } from './PositionTypesPanel.jsx'
 import PositionsPanel from '../committee/PositionsPanel.jsx'
+import { rosterUnits, unitOf, unitPositions } from '../../rosterUnits.js'
 import {
   ErrorText,
   Field,
@@ -78,11 +79,15 @@ function toForm(row) {
   return f
 }
 
+// `committees` here and below are roster units (rosterUnits.js): one entry per
+// committee, except SCOPE and SCORE, which are one entry.
 function Editor({ row, committees, positions, onClose }) {
   const save = useSaveRosterEntry()
   const remove = useDeleteRosterEntry()
   const release = useReleaseRosterEntry()
   const [form, setForm] = useState(() => (row ? toForm(row) : BLANK))
+  // the unit the member is in: SCOPE/SCORE for either of the two committees
+  const unit = unitOf(committees, form.committee_id)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
   const busy = save.isPending || remove.isPending || release.isPending
@@ -148,13 +153,17 @@ function Editor({ row, committees, positions, onClose }) {
             <input id="r-ngas" value={form.ngas} onChange={set('ngas')} placeholder="0, 3, >2" className={inputCls} />
           </Field>
         </div>
-        <Field label="Current position" htmlFor="r-pos">
+        <Field
+          label="Other positions"
+          hint="Anything they hold beyond their committee position below: national teams, a second role."
+          htmlFor="r-pos"
+        >
           <textarea
             id="r-pos"
             rows={2}
             value={form.current_position}
             onChange={set('current_position')}
-            placeholder="One per line. Empty means General Member."
+            placeholder="One per line."
             className={inputCls}
           />
         </Field>
@@ -165,7 +174,7 @@ function Editor({ row, committees, positions, onClose }) {
         >
           <select
             id="r-committee"
-            value={form.committee_id}
+            value={unit?.id || ''}
             onChange={(e) => {
               // a new committee starts them as its Local Member; the position is then theirs to change
               const committee_id = e.target.value
@@ -195,10 +204,24 @@ function Editor({ row, committees, positions, onClose }) {
             hint="Reaches their portal account by itself: at once if they have signed in, otherwise at their first sign-in."
             htmlFor="r-position"
           >
-            <select id="r-position" value={form.position_id} onChange={set('position_id')} className={inputCls}>
+            <select
+              id="r-position"
+              value={form.position_id}
+              onChange={(e) => {
+                // an officer position belongs to its own committee (LORE to
+                // SCORE), so the member is filed where the position lives
+                const position = positions.find((p) => p.id === e.target.value)
+                setForm((f) => ({
+                  ...f,
+                  position_id: e.target.value,
+                  committee_id: position?.committee_id || f.committee_id,
+                }))
+              }}
+              className={inputCls}
+            >
               <PositionOptions
-                positions={positions}
-                committeeId={form.committee_id}
+                positions={unitPositions(positions, unit, row?.position_id)}
+                committeeIds={unit?.ids}
                 current={row?.position_id}
                 withOfficers
               />
@@ -252,7 +275,7 @@ function Editor({ row, committees, positions, onClose }) {
 }
 
 function Row({ row, committees, positions, open, onToggle }) {
-  const committee = committees.find((c) => c.id === row.committee_id)
+  const committee = unitOf(committees, row.committee_id)
   const position = positions.find((p) => p.id === row.position_id)
   return (
     <li className="rounded-2xl border border-white/10 bg-forest-800 p-5">
@@ -519,7 +542,8 @@ export default function RosterPage() {
   const roster = useRoster()
   const prepared = useMemo(() => prepareRoster(roster.data || []), [roster.data])
   const term = useDeferredValue(q)
-  const committees = useCommittees().data || []
+  const allCommittees = useCommittees().data
+  const committees = useMemo(() => rosterUnits(allCommittees || []), [allCommittees])
   const positions = usePositions().data || []
   const [showTypes, setShowTypes] = useState(false)
   const [showBoard, setShowBoard] = useState(false)
@@ -528,11 +552,15 @@ export default function RosterPage() {
     if (!committee) return found
     if (committee === 'none') return found.filter((r) => !r.committee_id)
     if (committee === 'contact') return found.filter((r) => r.is_contact_person)
-    return found.filter((r) => r.committee_id === committee)
-  }, [prepared, term, status, committee])
+    const unit = committees.find((c) => c.id === committee)
+    return found.filter((r) => (unit ? unit.ids.includes(r.committee_id) : r.committee_id === committee))
+  }, [prepared, term, status, committee, committees])
   const total = matches.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const committeeAbbr = useMemo(() => Object.fromEntries(committees.map((c) => [c.id, c.abbr])), [committees])
+  const committeeAbbr = useMemo(
+    () => Object.fromEntries(committees.flatMap((c) => c.ids.map((id) => [id, c.abbr]))),
+    [committees],
+  )
   const exportColumns = useMemo(
     () => [
       { label: 'Name', value: (r) => r.full_name },
@@ -543,7 +571,7 @@ export default function RosterPage() {
       { label: 'LGAs', value: (r) => r.lgas },
       { label: 'NGAs', value: (r) => r.ngas },
       { label: 'Committee', value: (r) => committeeAbbr[r.committee_id] || '' },
-      { label: 'Position', value: (r) => r.current_position },
+      { label: 'Other positions', value: (r) => r.current_position },
       { label: 'Contact person', value: (r) => (r.is_contact_person ? 'yes' : '') },
     ],
     [committeeAbbr],

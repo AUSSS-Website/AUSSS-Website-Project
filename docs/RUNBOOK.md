@@ -626,6 +626,23 @@ choice, and clearing it by hand sticks until the position text changes. Neither 
 is a spreadsheet column, so setting them does not make the portal own the row and the
 hourly sheet sync keeps updating it.
 
+**SCOPE/SCORE is one choice on the Roster page (since 2026-10-05).** The two exchange
+committees run one team and the sheet files its people under "Exchange", so the Committee
+field, the committee filter, **Set committees**, the row tag, the export and Position types
+offer them as one entry, "SCOPE/SCORE" (`src/portal/rosterUnits.js`). They are still two
+committees in the database and on the public site. A member of the unit is filed under
+SCOPE, where the shared positions below officer live (Local Member, the assistants, CBDA);
+choosing an officer position files them where that position belongs, so LORE puts the
+member under SCORE by itself. SCORE's own copies of the shared positions are no longer
+offered. One consequence to know: the Members tab of a committee still lists the members
+filed under that committee, so the shared members appear on SCOPE's tab, not on SCORE's.
+
+**"Other positions"** is the roster's name for the sheet's "Current Position" text since
+2026-10-05 (the Roster page editor, its export, and the Members tab): with the committee
+position kept in its own field, the free text is for what a member holds beyond it. The
+column is still `current_position`, still filled by the sheet sync, and still what the
+public membership lookup shows.
+
 What officers get: the **Members** tab of `/portal/committees/<slug>`, fed by
 `rpc/committee_roster` (the roster table itself stays EB-only). Membership facts are
 read-only there. They can give a member a position below officer level

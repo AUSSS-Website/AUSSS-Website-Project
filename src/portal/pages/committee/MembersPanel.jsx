@@ -259,7 +259,7 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
             <Fact label="Local GAs">{member.lgas}</Fact>
             <Fact label="National GAs">{member.ngas}</Fact>
             <div className="col-span-2 sm:col-span-4">
-              <Fact label="Position on the membership sheet">{member.current_position}</Fact>
+              <Fact label="Other positions">{member.current_position}</Fact>
             </div>
           </dl>
           <p className="mt-4 text-xs text-silver/50">

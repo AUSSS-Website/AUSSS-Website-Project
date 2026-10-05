@@ -9,6 +9,7 @@ import { parseCsv } from '../../rosterFile.js'
 import { ROSTER_STATUSES } from '../../constants.js'
 import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
+import { unitLabelForSlug } from '../../rosterUnits.js'
 
 // "Register a GA" on /portal/admin/roster, opened from the page header: paste an
 // attendance list (names and/or emails, one person per line), review how each
@@ -32,7 +33,7 @@ const ACTIONS = {
 // What a bulk update did, for the review header and the history.
 function effect(action, value) {
   if (action === 'status') return `status → ${value}`
-  if (action === 'committee') return value ? `committee → ${value.toUpperCase()}` : 'taken out of their committee'
+  if (action === 'committee') return value ? `committee → ${unitLabelForSlug(value)}` : 'taken out of their committee'
   return `${ACTIONS[action].field} +1`
 }
 
