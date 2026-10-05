@@ -17,6 +17,9 @@ export default {
         medical: {
           DEFAULT: '#5B8DB8',
           light: '#8FB4D4',
+          // A filled button on a light surface, with white text (6.4:1).
+          deep: '#2A618C',
+          deeper: '#1F4F75',
         },
         silver: {
           DEFAULT: '#C9D6DF',
