@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
-import { useAuth } from '../../auth/AuthProvider.jsx'
 import { useDirectory } from '../queries.js'
 import { Centered, PageHeader, Panel, Spinner, inputCls } from '../portalUi.jsx'
 import { Avatar } from '../Avatar.jsx'
 import { normalize } from '../../lib/text.js'
 
-// /portal/directory. The members who chose to be listed (the switch on the
-// profile page, off by default), with the positions they hold this term. Name,
-// photo and positions only: no contact details. rpc/directory answers verified
-// members and position holders; anyone else gets its refusal, shown as is.
+// /portal/directory. Every member with an account, with the positions they
+// hold this term. Name, photo and positions only: no contact details.
+// rpc/directory answers verified members and position holders, and lists the
+// same people; anyone else gets its refusal, shown as is.
 
 const EMPTY = []
 
@@ -20,7 +18,6 @@ function positionLine(p) {
 
 export default function DirectoryPage() {
   usePageTitle('Directory')
-  const { profile } = useAuth()
   const directory = useDirectory()
   const [q, setQ] = useState('')
   const rows = directory.data || EMPTY
@@ -39,18 +36,8 @@ export default function DirectoryPage() {
       <PageHeader
         eyebrow="Directory"
         title="Members directory"
-        subtitle="Members who chose to be listed, and the positions they hold this term."
+        subtitle="Every member with a portal account, and the positions they hold this term."
       />
-
-      {!profile?.directory_opt_in && (
-        <p className="mb-6 max-w-2xl text-sm text-silver/65">
-          You are not listed.{' '}
-          <Link to="/portal/profile" className="font-semibold text-medical-light hover:text-white">
-            Turn it on in your profile
-          </Link>{' '}
-          if you would like other members to find you here.
-        </p>
-      )}
 
       {directory.isPending ? (
         <Centered>
@@ -66,7 +53,7 @@ export default function DirectoryPage() {
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">Nobody has opted in yet.</p>
+          <p className="text-sm text-silver/70">Nobody is listed yet.</p>
         </Panel>
       ) : (
         <>

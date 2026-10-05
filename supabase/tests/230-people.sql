@@ -1,7 +1,7 @@
 -- Phase 5b: people, one source of truth. The public read names the holders of officer and
 -- board positions and nobody else; a chosen photo lives in the person's own folder; the
--- directory is opt-in and for members; a change the public pages show asks for a rebuild, and
--- without the deploy hook nothing is fired.
+-- directory lists every member with an account, to members; a change the public pages show
+-- asks for a rebuild, and without the deploy hook nothing is fired.
 begin;
 select plan(16);
 
@@ -68,16 +68,21 @@ select throws_ok(
 -- ---- the directory ---------------------------------------------------------------------------
 select tests.clear_auth();
 select tests.authenticate_as('sara@pgtap.test');
-select is(jsonb_array_length(public.directory()), 0, 'nobody is listed until they opt in');
-update public.profiles set directory_opt_in = true where id = tests.user_id('sara@pgtap.test');
+select is(
+  (select jsonb_agg(d ->> 'full_name' order by d ->> 'full_name')
+     from jsonb_array_elements(public.directory()) d
+    where d ->> 'full_name' in ('EB Person', 'Scope Officer', 'Scope Member', 'Signed In Only')),
+  '["EB Person", "Scope Member", "Scope Officer"]'::jsonb,
+  'every member with an account is listed without opting in; an unverified account is not'
+);
 select tests.clear_auth();
 select tests.authenticate_as('leo@pgtap.test');
 select is(
-  (select jsonb_agg(jsonb_build_object('name', d ->> 'full_name', 'position', d -> 'positions' -> 0 ->> 'title',
-                                       'committee', d -> 'positions' -> 0 ->> 'committee'))
-     from jsonb_array_elements(public.directory()) d),
-  '[{"name": "Scope Member", "position": "Local Member", "committee": "SCOPE"}]'::jsonb,
-  'a member who opted in is listed with their position'
+  (select jsonb_build_object('position', d -> 'positions' -> 0 ->> 'title',
+                             'committee', d -> 'positions' -> 0 ->> 'committee')
+     from jsonb_array_elements(public.directory()) d where d ->> 'full_name' = 'Scope Member'),
+  '{"position": "Local Member", "committee": "SCOPE"}'::jsonb,
+  '...each with the positions they hold this term'
 );
 select is(
   (select count(*)::int from jsonb_array_elements(public.directory()) d where d ? 'email' or d ? 'phone'),

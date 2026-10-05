@@ -83,7 +83,7 @@ export function useNames(ids) {
 // ---- tasks -----------------------------------------------------------------
 
 // Attachments: what the `task-files` bucket accepts (migration
-// 20261005100001), checked here first so the message is a friendly one.
+// 20261005103539), checked here first so the message is a friendly one.
 const TASK_FILES_BUCKET = 'task-files'
 export const TASK_FILE_MAX_BYTES = 10 * 1024 * 1024
 export const TASK_FILES_PER_BATCH = 5

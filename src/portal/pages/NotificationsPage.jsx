@@ -50,7 +50,7 @@ export default function NotificationsPage() {
                     onClick={() => clear.mutate(undefined, { onSettled: () => setConfirming(false) })}
                     className={`${outlineBtnCls} border-red-400/50 text-red-300`}
                   >
-                    {clear.isPending ? 'Clearing…' : 'Yes, clear all'}
+                    {clear.isPending ? 'Clearing…' : 'Yes, clear notifications'}
                   </button>
                   <button type="button" onClick={() => setConfirming(false)} className={outlineBtnCls}>
                     Keep

@@ -91,8 +91,8 @@ function PhotoPanel({ user, profile }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-white">Your photo</p>
           <p className="mt-1 max-w-md text-xs text-silver/55">
-            Shown beside your name in the portal. If you hold an officer or board position, it is
-            also your photo on the public website.
+            Shown beside your name in the portal and in the members directory. If you hold an
+            officer or board position, it is also your photo on the public website.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <input
@@ -127,7 +127,6 @@ function ProfileForm({ user, profile }) {
   const [fullName, setFullName] = useState(profile.full_name || '')
   const [phone, setPhone] = useState(profile.phone || '')
   const [facultyYear, setFacultyYear] = useState(profile.faculty_year || '')
-  const [optIn, setOptIn] = useState(Boolean(profile.directory_opt_in))
   const [digest, setDigest] = useState(profile.email_digest !== false)
   const [msg, setMsg] = useState('')
 
@@ -139,7 +138,6 @@ function ProfileForm({ user, profile }) {
         full_name: fullName.trim() || null,
         phone: phone.trim() || null,
         faculty_year: facultyYear || null,
-        directory_opt_in: optIn,
         email_digest: digest,
       })
       setMsg('Saved.')
@@ -153,7 +151,7 @@ function ProfileForm({ user, profile }) {
       <PageHeader
         eyebrow="Profile"
         title="Your profile"
-        subtitle="What officers and the EB see about you."
+        subtitle="What officers and the EB see about you. Your name, photo and positions also show in the members directory."
       />
       <PhotoPanel user={user} profile={profile} />
       <form onSubmit={submit} className="max-w-2xl">
@@ -209,22 +207,6 @@ function ProfileForm({ user, profile }) {
               ))}
             </select>
           </Field>
-
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
-            <div className="max-w-md">
-              <p className="text-sm font-medium text-white">Show me in the members directory</p>
-              <p className="mt-1 text-xs text-silver/55">
-                Off by default. When on, other verified members can see your name,
-                photo and positions in the directory.
-              </p>
-            </div>
-            <Toggle
-              checked={optIn}
-              onChange={setOptIn}
-              label="Show me in the members directory"
-              disabled={save.isPending}
-            />
-          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
             <div className="max-w-md">

@@ -1,9 +1,9 @@
 -- Phase 5b: files on tasks. Whoever can see a task links files it has uploaded to it; the batch
 -- lands as one timeline row; strangers neither read nor attach; the uploader or a manager
 -- removes a file. Storage objects are seeded directly here, the way the Storage API would
--- have left them.
+-- have left them. Last, a deleted task takes the notifications about it along.
 begin;
-select plan(17);
+select plan(18);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -155,6 +155,14 @@ select tests.authenticate_as('leo@pgtap.test');
 delete from public.task_files where name = 'Host form.pdf';
 select is((select count(*)::int from public.task_files), 1, 'a manager removes any file on the task');
 
+-- ---- deleting the task -----------------------------------------------------------------------
+delete from public.tasks;
 select tests.clear_auth();
+select is(
+  (select jsonb_build_object('tasks', (select count(*) from public.tasks),
+                             'about_tasks', (select count(*) from public.notifications n where n.payload ? 'task_id'))),
+  '{"tasks": 0, "about_tasks": 0}'::jsonb,
+  'a deleted task takes the notifications about it along'
+);
 select * from finish();
 rollback;
