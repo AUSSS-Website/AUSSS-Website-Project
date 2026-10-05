@@ -798,7 +798,7 @@ export const exchange = {
         email: 'leolore.in.ausss@gmail.com',
         alias: 'leo-in',
         about:
-          'Owns the incoming half of the programme: placing arriving students in departments at the Ain Shams Specialized Hospital, pairing each of them with a contact person, and making sure the month works end to end, from landing to certificate.',
+          'Owns the incoming half of the programme: placing arriving students in departments at the Ain Shams Specialized Hospital, organising the contact persons who look after them, and making sure the month works end to end, from landing to certificate.',
       },
       {
         abbr: 'LEO-Out',
@@ -823,13 +823,14 @@ export const exchange = {
           'The research side of exchange. Handles SCORE rather than clinical placements, matching students to laboratories and mentors abroad, and hosting incoming research students here at Ain Shams.',
       },
     ],
-    // The bottom tier, and the widest one: a contact person is assigned to
-    // each incoming student rather than to the committee, so there are as many
-    // of them in a season as there are arrivals. One role, many holders, it
-    // renders as a single full-width node rather than a row.
+    // The bottom tier, and the widest one: the contact persons look after the
+    // incoming students as a team. Nobody is assigned one student of their own
+    // (the webmaster's correction, 2026-10-05), so never write that an incoming
+    // is "paired" with a contact person. One role, many holders, it renders as
+    // a single full-width node rather than a row.
     contactPersons: {
       abbr: 'Contact Persons',
-      title: 'One paired with every incoming student',
+      title: 'With our incoming students all month long',
       // Incomings arrive through both committees, clinical via SCOPE, research
       // via SCORE, so contact persons answer to the LEO-In and the LORE alike.
       reportsTo: 'the LEO-In & LORE',
@@ -837,7 +838,7 @@ export const exchange = {
       // accent rather than implying it belongs to one of them.
       color: '#5B8DB8',
       about:
-        'Every student arriving at Ain Shams, clinical through SCOPE or research through SCORE, is paired with a contact person for their month here: the one who meets them, keeps them oriented around the hospital and the city, and makes the social programme actually happen. Recruited fresh each exchange season, and the most common first role in exchange.',
+        'Every student arriving at Ain Shams, clinical through SCOPE or research through SCORE, is looked after by our contact persons for their month here. They work as a team, not one to one: they meet the students, keep them oriented around the hospital and the city, and make the social programme actually happen. Recruited fresh each exchange season, and the most common first role in exchange.',
     },
     // None of the assistants belong to a single committee: the LORE runs
     // research exchange in both directions, so every one of them works to the
