@@ -6,8 +6,8 @@ import { ErrorText, Field, Panel, inputCls, outlineBtnCls, primaryBtnCls } from 
 // Team Member, the assistants and the coordinators. Seeded from the titles the
 // membership sheet uses; the Executive Board adds, renames or removes them here
 // so the list never needs a developer. Removing a position deletes it: whoever
-// held it falls back to Local Member (the roster does that by itself when the
-// position goes). A few positions were "retired" before removing existed; they
+// held it falls back to the committee's default position, the one keyed
+// `<slug>.member` (the roster does that by itself when the position goes). A few positions were "retired" before removing existed; they
 // show struck through and can be brought back or removed.
 
 const POSITION_GROUPS = [
@@ -53,7 +53,9 @@ const roundShape =
 const roundBtnCls = `${roundShape} border-white/20 hover:bg-white/10`
 const roundArmedCls = `${roundShape} border-red-500 bg-red-500 hover:bg-red-400`
 
-function TypeRow({ position }) {
+// `fallback` is the title of the committee's default position, the one every
+// new member gets and holders of a removed position fall back to.
+function TypeRow({ position, fallback }) {
   const update = useUpdatePosition()
   const remove = useDeletePosition()
   const [title, setTitle] = useState(position.title)
@@ -122,7 +124,7 @@ function TypeRow({ position }) {
             aria-label={armed ? `Click again to remove ${position.title}` : `Remove ${position.title}`}
             title={
               armed
-                ? 'Click again to remove it. Anyone who holds it becomes a Local Member.'
+                ? `Click again to remove it. Anyone who holds it becomes a ${fallback}.`
                 : 'Remove this position'
             }
             className={armed ? roundArmedCls : roundBtnCls}
@@ -139,7 +141,7 @@ function TypeRow({ position }) {
 // One level of a committee's positions ("Members", "Assistants and
 // coordinators"): its rows, and a plus beside the heading that opens a field
 // to add another at that level.
-function TypeSection({ committee, level, label, positions }) {
+function TypeSection({ committee, level, label, positions, fallback }) {
   const add = useAddPosition()
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -183,7 +185,7 @@ function TypeSection({ committee, level, label, positions }) {
       </div>
       <ul className="mt-3 space-y-2">
         {positions.map((p) => (
-          <TypeRow key={p.id} position={p} />
+          <TypeRow key={p.id} position={p} fallback={fallback} />
         ))}
         {adding && (
           <li>
@@ -218,6 +220,8 @@ export default function PositionTypesPanel({ committees, onClose }) {
   const [committeeId, setCommitteeId] = useState('')
   const committee = committees.find((c) => c.id === committeeId)
   const mine = (positions.data || []).filter((p) => p.committee_id === committeeId && p.level !== 'officer')
+  // the default position can be renamed (SCOPE/SCORE calls it Contact Person)
+  const fallback = mine.find((p) => p.key.endsWith('.member'))?.title || 'Local Member'
 
   return (
     <Panel title="Position types" className="mb-6">
@@ -226,8 +230,8 @@ export default function PositionTypesPanel({ committees, onClose }) {
           The positions each committee can give its members. Assistants and coordinators receive
           tasks like any member; only the committee&rsquo;s officer and the Executive Board assign
           them. Use the plus beside a heading to add one there. The minus beside a position removes
-          it: the first click turns it red, the second removes it, and anyone who held it becomes
-          a Local Member.
+          it: the first click turns it red, the second removes it, and anyone who held it gets the
+          committee&rsquo;s default position (the one without a minus).
         </p>
         <button type="button" onClick={onClose} className={outlineBtnCls}>
           Close
@@ -255,6 +259,7 @@ export default function PositionTypesPanel({ committees, onClose }) {
             level={lvl}
             label={label}
             positions={mine.filter((p) => p.level === lvl)}
+            fallback={fallback}
           />
         ))}
     </Panel>
