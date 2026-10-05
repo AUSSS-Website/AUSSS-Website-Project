@@ -252,7 +252,7 @@ function AlsoServingAs({ positions, accent }) {
           <li
             key={p}
             className="rounded-full border border-line/15 bg-veil/5 px-3 py-1 font-semibold text-soft/80"
-            style={accent ? { color: accent, borderColor: 'rgba(255,255,255,0.18)' } : undefined}
+            style={accent ? { color: accent, borderColor: 'rgb(var(--c-line) / 0.18)' } : undefined}
           >
             {p}
           </li>
@@ -265,7 +265,7 @@ function AlsoServingAs({ positions, accent }) {
 /* ── President: dry, sarcastic ───────────────────────────────────────── */
 function President({ onReveal, otherPositions }) {
   return (
-    <div className="dark relative overflow-hidden rounded-3xl border border-[#C9A33B]/30 bg-gradient-to-br from-card to-page p-10 text-center sm:p-14">
+    <div className="relative overflow-hidden rounded-3xl border border-[#C9A33B]/30 bg-gradient-to-br from-card to-page p-10 text-center sm:p-14">
       <span className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#C9A33B]/10 blur-3xl" />
       <div className="relative mx-auto h-32 w-32 sm:h-36 sm:w-36">
         <div className="h-full w-full overflow-hidden rounded-full bg-gradient-to-br from-[#C9A33B]/25 to-amber-300/10 ring-2 ring-[#E7C763]/45">
@@ -278,8 +278,8 @@ function President({ onReveal, otherPositions }) {
         {/* Crown perched on his head, slight tilt for personality */}
         <svg
           viewBox="0 0 24 24"
-          className="absolute -top-5 left-1/2 h-10 w-10 -translate-x-1/2 -rotate-[14deg] text-[#E7C763] drop-shadow-[0_2px_6px_rgba(0,0,0,0.55)] sm:-top-6 sm:h-12 sm:w-12"
-          fill="#E7C763"
+          className="absolute -top-5 left-1/2 h-10 w-10 -translate-x-1/2 -rotate-[14deg] text-[#7A5C0E] dark:text-[#E7C763] drop-shadow-[0_2px_6px_rgba(0,0,0,0.55)] sm:-top-6 sm:h-12 sm:w-12"
+          fill="currentColor"
           fillOpacity="0.22"
           stroke="currentColor"
           strokeWidth="1.4"
@@ -291,7 +291,7 @@ function President({ onReveal, otherPositions }) {
       <p className="heading-serif relative mt-4 text-2xl text-ink sm:text-3xl">
         Amr Hesham Shaker
       </p>
-      <p className="relative mt-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#E7C763]">
+      <p className="relative mt-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#7A5C0E] dark:text-[#E7C763]">
         AUSSS · Office of the President
       </p>
       <p className="relative mt-2 text-sm italic text-soft/65">
@@ -307,7 +307,7 @@ function President({ onReveal, otherPositions }) {
         Constitution §9: “the organisation shall be managed by the Executive
         Board.” You’d know. You signed it.
       </p>
-      <AlsoServingAs positions={otherPositions} accent="#E7C763" />
+      <AlsoServingAs positions={otherPositions} accent={readableAccent('#E7C763')} />
       <RevealButton onReveal={onReveal} label="Fine, show it anyway →" />
     </div>
   )
@@ -473,7 +473,7 @@ function Heba({ onReveal }) {
   return (
     <div
       ref={cardRef}
-      className="dark relative overflow-hidden rounded-3xl border border-[#D4A85C]/35 bg-gradient-to-br from-card via-sunk to-page p-10 text-center sm:p-14"
+      className="relative overflow-hidden rounded-3xl border border-[#D4A85C]/35 bg-gradient-to-br from-card via-sunk to-page p-10 text-center sm:p-14"
     >
       <span className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#D4A85C]/12 blur-3xl" />
       <span className="pointer-events-none absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-rose-300/10 blur-3xl" />
@@ -481,7 +481,7 @@ function Heba({ onReveal }) {
       <div className="relative mx-auto h-60 w-60 sm:h-72 sm:w-72">
         <svg
           viewBox="0 0 240 240"
-          className="absolute inset-0 h-full w-full"
+          className="hb-garden absolute inset-0 h-full w-full"
           fill="none"
           aria-hidden="true"
         >
@@ -808,7 +808,7 @@ function Heba({ onReveal }) {
         </div>
       </div>
 
-      <p className="relative mt-6 text-xs font-semibold uppercase tracking-[0.28em] text-[#E7C879]">
+      <p className="relative mt-6 text-xs font-semibold uppercase tracking-[0.28em] text-[#7A5C0E] dark:text-[#E7C879]">
         AUSSS · Past and present
       </p>
       <h2 className="heading-serif relative mt-4 text-4xl text-ink sm:text-5xl">
@@ -819,11 +819,11 @@ function Heba({ onReveal }) {
         non&nbsp;threatening as words can be, but put them together
         side&nbsp;by&nbsp;side and they have the power to haunt you for
         the rest of your life.{' '}
-        <span className="font-semibold text-[#F0D38A]">What if?</span>&rdquo;
+        <span className="font-semibold text-[#7A5C0E] dark:text-[#F0D38A]">What if?</span>&rdquo;
       </p>
 
       <div className="relative mt-5 flex flex-col items-center gap-2">
-        <span className="rounded-full border border-[#D4A85C]/45 bg-[#D4A85C]/10 px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#F0D38A]">
+        <span className="rounded-full border border-[#D4A85C]/45 bg-[#D4A85C]/10 px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#7A5C0E] dark:text-[#F0D38A]">
           Supervising Council · 2025–2026
         </span>
         <span className="rounded-full border border-line/15 bg-veil/5 px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-soft/80">
@@ -848,7 +848,7 @@ function Heba({ onReveal }) {
         href="/assets/eb-candidatures/heba-ismail-candidature.pdf"
         target="_blank"
         rel="noopener noreferrer"
-        className="relative mt-7 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F0D38A] underline-offset-4 transition-colors hover:text-ink hover:underline"
+        className="relative mt-7 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7A5C0E] dark:text-[#F0D38A] underline-offset-4 transition-colors hover:text-ink hover:underline"
       >
         Revisit her presidential candidature
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

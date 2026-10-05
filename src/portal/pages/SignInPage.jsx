@@ -154,7 +154,7 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={Boolean(busy) || !email.trim()}
-              className="w-full rounded-full bg-medical px-4 py-3 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light disabled:opacity-40"
+              className="w-full rounded-full bg-cta px-4 py-3 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover disabled:opacity-40"
             >
               {busy === 'email' ? 'Sending…' : 'Email me a sign-in link'}
             </button>

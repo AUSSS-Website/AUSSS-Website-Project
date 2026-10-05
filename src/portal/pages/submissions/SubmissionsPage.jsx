@@ -624,7 +624,7 @@ export default function SubmissionsPage() {
               onClick={() => setParams({ tab: key })}
               className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
                 tab === key
-                  ? 'bg-medical text-forest-950'
+                  ? 'bg-cta text-on-cta'
                   : 'border border-line/15 text-soft/70 hover:text-ink'
               }`}
             >

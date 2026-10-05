@@ -85,7 +85,7 @@ export default function ConstitutionPage() {
               href={CONSTITUTION_PDF}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-medical px-5 py-2.5 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light"
+              className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
             >
               <PdfIcon />
               Open in a new tab

@@ -15,7 +15,7 @@ const VARIANTS = {
     'bg-solid text-on-solid hover:bg-solid-hover focus-visible:ring-line/70',
   // Scientific-blue pill, secondary emphasis (magazine, auth, quiz).
   accent:
-    'bg-medical text-forest-950 hover:bg-medical-light focus-visible:ring-medical/60',
+    'bg-cta text-on-cta hover:bg-cta-hover focus-visible:ring-medical/60',
   // Forest pill, used on light surfaces (cart checkout, footer).
   forest:
     'bg-forest text-white hover:bg-forest-600 focus-visible:ring-forest/50 dark:bg-medical dark:text-forest-950 dark:hover:bg-medical-light',

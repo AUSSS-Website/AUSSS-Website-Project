@@ -227,7 +227,7 @@ function PagesPanel({ issue }) {
                     {n}
                   </span>
                   {hero && (
-                    <span className="absolute right-1 top-1 rounded-full bg-medical px-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-forest-950">
+                    <span className="absolute right-1 top-1 rounded-full bg-cta px-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-on-cta">
                       Cover
                     </span>
                   )}

@@ -323,7 +323,7 @@ function Badge({ children, tone = 'ok' }) {
   return (
     <span
       className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${
-        tone === 'warn' ? 'bg-amber-400/90 text-forest-950' : 'bg-medical text-forest-950'
+        tone === 'warn' ? 'bg-amber-400/90 text-forest-950' : 'bg-cta text-on-cta'
       }`}
     >
       {children}

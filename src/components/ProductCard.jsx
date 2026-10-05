@@ -87,7 +87,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
                   aria-pressed={size === s}
                   className={`min-w-[2.5rem] rounded-full border px-2.5 py-1.5 text-xs font-semibold transition-colors sm:min-w-[3rem] sm:px-3 ${
                     size === s
-                      ? 'border-medical bg-medical text-forest-950'
+                      ? 'border-medical bg-cta text-on-cta'
                       : 'border-line/15 text-soft/80 hover:border-line/30 hover:text-ink'
                   }`}
                 >
@@ -117,7 +117,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
                     product.wideDesigns?.includes(d) ? 'col-span-2' : ''
                   } ${
                     design === d
-                      ? 'border-medical bg-medical text-forest-950'
+                      ? 'border-medical bg-cta text-on-cta'
                       : 'border-line/15 text-soft/80 hover:border-line/30 hover:text-ink'
                   }`}
                 >

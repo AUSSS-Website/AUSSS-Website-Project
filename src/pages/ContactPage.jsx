@@ -123,7 +123,7 @@ export default function ContactPage() {
                 rel="noopener noreferrer"
                 className="group flex flex-col items-center rounded-3xl border border-line/10 bg-card p-8 text-center transition-all duration-500 hover:-translate-y-1.5 hover:border-medical/40 hover:shadow-2xl hover:shadow-forest-950/40"
               >
-                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-page text-accent transition-colors group-hover:bg-medical group-hover:text-forest-950">
+                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-page text-accent transition-colors group-hover:bg-cta group-hover:text-on-cta">
                   <SocialIcon name={s.key} className="h-8 w-8" />
                 </span>
                 <h3 className="heading-serif mt-6 text-2xl text-ink">

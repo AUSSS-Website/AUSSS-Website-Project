@@ -36,7 +36,7 @@ export default function CartButton({ tone = 'solid', className = '' }) {
         <circle cx="17" cy="20" r="1" />
       </svg>
       {count > 0 && (
-        <span className="absolute -right-1 -top-1 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-medical px-1 text-[10px] font-bold text-forest-950">
+        <span className="absolute -right-1 -top-1 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-cta px-1 text-[10px] font-bold text-on-cta">
           {count > 99 ? '99+' : count}
         </span>
       )}

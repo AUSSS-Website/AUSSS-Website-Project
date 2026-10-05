@@ -17,9 +17,6 @@ export default {
         medical: {
           DEFAULT: '#5B8DB8',
           light: '#8FB4D4',
-          // A filled button on a light surface, with white text (6.4:1).
-          deep: '#2A618C',
-          deeper: '#1F4F75',
         },
         silver: {
           DEFAULT: '#C9D6DF',
@@ -48,6 +45,12 @@ export default {
         solid: 'rgb(var(--c-solid) / <alpha-value>)',
         'solid-hover': 'rgb(var(--c-solid-hover) / <alpha-value>)',
         'on-solid': 'rgb(var(--c-on-solid) / <alpha-value>)',
+        // The blue button: scientific blue with dark text on dark, a deep
+        // blue with white text on light, where the lighter blue looks washed
+        // out. Always the three together: bg-cta text-on-cta hover:bg-cta-hover.
+        cta: 'rgb(var(--c-cta) / <alpha-value>)',
+        'cta-hover': 'rgb(var(--c-cta-hover) / <alpha-value>)',
+        'on-cta': 'rgb(var(--c-on-cta) / <alpha-value>)',
         accent: 'rgb(var(--c-accent) / <alpha-value>)', // blue text and links
         danger: 'rgb(var(--c-danger) / <alpha-value>)',
         warn: 'rgb(var(--c-warn) / <alpha-value>)',

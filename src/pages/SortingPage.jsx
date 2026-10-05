@@ -154,7 +154,7 @@ function Intro({ saved, onBegin }) {
       </p>
       <button
         onClick={onBegin}
-        className="mt-10 inline-flex items-center gap-2 rounded-full bg-medical px-8 py-3.5 text-sm font-semibold text-forest-950 shadow-lg shadow-medical/20 transition-colors hover:bg-medical-light"
+        className="mt-10 inline-flex items-center gap-2 rounded-full bg-cta px-8 py-3.5 text-sm font-semibold text-on-cta shadow-lg shadow-medical/20 transition-colors hover:bg-cta-hover"
       >
         Begin the Sorting
         <span aria-hidden="true">→</span>
@@ -363,7 +363,7 @@ function Result({ winner, ranked, answers, onRetake }) {
       <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
         <Link
           to={`/committees/${slugFor(winner)}`}
-          className="rounded-full px-7 py-3 text-sm font-semibold text-forest-950 transition-opacity hover:opacity-85"
+          className="rounded-full px-7 py-3 text-sm font-semibold text-page transition-opacity hover:opacity-85"
           style={{ background: accent }}
         >
           Meet your committee

@@ -105,7 +105,7 @@ export default function ShareBar({ url, title, className = '' }) {
             type="button"
             onClick={handleNativeShare}
             aria-label="Share"
-            className="inline-flex items-center gap-2 rounded-full bg-medical px-4 py-2 text-sm font-semibold text-forest-950 transition-colors hover:bg-medical-light"
+            className="inline-flex items-center gap-2 rounded-full bg-cta px-4 py-2 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
           >
             <ShareIcon />
             Share
