@@ -2,7 +2,10 @@ import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
 import { normalize } from './text.js'
 
 // The membership check reads the live roster in Supabase through
-// rpc/check_membership (supabase/migrations/20260919200001_live_roster.sql).
+// rpc/check_membership (supabase/migrations/20260919200001_live_roster.sql;
+// since 20261005190001 `currentPosition` is what the roster says the member
+// holds, one position per line: the committee or board position set on the
+// roster, then their other positions).
 // The matching (email first, then an exact normalised name) happens in the
 // database, which answers with one person's membership facts and never a name
 // or an email, so nothing about the roster ships in the bundle.
