@@ -240,6 +240,14 @@ const addPosition = async ({ committee_id, title, level }) =>
 const updatePosition = async ({ id, patch }) =>
   unwrap(await supabase.from('positions').update(patch).eq('id', id).select(POSITION_COLUMNS).single())
 
+// EB only (RLS). The position's invites and assignments go with it, and every
+// roster row that held it is given its committee's Local Member position by
+// the roster's own trigger. A delete the policy filtered out returns no rows.
+const deletePosition = async (id) => {
+  const rows = unwrap(await supabase.from('positions').delete().eq('id', id).select('id'))
+  if (!rows?.length) throw new Error('That position could not be removed.')
+}
+
 const NOTE_COLUMNS = 'id, roster_entry_id, committee_id, author_id, body, created_at, updated_at'
 
 async function fetchMemberNotes({ entryId, committeeId }) {
@@ -360,6 +368,7 @@ function usePositionMutation(mutationFn) {
 
 export const useAddPosition = () => usePositionMutation(addPosition)
 export const useUpdatePosition = () => usePositionMutation(updatePosition)
+export const useDeletePosition = () => usePositionMutation(deletePosition)
 
 export function useMemberNotes(entryId, committeeId) {
   return useQuery({
