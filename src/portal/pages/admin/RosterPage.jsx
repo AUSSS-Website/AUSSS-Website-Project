@@ -82,6 +82,20 @@ function toForm(row) {
 
 // `committees` here and below are roster units (rosterUnits.js): one entry per
 // committee, except SCOPE and SCORE, which are one entry.
+// Shown under an officer's or a board position on a member. The roster lists
+// people under their personal emails; access to the editors and the board's
+// pages belongs to each position's work email and is given by invite, never by
+// what a roster row says (migration 20261005170001).
+function RecordOnlyNote({ what }) {
+  return (
+    <p className="mt-2 text-xs text-silver/60" role="note">
+      Recorded on the roster only. This member&rsquo;s own email stays a normal member&rsquo;s:
+      access to {what} belongs to the position&rsquo;s work email, which the Executive Board
+      invites.
+    </p>
+  )
+}
+
 // `board` are the Executive Board's positions; a member of the board has no
 // committee and one of them.
 function Editor({ row, committees, positions, board, onClose }) {
@@ -220,7 +234,7 @@ function Editor({ row, committees, positions, board, onClose }) {
         {onBoard && (
           <Field
             label="Position on the Executive Board"
-            hint="Reaches their portal account by itself: at once if they have signed in, otherwise at their first sign-in."
+            hint="A board position is recorded here and gives this member's own email no access. An assistant's position reaches their portal account by itself."
             htmlFor="r-board-position"
           >
             <select
@@ -249,18 +263,13 @@ function Editor({ row, committees, positions, board, onClose }) {
                   ))}
               </optgroup>
             </select>
-            {boardPosition?.level === 'eb' && (
-              <p className="mt-2 text-xs text-amber-300" role="note">
-                This gives {form.email ? form.email : 'the account with this member’s email'} the
-                Executive Board&rsquo;s access to the whole portal the next time it signs in.
-              </p>
-            )}
+            {boardPosition?.level === 'eb' && <RecordOnlyNote what="the board’s pages" />}
           </Field>
         )}
         {form.committee_id && (
           <Field
             label="Position in the committee"
-            hint="Reaches their portal account by itself: at once if they have signed in, otherwise at their first sign-in."
+            hint="A position below officer reaches their portal account by itself: at once if they have signed in, otherwise at their first sign-in."
             htmlFor="r-position"
           >
             <select
@@ -285,6 +294,9 @@ function Editor({ row, committees, positions, board, onClose }) {
                 withOfficers
               />
             </select>
+            {positions.find((p) => p.id === form.position_id)?.level === 'officer' && (
+              <RecordOnlyNote what="the committee’s editors" />
+            )}
           </Field>
         )}
       </div>

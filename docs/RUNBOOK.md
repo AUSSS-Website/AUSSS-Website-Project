@@ -348,10 +348,10 @@ sign-in with that exact email (Google account or magic link).
 
 Since Phase 5b the portal does this without SQL: the "Invites" tab of a committee
 for its positions, and Roster page > "Executive Board" for the board and the
-webmaster (section 23). A board member or a board assistant who is on the
-membership roster is better set on their roster row (Committee: Executive Board;
-section 14), so the roster and the account say the same thing. The SQL here is for when nobody who could do it can
-sign in.
+webmaster (section 23). Invite the position's **work email**, never a personal
+one: an invite is the only thing that gives an officer's or the board's access,
+and a position on somebody's roster row gives none (section 14). The SQL here is
+for when nobody who could do it can sign in.
 
 To **remove** access, end the assignment rather than deleting it (history stays):
 
@@ -652,23 +652,33 @@ reaches the people who hold a SCORE position, so the shared members, filed under
 SCOPE's updates only. To put another pair of committees on one roster, give both the same
 `roster_group` value and add the pair to `MERGED` in `src/portal/rosterUnits.js`.
 
-**The Executive Board on the Roster page (migration `20261005160001_board_on_roster`, test
-`260-board-on-roster.sql`).** The Committee field and the committee filter offer "Executive
-Board" beside the committees. It is not a committee: the board's positions belong to none,
-so a member of the board is a roster row with no committee and one of these positions:
-President, the two Vice Presidents, the Secretary General, or an assistant to one of them
+**Access belongs to the work emails (migration `20261005170001_access_by_work_email_only`,
+test `260-board-on-roster.sql`).** The roster lists people under their personal emails. The
+society runs its committees and its board from each position's own work account (the role
+inboxes of `src/data/society.js`), handed over every term. So a position on a roster row
+reaches that email's account **only when it is below officer**: a member or an assistant
+gets it, which is what lets them receive tasks. For an officer's, a board member's or the
+webmaster's position the row is a record of who holds it and nothing more: no invite, no
+assignment, and the member's own account stays a normal member's. The row editor and the
+Members tab say "Recorded on the roster only" when such a position is chosen. Access to the
+committee editors, the gallery and magazine editors, the submissions and the board's pages
+is given in one way: the Executive Board invites the position's work email (a committee's
+Invites tab for its officers, Roster page > Executive Board for the board and the
+webmaster). The rule is which door is used, not a list of allowed addresses: the database
+does not know which addresses are work emails, so whoever invites must use the right one.
+
+**The Executive Board on the Roster page (migration `20261005160001_board_on_roster`).** The
+Committee field and the committee filter offer "Executive Board" beside the committees. It
+is not a committee: the board's positions belong to none, so a member of the board is a
+roster row with no committee and one of these positions: President, the two Vice
+Presidents, the Secretary General, or an assistant to one of them
 (`eb.president-assistant`, `eb.vp-internal-assistant`, `eb.vp-external-assistant`,
-`eb.secretary-general-assistant`; level `assistant`, so an assistant receives tasks and
-updates like any assistant and has none of the board's access). The position reaches the
-account like every roster position, which means: **giving a row a board position gives that
-email the Executive Board's access to the whole portal at its next sign-in**, and clearing
-it ends that access. The page says so when one is chosen. Three things keep it deliberate:
-only the board can write the roster; the position is only ever chosen by hand (the sheet
-sync and the "other positions" text never set it, and a row that holds one is not moved
-into a committee because its text names one); and the webmaster's position cannot ride on a
-roster row at all, it is given by invite (Roster page > Executive Board). A board position
-set here shows in that panel as "Set on the roster below" and is changed on the row, not
-there.
+`eb.secretary-general-assistant`). An assistant's position is level `assistant`: it reaches
+the member's account, where it receives tasks and updates and carries none of the board's
+access. A board position on a row is a record only (see above). The position is chosen by
+hand: the sheet sync and the "other positions" text never set it, a row that holds one is
+not moved into a committee because its text names one, and the webmaster's position cannot
+be put on a roster row at all.
 
 **"Other positions"** is the roster's name for the sheet's "Current Position" text since
 2026-10-05 (the Roster page editor, its export, and the Members tab): with the committee
@@ -706,10 +716,12 @@ nothing was chosen yet the sheet's "Current Position" text is read first ("SCORA
 Team Member", "RSD GA", "LORA"). Officers set the same field from the Members tab, for
 positions below their own only.
 
-The position reaches the portal by itself (`app.sync_roster_position`): a standing
-invite on the roster email, so an assignment at once if the member has an account and at
-their first sign-in otherwise. Changing it withdraws the old invite and ends the old
-assignment. No email on the roster: the title shows, nothing reaches an account.
+A position below officer reaches the portal by itself (`app.sync_roster_position`): a
+standing invite on the roster email, so an assignment at once if the member has an account
+and at their first sign-in otherwise. Changing it withdraws the old invite and ends the old
+assignment. No email on the roster: the title shows, nothing reaches an account. An
+officer's position on a row reaches nothing: it is a record, and the access goes to the
+position's work email by invite ("Access belongs to the work emails", above).
 
 The list of positions is data, not code: **Position types** on the Roster page lets the
 EB add, rename or remove them per committee (the database makes the `key`). The plus beside

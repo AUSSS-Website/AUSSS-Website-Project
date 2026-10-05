@@ -231,8 +231,8 @@ export default function PositionsPanel({ committee: opened = null }) {
       <Panel title="Invite by email">
         <p className="mt-3 text-sm text-silver/65">
           {committee
-            ? `For someone who is not on ${committee.abbr}’s members list yet. Choose the position they should hold; they get it the first time they sign in with that address.`
-            : 'Hands a board position to an address. They hold it from their first sign-in with that address, and the public pages follow.'}
+            ? `For someone who is not on ${committee.abbr}’s members list yet. Choose the position they should hold; they get it the first time they sign in with that address. An officer’s position opens the committee’s editors, so it goes to the position’s work email, never a personal one.`
+            : 'Gives a board position, and with it the board’s access to the portal, to an address. Use the position’s work email, never a personal one: it holds the position from its first sign-in, and the public pages follow.'}
         </p>
         <InviteForm committee={committee} positions={positions} />
       </Panel>
