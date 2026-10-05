@@ -17,16 +17,16 @@ export default function ExchangeStories() {
 
   return (
     <section className="reveal mx-auto max-w-4xl">
-      <h2 className="heading-serif text-center text-3xl text-white">
+      <h2 className="heading-serif text-center text-3xl text-ink">
         Exchange stories
       </h2>
 
       {visible.length === 0 ? (
-        <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <p className="heading-serif text-xl text-white">
+        <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center">
+          <p className="heading-serif text-xl text-ink">
             Be the first story here
           </p>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-silver/70">
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-soft/70">
             Went abroad or hosted an incoming student with AUSSS? Share how it
             went. Your story helps the next student take the leap.
           </p>
@@ -43,8 +43,8 @@ export default function ExchangeStories() {
             {visible.map((t, idx) => (
               <figure
                 key={t.id || idx}
-                className={`relative overflow-hidden rounded-3xl border bg-forest-800 ${
-                  t.featured ? 'border-medical/60 shadow-[0_0_0_1px_rgba(91,141,184,0.25)]' : 'border-white/10'
+                className={`relative overflow-hidden rounded-3xl border bg-card ${
+                  t.featured ? 'border-medical/60 shadow-[0_0_0_1px_rgba(91,141,184,0.25)]' : 'border-line/10'
                 }`}
               >
                 {t.featured && (
@@ -64,17 +64,17 @@ export default function ExchangeStories() {
                   <div className="flex flex-col justify-center p-7 sm:p-9">
                     <svg
                       viewBox="0 0 24 24"
-                      className="h-7 w-7 text-medical-light/60"
+                      className="h-7 w-7 text-accent/60"
                       fill="currentColor"
                       aria-hidden="true"
                     >
                       <path d="M7 7h4v4c0 3-1.5 5-4 6V13H7V7zm8 0h4v4c0 3-1.5 5-4 6V13h-2V7h2z" />
                     </svg>
-                    <blockquote className="mt-3 text-base leading-relaxed text-silver/85">
+                    <blockquote className="mt-3 text-base leading-relaxed text-soft/85">
                       {t.quote}
                     </blockquote>
-                    <figcaption className="mt-5 text-sm text-silver/60">
-                      <span className="font-semibold text-white">{t.name}</span>
+                    <figcaption className="mt-5 text-sm text-soft/60">
+                      <span className="font-semibold text-ink">{t.name}</span>
                       {t.track ? ` · ${t.track}` : ''}
                       {t.destination ? ` · ${t.destination}` : ''}
                       {t.year ? ` · ${t.year}` : ''}
@@ -87,7 +87,7 @@ export default function ExchangeStories() {
                             src={g}
                             alt={`${t.destination}, ${t.name}'s exchange`}
                             loading="lazy"
-                            className="h-16 w-16 rounded-lg object-cover ring-1 ring-white/10 sm:h-20 sm:w-20"
+                            className="h-16 w-16 rounded-lg object-cover ring-1 ring-line/10 sm:h-20 sm:w-20"
                           />
                         ))}
                       </div>
@@ -100,7 +100,7 @@ export default function ExchangeStories() {
           <div className="mt-10 text-center">
             <Link
               to="/exchange/share"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
             >
               Share your exchange story
             </Link>

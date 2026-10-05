@@ -99,10 +99,10 @@ export default function SignInPage() {
       subtitle="Your membership, positions and details, in one place."
     >
       {sent ? (
-        <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
-          <p className="text-sm font-semibold text-white">Check your inbox</p>
-          <p className="mt-1 text-sm text-silver/70">
-            We sent a sign-in link to <span className="text-white">{email.trim()}</span>.
+        <div className="mt-6 rounded-xl border border-line/10 bg-veil/[0.03] p-4 text-center">
+          <p className="text-sm font-semibold text-ink">Check your inbox</p>
+          <p className="mt-1 text-sm text-soft/70">
+            We sent a sign-in link to <span className="text-ink">{email.trim()}</span>.
             It works on any device and expires in an hour.
           </p>
           <button
@@ -111,7 +111,7 @@ export default function SignInPage() {
               setSent(false)
               setError('')
             }}
-            className="mt-3 text-xs font-semibold text-medical-light hover:text-white"
+            className="mt-3 text-xs font-semibold text-accent hover:text-ink"
           >
             Use a different email
           </button>
@@ -121,7 +121,7 @@ export default function SignInPage() {
           <Button
             type="button"
             variant="primary"
-            className="mt-6 w-full border border-[#747775] !font-medium !text-[#1F1F1F]"
+            className="mt-6 w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light"
             onClick={google}
             disabled={Boolean(busy)}
           >
@@ -129,10 +129,10 @@ export default function SignInPage() {
             {busy === 'google' ? 'Redirecting…' : 'Continue with Google'}
           </Button>
 
-          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-silver/40">
-            <span className="h-px flex-1 bg-white/10" />
+          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/40">
+            <span className="h-px flex-1 bg-veil/10" />
             or
-            <span className="h-px flex-1 bg-white/10" />
+            <span className="h-px flex-1 bg-veil/10" />
           </div>
 
           <form onSubmit={magic} className="space-y-3">
@@ -162,7 +162,7 @@ export default function SignInPage() {
         </>
       )}
 
-      <p className="mt-6 text-center text-xs text-silver/50">
+      <p className="mt-6 text-center text-xs text-soft/50">
         Officers: sign in here to edit your committee page and open calls.
       </p>
       <BackLink />

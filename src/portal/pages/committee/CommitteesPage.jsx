@@ -13,24 +13,24 @@ function CommitteeTile({ c }) {
     <li>
       <Link
         to={`/portal/committees/${c.slug}`}
-        className="group flex h-full w-full flex-col items-center gap-3 rounded-2xl border border-white/10 bg-forest-800 p-5 text-center transition-colors hover:border-medical/40"
+        className="group flex h-full w-full flex-col items-center gap-3 rounded-2xl border border-line/10 bg-card p-5 text-center transition-colors hover:border-medical/40"
       >
         {/* Committee logo PNGs are solid white, show them on a dark chip
             (accent border), not a white one, so they're visible. */}
         <span
-          className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border bg-forest-950 p-1.5"
-          style={{ borderColor: c.color || 'rgba(255,255,255,0.15)' }}
+          className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border bg-page p-1.5"
+          style={{ borderColor: c.color || 'rgb(var(--c-line) / 0.15)' }}
         >
           {c.logo ? (
-            <img src={c.logo} alt={c.abbr} className="h-full w-full object-contain" />
+            <img src={c.logo} alt={c.abbr} className="logo-ink h-full w-full object-contain" />
           ) : (
-            <span className="heading-serif text-lg text-white">{c.abbr}</span>
+            <span className="heading-serif text-lg text-ink">{c.abbr}</span>
           )}
         </span>
-        <span className="heading-serif text-base text-white">{c.abbr}</span>
-        <span className="text-xs leading-snug text-silver/55">{c.name}</span>
+        <span className="heading-serif text-base text-ink">{c.abbr}</span>
+        <span className="text-xs leading-snug text-soft/55">{c.name}</span>
         {c.page && Object.keys(c.page).length > 0 && (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-medical-light">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
             Customised
           </span>
         )}
@@ -68,7 +68,7 @@ export default function CommitteesPage() {
         </Panel>
       ) : mine.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             No committee to edit. Officer access follows your position for this
             term: if you hold one, ask the EB or the webmaster to add you.
           </p>

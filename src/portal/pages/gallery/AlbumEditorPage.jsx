@@ -71,7 +71,7 @@ function DetailsForm({ album }) {
           hint="Lower-case letters, digits and hyphens. A link shared before a rename keeps working."
         >
           <div className="flex items-center gap-2">
-            <span className="shrink-0 text-xs text-silver/50">/gallery/</span>
+            <span className="shrink-0 text-xs text-soft/50">/gallery/</span>
             <input
               id="album-slug"
               className={inputCls}
@@ -102,7 +102,7 @@ function DetailsForm({ album }) {
           <button type="submit" className={primaryBtnCls} disabled={!dirty || update.isPending}>
             {update.isPending ? 'Saving…' : saved ? 'Saved' : 'Save'}
           </button>
-          <label className="flex items-center gap-3 text-sm text-silver/70">
+          <label className="flex items-center gap-3 text-sm text-soft/70">
             <Toggle
               checked={album.published}
               onChange={(v) => update.mutate({ id: album.id, patch: { published: v } })}
@@ -203,13 +203,13 @@ function DropZone({ onFiles, busy }) {
       onDragLeave={() => setOver(false)}
       onDrop={onDrop}
       className={`rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
-        over ? 'border-medical bg-medical/10' : 'border-white/15 bg-white/[0.03]'
+        over ? 'border-medical bg-medical/10' : 'border-line/15 bg-veil/[0.03]'
       }`}
     >
-      <p className="text-sm text-silver/80">
+      <p className="text-sm text-soft/80">
         Drop photos here{busy ? ' (uploads are running)' : ''}
       </p>
-      <p className="mt-1 text-xs text-silver/50">
+      <p className="mt-1 text-xs text-soft/50">
         JPEG, PNG, WebP or HEIC. Each photo is resized in your browser before it is uploaded, so full-size phone photos are fine.
       </p>
       <button type="button" className={`${outlineBtnCls} mt-4`} onClick={() => inputRef.current?.click()}>
@@ -238,18 +238,18 @@ function UploadList({ items, onClear }) {
   const active = items.length - done - failed.length
   return (
     <div className="mt-4 text-sm" aria-live="polite">
-      <p className="text-silver/70">
+      <p className="text-soft/70">
         {active > 0 && `${active} uploading… `}
         {done > 0 && `${done} added. `}
         {failed.length > 0 && `${failed.length} failed.`}
         {active === 0 && (
-          <button type="button" onClick={onClear} className="ml-2 font-semibold text-medical-light hover:text-white">
+          <button type="button" onClick={onClear} className="ml-2 font-semibold text-accent hover:text-ink">
             Clear
           </button>
         )}
       </p>
       {failed.length > 0 && (
-        <ul className="mt-2 grid gap-1 text-xs text-red-200">
+        <ul className="mt-2 grid gap-1 text-xs text-danger">
           {failed.map((x) => (
             <li key={x.key}>
               {x.name}: {x.error}
@@ -267,8 +267,8 @@ function PhotoCard({ p, isCover, onAction, busy }) {
   const [label, setLabel] = useState(p.label)
   useEffect(() => setLabel(p.label), [p.label])
   return (
-    <li className={`overflow-hidden rounded-2xl border bg-forest-800 ${p.hidden ? 'border-amber-400/40' : 'border-white/10'}`}>
-      <div className="relative aspect-square bg-forest-950">
+    <li className={`overflow-hidden rounded-2xl border bg-card ${p.hidden ? 'border-amber-400/40' : 'border-line/10'}`}>
+      <div className="relative aspect-square bg-page">
         <img
           src={p.thumb}
           alt=""
@@ -307,7 +307,7 @@ function PhotoCard({ p, isCover, onAction, busy }) {
           <button type="button" className={smallBtn} onClick={() => onAction('hidden', !p.hidden)} disabled={busy}>
             {p.hidden ? 'Show' : 'Hide'}
           </button>
-          <button type="button" className={`${smallBtn} text-red-200`} onClick={() => onAction('bin')} disabled={busy}>
+          <button type="button" className={`${smallBtn} text-danger`} onClick={() => onAction('bin')} disabled={busy}>
             Remove
           </button>
         </div>
@@ -317,7 +317,7 @@ function PhotoCard({ p, isCover, onAction, busy }) {
 }
 
 const smallBtn =
-  'rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-40'
+  'rounded-full border border-line/15 px-2.5 py-1 text-[11px] font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40'
 
 function Badge({ children, tone = 'ok' }) {
   return (
@@ -335,12 +335,12 @@ function Bin({ photos, onRestore, onPurge, busy }) {
   if (photos.length === 0) return null
   return (
     <Panel title="Removed photos" className="mt-8">
-      <p className="mt-3 text-xs text-silver/55">
+      <p className="mt-3 text-xs text-soft/55">
         Not on the site. Restore a photo that was removed by mistake; anything still here after 30 days is deleted for good.
       </p>
       <ul className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-8">
         {photos.map((p) => (
-          <li key={p.id} className="overflow-hidden rounded-xl border border-white/10 bg-forest-950">
+          <li key={p.id} className="overflow-hidden rounded-xl border border-line/10 bg-page">
             <img src={p.thumb} alt="" loading="lazy" className="aspect-square w-full object-cover opacity-60" />
             <div className="flex flex-wrap gap-1 p-2">
               <button type="button" className={smallBtn} onClick={() => onRestore(p)} disabled={busy}>
@@ -405,7 +405,7 @@ function AlbumEditor({ album }) {
     <>
       <PageHeader
         eyebrow={
-          <Link to="/portal/gallery" className="hover:text-white">
+          <Link to="/portal/gallery" className="hover:text-ink">
             &larr; All albums
           </Link>
         }
@@ -445,12 +445,12 @@ function AlbumEditor({ album }) {
         ) : photosQ.error ? (
           <ErrorText>Couldn’t load the photos: {photosQ.error.message}</ErrorText>
         ) : live.length === 0 ? (
-          <p className="mt-6 text-sm text-silver/60">
+          <p className="mt-6 text-sm text-soft/60">
             No photos yet. The album appears on the site once it has one.
           </p>
         ) : (
           <>
-            <p className="mt-6 text-xs text-silver/55">
+            <p className="mt-6 text-xs text-soft/55">
               {live.length} {live.length === 1 ? 'photo' : 'photos'}. The cover is the album card on the gallery page; a
               featured photo shows as a wide banner above the grid.
             </p>
@@ -477,7 +477,7 @@ function AlbumEditor({ album }) {
       />
 
       <Panel title="Delete album" className="mt-8">
-        <p className="mt-3 text-xs text-silver/55">
+        <p className="mt-3 text-xs text-soft/55">
           Removes the album, all its photos and its link from the site. This cannot be undone.
         </p>
         <div className="mt-4">
@@ -512,8 +512,8 @@ export default function AlbumEditorPage() {
         </Panel>
       ) : !album ? (
         <Panel>
-          <p className="text-sm text-silver/70">No album at /gallery/{slug}.</p>
-          <Link to="/portal/gallery" className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white">
+          <p className="text-sm text-soft/70">No album at /gallery/{slug}.</p>
+          <Link to="/portal/gallery" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
             &larr; All albums
           </Link>
         </Panel>

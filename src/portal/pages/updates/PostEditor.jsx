@@ -186,10 +186,10 @@ export default function PostEditor({ post, scopes, onDone, onCancel }) {
           />
         </Field>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line/10 pt-6">
           <div className="max-w-md">
-            <p className="text-sm font-medium text-white">Pin to the top</p>
-            <p className="mt-1 text-xs text-silver/55">Pinned updates stay above newer ones until you unpin them.</p>
+            <p className="text-sm font-medium text-ink">Pin to the top</p>
+            <p className="mt-1 text-xs text-soft/55">Pinned updates stay above newer ones until you unpin them.</p>
           </div>
           <Toggle checked={pinned} onChange={setPinned} label="Pin to the top" disabled={save.isPending} />
         </div>

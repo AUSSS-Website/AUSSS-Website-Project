@@ -38,13 +38,13 @@ function EBGate({ children }) {
   return (
     <Centered>
       <div className="max-w-sm">
-        <p className="text-sm text-silver/70">
+        <p className="text-sm text-soft/70">
           This page is for the Executive Board. If you think you should have
           access, ask the webmaster to check your assignment for this term.
         </p>
         <Link
           to="/portal"
-          className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+          className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
         >
           &larr; Back to your dashboard
         </Link>

@@ -49,9 +49,9 @@ export const localMemberOf = (positions, committeeId) =>
 // The plus beside a heading and the minus beside a position: one round shape,
 // quiet by default, red once the minus is armed.
 const roundShape =
-  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm font-semibold leading-none text-white transition-colors disabled:opacity-40'
-const roundBtnCls = `${roundShape} border-white/20 hover:bg-white/10`
-const roundArmedCls = `${roundShape} border-red-500 bg-red-500 hover:bg-red-400`
+  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm font-semibold leading-none transition-colors disabled:opacity-40'
+const roundBtnCls = `${roundShape} border-line/20 text-ink hover:bg-veil/10`
+const roundArmedCls = `${roundShape} border-red-500 bg-red-500 text-white hover:bg-red-400`
 
 // `fallback` is the title of the committee's default position, the one every
 // new member gets and holders of a removed position fall back to.
@@ -101,7 +101,7 @@ function TypeRow({ position, fallback }) {
         </button>
       )}
       {isDefault ? (
-        <span className="text-xs text-silver/50">Given to every new member of the committee</span>
+        <span className="text-xs text-soft/50">Given to every new member of the committee</span>
       ) : (
         <>
           {/* Positions retired before removing existed can still be brought back. */}
@@ -171,7 +171,7 @@ function TypeSection({ committee, level, label, positions, fallback }) {
   return (
     <div className="mt-6">
       <div className="flex items-center gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">{label}</p>
         <button
           type="button"
           aria-expanded={adding}
@@ -226,7 +226,7 @@ export default function PositionTypesPanel({ committees, onClose }) {
   return (
     <Panel title="Position types" className="mb-6">
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm text-silver/65">
+        <p className="max-w-2xl text-sm text-soft/65">
           The positions each committee can give its members. Assistants and coordinators receive
           tasks like any member; only the committee&rsquo;s officer and the Executive Board assign
           them. Use the plus beside a heading to add one there. The minus beside a position removes

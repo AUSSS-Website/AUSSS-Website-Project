@@ -30,7 +30,7 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 const NO_EMAILS = {}
 
 const tagCls =
-  'inline-flex shrink-0 items-center rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-silver/60'
+  'inline-flex shrink-0 items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
 const textBtnCls = 'text-xs font-semibold transition-colors disabled:opacity-40'
 
 // A two-step inline confirm, the portal's usual shape for anything destructive.
@@ -38,17 +38,17 @@ function ConfirmButton({ label, confirmLabel, busy, onConfirm }) {
   const [asking, setAsking] = useState(false)
   if (!asking) {
     return (
-      <button type="button" onClick={() => setAsking(true)} className={`${textBtnCls} text-silver/60 hover:text-white`}>
+      <button type="button" onClick={() => setAsking(true)} className={`${textBtnCls} text-soft/60 hover:text-ink`}>
         {label}
       </button>
     )
   }
   return (
     <span className="flex items-center gap-3">
-      <button type="button" disabled={busy} onClick={onConfirm} className={`${textBtnCls} text-red-300 hover:text-red-200`}>
+      <button type="button" disabled={busy} onClick={onConfirm} className={`${textBtnCls} text-danger hover:text-danger`}>
         {busy ? 'Working…' : confirmLabel}
       </button>
-      <button type="button" onClick={() => setAsking(false)} className={`${textBtnCls} text-silver/60 hover:text-white`}>
+      <button type="button" onClick={() => setAsking(false)} className={`${textBtnCls} text-soft/60 hover:text-ink`}>
         Keep
       </button>
     </span>
@@ -135,14 +135,14 @@ function InviteForm({ committee, positions, workEmails }) {
         </button>
       </div>
       {fixed && (
-        <p className="mt-3 text-xs text-silver/60">
+        <p className="mt-3 text-xs text-soft/60">
           {workEmail
             ? 'This position opens editors and admin pages, so it only ever goes to its work email.'
             : 'This position has no work email yet. Set it under “Work emails” below; it can only be given to that address.'}
         </p>
       )}
       {note && (
-        <p className="mt-3 text-xs text-emerald-300" role="status">
+        <p className="mt-3 text-xs text-ok" role="status">
           {note}
         </p>
       )}
@@ -173,7 +173,7 @@ function WorkEmailRow({ position, email, locked }) {
   return (
     <li>
       <form onSubmit={submit} className="flex flex-wrap items-center gap-2 py-2.5">
-        <span className="w-full text-sm font-semibold text-white sm:w-64">{position.title}</span>
+        <span className="w-full text-sm font-semibold text-ink sm:w-64">{position.title}</span>
         <input
           type="email"
           required
@@ -193,8 +193,8 @@ function WorkEmailRow({ position, email, locked }) {
             {save.isPending ? 'Saving…' : 'Save'}
           </button>
         )}
-        {saved && !changed && <span className="text-xs text-emerald-300">Saved.</span>}
-        {locked && <span className="text-xs text-silver/45">Only the webmaster changes this one</span>}
+        {saved && !changed && <span className="text-xs text-ok">Saved.</span>}
+        {locked && <span className="text-xs text-soft/45">Only the webmaster changes this one</span>}
         {save.error && (
           <span className="w-full">
             <ErrorText>{save.error.message}</ErrorText>
@@ -212,12 +212,12 @@ function WorkEmails({ positions, workEmails }) {
   const { isWebmaster } = useAuth()
   return (
     <Panel title="Work emails">
-      <p className="mt-3 text-sm text-silver/65">
+      <p className="mt-3 text-sm text-soft/65">
         Each of these positions belongs to one work email, the only address that can hold it and
         open its pages. A personal email is never given one. Changing an address here does not
         move anybody&rsquo;s access: remove the current holder below, then invite the new address.
       </p>
-      <ul className="mt-3 divide-y divide-white/5">
+      <ul className="mt-3 divide-y divide-line/5">
         {positions.map((p) => (
           <WorkEmailRow
             key={`${p.id}-${workEmails[p.id] || ''}`}
@@ -236,8 +236,8 @@ function InviteRow({ invite }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-white">{invite.email}</span>
-        <span className="block text-xs text-silver/50">
+        <span className="block truncate text-sm font-semibold text-ink">{invite.email}</span>
+        <span className="block text-xs text-soft/50">
           {invite.invited_by ? `Invited by ${invite.invited_by} · ` : ''}
           {when(invite.created_at)}
         </span>
@@ -268,15 +268,15 @@ function HolderRow({ holder, rosterHint }) {
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
       <Avatar name={holder.full_name} src={holder.avatar_url} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-white">
+        <span className="block truncate text-sm font-semibold text-ink">
           {holder.full_name || 'No name yet'}
-          {isSelf && <span className="font-normal text-silver/50"> (you)</span>}
+          {isSelf && <span className="font-normal text-soft/50"> (you)</span>}
         </span>
-        <span className="block truncate text-xs text-silver/50">{holder.email}</span>
+        <span className="block truncate text-xs text-soft/50">{holder.email}</span>
       </span>
       <span className={tagCls}>{holder.position.title}</span>
       {holder.from_roster ? (
-        <span className="text-xs text-silver/45">{rosterHint}</span>
+        <span className="text-xs text-soft/45">{rosterHint}</span>
       ) : (
         holder.can_remove && (
           <ConfirmButton
@@ -342,7 +342,7 @@ export default function PositionsPanel({ committee: opened = null }) {
   return (
     <div className="max-w-3xl space-y-5">
       <Panel title="Invite by email">
-        <p className="mt-3 text-sm text-silver/65">
+        <p className="mt-3 text-sm text-soft/65">
           {committee
             ? `For someone who is not on ${committee.abbr}’s members list yet. Choose the position they should hold; they get it the first time they sign in with that address. An officer’s position opens the committee’s editors, so it goes to its work email and no other address.`
             : 'Gives a board position, and with it the board’s access to the portal, to its work email. No other address can be given one. It holds the position from its first sign-in, and the public pages follow.'}
@@ -354,19 +354,19 @@ export default function PositionsPanel({ committee: opened = null }) {
 
       <Panel title={`Waiting for a first sign-in (${direct.length + fromRoster.length})`}>
         {direct.length === 0 && fromRoster.length === 0 ? (
-          <p className="mt-4 text-sm text-silver/60">Nothing is waiting.</p>
+          <p className="mt-4 text-sm text-soft/60">Nothing is waiting.</p>
         ) : (
           <>
             {direct.length > 0 && (
-              <ul className="mt-2 divide-y divide-white/5">
+              <ul className="mt-2 divide-y divide-line/5">
                 {direct.map((i) => (
                   <InviteRow key={i.id} invite={i} />
                 ))}
               </ul>
             )}
             {fromRoster.length > 0 && (
-              <div className={direct.length > 0 ? 'mt-3 border-t border-white/10 pt-4' : 'mt-4'}>
-                <p className="text-sm text-silver/65">
+              <div className={direct.length > 0 ? 'mt-3 border-t border-line/10 pt-4' : 'mt-4'}>
+                <p className="text-sm text-soft/65">
                   {fromRoster.length} {fromRoster.length === 1 ? 'member' : 'members'} on the
                   members list {fromRoster.length === 1 ? 'has' : 'have'} not signed in yet. Their
                   position is set on the Members tab and reaches them when they do.{' '}
@@ -374,16 +374,16 @@ export default function PositionsPanel({ committee: opened = null }) {
                     type="button"
                     aria-expanded={showRoster}
                     onClick={() => setShowRoster((v) => !v)}
-                    className={`${textBtnCls} text-medical-light hover:text-white`}
+                    className={`${textBtnCls} text-accent hover:text-ink`}
                   >
                     {showRoster ? 'Hide' : 'Show them'}
                   </button>
                 </p>
                 {showRoster && (
-                  <ul className="mt-2 divide-y divide-white/5">
+                  <ul className="mt-2 divide-y divide-line/5">
                     {fromRoster.map((i) => (
                       <li key={i.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-                        <span className="min-w-0 flex-1 truncate text-sm text-silver/85">{i.email}</span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-soft/85">{i.email}</span>
                         <span className={tagCls}>{i.position.title}</span>
                       </li>
                     ))}
@@ -397,9 +397,9 @@ export default function PositionsPanel({ committee: opened = null }) {
 
       <Panel title={`Holding a position in ${where} (${holders.length})`}>
         {holders.length === 0 ? (
-          <p className="mt-4 text-sm text-silver/60">Nobody with an account holds a position here yet.</p>
+          <p className="mt-4 text-sm text-soft/60">Nobody with an account holds a position here yet.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-white/5">
+          <ul className="mt-2 divide-y divide-line/5">
             {holders.map((h) => (
               <HolderRow
                 key={h.assignment_id}

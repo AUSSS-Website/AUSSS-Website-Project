@@ -29,8 +29,8 @@ export default function ProductCard({ product, onOpenSizeChart }) {
   }
 
   return (
-    <article className="reveal group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-forest-800 transition-all duration-500 hover:-translate-y-1 hover:border-medical/40">
-      <div className="relative aspect-[5/7] w-full overflow-hidden bg-forest-900">
+    <article className="reveal group flex h-full flex-col overflow-hidden rounded-2xl border border-line/10 bg-card transition-all duration-500 hover:-translate-y-1 hover:border-medical/40">
+      <div className="relative aspect-[5/7] w-full overflow-hidden bg-sunk">
         <img
           src={product.image}
           alt={product.name}
@@ -40,21 +40,21 @@ export default function ProductCard({ product, onOpenSizeChart }) {
       </div>
 
       <div className="flex flex-1 flex-col p-4 sm:p-6">
-        <h3 className="heading-serif text-base text-white sm:text-xl">{product.name}</h3>
+        <h3 className="heading-serif text-base text-ink sm:text-xl">{product.name}</h3>
         {product.tagline && (
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-medical-light sm:text-xs">
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-xs">
             {product.tagline}
           </p>
         )}
-        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-silver/70 sm:mt-3 sm:line-clamp-none sm:text-sm">
+        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-soft/70 sm:mt-3 sm:line-clamp-none sm:text-sm">
           {product.description}
         </p>
 
         <div className="mt-4 flex items-center justify-between gap-2 sm:mt-5 sm:gap-3">
-          <span className="heading-serif text-xl text-white sm:text-2xl">
+          <span className="heading-serif text-xl text-ink sm:text-2xl">
             {formatEGP(product.price)}
           </span>
-          <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-medical-light sm:inline-block">
+          <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent sm:inline-block">
             Pre-order
           </span>
         </div>
@@ -64,7 +64,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
             <div className="flex items-center justify-between">
               <span
                 id={`size-label-${product.id}`}
-                className="text-xs font-semibold uppercase tracking-[0.16em] text-silver/60"
+                className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/60"
               >
                 Size
               </span>
@@ -72,7 +72,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
                 <button
                   type="button"
                   onClick={() => onOpenSizeChart?.(product)}
-                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-medical-light transition-colors hover:text-white"
+                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent transition-colors hover:text-ink"
                 >
                   Size chart
                 </button>
@@ -88,7 +88,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
                   className={`min-w-[2.5rem] rounded-full border px-2.5 py-1.5 text-xs font-semibold transition-colors sm:min-w-[3rem] sm:px-3 ${
                     size === s
                       ? 'border-medical bg-medical text-forest-950'
-                      : 'border-white/15 text-silver/80 hover:border-white/30 hover:text-white'
+                      : 'border-line/15 text-soft/80 hover:border-line/30 hover:text-ink'
                   }`}
                 >
                   {s}
@@ -102,7 +102,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
           <div className="mt-4 sm:mt-5" role="group" aria-labelledby={`design-label-${product.id}`}>
             <span
               id={`design-label-${product.id}`}
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-silver/60"
+              className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/60"
             >
               Design
             </span>
@@ -118,7 +118,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
                   } ${
                     design === d
                       ? 'border-medical bg-medical text-forest-950'
-                      : 'border-white/15 text-silver/80 hover:border-white/30 hover:text-white'
+                      : 'border-line/15 text-soft/80 hover:border-line/30 hover:text-ink'
                   }`}
                 >
                   {d}
@@ -136,7 +136,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
           <button
             type="button"
             onClick={onAdd}
-            className="group/btn flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-forest transition-transform hover:scale-[1.02] sm:px-5 sm:py-3 sm:text-sm"
+            className="group/btn flex w-full items-center justify-center gap-2 rounded-full bg-solid px-4 py-2.5 text-xs font-semibold text-on-solid transition-transform hover:scale-[1.02] sm:px-5 sm:py-3 sm:text-sm"
           >
             {feedback || 'Add to cart'}
             {!feedback && (

@@ -9,7 +9,7 @@ function BookletThumb({ page, idx, onOpen }) {
   return (
     <button
       onClick={() => onOpen(idx)}
-      className="reveal group block w-full overflow-hidden rounded-xl ring-1 ring-white/10 transition-all duration-500 hover:ring-medical/50"
+      className="reveal group block w-full overflow-hidden rounded-xl ring-1 ring-line/10 transition-all duration-500 hover:ring-medical/50"
       aria-label={`Open page ${idx + 1} full screen`}
     >
       <img
@@ -42,13 +42,13 @@ function Lightbox({ index, onClose, onPrev, onNext }) {
   const page = merchPages[index]
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-forest-950/95 p-4 backdrop-blur-sm"
+      className="dark fixed inset-0 z-[60] flex items-center justify-center bg-page/95 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <button
         onClick={onClose}
         aria-label="Close"
-        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -60,7 +60,7 @@ function Lightbox({ index, onClose, onPrev, onNext }) {
           onPrev()
         }}
         aria-label="Previous page"
-        className="absolute left-3 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-6"
+        className="absolute left-3 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20 sm:left-6"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -78,13 +78,13 @@ function Lightbox({ index, onClose, onPrev, onNext }) {
           onNext()
         }}
         aria-label="Next page"
-        className="absolute right-3 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-6"
+        className="absolute right-3 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20 sm:right-6"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <span className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1 text-xs font-medium text-white">
+      <span className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-veil/10 px-4 py-1 text-xs font-medium text-ink">
         {index + 1} / {merchPages.length}
       </span>
     </div>
@@ -106,13 +106,13 @@ function SizeChartModal({ product, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-forest-950/95 p-4 backdrop-blur-sm"
+      className="dark fixed inset-0 z-[70] flex items-center justify-center bg-page/95 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <button
         onClick={onClose}
         aria-label="Close size chart"
-        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -124,7 +124,7 @@ function SizeChartModal({ product, onClose }) {
           alt={`${product.name} size chart`}
           className="max-h-[80vh] w-auto rounded-lg bg-white p-4 shadow-2xl"
         />
-        <figcaption className="mt-3 text-center text-xs text-silver/70">
+        <figcaption className="mt-3 text-center text-xs text-soft/70">
           {product.name} · measurements in cm
         </figcaption>
       </figure>
@@ -152,13 +152,13 @@ export default function MerchPage() {
   )
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-12 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+              'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
@@ -168,12 +168,12 @@ export default function MerchPage() {
             Shop AUSSS
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-5 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Merch 2025–26
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-silver/75">
+          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
             Life Savers, Change Makers. Every piece in this drop is{' '}
-            <strong className="text-white">pre-order only</strong>: we collect
+            <strong className="text-ink">pre-order only</strong>: we collect
             orders, then run production, then coordinate pickup. What you pay
             for is what you get.
           </p>
@@ -189,10 +189,10 @@ export default function MerchPage() {
               The catalogue
               <span className="h-px w-8 bg-medical" />
             </span>
-            <h2 className="heading-serif mt-5 text-3xl text-white sm:text-4xl">
+            <h2 className="heading-serif mt-5 text-3xl text-ink sm:text-4xl">
               Flip through the 25–26 booklet
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base font-light text-silver/70">
+            <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/70">
               Designs, photoshoots, and the story behind the 55th anniversary
               drop.
             </p>
@@ -201,14 +201,14 @@ export default function MerchPage() {
                 href={merchPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-transform hover:scale-[1.03] sm:w-auto"
+                className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.03] sm:w-auto"
               >
                 Open full booklet (PDF)
               </a>
               <a
                 href={merchPdf}
                 download
-                className="w-full rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
+                className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
               >
                 Download
               </a>
@@ -265,7 +265,7 @@ export default function MerchPage() {
       </section>
 
       {/* Order cards, the real shop, at the bottom */}
-      <section className="border-t border-white/10 bg-forest-950 py-20">
+      <section className="border-t border-line/10 bg-page py-20">
         <div className="container-prose">
           <div className="reveal mx-auto mb-12 max-w-2xl text-center">
             <span className="eyebrow justify-center">
@@ -273,10 +273,10 @@ export default function MerchPage() {
               Place your pre-order
               <span className="h-px w-8 bg-medical" />
             </span>
-            <h2 className="heading-serif mt-5 text-3xl text-white sm:text-4xl">
+            <h2 className="heading-serif mt-5 text-3xl text-ink sm:text-4xl">
               Order what you love
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base font-light text-silver/70">
+            <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/70">
               Pick your size, drop it in the cart, and we&rsquo;ll confirm
               pickup once production wraps.
             </p>

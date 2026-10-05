@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { committees, slugFor } from '../data/society.js'
-import { readableAccent, rgba } from '../lib/color.js'
+import { chipAccent, rgba } from '../lib/color.js'
 import SignupForm from '../components/SignupForm.jsx'
 import { WAITLIST_OPEN } from '../data/signupsConfig.js'
 import FAQ from '../components/FAQ.jsx'
@@ -39,21 +39,20 @@ function CommitteeRow({ list }) {
   return (
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {list.map((c) => {
-        const accent = readableAccent(c.color)
         return (
           <Link
             key={c.abbr}
             to={`/committees/${slugFor(c)}`}
-            className="flex flex-col rounded-2xl border border-white/10 bg-forest-800 p-6 transition-colors hover:border-white/25"
+            className="flex flex-col rounded-2xl border border-line/10 bg-card p-6 transition-colors hover:border-line/25"
           >
             <span
               className="self-start rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
-              style={{ background: rgba(c.color, 0.2), color: accent }}
+              style={{ background: rgba(c.color, 0.2), color: chipAccent(c.color) }}
             >
               {c.abbr}
             </span>
-            <h3 className="heading-serif mt-4 text-lg text-white">{c.name}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-silver/70">
+            <h3 className="heading-serif mt-4 text-lg text-ink">{c.name}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-soft/70">
               {c.tagline || c.description}
             </p>
           </Link>
@@ -73,13 +72,13 @@ export default function JoinPage() {
   const divisions = committees.filter((c) => c.group === 'Support Division')
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-16 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+              'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
@@ -89,10 +88,10 @@ export default function JoinPage() {
             Become a member
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
             Join AUSSS
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-silver/75">
+          <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
             A community that turns medical students into life savers and change
             makers, open to every Faculty of Medicine student at Ain Shams
             University.
@@ -103,17 +102,17 @@ export default function JoinPage() {
       <div className="container-prose space-y-24 pb-28 sm:pb-36">
         {/* Why join */}
         <section className="reveal mx-auto max-w-5xl">
-          <h2 className="heading-serif text-center text-3xl text-white">
+          <h2 className="heading-serif text-center text-3xl text-ink">
             Why join AUSSS
           </h2>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {WHY.map((w) => (
               <div
                 key={w.title}
-                className="rounded-2xl border border-white/10 bg-forest-800 p-7"
+                className="rounded-2xl border border-line/10 bg-card p-7"
               >
-                <h3 className="heading-serif text-xl text-white">{w.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-silver/70">
+                <h3 className="heading-serif text-xl text-ink">{w.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-soft/70">
                   {w.body}
                 </p>
               </div>
@@ -123,29 +122,29 @@ export default function JoinPage() {
 
         {/* Committees summary */}
         <section className="reveal mx-auto max-w-5xl">
-          <h2 className="heading-serif text-center text-3xl text-white">
+          <h2 className="heading-serif text-center text-3xl text-ink">
             Find your committee
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-silver/60">
+          <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-soft/60">
             Six standing committees and four support divisions. Open any of
             them to see what they do.
           </p>
           <div className="mt-6 flex justify-center">
             <Link
               to="/sorting"
-              className="inline-flex items-center gap-2 rounded-full border border-medical/40 bg-medical/10 px-6 py-2.5 text-sm font-semibold text-medical-light transition-colors hover:border-medical hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full border border-medical/40 bg-medical/10 px-6 py-2.5 text-sm font-semibold text-accent transition-colors hover:border-medical hover:text-ink"
             >
               Not sure where you fit? Take the Sorting quiz
               <span aria-hidden="true">→</span>
             </Link>
           </div>
 
-          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.24em] text-accent">
             Standing committees
           </p>
           <CommitteeRow list={standing} />
 
-          <p className="mt-12 text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+          <p className="mt-12 text-xs font-semibold uppercase tracking-[0.24em] text-accent">
             Support divisions
           </p>
           <CommitteeRow list={divisions} />
@@ -153,13 +152,13 @@ export default function JoinPage() {
 
         {/* Registration notice */}
         <section className="reveal mx-auto max-w-3xl">
-          <div className="relative overflow-hidden rounded-3xl border border-medical/30 bg-gradient-to-br from-forest-800 to-forest-900 p-8 text-center sm:p-12">
+          <div className="relative overflow-hidden rounded-3xl border border-medical/30 bg-gradient-to-br from-card to-sunk p-8 text-center sm:p-12">
             <span className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-medical/10 blur-3xl" />
             <span className="relative grid mx-auto h-14 w-14 place-items-center rounded-full bg-medical/15">
               <span className="absolute inset-0 animate-pulse-ring rounded-full bg-medical/30" />
               <svg
                 viewBox="0 0 24 24"
-                className="h-7 w-7 text-medical-light"
+                className="h-7 w-7 text-accent"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.6"
@@ -168,13 +167,13 @@ export default function JoinPage() {
                 <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            <p className="relative mt-6 text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+            <p className="relative mt-6 text-xs font-semibold uppercase tracking-[0.24em] text-accent">
               Registration
             </p>
-            <p className="relative mt-3 font-serif text-2xl leading-relaxed text-white sm:text-3xl">
+            <p className="relative mt-3 font-serif text-2xl leading-relaxed text-ink sm:text-3xl">
               Registration opens once a year.
             </p>
-            <p className="relative mx-auto mt-4 max-w-xl text-base leading-relaxed text-silver/75">
+            <p className="relative mx-auto mt-4 max-w-xl text-base leading-relaxed text-soft/75">
               Recruitment isn’t open right now. Leave your email and we’ll let
               you know the moment the next window opens. No spam, just the one
               heads-up.
@@ -190,7 +189,7 @@ export default function JoinPage() {
             <div className="relative mt-6 flex flex-wrap justify-center gap-4">
               <Link
                 to="/contact"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
               >
                 Or follow our channels →
               </Link>
@@ -200,7 +199,7 @@ export default function JoinPage() {
 
         {/* FAQ */}
         <section className="reveal mx-auto max-w-3xl">
-          <h2 className="heading-serif text-center text-3xl text-white">
+          <h2 className="heading-serif text-center text-3xl text-ink">
             Frequently asked questions
           </h2>
           <FAQ items={joinFaqs} className="mt-8" />
@@ -209,7 +208,7 @@ export default function JoinPage() {
         <div className="reveal text-center">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
           >
             ← Back to AUSSS home
           </Link>

@@ -37,10 +37,10 @@ function IssueSwitcher({ issues, currentId, onSelect }) {
         const active = it.id === currentId
         const missing = isMissing(it)
         const style = active
-          ? 'border-medical/40 bg-medical/15 text-medical-light'
+          ? 'border-medical/40 bg-medical/15 text-accent'
           : missing
-            ? 'border-dashed border-white/15 bg-transparent text-silver/40 hover:border-white/30 hover:text-silver/70'
-            : 'border-white/15 bg-forest-800 text-silver/70 hover:border-medical/40 hover:text-white'
+            ? 'border-dashed border-line/15 bg-transparent text-soft/40 hover:border-line/30 hover:text-soft/70'
+            : 'border-line/15 bg-card text-soft/70 hover:border-medical/40 hover:text-ink'
         return (
           <button
             key={it.id}
@@ -74,11 +74,11 @@ function Cover({ src, alt, label }) {
     )
   }
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-forest-700 via-forest-800 to-forest-950 p-4 text-center">
-      <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-medical-light">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-forest-700 via-card to-page p-4 text-center">
+      <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-accent">
         AUSSS Magazine
       </span>
-      <span className="heading-serif mt-1 text-base text-white/90">{label}</span>
+      <span className="heading-serif mt-1 text-base text-ink/90">{label}</span>
     </div>
   )
 }
@@ -89,7 +89,7 @@ function IssueView({ issue, issues, onSelect }) {
   // and how far the reader gets all go through it.
   const engagement = useMagazineEngagement(isMissing(issue) ? null : issue.id)
   return (
-    <article className="relative overflow-hidden bg-forest-950">
+    <article className="relative overflow-hidden bg-page">
       {/* The gallery's WebGL aurora, flipped to rise from the bottom of the
           page and turned up a little for more presence. */}
       <GalleryAurora
@@ -99,26 +99,26 @@ function IssueView({ issue, issues, onSelect }) {
         blend={0.6}
       />
       <div className="relative z-10">
-      <header className="relative overflow-hidden pb-8 pt-24 sm:pt-28">
+      <header className="relative overflow-hidden pb-8 pt-24 sm:pt-44">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+              'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
         <div className="container-prose relative">
           <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:text-left">
-            <div className="aspect-[1300/1839] w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-forest-800">
+            <div className="aspect-[1300/1839] w-28 shrink-0 overflow-hidden rounded-xl border border-line/10 bg-card">
               <Cover src={heroUrl(issue)} alt={`${issue.title} cover`} label={issue.title} />
             </div>
             <div>
-              <h1 className="heading-serif text-4xl text-white sm:text-5xl">
+              <h1 className="heading-serif text-4xl text-ink sm:text-5xl">
                 {issue.title}
               </h1>
               {issue.date && (
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.24em] text-medical-light">
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.24em] text-accent">
                   {issue.date}
                 </p>
               )}
@@ -126,7 +126,7 @@ function IssueView({ issue, issues, onSelect }) {
           </div>
           <IssueSwitcher issues={issues} currentId={issue.id} onSelect={onSelect} />
           {issue.blurb && (
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-silver/75">
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-soft/75">
               {issue.blurb}
             </p>
           )}
@@ -149,7 +149,7 @@ function IssueView({ issue, issues, onSelect }) {
                   href={issue.canva}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                  className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
                 >
                   <ExternalIcon />
                   Open on Canva
@@ -197,14 +197,14 @@ function MagazineReader({ issue, onPage }) {
 function MissingPanel({ issue }) {
   const { team, email } = ARCHIVE_CONTACT
   return (
-    <div className="flex aspect-[1/1] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center sm:aspect-[4/3]">
-      <span className="text-silver/45">
+    <div className="flex aspect-[1/1] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center sm:aspect-[4/3]">
+      <span className="text-soft/45">
         <MagazineIcon />
       </span>
-      <h3 className="heading-serif mt-4 text-2xl text-white">
+      <h3 className="heading-serif mt-4 text-2xl text-ink">
         We’re still looking for this edition
       </h3>
-      <p className="mt-3 max-w-md text-sm leading-relaxed text-silver/60">
+      <p className="mt-3 max-w-md text-sm leading-relaxed text-soft/60">
         We don’t have a copy of {issue.title} of the AUSSS Magazine yet. If you
         have one, or know who might, please help us complete the archive.
       </p>
@@ -218,7 +218,7 @@ function MissingPanel({ issue }) {
           Contact {team}
         </a>
       )}
-      {email && <p className="mt-3 text-xs text-silver/40">{email}</p>}
+      {email && <p className="mt-3 text-xs text-soft/40">{email}</p>}
     </div>
   )
 }
@@ -241,18 +241,18 @@ class ReaderBoundary extends Component {
     const { issue } = this.props
     const href = issue.download || issue.canva
     return (
-      <div className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-        <span className="text-silver/45">
+      <div className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center">
+        <span className="text-soft/45">
           <MagazineIcon />
         </span>
-        <p className="mt-4 max-w-sm text-sm text-silver/60">
+        <p className="mt-4 max-w-sm text-sm text-soft/60">
           The in-page reader couldn’t start in this browser.{' '}
           {href && (
             <a
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-medical-light underline-offset-2 hover:text-white hover:underline"
+              className="font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
             >
               Open the magazine in a new tab
             </a>
@@ -266,9 +266,9 @@ class ReaderBoundary extends Component {
 
 function ReaderLoading() {
   return (
-    <div className="reveal flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-white/10 bg-forest-800">
-      <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-medical-light" />
-      <p className="mt-4 text-sm text-silver/60">Preparing the reader…</p>
+    <div className="reveal flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-line/10 bg-card">
+      <span className="h-8 w-8 animate-spin rounded-full border-2 border-line/15 border-t-accent" />
+      <p className="mt-4 text-sm text-soft/60">Preparing the reader…</p>
     </div>
   )
 }
@@ -276,10 +276,10 @@ function ReaderLoading() {
 // Cold start with nothing cached: the shelf is on its way.
 function ShelfLoading() {
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="container-prose flex min-h-[60vh] items-center justify-center pt-32 sm:pt-40">
         <span
-          className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-medical-light"
+          className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent"
           aria-label="Loading the magazine"
         />
       </div>
@@ -289,12 +289,12 @@ function ShelfLoading() {
 
 function EmptyShelf() {
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="container-prose flex min-h-[60vh] flex-col items-center justify-center pt-32 text-center sm:pt-40">
-        <h1 className="heading-serif text-4xl text-white sm:text-5xl">
+        <h1 className="heading-serif text-4xl text-ink sm:text-5xl">
           The Magazine
         </h1>
-        <p className="mt-4 max-w-md text-sm text-silver/60">
+        <p className="mt-4 max-w-md text-sm text-soft/60">
           The first edition is on its way. Check back soon.
         </p>
       </div>

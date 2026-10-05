@@ -62,7 +62,7 @@ export function ConfirmButton({ label, confirmLabel = 'Yes, do it', onConfirm, d
     <span className="inline-flex items-center gap-2">
       <button
         type="button"
-        className={`${className} border-red-400/50 text-red-200 hover:bg-red-500/10`}
+        className={`${className} border-red-400/50 text-danger hover:bg-red-500/10`}
         onClick={() => {
           setArmed(false)
           onConfirm()

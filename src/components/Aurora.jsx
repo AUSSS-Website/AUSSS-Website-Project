@@ -1,7 +1,10 @@
 // Aurora WebGL background, copy-pasted from react-bits
 // (reactbits.dev/backgrounds/aurora), single dep `ogl`. Renders an animated
 // "northern lights" glow on a transparent canvas. Props: colorStops (3 hex),
-// amplitude, blend, speed. Used as the gallery hero ambient backdrop.
+// amplitude, blend, speed, flat. Used as the gallery hero ambient backdrop.
+// `flat` (ours, not react-bits) paints the stops at full strength and lets only
+// the opacity carry the glow: on a light page a colour dimmed by its own
+// intensity turns to grey smoke.
 import { Renderer, Program, Mesh, Color, Triangle } from 'ogl'
 import { useEffect, useRef } from 'react'
 
@@ -22,6 +25,7 @@ uniform float uAmplitude;
 uniform vec3 uColorStops[3];
 uniform vec2 uResolution;
 uniform float uBlend;
+uniform float uFlat;
 
 out vec4 fragColor;
 
@@ -107,7 +111,7 @@ void main() {
   float midPoint = 0.20;
   float auroraAlpha = smoothstep(midPoint - uBlend * 0.5, midPoint + uBlend * 0.5, intensity);
 
-  vec3 auroraColor = intensity * rampColor;
+  vec3 auroraColor = mix(intensity * rampColor, rampColor, uFlat);
 
   fragColor = vec4(auroraColor * auroraAlpha, auroraAlpha);
 }
@@ -172,6 +176,7 @@ export default function Aurora(props) {
         uColorStops: { value: colorStopsArray },
         uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
         uBlend: { value: blend },
+        uFlat: { value: props.flat ? 1 : 0 },
       },
     })
 
@@ -184,6 +189,7 @@ export default function Aurora(props) {
       program.uniforms.uTime.value = time * speed * 0.1
       program.uniforms.uAmplitude.value = propsRef.current.amplitude ?? 1.0
       program.uniforms.uBlend.value = propsRef.current.blend ?? blend
+      program.uniforms.uFlat.value = propsRef.current.flat ? 1 : 0
       const stops = propsRef.current.colorStops ?? colorStops
       const key = stops.join(',')
       if (key !== lastStopsKey) {

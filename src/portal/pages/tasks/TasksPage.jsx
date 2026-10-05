@@ -61,7 +61,7 @@ function TaskCard({ task, names, compact }) {
     <li>
       <Link
         to={`/portal/tasks/${task.id}`}
-        className="block rounded-2xl border border-white/10 bg-forest-800 p-4 transition-colors hover:border-white/25"
+        className="block rounded-2xl border border-line/10 bg-card p-4 transition-colors hover:border-line/25"
       >
         <div className="flex flex-wrap items-center gap-2">
           <CommitteeTag committee={task.committee} />
@@ -70,13 +70,13 @@ function TaskCard({ task, names, compact }) {
         </div>
         <p
           className={`mt-2.5 text-sm font-semibold ${
-            task.status === 'done' ? 'text-silver/50 line-through' : 'text-white'
+            task.status === 'done' ? 'text-soft/50 line-through' : 'text-ink'
           }`}
         >
           {task.title}
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-          <span className="min-w-0 truncate text-xs text-silver/55">
+          <span className="min-w-0 truncate text-xs text-soft/55">
             {people.length ? people.join(', ') : 'Nobody assigned'}
           </span>
           <DueLabel task={task} />
@@ -225,7 +225,7 @@ export default function TasksPage() {
         </Panel>
       ) : visible.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             {rows.length === 0
               ? canCreate
                 ? 'No tasks yet. Create the first one.'
@@ -238,12 +238,12 @@ export default function TasksPage() {
           {TASK_STATUSES.map(([status, label]) => {
             const column = visible.filter((t) => t.status === status)
             return (
-              <section key={status} aria-label={label} className="rounded-2xl border border-white/10 bg-forest-900/60 p-3">
-                <p className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
-                  {label} <span className="text-silver/40">{column.length}</span>
+              <section key={status} aria-label={label} className="rounded-2xl border border-line/10 bg-sunk/60 p-3">
+                <p className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+                  {label} <span className="text-soft/40">{column.length}</span>
                 </p>
                 {column.length === 0 ? (
-                  <p className="px-1 pb-2 text-xs text-silver/40">Nothing here.</p>
+                  <p className="px-1 pb-2 text-xs text-soft/40">Nothing here.</p>
                 ) : (
                   <ul className="space-y-3">
                     {column.map((t) => (
@@ -259,7 +259,7 @@ export default function TasksPage() {
         <>
           {open.length === 0 ? (
             <Panel>
-              <p className="text-sm text-silver/70">Nothing open. Nice.</p>
+              <p className="text-sm text-soft/70">Nothing open. Nice.</p>
             </Panel>
           ) : (
             <ul className="space-y-3">
@@ -274,7 +274,7 @@ export default function TasksPage() {
                 type="button"
                 aria-expanded={showDone}
                 onClick={() => setShowDone((v) => !v)}
-                className="text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
+                className="text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
               >
                 {showDone ? 'Hide' : 'Show'} done ({done.length})
               </button>

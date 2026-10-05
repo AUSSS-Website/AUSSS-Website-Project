@@ -15,12 +15,12 @@ export default function Home() {
           above's edge colour and ends at the one below's (light + dark). */}
       <div
         aria-hidden="true"
-        className="h-24 bg-gradient-to-b from-forest-950 to-cream dark:to-forest-950 sm:h-32"
+        className="h-24 bg-gradient-to-b from-forest-950 to-page sm:h-32"
       />
       <About />
       <div
         aria-hidden="true"
-        className="h-24 bg-gradient-to-b from-cream to-forest-950 dark:from-forest-950 sm:h-32"
+        className="h-24 sm:h-32"
       />
       <ExecutiveBoard />
       <TeamOfficials />

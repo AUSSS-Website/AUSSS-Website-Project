@@ -20,7 +20,7 @@ export default function BackButton() {
       type="button"
       onClick={() => (canGoBack ? navigate(-1) : navigate('/'))}
       aria-label="Go back to the previous page"
-      className="fixed left-4 top-[7rem] z-40 inline-flex items-center gap-2 rounded-full border border-white/15 bg-forest/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-forest-950/30 backdrop-blur-md transition-colors hover:bg-forest-600 sm:left-6"
+      className="fixed left-4 top-[7rem] z-40 inline-flex items-center gap-2 rounded-full border border-white/15 bg-forest/90 p-3 text-sm font-semibold text-white shadow-lg shadow-forest-950/30 backdrop-blur-md transition-colors hover:bg-forest-600 sm:left-6 sm:px-4 sm:py-2"
     >
       <svg
         viewBox="0 0 24 24"
@@ -35,7 +35,9 @@ export default function BackButton() {
           strokeLinejoin="round"
         />
       </svg>
-      Back
+      {/* A phone shows the arrow alone, so the button clears the centred
+          heading it floats beside. */}
+      <span className="hidden sm:inline">Back</span>
     </button>
   )
 }

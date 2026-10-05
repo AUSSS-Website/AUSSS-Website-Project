@@ -43,14 +43,14 @@ function ProgressRow({ label, have, need }) {
   const pct = Math.max(0, Math.min(100, (effective / need) * 100))
   return (
     <div>
-      <div className="flex justify-between text-xs text-silver/70">
+      <div className="flex justify-between text-xs text-soft/70">
         <span>{label}</span>
-        <span className={done ? 'text-medical-light' : ''}>
+        <span className={done ? 'text-accent' : ''}>
           {display} / {need}
           {done ? ' ✓' : ''}
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-veil/10">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{
@@ -65,9 +65,9 @@ function ProgressRow({ label, have, need }) {
 
 function GuidanceCard({ advice, accent }) {
   return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-forest-800 p-7 text-left">
+    <div className="mt-6 rounded-2xl border border-line/10 bg-card p-7 text-left">
       {advice.next ? (
-        <p className="text-sm text-silver/70">
+        <p className="text-sm text-soft/70">
           Path to advance →{' '}
           <span className="font-semibold" style={{ color: accent }}>
             {advice.next}
@@ -89,7 +89,7 @@ function GuidanceCard({ advice, accent }) {
 
       <ul className="mt-6 space-y-3">
         {advice.steps.map((s, i) => (
-          <li key={i} className="flex gap-3 text-sm leading-relaxed text-silver/80">
+          <li key={i} className="flex gap-3 text-sm leading-relaxed text-soft/80">
             <span
               className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold"
               style={{ background: 'rgba(91,141,184,0.2)', color: accent }}
@@ -102,8 +102,8 @@ function GuidanceCard({ advice, accent }) {
       </ul>
 
       {advice.rights && (
-        <p className="mt-6 border-t border-white/10 pt-4 text-xs text-silver/55">
-          <span className="font-semibold text-silver/75">Your rights: </span>
+        <p className="mt-6 border-t border-line/10 pt-4 text-xs text-soft/55">
+          <span className="font-semibold text-soft/75">Your rights: </span>
           {advice.rights}
         </p>
       )}
@@ -116,10 +116,10 @@ function GuidanceCard({ advice, accent }) {
 // email is never shown, only a masked hint the owner would recognise.
 function DidYouMean({ suggestions, form, busy, onRetry }) {
   const btn =
-    'rounded-full border border-medical/50 px-4 py-1.5 text-sm font-semibold text-medical-light transition-colors hover:bg-medical/15 disabled:opacity-50'
+    'rounded-full border border-medical/50 px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-medical/15 disabled:opacity-50'
   return (
     <div className="mt-4 rounded-2xl border border-medical/30 bg-medical/[0.07] p-5" role="status">
-      <p className="text-sm font-semibold text-white">Did you mean…</p>
+      <p className="text-sm font-semibold text-ink">Did you mean…</p>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
         {suggestions.names?.map((n) => (
           <button key={n} type="button" disabled={busy} onClick={() => onRetry({ name: n, email: '' })} className={btn}>
@@ -143,7 +143,7 @@ function DidYouMean({ suggestions, form, busy, onRetry }) {
         )}
       </div>
       {suggestions.email && (
-        <p className="mt-3 text-xs text-silver/55">
+        <p className="mt-3 text-xs text-soft/55">
           An address very close to the one you typed is registered. If that’s yours, tap it.
         </p>
       )}
@@ -271,7 +271,7 @@ export default function MembersPage() {
     (result?.state === 'not-found' ? STATUS_COLOR['Not yet a member'] : '#5B8DB8')
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-12 pt-32 sm:pt-40">
         <div className="container-prose relative text-center">
           <span className="eyebrow justify-center">
@@ -279,10 +279,10 @@ export default function MembersPage() {
             AUSSS Members
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-5 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Check your membership
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-silver/75">
+          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
             Enter the name <em>or</em> email you registered with to see your
             current membership status and what it takes to advance.
           </p>
@@ -294,9 +294,9 @@ export default function MembersPage() {
           {/* Form */}
           <form
             onSubmit={submit}
-            className="reveal rounded-3xl border border-white/12 bg-forest-900/60 p-8 sm:p-10"
+            className="reveal rounded-3xl border border-line/12 bg-sunk/60 p-8 sm:p-10"
           >
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-silver/60">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft/60">
               Full name
             </label>
             <input
@@ -304,14 +304,14 @@ export default function MembersPage() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="As registered with AUSSS"
-              className="mb-4 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
+              className="mb-4 w-full rounded-xl border border-line/10 bg-veil/5 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
             />
-            <div className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-silver/35">
-              <span className="h-px flex-1 bg-white/10" />
+            <div className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-soft/35">
+              <span className="h-px flex-1 bg-veil/10" />
               or
-              <span className="h-px flex-1 bg-white/10" />
+              <span className="h-px flex-1 bg-veil/10" />
             </div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-silver/60">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft/60">
               Email
             </label>
             <input
@@ -319,20 +319,20 @@ export default function MembersPage() {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="The email you registered with"
-              className="mb-6 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
+              className="mb-6 w-full rounded-xl border border-line/10 bg-veil/5 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
             />
             <button
               type="submit"
               disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-4 text-sm font-semibold text-forest transition-all duration-300 hover:bg-silver-light disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-solid py-4 text-sm font-semibold text-on-solid transition-all duration-300 hover:bg-solid-hover disabled:opacity-60"
             >
               {busy ? 'Checking…' : 'Check my status'}
             </button>
-            <p className="mt-4 text-center text-[11px] text-silver/50">
+            <p className="mt-4 text-center text-[11px] text-soft/50">
               Not yet a Life Saver, Change Maker?{' '}
               <Link
                 to="/join"
-                className="font-semibold text-medical-light transition-colors hover:text-white"
+                className="font-semibold text-accent transition-colors hover:text-ink"
               >
                 Join AUSSS →
               </Link>
@@ -350,8 +350,8 @@ export default function MembersPage() {
               )}
               {found && (
                 <>
-                  <div className="rounded-3xl border border-white/12 bg-forest-900/60 p-8">
-                    <p className="text-xs uppercase tracking-[0.22em] text-silver/55">
+                  <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                    <p className="text-xs uppercase tracking-[0.22em] text-soft/55">
                       Membership status
                     </p>
                     <p
@@ -360,18 +360,18 @@ export default function MembersPage() {
                     >
                       {statusRecord.status || tierLabel}
                     </p>
-                    <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] sm:grid-cols-4">
+                    <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line/10 bg-veil/[0.04] sm:grid-cols-4">
                       {[
                         ['Year joined', statusRecord.yearJoined || '–'],
                         ['Years spent', statusRecord.yearsSpent || '–'],
                         ['Local GAs', parseGA(statusRecord.lgas).display],
                         ['National GAs', parseGA(statusRecord.ngas).display],
                       ].map(([k, v]) => (
-                        <div key={k} className="bg-forest-900/40 px-3 py-4">
-                          <div className="heading-serif text-xl text-white">
+                        <div key={k} className="bg-sunk/40 px-3 py-4">
+                          <div className="heading-serif text-xl text-ink">
                             {v}
                           </div>
-                          <div className="mt-1 text-[10px] uppercase tracking-widest text-silver/55">
+                          <div className="mt-1 text-[10px] uppercase tracking-widest text-soft/55">
                             {k}
                           </div>
                         </div>
@@ -381,20 +381,20 @@ export default function MembersPage() {
                       const positions = splitPositions(statusRecord.currentPosition)
                       if (positions.length <= 1) {
                         return (
-                          <p className="mt-4 text-sm text-silver/70">
+                          <p className="mt-4 text-sm text-soft/70">
                             Current position:{' '}
-                            <span className="text-white">
+                            <span className="text-ink">
                               {positions[0] || 'General Member'}
                             </span>
                           </p>
                         )
                       }
                       return (
-                        <div className="mt-4 text-sm text-silver/70">
+                        <div className="mt-4 text-sm text-soft/70">
                           <p>Current positions:</p>
                           <ul className="mt-1.5 space-y-1">
                             {positions.map((p) => (
-                              <li key={p} className="text-white">
+                              <li key={p} className="text-ink">
                                 {p}
                               </li>
                             ))}
@@ -402,13 +402,13 @@ export default function MembersPage() {
                         </div>
                       )
                     })()}
-                    <p className="mt-6 border-t border-white/10 pt-4 text-xs text-silver/55">
+                    <p className="mt-6 border-t border-line/10 pt-4 text-xs text-soft/55">
                       Something wrong with your record?{' '}
                       <a
                         href={MEMBERSHIP_ISSUE_FORM}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-semibold text-medical-light underline-offset-2 transition-colors hover:text-white hover:underline"
+                        className="font-semibold text-accent underline-offset-2 transition-colors hover:text-ink hover:underline"
                       >
                         Tell us through this form
                       </a>
@@ -420,8 +420,8 @@ export default function MembersPage() {
               )}
 
               {result.state === 'not-found' && (
-                <div className="rounded-3xl border border-white/12 bg-forest-900/60 p-8">
-                  <p className="heading-serif text-2xl text-white">
+                <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                  <p className="heading-serif text-2xl text-ink">
                     No matching member found
                   </p>
                   {result.suggestions && (
@@ -432,7 +432,7 @@ export default function MembersPage() {
                       onRetry={retry}
                     />
                   )}
-                  <p className="mt-2 text-sm text-silver/65">
+                  <p className="mt-2 text-sm text-soft/65">
                     Check the exact name or email you registered with. Not a
                     member yet? Here’s how to join:
                   </p>
@@ -444,13 +444,13 @@ export default function MembersPage() {
               )}
 
               {result.state === 'ambiguous' && (
-                <div className="rounded-3xl border border-white/12 bg-forest-900/60 p-8">
-                  <p className="heading-serif text-2xl text-white">
+                <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                  <p className="heading-serif text-2xl text-ink">
                     More than one member shares this name
                   </p>
-                  <p className="mt-2 text-sm text-silver/65">
+                  <p className="mt-2 text-sm text-soft/65">
                     We can’t identify you by name alone. Please{' '}
-                    <Link to="/contact" className="text-medical-light hover:text-white">
+                    <Link to="/contact" className="text-accent hover:text-ink">
                       contact us
                     </Link>{' '}
                     and we’ll confirm your membership status directly.
@@ -459,13 +459,13 @@ export default function MembersPage() {
               )}
 
               {result.state === 'not-connected' && (
-                <div className="rounded-3xl border border-white/12 bg-forest-900/60 p-8">
-                  <p className="heading-serif text-2xl text-white">
+                <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                  <p className="heading-serif text-2xl text-ink">
                     The lookup is unavailable right now
                   </p>
-                  <p className="mt-2 text-sm text-silver/65">
+                  <p className="mt-2 text-sm text-soft/65">
                     Please check back soon, or{' '}
-                    <Link to="/contact" className="text-medical-light hover:text-white">
+                    <Link to="/contact" className="text-accent hover:text-ink">
                       contact us
                     </Link>
                     .
@@ -474,11 +474,11 @@ export default function MembersPage() {
               )}
 
               {result.state === 'error' && (
-                <div className="rounded-3xl border border-white/12 bg-forest-900/60 p-8">
-                  <p className="heading-serif text-2xl text-white">
+                <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                  <p className="heading-serif text-2xl text-ink">
                     Something went wrong
                   </p>
-                  <p className="mt-2 text-sm text-silver/65">
+                  <p className="mt-2 text-sm text-soft/65">
                     Please try again in a moment. ({result.message})
                   </p>
                 </div>
@@ -490,28 +490,28 @@ export default function MembersPage() {
               card (so it doesn't crowd the special TO/EB/Heba cards or the
               not-found / error states). */}
           {found && (
-          <div className="mt-12 rounded-2xl border border-white/10 bg-forest-800/60 p-7 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+          <div className="mt-12 rounded-2xl border border-line/10 bg-card/60 p-7 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
               Governance
             </p>
-            <h2 className="heading-serif mt-2 text-xl text-white">
+            <h2 className="heading-serif mt-2 text-xl text-ink">
               Constitution &amp; Bylaws
             </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-silver/65">
+            <p className="mx-auto mt-2 max-w-md text-sm text-soft/65">
               Every membership rule above comes from the AUSSS Constitution
               &amp; Bylaws. Read the full document.
             </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 to="/constitution"
-                className="w-full rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-transform hover:scale-[1.03] sm:w-auto"
+                className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.03] sm:w-auto"
               >
                 View document
               </Link>
               <a
                 href={CONSTITUTION_PDF}
                 download
-                className="w-full rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
+                className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
               >
                 Download PDF
               </a>

@@ -45,7 +45,7 @@ export default function DirectoryPage() {
         </Centered>
       ) : directory.error ? (
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             {directory.error.code === '42501'
               ? 'The directory is for verified members. Once your membership is verified it opens here.'
               : `Couldn’t load the directory: ${directory.error.message}`}
@@ -53,7 +53,7 @@ export default function DirectoryPage() {
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">Nobody is listed yet.</p>
+          <p className="text-sm text-soft/70">Nobody is listed yet.</p>
         </Panel>
       ) : (
         <>
@@ -66,29 +66,29 @@ export default function DirectoryPage() {
               aria-label="Search the directory"
               className={`${inputCls} max-w-sm`}
             />
-            <span className="text-xs text-silver/50" aria-live="polite">
+            <span className="text-xs text-soft/50" aria-live="polite">
               {shown.length} {shown.length === 1 ? 'member' : 'members'}
             </span>
           </div>
           {shown.length === 0 ? (
             <Panel>
-              <p className="text-sm text-silver/70">Nobody matches that.</p>
+              <p className="text-sm text-soft/70">Nobody matches that.</p>
             </Panel>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {shown.map((m) => (
                 <li
                   key={m.id}
-                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-forest-800 p-4"
+                  className="flex items-center gap-4 rounded-2xl border border-line/10 bg-card p-4"
                 >
                   <Avatar name={m.full_name} src={m.avatar_url} size="row" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{m.full_name}</p>
+                    <p className="truncate text-sm font-semibold text-ink">{m.full_name}</p>
                     {m.positions.length === 0 ? (
-                      <p className="mt-0.5 text-xs text-silver/45">Member</p>
+                      <p className="mt-0.5 text-xs text-soft/45">Member</p>
                     ) : (
                       m.positions.map((p, i) => (
-                        <p key={i} className="mt-0.5 truncate text-xs text-silver/60">
+                        <p key={i} className="mt-0.5 truncate text-xs text-soft/60">
                           {positionLine(p)}
                         </p>
                       ))

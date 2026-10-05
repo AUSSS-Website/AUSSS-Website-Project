@@ -103,12 +103,12 @@ function matches(row, q) {
 
 function Contact({ row }) {
   return (
-    <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-silver/60">
-      <a href={`mailto:${row.email}`} className="text-medical-light hover:text-white">
+    <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-soft/60">
+      <a href={`mailto:${row.email}`} className="text-accent hover:text-ink">
         {row.email}
       </a>
       {row.phone && (
-        <a href={`tel:${row.phone}`} className="hover:text-white">
+        <a href={`tel:${row.phone}`} className="hover:text-ink">
           {row.phone}
         </a>
       )}
@@ -119,7 +119,7 @@ function Contact({ row }) {
 
 function Meta({ row }) {
   return (
-    <p className="text-xs text-silver/45">
+    <p className="text-xs text-soft/45">
       {when(row.created_at)}
       {row.ref && ` · ${row.ref}`}
     </p>
@@ -147,9 +147,9 @@ function Triage({ kind, row, notesField, onPatch, onRemove, canDelete }) {
   }
 
   return (
-    <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+    <div className="mt-5 space-y-3 border-t border-line/10 pt-4">
       <div className="flex flex-wrap items-center gap-3">
-        <label htmlFor={`status-${row.id}`} className="text-xs text-silver/60">
+        <label htmlFor={`status-${row.id}`} className="text-xs text-soft/60">
           Status
         </label>
         <select
@@ -165,9 +165,9 @@ function Triage({ kind, row, notesField, onPatch, onRemove, canDelete }) {
             </option>
           ))}
         </select>
-        {busy === 'status' && <span className="text-xs text-silver/50">Saving…</span>}
+        {busy === 'status' && <span className="text-xs text-soft/50">Saving…</span>}
         {kind === 'stories' && row.status !== 'published' && (
-          <span className="text-xs text-silver/45">Published = shown on the exchange page</span>
+          <span className="text-xs text-soft/45">Published = shown on the exchange page</span>
         )}
         {canDelete && (
           <span className="ml-auto">
@@ -182,8 +182,8 @@ function Triage({ kind, row, notesField, onPatch, onRemove, canDelete }) {
       </div>
 
       <div>
-        <label htmlFor={`notes-${row.id}`} className="mb-1.5 block text-xs text-silver/60">
-          Notes <span className="text-silver/40">(only the people on this page see these)</span>
+        <label htmlFor={`notes-${row.id}`} className="mb-1.5 block text-xs text-soft/60">
+          Notes <span className="text-soft/40">(only the people on this page see these)</span>
         </label>
         <textarea
           id={`notes-${row.id}`}
@@ -215,7 +215,7 @@ function ReceiptButton({ path }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   if (!path) {
-    return <span className="text-xs text-amber-200">No receipt uploaded</span>
+    return <span className="text-xs text-warn">No receipt uploaded</span>
   }
   const open = async () => {
     setBusy(true)
@@ -234,7 +234,7 @@ function ReceiptButton({ path }) {
       <button type="button" onClick={open} disabled={busy} className={outlineBtnCls}>
         {busy ? 'Opening…' : 'View receipt'}
       </button>
-      {error && <span className="text-xs text-red-300">{error}</span>}
+      {error && <span className="text-xs text-danger">{error}</span>}
     </span>
   )
 }
@@ -242,47 +242,47 @@ function ReceiptButton({ path }) {
 function OrderCard({ row, onPatch, onRemove, canDelete }) {
   const items = Array.isArray(row.items) ? row.items : []
   return (
-    <article className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+    <article className="rounded-2xl border border-line/10 bg-card p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-base font-semibold text-white">{row.name}</p>
+        <p className="text-base font-semibold text-ink">{row.name}</p>
         <Meta row={row} />
       </div>
       <Contact row={row} />
-      <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-silver/60">
+      <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-soft/60">
         {row.is_member != null && (
           <span>{row.is_member ? 'AUSSS member' : `Not a member${row.lc ? ` · ${row.lc}` : ''}`}</span>
         )}
         {row.payment_method && <span>Paid via {row.payment_method}</span>}
       </p>
 
-      <ul className="mt-4 divide-y divide-white/10 rounded-xl border border-white/10 bg-forest-950/60 px-4">
+      <ul className="mt-4 divide-y divide-line/10 rounded-xl border border-line/10 bg-page/60 px-4">
         {items.map((it, i) => (
           <li key={i} className="flex flex-wrap items-baseline gap-x-3 py-2 text-sm">
-            <span className="font-medium text-white">
+            <span className="font-medium text-ink">
               {it.qty}× {it.name}
             </span>
-            <span className="text-xs uppercase tracking-[0.12em] text-silver/55">
+            <span className="text-xs uppercase tracking-[0.12em] text-soft/55">
               {[it.size, it.design].filter(Boolean).join(' · ')}
             </span>
-            <span className="ml-auto text-silver/80">{formatEGP(it.line_total)}</span>
+            <span className="ml-auto text-soft/80">{formatEGP(it.line_total)}</span>
           </li>
         ))}
         <li className="flex items-baseline justify-between py-2.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-silver/60">Subtotal</span>
-          <span className="font-semibold text-medical-light">{formatEGP(row.subtotal)}</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/60">Subtotal</span>
+          <span className="font-semibold text-accent">{formatEGP(row.subtotal)}</span>
         </li>
       </ul>
 
       {row.price_flag && (
-        <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+        <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-warn">
           Check the amount: {row.price_flag}.
         </p>
       )}
 
       {row.notes && (
         <div className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">Buyer&rsquo;s note</p>
-          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">{row.notes}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">Buyer&rsquo;s note</p>
+          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">{row.notes}</p>
         </div>
       )}
 
@@ -329,10 +329,10 @@ function PublishPanel({ row, onPatch }) {
   return (
     <div className="mt-4 rounded-xl border border-medical/30 bg-medical/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-medical-light">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
           On the exchange page
         </p>
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-white">
+        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"
             checked={Boolean(row.featured)}
@@ -341,11 +341,11 @@ function PublishPanel({ row, onPatch }) {
             className="h-4 w-4 accent-medical"
           />
           Featured
-          <span className="text-xs text-silver/50">(pinned first, highlighted)</span>
+          <span className="text-xs text-soft/50">(pinned first, highlighted)</span>
         </label>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr]">
-        <label className="text-xs text-silver/60">
+        <label className="text-xs text-soft/60">
           Name shown
           <input
             type="text"
@@ -356,8 +356,8 @@ function PublishPanel({ row, onPatch }) {
             className={`${smallInputCls} mt-1`}
           />
         </label>
-        <label className="text-xs text-silver/60">
-          Story shown <span className="text-silver/40">(tidy typos, keep their voice)</span>
+        <label className="text-xs text-soft/60">
+          Story shown <span className="text-soft/40">(tidy typos, keep their voice)</span>
           <textarea
             value={story}
             maxLength={4000}
@@ -378,7 +378,7 @@ function PublishPanel({ row, onPatch }) {
           {busy === 'text' ? 'Saving…' : 'Save what the site shows'}
         </button>
         {row.published_at && (
-          <span className="text-xs text-silver/50">Published {when(row.published_at)}</span>
+          <span className="text-xs text-soft/50">Published {when(row.published_at)}</span>
         )}
       </div>
       <ErrorText>{error}</ErrorText>
@@ -389,15 +389,15 @@ function PublishPanel({ row, onPatch }) {
 function StoryCard({ row, onPatch, onRemove, canDelete }) {
   return (
     <article
-      className={`rounded-2xl border bg-forest-800 p-5 ${
-        row.status === 'published' && row.featured ? 'border-medical/50' : 'border-white/10'
+      className={`rounded-2xl border bg-card p-5 ${
+        row.status === 'published' && row.featured ? 'border-medical/50' : 'border-line/10'
       }`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-base font-semibold text-white">
+        <p className="text-base font-semibold text-ink">
           {row.name}
           {row.status === 'published' && (
-            <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-medical-light">
+            <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
               {row.featured ? 'Featured' : 'Live'}
             </span>
           )}
@@ -406,14 +406,14 @@ function StoryCard({ row, onPatch, onRemove, canDelete }) {
       </div>
       <Contact row={row} />
       {(row.destination || row.programme) && (
-        <p className="mt-3 text-sm text-silver/80">
-          <span className="text-xs uppercase tracking-[0.16em] text-silver/45">Exchange: </span>
+        <p className="mt-3 text-sm text-soft/80">
+          <span className="text-xs uppercase tracking-[0.16em] text-soft/45">Exchange: </span>
           {[row.destination, row.programme].filter(Boolean).join(' · ')}
         </p>
       )}
       <div className="mt-3">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">Their story</p>
-        <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">{row.story}</p>
+        <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">Their story</p>
+        <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">{row.story}</p>
       </div>
       {row.status === 'published' && <PublishPanel key={row.updated_at} row={row} onPatch={onPatch} />}
       <Triage
@@ -446,9 +446,9 @@ function SignupRow({ row, onPatch, onRemove, canDelete }) {
   }
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-      <span className="w-40 shrink-0 text-xs text-silver/45">{when(row.created_at)}</span>
-      <span className="min-w-[8rem] flex-1 text-sm font-medium text-white">{row.name || '—'}</span>
-      <a href={`mailto:${row.email}`} className="min-w-[12rem] flex-1 text-sm text-medical-light hover:text-white">
+      <span className="w-40 shrink-0 text-xs text-soft/45">{when(row.created_at)}</span>
+      <span className="min-w-[8rem] flex-1 text-sm font-medium text-ink">{row.name || '—'}</span>
+      <a href={`mailto:${row.email}`} className="min-w-[12rem] flex-1 text-sm text-accent hover:text-ink">
         {row.email}
       </a>
       <select
@@ -472,7 +472,7 @@ function SignupRow({ row, onPatch, onRemove, canDelete }) {
           onConfirm={() => run(() => onRemove(row.id))}
         />
       )}
-      {error && <span className="basis-full text-xs text-red-300">{error}</span>}
+      {error && <span className="basis-full text-xs text-danger">{error}</span>}
     </li>
   )
 }
@@ -552,7 +552,7 @@ function SubmissionList({ kind, canDelete }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-sm text-silver/60">
+        <p className="text-sm text-soft/60">
           {rows.length === 0 ? 'Nothing here yet.' : 'Nothing matches that filter.'}
         </p>
       ) : Card ? (
@@ -562,14 +562,14 @@ function SubmissionList({ kind, canDelete }) {
           ))}
         </div>
       ) : (
-        <ul className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-forest-800 px-5">
+        <ul className="divide-y divide-line/10 rounded-2xl border border-line/10 bg-card px-5">
           {shown.map((row) => (
             <SignupRow key={row.id} row={row} onPatch={onPatch} onRemove={onRemove} canDelete={canDelete} />
           ))}
         </ul>
       )}
       {rows.length >= 500 && (
-        <p className="text-xs text-silver/45">Showing the newest 500.</p>
+        <p className="text-xs text-soft/45">Showing the newest 500.</p>
       )}
     </div>
   )
@@ -593,12 +593,12 @@ export default function SubmissionsPage() {
   if (tabs.length === 0) {
     return (
       <Panel>
-        <p className="text-sm text-silver/70">
+        <p className="text-sm text-soft/70">
           Submissions are handled by the Executive Board (orders and the waitlist) and the
           exchange officers (stories). If you think you should have access, ask the webmaster
           to check your assignment for this term.
         </p>
-        <Link to="/portal" className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white">
+        <Link to="/portal" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
           &larr; Back to your dashboard
         </Link>
       </Panel>
@@ -625,7 +625,7 @@ export default function SubmissionsPage() {
               className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
                 tab === key
                   ? 'bg-medical text-forest-950'
-                  : 'border border-white/15 text-silver/70 hover:text-white'
+                  : 'border border-line/15 text-soft/70 hover:text-ink'
               }`}
             >
               {TAB_LABEL[key]}

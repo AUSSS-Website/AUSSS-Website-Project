@@ -1,4 +1,4 @@
-import { readableAccent, rgba } from '../lib/color.js'
+import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import { formatDeadline, daysLeft } from '../hooks/useCalls.js'
 
 // One Open Call on a committee page. Committee-accented, same card chrome as
@@ -11,13 +11,13 @@ export default function CallCard({ call, color, onApply }) {
   const closingSoon = left !== null && left <= 7
 
   return (
-    <li className="flex flex-col rounded-2xl border border-white/10 bg-forest-800 p-6">
+    <li className="flex flex-col rounded-2xl border border-line/10 bg-card p-6">
       {(call.kind || call.deadline) && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           {call.kind && (
             <span
               className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
-              style={{ background: rgba(color, 0.18), color: accent }}
+              style={{ background: rgba(color, 0.18), color: chipAccent(color) }}
             >
               {call.kind}
             </span>
@@ -25,7 +25,7 @@ export default function CallCard({ call, color, onApply }) {
           {call.deadline && (
             <span
               className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
-                closingSoon ? 'text-amber-300' : 'text-silver/50'
+                closingSoon ? 'text-warn' : 'text-soft/50'
               }`}
             >
               {left !== null && left <= 0
@@ -38,14 +38,14 @@ export default function CallCard({ call, color, onApply }) {
         </div>
       )}
 
-      <h3 className="heading-serif text-2xl text-white">{call.title}</h3>
+      <h3 className="heading-serif text-2xl text-ink">{call.title}</h3>
 
       {call.summary && (
-        <p className="mt-3 text-sm leading-relaxed text-silver/80">{call.summary}</p>
+        <p className="mt-3 text-sm leading-relaxed text-soft/80">{call.summary}</p>
       )}
 
       {call.description && (
-        <div className="mt-4 space-y-3 text-sm leading-relaxed text-silver/70">
+        <div className="mt-4 space-y-3 text-sm leading-relaxed text-soft/70">
           {call.description
             .split(/\n\s*\n/)
             .map((p) => p.trim())
@@ -58,22 +58,22 @@ export default function CallCard({ call, color, onApply }) {
 
       {positions.length > 0 && (
         <div className="mt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-silver/45">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/45">
             Open positions
           </p>
           <ul className="mt-3 space-y-2">
             {positions.map((p) => (
-              <li key={p.id} className="flex gap-3 text-sm text-silver/80">
+              <li key={p.id} className="flex gap-3 text-sm text-soft/80">
                 <span
                   className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
                   style={{ background: accent }}
                   aria-hidden="true"
                 />
                 <span className="min-w-0">
-                  <span className="font-semibold text-white">{p.title}</span>
-                  {p.slots && <span className="text-silver/50"> · {p.slots}</span>}
+                  <span className="font-semibold text-ink">{p.title}</span>
+                  {p.slots && <span className="text-soft/50"> · {p.slots}</span>}
                   {p.blurb && (
-                    <span className="block text-xs leading-relaxed text-silver/60">
+                    <span className="block text-xs leading-relaxed text-soft/60">
                       {p.blurb}
                     </span>
                   )}
@@ -85,8 +85,8 @@ export default function CallCard({ call, color, onApply }) {
       )}
 
       {call.commitment && (
-        <p className="mt-5 text-xs text-silver/55">
-          <span className="font-semibold text-silver/70">Commitment:</span>{' '}
+        <p className="mt-5 text-xs text-soft/55">
+          <span className="font-semibold text-soft/70">Commitment:</span>{' '}
           {call.commitment}
         </p>
       )}

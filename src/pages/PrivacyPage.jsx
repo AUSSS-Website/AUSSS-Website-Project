@@ -130,12 +130,12 @@ export default function PrivacyPage() {
   useReveal()
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-10 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
-            backgroundImage: 'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
@@ -144,15 +144,15 @@ export default function PrivacyPage() {
             <span className="h-px w-8 bg-medical" />
             Privacy
           </span>
-          <h1 className="heading-serif mt-4 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-4 text-4xl text-ink sm:text-6xl">
             Privacy policy
           </h1>
-          <p className="mt-5 max-w-2xl text-lg font-light leading-relaxed text-silver/75">
+          <p className="mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
             What we collect on this site and in the members portal, who can see
             it, and how IFMSA handles exchange data. Written to be read, not
             skimmed past.
           </p>
-          <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-silver/45">
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-soft/45">
             Last updated {LAST_UPDATED}
           </p>
         </div>
@@ -164,7 +164,7 @@ export default function PrivacyPage() {
             <a
               key={s.id}
               href={`#${s.id}`}
-              className="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-silver/70 transition-colors hover:border-medical hover:text-white"
+              className="rounded-full border border-line/15 px-4 py-1.5 text-xs font-semibold text-soft/70 transition-colors hover:border-medical hover:text-ink"
             >
               {s.title}
             </a>
@@ -176,18 +176,18 @@ export default function PrivacyPage() {
             <section
               key={s.id}
               id={s.id}
-              className="reveal scroll-mt-28 rounded-2xl border border-white/10 bg-forest-800/60 p-6 sm:p-8"
+              className="reveal scroll-mt-28 rounded-2xl border border-line/10 bg-card/60 p-6 sm:p-8"
             >
-              <h2 className="heading-serif text-2xl text-white">{s.title}</h2>
+              <h2 className="heading-serif text-2xl text-ink">{s.title}</h2>
               {s.body?.map((p) => (
-                <p key={p} className="mt-3 text-base leading-relaxed text-silver/75">
+                <p key={p} className="mt-3 text-base leading-relaxed text-soft/75">
                   {p}
                 </p>
               ))}
               {s.bullets && (
                 <ul className="mt-4 space-y-2.5">
                   {s.bullets.map((b) => (
-                    <li key={b} className="flex gap-3 text-sm leading-relaxed text-silver/75">
+                    <li key={b} className="flex gap-3 text-sm leading-relaxed text-soft/75">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-medical" />
                       <span>{b}</span>
                     </li>
@@ -195,7 +195,7 @@ export default function PrivacyPage() {
                 </ul>
               )}
               {s.after && (
-                <p className="mt-4 text-sm leading-relaxed text-silver/60">{s.after}</p>
+                <p className="mt-4 text-sm leading-relaxed text-soft/60">{s.after}</p>
               )}
               {s.links && (
                 <div className="mt-5 flex flex-wrap gap-3">
@@ -205,7 +205,7 @@ export default function PrivacyPage() {
                       href={l.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
+                      className="inline-flex items-center gap-2 rounded-full border border-line/20 px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-veil/10"
                     >
                       {l.label}
                       <span aria-hidden="true">↗</span>
@@ -216,22 +216,22 @@ export default function PrivacyPage() {
             </section>
           ))}
 
-          <div className="rounded-2xl border border-medical/30 bg-gradient-to-br from-forest-800 to-forest-900 p-6 text-center sm:p-7">
-            <h2 className="heading-serif text-xl text-white">Questions about your data?</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-silver/70">
+          <div className="rounded-2xl border border-medical/30 bg-gradient-to-br from-card to-sunk p-6 text-center sm:p-7">
+            <h2 className="heading-serif text-xl text-ink">Questions about your data?</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-soft/70">
               The Secretary General handles data requests and member
               correspondence.
             </p>
             <a
               href={`mailto:${SECGEN_EMAIL}`}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-colors hover:bg-silver-light"
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
             >
               Email the Secretary General
             </a>
-            <p className="mt-3 text-xs text-silver/45">{SECGEN_EMAIL}</p>
-            <p className="mt-6 text-xs text-silver/45">
+            <p className="mt-3 text-xs text-soft/45">{SECGEN_EMAIL}</p>
+            <p className="mt-6 text-xs text-soft/45">
               See also the{' '}
-              <Link to="/constitution" className="underline decoration-white/30 underline-offset-2 hover:text-white">
+              <Link to="/constitution" className="underline decoration-line/30 underline-offset-2 hover:text-ink">
                 Constitution &amp; Bylaws
               </Link>
               , which governs membership records.

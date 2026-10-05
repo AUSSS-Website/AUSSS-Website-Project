@@ -25,14 +25,14 @@ export function GalleryGate({ children }) {
   if (officerOf('pnsd')) return children
   return (
     <Panel>
-      <p className="text-sm text-silver/70">
+      <p className="text-sm text-soft/70">
         The gallery is edited by the PNSD officers and the Executive Board. If
         you think you should have access, ask the webmaster to check your
         assignment for this term.
       </p>
       <Link
         to="/portal"
-        className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+        className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
       >
         &larr; Back to your dashboard
       </Link>
@@ -91,27 +91,27 @@ function NewAlbumForm({ onDone }) {
 
 function AlbumRow({ a, index, total, onMove, moving }) {
   return (
-    <li className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/10 bg-forest-800 p-3 sm:flex-nowrap">
-      <Link to={`/portal/gallery/${a.slug}`} className="block h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-forest-950">
+    <li className="flex flex-wrap items-center gap-4 rounded-2xl border border-line/10 bg-card p-3 sm:flex-nowrap">
+      <Link to={`/portal/gallery/${a.slug}`} className="block h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-page">
         {a.cover ? (
           <img src={a.cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="grid h-full w-full place-items-center text-[10px] uppercase tracking-[0.2em] text-silver/40">
+          <span className="grid h-full w-full place-items-center text-[10px] uppercase tracking-[0.2em] text-soft/40">
             No photos
           </span>
         )}
       </Link>
       <div className="min-w-0 flex-1">
-        <Link to={`/portal/gallery/${a.slug}`} className="heading-serif block truncate text-lg text-white hover:text-medical-light">
+        <Link to={`/portal/gallery/${a.slug}`} className="heading-serif block truncate text-lg text-ink hover:text-accent">
           {a.title}
         </Link>
-        <p className="mt-0.5 truncate text-xs text-silver/55">
+        <p className="mt-0.5 truncate text-xs text-soft/55">
           {a.visibleCount} {a.visibleCount === 1 ? 'photo' : 'photos'}
           {a.photoCount > a.visibleCount && ` (${a.photoCount - a.visibleCount} hidden)`}
           {!a.published && ' · not published'}
           {a.published && a.visibleCount === 0 && ' · not shown until it has a photo'}
           {' · '}
-          <span className="text-silver/40">{siteAlbumUrl(a.slug).replace(/^https?:\/\//, '')}</span>
+          <span className="text-soft/40">{siteAlbumUrl(a.slug).replace(/^https?:\/\//, '')}</span>
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -192,7 +192,7 @@ export default function GalleryPage() {
       )}
 
       {created && (
-        <p className="mb-6 rounded-xl border border-medical/40 bg-medical/10 px-4 py-3 text-sm text-medical-light">
+        <p className="mb-6 rounded-xl border border-medical/40 bg-medical/10 px-4 py-3 text-sm text-accent">
           Album created.{' '}
           <Link to={`/portal/gallery/${created.slug}`} className="font-semibold underline-offset-2 hover:underline">
             Add photos to {created.title} &rarr;
@@ -210,7 +210,7 @@ export default function GalleryPage() {
         </Panel>
       ) : albums.data.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             No albums yet. Create one, then drop the photos onto its page.
           </p>
         </Panel>

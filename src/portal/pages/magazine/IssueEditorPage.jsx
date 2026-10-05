@@ -101,7 +101,7 @@ function DetailsForm({ issue }) {
           <button type="submit" className={primaryBtnCls} disabled={!dirty || update.isPending}>
             {update.isPending ? 'Saving…' : saved ? 'Saved' : 'Save'}
           </button>
-          <span className="text-xs text-silver/55">Status:</span>
+          <span className="text-xs text-soft/55">Status:</span>
           {Object.entries(STATUS_LABEL).map(([key, label]) => (
             <button
               key={key}
@@ -111,8 +111,8 @@ function DetailsForm({ issue }) {
               aria-pressed={issue.status === key}
               className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                 issue.status === key
-                  ? 'border-medical/40 bg-medical/15 text-medical-light'
-                  : 'border-white/15 text-silver/70 hover:text-white'
+                  ? 'border-medical/40 bg-medical/15 text-accent'
+                  : 'border-line/15 text-soft/70 hover:text-ink'
               }`}
             >
               {label}
@@ -120,7 +120,7 @@ function DetailsForm({ issue }) {
           ))}
         </div>
         {issue.status === 'published' && !issue.page_count && !issue.canva_url && (
-          <p className="text-xs text-amber-200 sm:col-span-2">
+          <p className="text-xs text-warn sm:col-span-2">
             Published, but not on the site yet: it needs pages or a Canva link first.
           </p>
         )}
@@ -158,7 +158,7 @@ function PagesPanel({ issue }) {
 
   return (
     <Panel title="Pages" className="mb-6">
-      <p className="mt-3 text-xs text-silver/55">
+      <p className="mt-3 text-xs text-soft/55">
         Upload the edition&rsquo;s PDF: every page is turned into an image in your browser and uploaded, which replaces
         the current pages. Large PDFs take a minute or two; keep this tab open.
       </p>
@@ -193,14 +193,14 @@ function PagesPanel({ issue }) {
           }}
         />
         {progress && (
-          <span className="text-sm text-silver/70" aria-live="polite">
+          <span className="text-sm text-soft/70" aria-live="polite">
             {progress.total ? `Page ${progress.done} of ${progress.total}…` : 'Reading the file…'}
           </span>
         )}
       </div>
       {error && <ErrorText>{error}</ErrorText>}
       {issue.page_count > 0 && (
-        <p className="mt-4 text-xs text-silver/55">
+        <p className="mt-4 text-xs text-soft/55">
           {issue.page_count} pages
           {issue.pages_base.startsWith('/assets/') && ' (built into the site before the portal; uploading a PDF moves them online)'}
           . Click a page to make it the cover shown in the header, the switcher and link previews.
@@ -218,12 +218,12 @@ function PagesPanel({ issue }) {
                   disabled={update.isPending}
                   aria-pressed={hero}
                   aria-label={`Page ${n}${hero ? ', the cover' : ', make it the cover'}`}
-                  className={`relative block w-full overflow-hidden rounded-lg border bg-forest-950 transition-colors ${
-                    hero ? 'border-medical' : 'border-white/10 hover:border-white/40'
+                  className={`relative block w-full overflow-hidden rounded-lg border bg-page transition-colors ${
+                    hero ? 'border-medical' : 'border-line/10 hover:border-line/40'
                   }`}
                 >
                   <img src={pageUrl(issue, n)} alt="" loading="lazy" className="aspect-[1300/1839] w-full object-cover" />
-                  <span className="absolute bottom-1 left-1 rounded-full bg-forest-950/80 px-1.5 text-[10px] font-semibold text-white">
+                  <span className="absolute bottom-1 left-1 rounded-full bg-page/80 px-1.5 text-[10px] font-semibold text-ink">
                     {n}
                   </span>
                   {hero && (
@@ -279,7 +279,7 @@ function ReadersPanel({ issue }) {
         </div>
       )}
       {q.isPending ? (
-        <p className="mt-3 text-sm text-silver/60">Loading…</p>
+        <p className="mt-3 text-sm text-soft/60">Loading…</p>
       ) : q.error ? (
         <ErrorText>{q.error.message}</ErrorText>
       ) : (
@@ -291,15 +291,15 @@ function ReadersPanel({ issue }) {
               ['Downloads', d.downloads],
               ['Read to the end', tracked ? `${pct(d.finished)}%` : '–'],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-forest-950 p-3">
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-silver/50">{label}</dt>
-                <dd className="heading-serif mt-1 text-2xl text-white">{value}</dd>
+              <div key={label} className="rounded-xl border border-line/10 bg-page p-3">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-soft/50">{label}</dt>
+                <dd className="heading-serif mt-1 text-2xl text-ink">{value}</dd>
               </div>
             ))}
           </dl>
           {tracked > 0 ? (
             <>
-              <p className="mt-4 text-xs text-silver/55">
+              <p className="mt-4 text-xs text-soft/55">
                 Since 2026-09-24 the site records how far each reader gets. {tracked} tracked{' '}
                 {tracked === 1 ? 'session' : 'sessions'}; the median reader stops at page{' '}
                 {Math.round(d.median_page || 0)} of {issue.page_count}. Each bar is the share of readers who reached
@@ -319,13 +319,13 @@ function ReadersPanel({ issue }) {
                   </li>
                 ))}
               </ol>
-              <div className="mt-1 flex justify-between text-[10px] text-silver/40">
+              <div className="mt-1 flex justify-between text-[10px] text-soft/40">
                 <span>Page 1</span>
                 <span>Page {issue.page_count}</span>
               </div>
             </>
           ) : (
-            <p className="mt-4 text-xs text-silver/55">
+            <p className="mt-4 text-xs text-soft/55">
               Reading depth is recorded from 2026-09-24 on; the reads before that come from the old counter. No
               tracked reading session yet.
             </p>
@@ -347,7 +347,7 @@ function IssueEditor({ issue }) {
     <>
       <PageHeader
         eyebrow={
-          <Link to="/portal/magazine" className="hover:text-white">
+          <Link to="/portal/magazine" className="hover:text-ink">
             &larr; All editions
           </Link>
         }
@@ -363,7 +363,7 @@ function IssueEditor({ issue }) {
       {issue.status !== 'missing' && <ReadersPanel issue={issue} />}
       <PagesPanel issue={issue} />
       <Panel title="Delete edition" className="mt-8">
-        <p className="mt-3 text-xs text-silver/55">
+        <p className="mt-3 text-xs text-soft/55">
           Removes the edition and any pages uploaded from the portal. Prefer marking it as a draft. This cannot be undone.
         </p>
         <div className="mt-4">
@@ -398,8 +398,8 @@ export default function IssueEditorPage() {
         </Panel>
       ) : !issue ? (
         <Panel>
-          <p className="text-sm text-silver/70">No edition with the id {slug}.</p>
-          <Link to="/portal/magazine" className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white">
+          <p className="text-sm text-soft/70">No edition with the id {slug}.</p>
+          <Link to="/portal/magazine" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
             &larr; All editions
           </Link>
         </Panel>

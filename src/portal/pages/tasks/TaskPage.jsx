@@ -65,29 +65,29 @@ function Timeline({ updates, names, files, fileProps }) {
       {updates.map((u) => {
         const own = byUpdate.get(u.id) || []
         return u.kind === 'comment' ? (
-          <li key={u.id} className="rounded-2xl border border-white/10 bg-forest-800 p-4">
-            <p className="flex items-center gap-2 text-xs text-silver/50">
+          <li key={u.id} className="rounded-2xl border border-line/10 bg-card p-4">
+            <p className="flex items-center gap-2 text-xs text-soft/50">
               <Avatar name={personName(names, u.author_id)} src={names[u.author_id]?.avatar_url} size="sm" />
               <span>
-                <span className="font-semibold text-white">{personName(names, u.author_id)}</span>
+                <span className="font-semibold text-ink">{personName(names, u.author_id)}</span>
                 {' · '}
                 {when(u.created_at)}
               </span>
             </p>
-            <RichText text={u.body} className="mt-2 text-sm text-silver/85" />
+            <RichText text={u.body} className="mt-2 text-sm text-soft/85" />
             <FileLinks files={own} {...fileProps} className="mt-3" />
           </li>
         ) : (
-          <li key={u.id} className="pl-4 text-xs text-silver/50">
+          <li key={u.id} className="pl-4 text-xs text-soft/50">
             <p className="flex flex-wrap items-baseline gap-x-2">
               <span>{eventText(u, names)}</span>
-              <span className="text-silver/35">{when(u.created_at)}</span>
+              <span className="text-soft/35">{when(u.created_at)}</span>
             </p>
             {u.kind === 'files' &&
               (own.length ? (
                 <FileLinks files={own} {...fileProps} className="mt-2 max-w-xl" />
               ) : (
-                <p className="mt-1 text-silver/35">Removed since.</p>
+                <p className="mt-1 text-soft/35">Removed since.</p>
               ))}
           </li>
         )
@@ -134,12 +134,12 @@ export default function TaskPage() {
       <>
         <PageHeader eyebrow="Tasks" title="Task not found" />
         <Panel>
-          <p className="text-sm text-silver/70">
+          <p className="text-sm text-soft/70">
             {task.error
               ? `Couldn’t load the task: ${task.error.message}`
               : 'It was deleted, or it isn’t shared with you.'}
           </p>
-          <Link to="/portal/tasks" className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white">
+          <Link to="/portal/tasks" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
             &larr; All tasks
           </Link>
         </Panel>
@@ -201,7 +201,7 @@ export default function TaskPage() {
     <>
       <Link
         to="/portal/tasks"
-        className="mb-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
+        className="mb-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
       >
         &larr; All tasks
       </Link>
@@ -218,7 +218,7 @@ export default function TaskPage() {
               </button>
               {confirming ? (
                 <>
-                  <button type="button" onClick={destroy} disabled={remove.isPending} className={`${outlineBtnCls} border-red-400/50 text-red-300`}>
+                  <button type="button" onClick={destroy} disabled={remove.isPending} className={`${outlineBtnCls} border-red-400/50 text-danger`}>
                     {remove.isPending ? 'Deleting…' : 'Yes, delete'}
                   </button>
                   <button type="button" onClick={() => setConfirming(false)} className={outlineBtnCls}>
@@ -236,7 +236,7 @@ export default function TaskPage() {
       />
 
       {notice && (
-        <p role="alert" className="mb-5 max-w-3xl rounded-2xl border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-sm text-amber-200">
+        <p role="alert" className="mb-5 max-w-3xl rounded-2xl border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-sm text-warn">
           {notice}
         </p>
       )}
@@ -250,14 +250,14 @@ export default function TaskPage() {
               <DueLabel task={t} />
             </div>
             {t.body ? (
-              <RichText text={t.body} className="mt-4 text-sm text-silver/85" />
+              <RichText text={t.body} className="mt-4 text-sm text-soft/85" />
             ) : (
-              <p className="mt-4 text-sm text-silver/45">No details.</p>
+              <p className="mt-4 text-sm text-soft/45">No details.</p>
             )}
           </Panel>
 
           <section aria-label="Activity">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">Activity</p>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Activity</p>
             <Timeline updates={t.updates} names={names} files={t.files} fileProps={fileProps} />
             <form onSubmit={postComment} className="mt-5">
               <label htmlFor="task-comment" className="sr-only">
@@ -313,20 +313,20 @@ export default function TaskPage() {
                 </button>
               ))}
             </div>
-            {t.completed_at && <p className="mt-3 text-xs text-silver/50">Completed {when(t.completed_at)}</p>}
+            {t.completed_at && <p className="mt-3 text-xs text-soft/50">Completed {when(t.completed_at)}</p>}
           </Panel>
 
           <Panel title="Assigned to">
             {t.assignees.length === 0 ? (
-              <p className="mt-4 text-sm text-silver/60">Nobody yet.</p>
+              <p className="mt-4 text-sm text-soft/60">Nobody yet.</p>
             ) : (
               <ul className="mt-4 space-y-2">
                 {t.assignees.map((a) => (
-                  <li key={a.profile_id} className="flex items-center gap-2 text-sm text-white">
+                  <li key={a.profile_id} className="flex items-center gap-2 text-sm text-ink">
                     <Avatar name={personName(names, a.profile_id, '')} src={names[a.profile_id]?.avatar_url} size="sm" />
                     <span className="min-w-0 truncate">
                       {personName(names, a.profile_id, '…')}
-                      {a.profile_id === user.id && <span className="text-silver/50"> (you)</span>}
+                      {a.profile_id === user.id && <span className="text-soft/50"> (you)</span>}
                     </span>
                   </li>
                 ))}
@@ -336,7 +336,7 @@ export default function TaskPage() {
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="mt-4 text-sm font-semibold text-medical-light hover:text-white"
+                className="mt-4 text-sm font-semibold text-accent hover:text-ink"
               >
                 Change &rarr;
               </button>
@@ -345,7 +345,7 @@ export default function TaskPage() {
 
           <Panel title={t.files.length ? `Files (${t.files.length})` : 'Files'}>
             {t.files.length === 0 ? (
-              <p className="mt-4 text-sm text-silver/60">
+              <p className="mt-4 text-sm text-soft/60">
                 None yet. Attach one from the comment box.
               </p>
             ) : (

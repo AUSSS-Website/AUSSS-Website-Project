@@ -12,7 +12,7 @@ import { CommitteeTag, DueLabel, PriorityPill, UnreadDot } from '../workUi.jsx'
 // who you are, whether you're verified, what you hold this term, and (EB
 // only) how many verification requests are waiting.
 
-const moreLinkCls = 'mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white'
+const moreLinkCls = 'mt-4 inline-block text-sm font-semibold text-accent hover:text-ink'
 
 // Open tasks assigned to this person, soonest due first (the query's order).
 function MyTasksPanel({ uid }) {
@@ -23,18 +23,18 @@ function MyTasksPanel({ uid }) {
   return (
     <Panel title="Your tasks">
       {tasks.isPending ? (
-        <p className="mt-4 text-sm text-silver/60">Loading…</p>
+        <p className="mt-4 text-sm text-soft/60">Loading…</p>
       ) : tasks.error ? (
-        <p className="mt-4 text-sm text-silver/60">Couldn’t load your tasks.</p>
+        <p className="mt-4 text-sm text-soft/60">Couldn’t load your tasks.</p>
       ) : mine.length === 0 ? (
-        <p className="mt-4 text-sm text-silver/60">Nothing open is assigned to you.</p>
+        <p className="mt-4 text-sm text-soft/60">Nothing open is assigned to you.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-white/10">
+        <ul className="mt-4 divide-y divide-line/10">
           {mine.slice(0, 5).map((t) => (
             <li key={t.id}>
               <Link
                 to={`/portal/tasks/${t.id}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm text-white hover:text-medical-light"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm text-ink hover:text-accent"
               >
                 <CommitteeTag committee={t.committee} />
                 <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
@@ -60,15 +60,15 @@ function UpdatesPanel({ uid }) {
   return (
     <Panel title="Updates">
       {posts.isPending ? (
-        <p className="mt-4 text-sm text-silver/60">Loading…</p>
+        <p className="mt-4 text-sm text-soft/60">Loading…</p>
       ) : posts.error ? (
-        <p className="mt-4 text-sm text-silver/60">Couldn’t load updates.</p>
+        <p className="mt-4 text-sm text-soft/60">Couldn’t load updates.</p>
       ) : unread.length === 0 ? (
-        <p className="mt-4 text-sm text-silver/60">You’re all caught up.</p>
+        <p className="mt-4 text-sm text-soft/60">You’re all caught up.</p>
       ) : (
         <ul className="mt-4 space-y-2.5">
           {unread.slice(0, 4).map((p) => (
-            <li key={p.id} className="flex items-center gap-2.5 text-sm text-white">
+            <li key={p.id} className="flex items-center gap-2.5 text-sm text-ink">
               <UnreadDot />
               <span className="min-w-0 flex-1 truncate font-medium">{p.title}</span>
               <CommitteeTag committee={p.committee} />
@@ -97,7 +97,7 @@ function SubmissionsPanel({ isEB, canStories }) {
     : []
   return (
     <Panel title="Submissions">
-      <p className="mt-4 text-sm text-silver/70">
+      <p className="mt-4 text-sm text-soft/70">
         {counts.isPending
           ? 'Checking what came in…'
           : counts.error
@@ -144,11 +144,11 @@ function PositionChip({ assignment }) {
   const label = c ? `${c.abbr} · ${pos.short_title || pos.title}` : `AUSSS · ${pos.title}`
   return (
     <li
-      className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white"
+      className="inline-flex items-center gap-2 rounded-full border border-line/15 px-3 py-1.5 text-xs font-semibold text-ink"
       style={chipStyle(c?.color)}
       title={c ? `${c.name} · ${pos.title}` : pos.title}
     >
-      {c?.logo && <img src={c.logo} alt="" className="h-4 w-4 object-contain" />}
+      {c?.logo && <img src={c.logo} alt="" className="logo-ink h-4 w-4 object-contain" />}
       {label}
     </li>
   )
@@ -180,7 +180,7 @@ export default function DashboardPage() {
       />
 
       {profileError && (
-        <p role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
+        <p role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger">
           We couldn’t load your profile ({profileError.message}). Try again in a moment.
         </p>
       )}
@@ -193,20 +193,20 @@ export default function DashboardPage() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <StatusBadge status={status} />
             {profile?.membership_tier && (
-              <span className="text-xs text-silver/55">{profile.membership_tier}</span>
+              <span className="text-xs text-soft/55">{profile.membership_tier}</span>
             )}
             {profile?.joined_year && (
-              <span className="text-xs text-silver/55">Joined {profile.joined_year}</span>
+              <span className="text-xs text-soft/55">Joined {profile.joined_year}</span>
             )}
           </div>
-          <p className="mt-3 text-sm text-silver/70">{STATUS_BLURB[status] || ''}</p>
+          <p className="mt-3 text-sm text-soft/70">{STATUS_BLURB[status] || ''}</p>
           {showVerifyCta && (
             <Button to="/portal/verify" variant="accent" size="sm" className="mt-4">
               Request verification
             </Button>
           )}
           {requestPending && (
-            <p className="mt-4 text-xs font-semibold text-medical-light">
+            <p className="mt-4 text-xs font-semibold text-accent">
               Verification requested. An EB member will review it soon.
             </p>
           )}
@@ -214,7 +214,7 @@ export default function DashboardPage() {
 
         <Panel title="Positions this term">
           {assignments.length === 0 ? (
-            <p className="mt-4 text-sm text-silver/60">
+            <p className="mt-4 text-sm text-soft/60">
               No positions on record for this term. If you hold one, ask your
               officer or the EB to add you.
             </p>
@@ -226,17 +226,17 @@ export default function DashboardPage() {
             </ul>
           )}
           {assignments[0]?.term?.label && (
-            <p className="mt-4 text-xs text-silver/45">Term {assignments[0].term.label}</p>
+            <p className="mt-4 text-xs text-soft/45">Term {assignments[0].term.label}</p>
           )}
         </Panel>
 
         <Panel title="Your details">
-          <p className="mt-4 text-sm text-silver/70">
+          <p className="mt-4 text-sm text-soft/70">
             Keep your name, phone and year current so officers can reach you.
           </p>
           <Link
             to="/portal/profile"
-            className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+            className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
           >
             Edit profile &rarr;
           </Link>
@@ -244,7 +244,7 @@ export default function DashboardPage() {
 
         {canEditCommittees && (
           <Panel title="Your committees">
-            <p className="mt-4 text-sm text-silver/70">
+            <p className="mt-4 text-sm text-soft/70">
               {isEB
                 ? 'Edit any committee page, its open calls and applications.'
                 : `Edit the ${officerCommittees.map((c) => c.abbr).join(', ')} page, open calls and applications.`}
@@ -255,7 +255,7 @@ export default function DashboardPage() {
                   ? `/portal/committees/${officerCommittees[0].slug}`
                   : '/portal/committees'
               }
-              className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+              className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
             >
               Open the editor &rarr;
             </Link>
@@ -264,7 +264,7 @@ export default function DashboardPage() {
 
         {officerOf('pnsd') && (
           <Panel title="Gallery">
-            <p className="mt-4 text-sm text-silver/70">
+            <p className="mt-4 text-sm text-soft/70">
               Add albums and photos to the public gallery. Changes are live as soon as they are saved.
             </p>
             <Link to="/portal/gallery" className={moreLinkCls}>
@@ -275,7 +275,7 @@ export default function DashboardPage() {
 
         {officerOf('cbsd') && (
           <Panel title="Magazine">
-            <p className="mt-4 text-sm text-silver/70">
+            <p className="mt-4 text-sm text-soft/70">
               Add an edition from its PDF, pick its cover page and write its description.
             </p>
             <Link to="/portal/magazine" className={moreLinkCls}>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
 
         {isEB && (
           <Panel title="Executive Board">
-            <p className="mt-4 text-sm text-silver/70">
+            <p className="mt-4 text-sm text-soft/70">
               {pending.isPending
                 ? 'Checking the verification queue…'
                 : pending.error
@@ -302,13 +302,13 @@ export default function DashboardPage() {
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
               <Link
                 to="/portal/admin/verification"
-                className="text-sm font-semibold text-medical-light hover:text-white"
+                className="text-sm font-semibold text-accent hover:text-ink"
               >
                 Open the queue &rarr;
               </Link>
               <Link
                 to="/portal/admin/settings"
-                className="text-sm font-semibold text-medical-light hover:text-white"
+                className="text-sm font-semibold text-accent hover:text-ink"
               >
                 Site settings &rarr;
               </Link>

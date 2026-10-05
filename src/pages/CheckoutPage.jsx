@@ -172,7 +172,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="container-prose pb-12 pt-32 sm:pt-40">
         <div className="reveal text-center">
           <span className="eyebrow justify-center">
@@ -180,10 +180,10 @@ export default function CheckoutPage() {
             Checkout
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-5 text-4xl text-white sm:text-5xl">
+          <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
             Confirm your pre-order
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base font-light text-silver/75">
+          <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/75">
             Tell us how to reach you. We&rsquo;ll confirm details and arrange
             pickup once production wraps.
           </p>
@@ -192,7 +192,7 @@ export default function CheckoutPage() {
 
       <div className="container-prose pb-24">
         {droppedCount > 0 && (
-          <p className="mx-auto mb-8 max-w-2xl rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-200">
+          <p className="mx-auto mb-8 max-w-2xl rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-warn">
             {droppedCount === 1
               ? 'One item from a previous visit is no longer available and was removed from your cart.'
               : `${droppedCount} items from a previous visit are no longer available and were removed from your cart.`}{' '}
@@ -208,8 +208,8 @@ export default function CheckoutPage() {
           >
             <Honeypot value={contact.website} onChange={(v) => updateContact('website', v)} />
             {/* Contact */}
-            <fieldset className="rounded-2xl border border-white/10 bg-forest-900 p-6 sm:p-8">
-              <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-medical-light">
+            <fieldset className="rounded-2xl border border-line/10 bg-sunk p-6 sm:p-8">
+              <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                 Your contact info
               </legend>
 
@@ -283,7 +283,7 @@ export default function CheckoutPage() {
                         className={`flex-1 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                           contact.isMember === opt
                             ? 'border-medical bg-medical text-forest-950'
-                            : 'border-white/15 text-silver/80 hover:border-white/30 hover:text-white'
+                            : 'border-line/15 text-soft/80 hover:border-line/30 hover:text-ink'
                         }`}
                       >
                         {opt}
@@ -353,7 +353,7 @@ export default function CheckoutPage() {
                     }
                     className={inputClass(errors.notes) + ' resize-y'}
                   />
-                  <span className="self-end text-[11px] text-silver/55">
+                  <span className="self-end text-[11px] text-soft/55">
                     {contact.notes.length} / {MAX_NOTES_LENGTH}
                   </span>
                 </Field>
@@ -361,8 +361,8 @@ export default function CheckoutPage() {
             </fieldset>
 
             {/* Payment */}
-            <fieldset className="rounded-2xl border border-white/10 bg-forest-900 p-6 sm:p-8">
-              <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-medical-light">
+            <fieldset className="rounded-2xl border border-line/10 bg-sunk p-6 sm:p-8">
+              <legend className="px-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                 Payment method
               </legend>
 
@@ -390,7 +390,7 @@ export default function CheckoutPage() {
             </fieldset>
 
             {result?.ok === false && (
-              <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
+              <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger">
                 {result.error}. Please try again or contact us if it keeps
                 failing.
               </p>
@@ -399,14 +399,14 @@ export default function CheckoutPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Link
                 to="/merch"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-silver/70 transition-colors hover:text-white"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-soft/70 transition-colors hover:text-ink"
               >
                 ← Back to merch
               </Link>
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-forest transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-solid px-8 py-3.5 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
               >
                 {submitting ? (
                   <>
@@ -424,9 +424,9 @@ export default function CheckoutPage() {
 
           {/* Order summary */}
           <aside className="lg:col-span-5">
-            <div className="sticky top-32 rounded-2xl border border-white/10 bg-forest-800 p-6 sm:p-8">
-              <h2 className="heading-serif text-xl text-white">Your order</h2>
-              <ul className="mt-5 divide-y divide-white/10">
+            <div className="sticky top-32 rounded-2xl border border-line/10 bg-card p-6 sm:p-8">
+              <h2 className="heading-serif text-xl text-ink">Your order</h2>
+              <ul className="mt-5 divide-y divide-line/10">
                 {cart.items.map((it) => {
                   const p = productById[it.productId]
                   if (!p) return null
@@ -441,15 +441,15 @@ export default function CheckoutPage() {
                         className="h-20 w-16 flex-shrink-0 rounded-md object-cover"
                       />
                       <div className="flex flex-1 flex-col">
-                        <span className="text-sm font-semibold text-white">
+                        <span className="text-sm font-semibold text-ink">
                           {p.name}
                         </span>
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] uppercase tracking-[0.12em] text-silver/60">
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] uppercase tracking-[0.12em] text-soft/60">
                           {it.size && <span>Size: {it.size}</span>}
                           {it.design && <span>Design: {it.design}</span>}
                           <span>Qty: {it.qty}</span>
                         </div>
-                        <span className="mt-2 text-sm font-semibold text-medical-light">
+                        <span className="mt-2 text-sm font-semibold text-accent">
                           {formatEGP(p.price * it.qty)}
                         </span>
                       </div>
@@ -458,16 +458,16 @@ export default function CheckoutPage() {
                 })}
               </ul>
 
-              <div className="mt-5 flex items-baseline justify-between border-t border-white/10 pt-5">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-silver/70">
+              <div className="mt-5 flex items-baseline justify-between border-t border-line/10 pt-5">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-soft/70">
                   Subtotal
                 </span>
-                <span className="heading-serif text-2xl text-white">
+                <span className="heading-serif text-2xl text-ink">
                   {formatEGP(subtotal)}
                 </span>
               </div>
 
-              <p className="mt-3 text-xs leading-relaxed text-silver/55">
+              <p className="mt-3 text-xs leading-relaxed text-soft/55">
                 All items are pre-orders. We collect orders, run production,
                 then arrange pickup. What you pay for is what you get.
               </p>
@@ -482,10 +482,10 @@ export default function CheckoutPage() {
 // ── Bits ─────────────────────────────────────────────────────────────────
 
 function inputClass(error) {
-  return `w-full rounded-lg border bg-forest-950 px-3.5 py-2.5 text-sm text-white placeholder:text-silver/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 ${
+  return `w-full rounded-lg border bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-soft/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 ${
     error
       ? 'border-red-400/50'
-      : 'border-white/15 hover:border-white/25'
+      : 'border-line/15 hover:border-line/25'
   }`
 }
 
@@ -496,12 +496,12 @@ function Field({ label, htmlFor, error, span = 1, group = false, children }) {
   const errorId = error ? `${htmlFor}-error` : undefined
   const cls = `flex flex-col gap-1.5 ${span === 2 ? 'sm:col-span-2' : ''}`
   const labelText = (
-    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-silver/70">
+    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-soft/70">
       {label}
     </span>
   )
   const errorNode = error && (
-    <span id={errorId} role="alert" className="text-xs text-red-300">
+    <span id={errorId} role="alert" className="text-xs text-danger">
       {error}
     </span>
   )
@@ -537,19 +537,19 @@ function PaymentOption({ selected, onClick, title, hint }) {
       className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
         selected
           ? 'border-medical bg-medical/10'
-          : 'border-white/15 hover:border-white/30'
+          : 'border-line/15 hover:border-line/30'
       }`}
     >
       <span
         className={`mt-0.5 grid h-5 w-5 flex-shrink-0 place-items-center rounded-full border-2 ${
-          selected ? 'border-medical' : 'border-white/30'
+          selected ? 'border-medical' : 'border-line/30'
         }`}
       >
         {selected && <span className="h-2.5 w-2.5 rounded-full bg-medical" />}
       </span>
       <span className="flex flex-col">
-        <span className="text-sm font-semibold text-white">{title}</span>
-        <span className="text-xs text-silver/65">{hint}</span>
+        <span className="text-sm font-semibold text-ink">{title}</span>
+        <span className="text-xs text-soft/65">{hint}</span>
       </span>
     </button>
   )
@@ -559,10 +559,10 @@ function DigitalPaymentPanel({ method, total, screenshot, onChange, error }) {
   if (!method) return null
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-white/10 bg-forest-950 p-5 text-sm leading-relaxed text-silver/80">
+      <div className="rounded-xl border border-line/10 bg-page p-5 text-sm leading-relaxed text-soft/80">
         <p>
-          Send <strong className="text-white">{formatEGP(total)}</strong>{' '}
-          via <strong className="text-white">{method.label}</strong> to:
+          Send <strong className="text-ink">{formatEGP(total)}</strong>{' '}
+          via <strong className="text-ink">{method.label}</strong> to:
         </p>
 
         <div className="mt-3">
@@ -571,7 +571,7 @@ function DigitalPaymentPanel({ method, total, screenshot, onChange, error }) {
           {method.type === 'phone' && <CopyableValue value={method.value} />}
         </div>
 
-        <p className="mt-4 text-xs text-silver/55">
+        <p className="mt-4 text-xs text-soft/55">
           Once you&rsquo;ve paid, upload the receipt screenshot below.
         </p>
       </div>
@@ -588,12 +588,12 @@ function DigitalPaymentPanel({ method, total, screenshot, onChange, error }) {
             type="file"
             accept="image/*"
             onChange={onChange}
-            className="block w-full text-sm text-silver/80 file:mr-4 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-forest hover:file:bg-silver-light"
+            className="block w-full text-sm text-soft/80 file:mr-4 file:rounded-full file:border-0 file:bg-solid file:px-4 file:py-2 file:text-sm file:font-semibold file:text-on-solid hover:file:bg-solid-hover"
           />
           {screenshot && (
-            <span className="text-xs text-silver/60">
+            <span className="text-xs text-soft/60">
               Selected:{' '}
-              <strong className="text-silver/80">{screenshot.name}</strong> (
+              <strong className="text-soft/80">{screenshot.name}</strong> (
               {(screenshot.size / 1024).toFixed(0)} KB)
             </span>
           )}
@@ -619,7 +619,7 @@ function LinkValue({ method }) {
           <path d="M7 17 17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </a>
-      <span className="break-all font-mono text-xs text-silver/55">
+      <span className="break-all font-mono text-xs text-soft/55">
         {display}
       </span>
     </div>
@@ -639,13 +639,13 @@ function CopyableValue({ value }) {
   }
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="break-all font-mono text-base text-medical-light">
+      <span className="break-all font-mono text-base text-accent">
         {value}
       </span>
       <button
         type="button"
         onClick={copy}
-        className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-silver/80 transition-colors hover:border-white/30 hover:text-white"
+        className="inline-flex items-center gap-1.5 rounded-full border border-line/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
       >
         {copied ? (
           <>
@@ -698,33 +698,33 @@ function Spinner() {
 
 function OrderSuccess({ result, contact }) {
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="container-prose pt-32 pb-24 sm:pt-40">
-        <div className="mx-auto max-w-xl rounded-2xl border border-medical/30 bg-forest-900 p-8 text-center sm:p-12">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-medical/15 text-medical-light">
+        <div className="mx-auto max-w-xl rounded-2xl border border-medical/30 bg-sunk p-8 text-center sm:p-12">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-medical/15 text-accent">
             <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="heading-serif mt-6 text-3xl text-white sm:text-4xl">
+          <h1 className="heading-serif mt-6 text-3xl text-ink sm:text-4xl">
             Pre-order received
           </h1>
-          <p className="mt-4 text-base text-silver/75">
+          <p className="mt-4 text-base text-soft/75">
             Thanks{contact.name ? `, ${contact.name.split(' ')[0]}` : ''}!
             We&rsquo;ll be in touch shortly to confirm details.
           </p>
-          <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-forest-950 px-6 py-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-silver/55">
+          <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-line/10 bg-page px-6 py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/55">
               Order reference
             </span>
-            <span className="font-mono text-lg text-medical-light">
+            <span className="font-mono text-lg text-accent">
               {result.reference}
             </span>
           </div>
           {result.receiptAttached === false && (
             <p
               role="alert"
-              className="mx-auto mt-5 max-w-sm rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs leading-relaxed text-amber-200"
+              className="mx-auto mt-5 max-w-sm rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs leading-relaxed text-warn"
             >
               Your order is in, but the receipt screenshot did not upload. Please{' '}
               <Link to="/contact" className="font-semibold underline">
@@ -733,10 +733,10 @@ function OrderSuccess({ result, contact }) {
               with this reference so we can match your payment.
             </p>
           )}
-          <p className="mx-auto mt-4 max-w-sm text-xs leading-relaxed text-silver/55">
+          <p className="mx-auto mt-4 max-w-sm text-xs leading-relaxed text-soft/55">
             Keep this reference. If you don&rsquo;t hear from us within 48
             hours,{' '}
-            <Link to="/contact" className="font-semibold text-medical-light hover:text-white">
+            <Link to="/contact" className="font-semibold text-accent hover:text-ink">
               reach out
             </Link>{' '}
             and mention it so we can find your order.
@@ -744,13 +744,13 @@ function OrderSuccess({ result, contact }) {
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/merch"
-              className="w-full rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-transform hover:scale-[1.02] sm:w-auto"
+              className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] sm:w-auto"
             >
               Back to merch
             </Link>
             <Link
               to="/"
-              className="w-full rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
+              className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
             >
               Home
             </Link>
@@ -763,19 +763,19 @@ function OrderSuccess({ result, contact }) {
 
 function OrdersClosed() {
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <div className="container-prose pt-32 pb-24 sm:pt-40">
-        <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-forest-900 p-8 text-center sm:p-12">
-          <h1 className="heading-serif text-3xl text-white sm:text-4xl">
+        <div className="mx-auto max-w-xl rounded-2xl border border-line/10 bg-sunk p-8 text-center sm:p-12">
+          <h1 className="heading-serif text-3xl text-ink sm:text-4xl">
             Pre-orders are closed
           </h1>
-          <p className="mt-4 text-base text-silver/75">
+          <p className="mt-4 text-base text-soft/75">
             We&rsquo;re between drops right now. Follow our channels to hear
             when the next pre-order window opens.
           </p>
           <Link
             to="/merch"
-            className="mt-7 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-forest transition-transform hover:scale-[1.02]"
+            className="mt-7 inline-flex rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02]"
           >
             Back to merch
           </Link>

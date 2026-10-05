@@ -27,33 +27,33 @@ export default function IncomingsBooklet() {
 
   return (
     <section id="incomings-booklet" className="reveal mx-auto max-w-4xl scroll-mt-24">
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-forest-800">
+      <div className="overflow-hidden rounded-3xl border border-line/10 bg-card">
         <div className="grid gap-0 sm:grid-cols-[minmax(0,15rem)_1fr]">
           {/* The cover is a busy collage, show it whole rather than cropping
               the wordmark off, on a slightly darker panel so it reads as a
               cover sitting in the card. */}
-          <div className="flex items-center justify-center bg-forest-950/50 p-6">
+          <div className="flex items-center justify-center bg-page/50 p-6">
             <img
               src={pages[0]}
               alt={`${booklet.title} cover`}
               loading="lazy"
               decoding="async"
-              className="w-full max-w-[11rem] rounded-lg shadow-lg shadow-black/40 ring-1 ring-white/10 sm:max-w-none"
+              className="w-full max-w-[11rem] rounded-lg shadow-lg shadow-black/40 ring-1 ring-line/10 sm:max-w-none"
             />
           </div>
           <div className="p-7 sm:p-9">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-medical-light">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
               {booklet.eyebrow}
             </p>
-            <h2 className="heading-serif mt-2 text-2xl text-white sm:text-3xl">
+            <h2 className="heading-serif mt-2 text-2xl text-ink sm:text-3xl">
               {booklet.title}
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-silver/70">
+            <p className="mt-3 text-sm leading-relaxed text-soft/70">
               {booklet.blurb}
             </p>
             <ul className="mt-5 space-y-1.5">
               {booklet.contents.map((c) => (
-                <li key={c} className="flex gap-2.5 text-sm text-silver/60">
+                <li key={c} className="flex gap-2.5 text-sm text-soft/60">
                   <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-medical-light" />
                   {c}
                 </li>
@@ -75,7 +75,7 @@ export default function IncomingsBooklet() {
                   href={booklet.download}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                  className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
                 >
                   Download (full quality)
                 </a>
@@ -100,12 +100,12 @@ export default function IncomingsBooklet() {
 
 function ReaderLoading() {
   return (
-    <div className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-white/10 bg-forest-800">
+    <div className="flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-line/10 bg-card">
       <span
         aria-hidden="true"
-        className="h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-medical-light"
+        className="h-8 w-8 animate-spin rounded-full border-2 border-line/15 border-t-accent"
       />
-      <p className="mt-4 text-sm text-silver/60">Opening the booklet…</p>
+      <p className="mt-4 text-sm text-soft/60">Opening the booklet…</p>
     </div>
   )
 }
@@ -127,7 +127,7 @@ class ReaderBoundary extends Component {
     if (!this.state.failed) return this.props.children
     return (
       <div className="space-y-4">
-        <p className="text-center text-sm text-silver/60">
+        <p className="text-center text-sm text-soft/60">
           The page-flip reader couldn’t start in this browser. Here are the
           pages instead.
         </p>
@@ -137,7 +137,7 @@ class ReaderBoundary extends Component {
             src={url}
             alt={`Incomings booklet, page ${i + 1}`}
             loading="lazy"
-            className="mx-auto w-full max-w-[720px] rounded-xl border border-white/10"
+            className="mx-auto w-full max-w-[720px] rounded-xl border border-line/10"
           />
         ))}
       </div>

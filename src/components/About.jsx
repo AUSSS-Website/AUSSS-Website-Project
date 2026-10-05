@@ -63,7 +63,7 @@ export default function About() {
                 turn ideas into action
               </span>
               . It is where curiosity grows into a{' '}
-              <span className="font-medium text-medical dark:text-medical-light">
+              <span className="font-medium text-accent">
                 calling for change
               </span>
               .
@@ -139,7 +139,7 @@ export default function About() {
                   {p.body}
                 </p>
                 {p.to && (
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-medical transition-colors group-hover:text-forest">
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors group-hover:text-ink">
                     Explore exchange
                     <svg
                       viewBox="0 0 24 24"

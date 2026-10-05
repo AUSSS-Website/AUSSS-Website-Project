@@ -6,7 +6,7 @@ function Member({ m, size = 'md' }) {
     m.tier === 'patron'
       ? 'ring-medical/50'
       : m.tier === 'lead'
-        ? 'ring-white/40'
+        ? 'ring-line/40'
         : 'ring-forest-600/30'
   // Cards sized ~5% larger than the base layout (avatar, padding, text and
   // container widths scaled by ≈1.4, then taken 25% smaller → ≈1.05).
@@ -31,7 +31,7 @@ function Member({ m, size = 'md' }) {
         m.candidature ? 'cursor-pointer' : ''
       } ${
         m.tier === 'lead'
-          ? 'border-white/15 bg-forest-800 text-white hover:shadow-2xl hover:shadow-forest-950/40'
+          ? 'border-line/15 bg-card text-ink hover:shadow-2xl hover:shadow-forest-950/40'
           : 'border-forest-600/10 bg-white text-forest-900 hover:border-medical/40 hover:shadow-xl hover:shadow-forest-900/5 dark:border-white/10 dark:bg-forest-900 dark:text-silver dark:hover:border-medical/40'
       }`}
     >
@@ -51,21 +51,21 @@ function Member({ m, size = 'md' }) {
       </div>
       <h3
         className={`heading-serif mt-[1.3125rem] text-[1.3125rem] ${
-          m.tier === 'lead' ? 'text-white' : 'text-forest dark:text-medical-light'
+          m.tier === 'lead' ? 'text-ink' : 'text-forest dark:text-medical-light'
         }`}
       >
         {m.name}
       </h3>
       <p
         className={`mt-1 text-[0.7875rem] font-semibold uppercase tracking-[0.18em] ${
-          m.tier === 'lead' ? 'text-medical-light' : 'text-medical'
+          m.tier === 'lead' ? 'text-accent' : 'text-accent dark:text-medical'
         }`}
       >
         {m.role}
       </p>
       <p
         className={`mt-[1.125rem] text-[0.9rem] leading-relaxed ${
-          m.tier === 'lead' ? 'text-silver/80' : 'text-forest-900/60 dark:text-silver/65'
+          m.tier === 'lead' ? 'text-soft/80' : 'text-forest-900/70 dark:text-silver/65'
         }`}
       >
         {m.blurb}
@@ -73,7 +73,7 @@ function Member({ m, size = 'md' }) {
       {m.candidature && (
         <span
           className={`mt-[1.3125rem] inline-flex items-center gap-1.5 text-[0.7875rem] font-semibold uppercase tracking-[0.16em] ${
-            m.tier === 'lead' ? 'text-medical-light' : 'text-medical'
+            m.tier === 'lead' ? 'text-accent' : 'text-accent dark:text-medical'
           }`}
         >
           View candidature
@@ -107,13 +107,13 @@ export default function ExecutiveBoard() {
   return (
     <section
       id="board"
-      className="relative overflow-hidden bg-forest-950 pb-10 pt-28 sm:pt-36"
+      className="relative overflow-hidden bg-page pb-10 pt-28 sm:pt-36"
     >
       <div
         className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
-            'linear-gradient(#C9D6DF 1px, transparent 1px), linear-gradient(90deg, #C9D6DF 1px, transparent 1px)',
+            'linear-gradient(rgb(var(--c-soft)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-soft)) 1px, transparent 1px)',
           backgroundSize: '64px 64px',
         }}
       />
@@ -124,10 +124,10 @@ export default function ExecutiveBoard() {
             Leadership
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h2 className="heading-serif mt-5 text-4xl text-white sm:text-5xl">
+          <h2 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
             Executive Board
           </h2>
-          <p className="mt-4 text-lg font-light text-silver/70">
+          <p className="mt-4 text-lg font-light text-soft/70">
             The elected board that sets the society&rsquo;s direction and runs
             its day-to-day.
           </p>
@@ -141,7 +141,7 @@ export default function ExecutiveBoard() {
                 <Member m={patron} size="lg" />
               </div>
             </div>
-            <div className="mx-auto my-2 h-12 w-px bg-gradient-to-b from-silver/40 to-transparent" />
+            <div className="mx-auto my-2 h-12 w-px bg-gradient-to-b from-line/30 to-transparent" />
           </>
         )}
 
@@ -157,7 +157,7 @@ export default function ExecutiveBoard() {
         {/* Tier 3, Secretary General (centered, below President) */}
         {officers.length > 0 && (
           <>
-            <div className="mx-auto my-2 h-12 w-px bg-gradient-to-b from-silver/40 to-transparent" />
+            <div className="mx-auto my-2 h-12 w-px bg-gradient-to-b from-line/30 to-transparent" />
             <div className="mx-auto flex max-w-[25.5rem] flex-col gap-8">
               {officers.map((m) => (
                 <Member key={m.role} m={m} />
@@ -169,7 +169,7 @@ export default function ExecutiveBoard() {
         {/* Tier 4, Vice Presidents (below Secretary General) */}
         {vps.length > 0 && (
           <>
-            <div className="mx-auto my-2 h-12 w-px bg-gradient-to-b from-silver/40 to-transparent" />
+            <div className="mx-auto my-2 h-12 w-px bg-gradient-to-b from-line/30 to-transparent" />
             <div className="mx-auto grid max-w-[50.25rem] gap-8 sm:grid-cols-2">
               {vps.map((m) => (
                 <Member key={m.role} m={m} />

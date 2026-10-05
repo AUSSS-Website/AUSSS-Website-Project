@@ -25,14 +25,14 @@ export function MagazineGate({ children }) {
   if (officerOf('cbsd')) return children
   return (
     <Panel>
-      <p className="text-sm text-silver/70">
+      <p className="text-sm text-soft/70">
         The magazine is edited by the CBSD officers and the Executive Board. If
         you think you should have access, ask the webmaster to check your
         assignment for this term.
       </p>
       <Link
         to="/portal"
-        className="mt-4 inline-block text-sm font-semibold text-medical-light hover:text-white"
+        className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
       >
         &larr; Back to your dashboard
       </Link>
@@ -103,26 +103,26 @@ function NewIssueForm({ onDone }) {
 function IssueRow({ m, index, total, onMove, moving }) {
   const cover = pageUrl(m, m.hero_page)
   return (
-    <li className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/10 bg-forest-800 p-3 sm:flex-nowrap">
-      <Link to={`/portal/magazine/${m.slug}`} className="block aspect-[1300/1839] w-16 shrink-0 overflow-hidden rounded-lg bg-forest-950">
+    <li className="flex flex-wrap items-center gap-4 rounded-2xl border border-line/10 bg-card p-3 sm:flex-nowrap">
+      <Link to={`/portal/magazine/${m.slug}`} className="block aspect-[1300/1839] w-16 shrink-0 overflow-hidden rounded-lg bg-page">
         {cover ? (
           <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="grid h-full w-full place-items-center text-center text-[9px] uppercase tracking-[0.2em] text-silver/40">
+          <span className="grid h-full w-full place-items-center text-center text-[9px] uppercase tracking-[0.2em] text-soft/40">
             No pages
           </span>
         )}
       </Link>
       <div className="min-w-0 flex-1">
-        <Link to={`/portal/magazine/${m.slug}`} className="heading-serif block truncate text-lg text-white hover:text-medical-light">
+        <Link to={`/portal/magazine/${m.slug}`} className="heading-serif block truncate text-lg text-ink hover:text-accent">
           {m.title}
         </Link>
-        <p className="mt-0.5 truncate text-xs text-silver/55">
+        <p className="mt-0.5 truncate text-xs text-soft/55">
           {STATUS_LABEL[m.status] || m.status}
           {' · '}
           {m.page_count ? `${m.page_count} pages` : m.canva_url ? 'Canva embed' : 'no pages yet'}
           {' · '}
-          <span className="text-silver/40">{m.slug}</span>
+          <span className="text-soft/40">{m.slug}</span>
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -197,7 +197,7 @@ export default function MagazinePage() {
       )}
 
       {created && (
-        <p className="mb-6 rounded-xl border border-medical/40 bg-medical/10 px-4 py-3 text-sm text-medical-light">
+        <p className="mb-6 rounded-xl border border-medical/40 bg-medical/10 px-4 py-3 text-sm text-accent">
           Draft created.{' '}
           <Link to={`/portal/magazine/${created.slug}`} className="font-semibold underline-offset-2 hover:underline">
             Upload the pages of {created.title} &rarr;
@@ -215,7 +215,7 @@ export default function MagazinePage() {
         </Panel>
       ) : issues.data.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">No editions yet. Create one, then upload its PDF.</p>
+          <p className="text-sm text-soft/70">No editions yet. Create one, then upload its PDF.</p>
         </Panel>
       ) : (
         <>

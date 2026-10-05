@@ -57,7 +57,7 @@ export default function ExportButtons({
         </button>
       )}
       {error && (
-        <span role="alert" className="text-xs text-red-300">
+        <span role="alert" className="text-xs text-danger">
           {error}
         </span>
       )}

@@ -66,10 +66,10 @@ async function fileToLines(file) {
 function ReviewRow({ item, choice, onChoose }) {
   const options = item.match ? [item.match, ...item.candidates.filter((c) => c.id !== item.match.id)] : item.candidates
   return (
-    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-forest-900 px-4 py-3">
+    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-line/10 bg-sunk px-4 py-3">
       <span className="min-w-0">
-        <span className="block truncate text-sm text-white">{item.line}</span>
-        <span className={`text-[11px] font-semibold uppercase tracking-wider ${item.state === 'none' ? 'text-red-300' : 'text-amber-200'}`}>
+        <span className="block truncate text-sm text-ink">{item.line}</span>
+        <span className={`text-[11px] font-semibold uppercase tracking-wider ${item.state === 'none' ? 'text-danger' : 'text-warn'}`}>
           {STATE_LABEL[item.state]}
         </span>
       </span>
@@ -89,7 +89,7 @@ function ReviewRow({ item, choice, onChoose }) {
           ))}
         </select>
       ) : (
-        <span className="text-xs text-silver/50">Nobody close to this on the roster. Add them first, or fix the spelling.</span>
+        <span className="text-xs text-soft/50">Nobody close to this on the roster. Add them first, or fix the spelling.</span>
       )}
     </li>
   )
@@ -119,27 +119,27 @@ function History() {
   }
 
   return (
-    <div className="mt-6 border-t border-white/10 pt-5">
-      <p className="text-sm font-semibold text-white">Recent bulk updates</p>
+    <div className="mt-6 border-t border-line/10 pt-5">
+      <p className="text-sm font-semibold text-ink">Recent bulk updates</p>
       <ul className="mt-3 space-y-3">
         {log.data.map((b) => (
           <li key={b.id} className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 text-sm text-silver/75">
+            <div className="min-w-0 text-sm text-soft/75">
               <p className={b.undone_at ? 'line-through opacity-60' : ''}>
-                <span className="font-semibold text-white">{b.label}</span> · {b.changes.length}{' '}
+                <span className="font-semibold text-ink">{b.label}</span> · {b.changes.length}{' '}
                 {b.changes.length === 1 ? 'member' : 'members'} ·{' '}
                 {effect(b.action, b.value)}
               </p>
-              <p className="text-xs text-silver/50">
+              <p className="text-xs text-soft/50">
                 {when(b.at)}
                 {b.undone_at ? ` · undone ${when(b.undone_at)}` : ''}
               </p>
-              {note?.id === b.id && <p className="mt-1 text-xs text-amber-200">{note.text}</p>}
+              {note?.id === b.id && <p className="mt-1 text-xs text-warn">{note.text}</p>}
             </div>
             {!b.undone_at &&
               (confirmId === b.id ? (
                 <span className="flex items-center gap-2">
-                  <button type="button" disabled={undo.isPending} onClick={() => onUndo(b.id)} className={`${outlineBtnCls} border-red-400/50 text-red-300`}>
+                  <button type="button" disabled={undo.isPending} onClick={() => onUndo(b.id)} className={`${outlineBtnCls} border-red-400/50 text-danger`}>
                     {undo.isPending ? 'Undoing…' : `Yes, undo for ${b.changes.length}`}
                   </button>
                   <button type="button" disabled={undo.isPending} onClick={() => setConfirmId(null)} className={outlineBtnCls}>
@@ -242,7 +242,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
   return (
     <Panel title={action === 'committee' ? 'Set committees' : 'Register a GA'} className="mb-6">
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm text-silver/65">
+        <p className="max-w-2xl text-sm text-soft/65">
           Paste a list of people and everyone on it gets one change: a GA added to their count, a
           membership status, or their committee. You review every match before anything changes,
           and each update can be undone.
@@ -309,7 +309,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
           </Field>
           <ErrorText>{error}</ErrorText>
           {done && (
-            <p className="text-sm text-emerald-300" role="status">
+            <p className="text-sm text-ok" role="status">
               Updated {done.updated} {done.updated === 1 ? 'member' : 'members'}.
               {done.skipped?.length > 0 &&
                 ` Left alone: ${done.skipped.map((s) => `${s.full_name} (${s.reason})`).join('; ')}.`}
@@ -328,18 +328,18 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
         </form>
       ) : (
         <div className="mt-5">
-          <p className="text-sm text-white">
+          <p className="text-sm text-ink">
             <span className="font-semibold">{label}</span> ·{' '}
             {effect(action, action === 'status' ? status : committee)}
           </p>
-          <p className="mt-1 text-xs text-silver/60" aria-live="polite">
+          <p className="mt-1 text-xs text-soft/60" aria-live="polite">
             {counts.matched} matched · {counts.likely} likely · {counts.ambiguous} to pick · {counts.none} not found
             {repeats > 0 ? ` · ${repeats} repeated ${repeats === 1 ? 'person' : 'people'} counted once` : ''}
           </p>
 
           {review.length > 0 && (
             <>
-              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">Needs a look</p>
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Needs a look</p>
               <ul className="mt-3 space-y-2">
                 {review.map(({ it, i }) => (
                   <ReviewRow key={i} item={it} choice={choices[i] || ''} onChoose={(id) => setChoices((c) => ({ ...c, [i]: id }))} />
@@ -350,14 +350,14 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
 
           {certain.length > 0 && (
             <details className="mt-5">
-              <summary className="cursor-pointer text-sm text-silver/75">
+              <summary className="cursor-pointer text-sm text-soft/75">
                 {certain.length} matched exactly (by email or full name)
               </summary>
-              <ul className="mt-3 space-y-1 text-xs text-silver/60">
+              <ul className="mt-3 space-y-1 text-xs text-soft/60">
                 {certain.map(({ it, i }) => (
                   <li key={i} className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      {it.line} → <span className="text-silver/85">{describe(it.match)}</span>
+                      {it.line} → <span className="text-soft/85">{describe(it.match)}</span>
                     </span>
                     <label className="flex items-center gap-2">
                       <input

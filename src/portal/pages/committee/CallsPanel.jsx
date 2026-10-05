@@ -67,7 +67,7 @@ function BackButton({ onClick }) {
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-silver/60 transition-colors hover:text-white"
+        className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
       >
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -81,10 +81,10 @@ function BackButton({ onClick }) {
 // One line of status for a call, spelling out *why* it isn't live.
 function StatusPill({ call }) {
   const map = {
-    open: ['Open', 'bg-medical/20 text-medical-light'],
-    expired: ['Closed: deadline passed', 'bg-amber-400/15 text-amber-300'],
-    closed: ['Closed by you', 'bg-white/10 text-silver/70'],
-    draft: ['Draft: not visible', 'bg-white/10 text-silver/70'],
+    open: ['Open', 'bg-medical/20 text-accent'],
+    expired: ['Closed: deadline passed', 'bg-amber-400/15 text-warn'],
+    closed: ['Closed by you', 'bg-veil/10 text-soft/70'],
+    draft: ['Draft: not visible', 'bg-veil/10 text-soft/70'],
   }
   const [label, cls] = map[call.effectiveStatus] || map.draft
   return (
@@ -175,9 +175,9 @@ export default function CallsPanel({ committee }) {
           {calls.isPending && <Spinner />}
 
           {!calls.isPending && rows.length === 0 && !loadError && (
-            <p className="rounded-2xl border border-white/10 bg-forest-800 p-6 text-sm text-silver/60">
+            <p className="rounded-2xl border border-line/10 bg-card p-6 text-sm text-soft/60">
               No calls yet. Create one and it appears on{' '}
-              <span className="text-white">the {committee.abbr} page</span> straight
+              <span className="text-ink">the {committee.abbr} page</span> straight
               away.
             </p>
           )}
@@ -185,22 +185,22 @@ export default function CallsPanel({ committee }) {
           {rows.map((call) => (
             <div
               key={call.id}
-              className="rounded-2xl border border-white/10 bg-forest-800 p-5"
+              className="rounded-2xl border border-line/10 bg-card p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill call={call} />
                     {call.kind && (
-                      <span className="text-[11px] uppercase tracking-[0.14em] text-silver/45">
+                      <span className="text-[11px] uppercase tracking-[0.14em] text-soft/45">
                         {call.kind}
                       </span>
                     )}
                   </div>
-                  <p className="heading-serif mt-2 text-xl text-white">
+                  <p className="heading-serif mt-2 text-xl text-ink">
                     {call.title}
                   </p>
-                  <p className="mt-1 text-xs text-silver/50">
+                  <p className="mt-1 text-xs text-soft/50">
                     {call.deadline
                       ? `Closes ${formatDeadline(call.deadline)}`
                       : 'No deadline'}
@@ -219,11 +219,11 @@ export default function CallsPanel({ committee }) {
                 </button>
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/10 pt-4">
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line/10 pt-4">
                 <button
                   type="button"
                   onClick={() => setView({ mode: 'edit', call })}
-                  className="text-xs font-semibold text-medical-light hover:text-white"
+                  className="text-xs font-semibold text-accent hover:text-ink"
                 >
                   Edit
                 </button>
@@ -234,7 +234,7 @@ export default function CallsPanel({ committee }) {
                     type="button"
                     disabled={busyId === call.id}
                     onClick={() => changeStatus(call.id, 'closed')}
-                    className="text-xs font-semibold text-silver/70 hover:text-white disabled:opacity-40"
+                    className="text-xs font-semibold text-soft/70 hover:text-ink disabled:opacity-40"
                   >
                     Close now
                   </button>
@@ -243,27 +243,27 @@ export default function CallsPanel({ committee }) {
                     type="button"
                     disabled={busyId === call.id}
                     onClick={() => changeStatus(call.id, 'open')}
-                    className="text-xs font-semibold text-silver/70 hover:text-white disabled:opacity-40"
+                    className="text-xs font-semibold text-soft/70 hover:text-ink disabled:opacity-40"
                   >
                     Reopen
                   </button>
                 )}
 
                 {confirming === call.id ? (
-                  <span className="flex flex-wrap items-center gap-3 text-xs text-silver/60">
+                  <span className="flex flex-wrap items-center gap-3 text-xs text-soft/60">
                     Remove this call? Applications already sent are kept.
                     <button
                       type="button"
                       disabled={busyId === call.id}
                       onClick={() => remove(call.id)}
-                      className="font-semibold text-red-400 hover:text-red-300 disabled:opacity-40"
+                      className="font-semibold text-danger hover:text-danger disabled:opacity-40"
                     >
                       Yes, remove
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirming('')}
-                      className="font-semibold text-silver/70 hover:text-white"
+                      className="font-semibold text-soft/70 hover:text-ink"
                     >
                       Cancel
                     </button>
@@ -272,14 +272,14 @@ export default function CallsPanel({ committee }) {
                   <button
                     type="button"
                     onClick={() => setConfirming(call.id)}
-                    className="text-xs font-semibold text-red-400/80 hover:text-red-300"
+                    className="text-xs font-semibold text-danger/80 hover:text-danger"
                   >
                     Remove
                   </button>
                 )}
 
                 {call.effectiveStatus === 'expired' && (
-                  <span className="text-xs text-silver/45">
+                  <span className="text-xs text-soft/45">
                     Give it a later deadline to reopen it.
                   </span>
                 )}
@@ -391,7 +391,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
       >
         <div className="space-y-5">
           <div>
-            <label className="mb-1.5 block text-xs text-silver/60">Title</label>
+            <label className="mb-1.5 block text-xs text-soft/60">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -401,7 +401,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs text-silver/60">Kind</label>
+              <label className="mb-1.5 block text-xs text-soft/60">Kind</label>
               <input
                 value={kind}
                 onChange={(e) => setKind(e.target.value)}
@@ -410,7 +410,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs text-silver/60">
+              <label className="mb-1.5 block text-xs text-soft/60">
                 Time commitment
               </label>
               <input
@@ -422,8 +422,8 @@ function CallEditor({ committee, call, onDone, onCancel }) {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs text-silver/60">
-              Short summary <span className="text-silver/40">(the card blurb)</span>
+            <label className="mb-1.5 block text-xs text-soft/60">
+              Short summary <span className="text-soft/40">(the card blurb)</span>
             </label>
             <input
               value={summary}
@@ -433,9 +433,9 @@ function CallEditor({ committee, call, onDone, onCancel }) {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs text-silver/60">
+            <label className="mb-1.5 block text-xs text-soft/60">
               Full description{' '}
-              <span className="text-silver/40">(blank line between paragraphs)</span>
+              <span className="text-soft/40">(blank line between paragraphs)</span>
             </label>
             <textarea
               value={description}
@@ -463,7 +463,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
             <button
               type="button"
               onClick={() => setDeadline('')}
-              className="text-xs font-semibold text-silver/60 hover:text-white"
+              className="text-xs font-semibold text-soft/60 hover:text-ink"
             >
               Clear deadline
             </button>
@@ -479,7 +479,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
           {positions.map((p, i) => (
             <div
               key={p.id}
-              className="space-y-3 rounded-2xl border border-white/10 bg-forest-800 p-4"
+              className="space-y-3 rounded-2xl border border-line/10 bg-card p-4"
             >
               <div className="flex gap-3">
                 <input
@@ -504,7 +504,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
               <button
                 type="button"
                 onClick={() => removePosition(p.id)}
-                className="text-xs font-semibold text-red-400/80 hover:text-red-300"
+                className="text-xs font-semibold text-danger/80 hover:text-danger"
               >
                 Remove position
               </button>
@@ -514,7 +514,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
             type="button"
             onClick={addPosition}
             disabled={positions.length >= MAX_POSITIONS}
-            className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-40"
+            className="rounded-full border border-line/20 px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40"
           >
             {positions.length >= MAX_POSITIONS
               ? `Maximum ${MAX_POSITIONS} positions`
@@ -531,7 +531,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
           {questions.map((q, i) => (
             <div
               key={q.id}
-              className="space-y-3 rounded-2xl border border-white/10 bg-forest-800 p-4"
+              className="space-y-3 rounded-2xl border border-line/10 bg-card p-4"
             >
               <input
                 value={q.label}
@@ -549,7 +549,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
                   <option value="long">Long answer</option>
                   <option value="select">Choose one</option>
                 </select>
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-silver/70">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-soft/70">
                   <input
                     type="checkbox"
                     checked={Boolean(q.required)}
@@ -561,7 +561,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
                 <button
                   type="button"
                   onClick={() => removeQuestion(q.id)}
-                  className="ml-auto text-xs font-semibold text-red-400/80 hover:text-red-300"
+                  className="ml-auto text-xs font-semibold text-danger/80 hover:text-danger"
                 >
                   Remove
                 </button>
@@ -582,7 +582,7 @@ function CallEditor({ committee, call, onDone, onCancel }) {
             type="button"
             onClick={addQuestion}
             disabled={questions.length >= MAX_QUESTIONS}
-            className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-40"
+            className="rounded-full border border-line/20 px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40"
           >
             {questions.length >= MAX_QUESTIONS
               ? `Maximum ${MAX_QUESTIONS} questions`
@@ -617,8 +617,8 @@ function CallEditor({ committee, call, onDone, onCancel }) {
               key={value}
               className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors ${
                 status === value
-                  ? 'border-medical bg-medical/10 text-white'
-                  : 'border-white/15 text-silver/70 hover:border-white/30'
+                  ? 'border-medical bg-medical/10 text-ink'
+                  : 'border-line/15 text-soft/70 hover:border-line/30'
               }`}
             >
               <input
@@ -634,14 +634,14 @@ function CallEditor({ committee, call, onDone, onCancel }) {
         </div>
       </Section>
 
-      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-white/15 bg-forest-950/95 px-4 py-3 backdrop-blur-md">
+      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-line/15 bg-page/95 px-4 py-3 backdrop-blur-md">
         <div className="container-prose flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-silver/70">{msg}</p>
+          <p className="text-sm text-soft/70">{msg}</p>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className="rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
             >
               Cancel
             </button>
@@ -687,17 +687,17 @@ function ApplicationRow({ app, onPatch }) {
   const notesDirty = notes !== (app.notes || '')
 
   return (
-    <article className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+    <article className="rounded-2xl border border-line/10 bg-card p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-base font-semibold text-white">{app.name}</p>
-        <p className="text-xs text-silver/45">
+        <p className="text-base font-semibold text-ink">{app.name}</p>
+        <p className="text-xs text-soft/45">
           {app.created_at ? new Date(app.created_at).toLocaleString() : ''}
           {app.ref && ` · ${app.ref}`}
         </p>
       </div>
 
-      <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-silver/60">
-        <a href={`mailto:${app.email}`} className="text-medical-light hover:text-white">
+      <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-soft/60">
+        <a href={`mailto:${app.email}`} className="text-accent hover:text-ink">
           {app.email}
         </a>
         {app.phone && <span>{app.phone}</span>}
@@ -705,8 +705,8 @@ function ApplicationRow({ app, onPatch }) {
       </p>
 
       {positions.length > 0 && (
-        <p className="mt-3 text-sm text-silver/80">
-          <span className="text-xs uppercase tracking-[0.16em] text-silver/45">
+        <p className="mt-3 text-sm text-soft/80">
+          <span className="text-xs uppercase tracking-[0.16em] text-soft/45">
             Applied for:{' '}
           </span>
           {positions.join(', ')}
@@ -715,10 +715,10 @@ function ApplicationRow({ app, onPatch }) {
 
       {app.motivation && (
         <div className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">
             Why they want to join
           </p>
-          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">
+          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">
             {app.motivation}
           </p>
         </div>
@@ -726,18 +726,18 @@ function ApplicationRow({ app, onPatch }) {
 
       {answers.map((a, i) => (
         <div key={a.id || i} className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-silver/45">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">
             {a.label}
           </p>
-          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-silver/80">
+          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">
             {a.value}
           </p>
         </div>
       ))}
 
-      <div className="mt-5 space-y-3 border-t border-white/10 pt-4">
+      <div className="mt-5 space-y-3 border-t border-line/10 pt-4">
         <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor={`status-${app.id}`} className="text-xs text-silver/60">
+          <label htmlFor={`status-${app.id}`} className="text-xs text-soft/60">
             Status
           </label>
           <select
@@ -753,12 +753,12 @@ function ApplicationRow({ app, onPatch }) {
               </option>
             ))}
           </select>
-          {busy === 'status' && <span className="text-xs text-silver/50">Saving…</span>}
+          {busy === 'status' && <span className="text-xs text-soft/50">Saving…</span>}
         </div>
 
         <div>
-          <label htmlFor={`notes-${app.id}`} className="mb-1.5 block text-xs text-silver/60">
-            Notes <span className="text-silver/40">(only officers see these)</span>
+          <label htmlFor={`notes-${app.id}`} className="mb-1.5 block text-xs text-soft/60">
+            Notes <span className="text-soft/40">(only officers see these)</span>
           </label>
           <textarea
             id={`notes-${app.id}`}
@@ -830,7 +830,7 @@ function ApplicationsList({ call, onBack }) {
         {applications.isPending && <Spinner />}
         <ErrorText>{loadError}</ErrorText>
         {!applications.isPending && !loadError && rows.length === 0 && (
-          <p className="rounded-2xl border border-white/10 bg-forest-800 p-6 text-sm text-silver/60">
+          <p className="rounded-2xl border border-line/10 bg-card p-6 text-sm text-soft/60">
             Nobody has applied yet.
           </p>
         )}

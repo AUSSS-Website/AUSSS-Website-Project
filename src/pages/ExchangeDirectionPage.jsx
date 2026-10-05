@@ -19,13 +19,13 @@ export default function ExchangeDirectionPage({ dir }) {
   useReveal()
 
   return (
-    <article className="bg-forest-950">
+    <article className="bg-page">
       <header className="relative overflow-hidden pb-12 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              'radial-gradient(circle, #C9D6DF 1px, transparent 1px)',
+              'radial-gradient(circle, rgb(var(--c-soft)) 1px, transparent 1px)',
             backgroundSize: '34px 34px',
           }}
         />
@@ -35,10 +35,10 @@ export default function ExchangeDirectionPage({ dir }) {
             {d.eyebrow}
             <span className="h-px w-8 bg-medical" />
           </span>
-          <h1 className="heading-serif mt-8 text-4xl text-white sm:text-6xl">
+          <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
             {d.title}
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-silver/75">
+          <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
             {d.intro}
           </p>
           <DirectionTabs current={dir} />
@@ -52,12 +52,12 @@ export default function ExchangeDirectionPage({ dir }) {
             {d.points.map((p, idx) => (
               <li
                 key={idx}
-                className="flex gap-4 rounded-2xl border border-white/10 bg-forest-800 p-5"
+                className="flex gap-4 rounded-2xl border border-line/10 bg-card p-5"
               >
-                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-medical/20 text-xs font-bold text-medical-light">
+                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-medical/20 text-xs font-bold text-accent">
                   ✓
                 </span>
-                <p className="text-sm leading-relaxed text-silver/80">{p}</p>
+                <p className="text-sm leading-relaxed text-soft/80">{p}</p>
               </li>
             ))}
           </ul>
@@ -66,22 +66,22 @@ export default function ExchangeDirectionPage({ dir }) {
         {/* The application flow only describes going abroad. */}
         {dir === 'outgoing' && (
           <section className="reveal mx-auto max-w-4xl">
-            <h2 className="heading-serif text-center text-3xl text-white">
+            <h2 className="heading-serif text-center text-3xl text-ink">
               How it works
             </h2>
             <ol className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {exchange.timeline.map((s, idx) => (
                 <li
                   key={idx}
-                  className="rounded-2xl border border-white/10 bg-forest-800 p-6"
+                  className="rounded-2xl border border-line/10 bg-card p-6"
                 >
-                  <span className="heading-serif text-3xl text-medical-light">
+                  <span className="heading-serif text-3xl text-accent">
                     {String(idx + 1).padStart(2, '0')}
                   </span>
-                  <h3 className="mt-2 text-base font-semibold text-white">
+                  <h3 className="mt-2 text-base font-semibold text-ink">
                     {s.step}
                   </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-silver/65">
+                  <p className="mt-1.5 text-sm leading-relaxed text-soft/65">
                     {s.body}
                   </p>
                 </li>
@@ -101,7 +101,7 @@ export default function ExchangeDirectionPage({ dir }) {
         <section className="reveal text-center">
           {d.links?.length > 0 && (
             <>
-              <p className="text-sm uppercase tracking-[0.2em] text-silver/50">
+              <p className="text-sm uppercase tracking-[0.2em] text-soft/50">
                 Start exploring
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-4">
@@ -111,7 +111,7 @@ export default function ExchangeDirectionPage({ dir }) {
                     href={l.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                    className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
                   >
                     {l.label}
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -125,7 +125,7 @@ export default function ExchangeDirectionPage({ dir }) {
           <div className="mt-12">
             <Link
               to={`/exchange/${other.slug}`}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-medical-light transition-colors hover:text-white"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
               {other.title} instead
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -145,7 +145,7 @@ function DirectionTabs({ current }) {
   return (
     <nav
       aria-label="Exchange direction"
-      className="mx-auto mt-9 flex w-full max-w-md rounded-full border border-white/15 bg-white/5 p-1"
+      className="mx-auto mt-9 flex w-full max-w-md rounded-full border border-line/15 bg-veil/5 p-1"
     >
       {Object.entries(exchange.directions).map(([key, d]) => {
         const active = key === current
@@ -156,8 +156,8 @@ function DirectionTabs({ current }) {
             aria-current={active ? 'page' : undefined}
             className={`flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-colors ${
               active
-                ? 'bg-white text-forest'
-                : 'text-silver/70 hover:text-white'
+                ? 'bg-solid text-on-solid'
+                : 'text-soft/70 hover:text-ink'
             }`}
           >
             {d.tab}

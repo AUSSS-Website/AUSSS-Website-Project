@@ -48,7 +48,7 @@ export default function NotificationsPage() {
                     type="button"
                     disabled={clear.isPending}
                     onClick={() => clear.mutate(undefined, { onSettled: () => setConfirming(false) })}
-                    className={`${outlineBtnCls} border-red-400/50 text-red-300`}
+                    className={`${outlineBtnCls} border-red-400/50 text-danger`}
                   >
                     {clear.isPending ? 'Clearing…' : 'Yes, clear notifications'}
                   </button>
@@ -76,7 +76,7 @@ export default function NotificationsPage() {
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">Nothing yet. You’ll be notified here when a task involves you.</p>
+          <p className="text-sm text-soft/70">Nothing yet. You’ll be notified here when a task involves you.</p>
         </Panel>
       ) : (
         <ul className="max-w-3xl space-y-3">
@@ -87,15 +87,15 @@ export default function NotificationsPage() {
                 <button
                   type="button"
                   onClick={() => open(n)}
-                  className={`flex w-full items-start gap-3 rounded-2xl border bg-forest-800 p-4 text-left transition-colors hover:border-white/25 ${
-                    n.read_at ? 'border-white/10' : 'border-medical/50'
+                  className={`flex w-full items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:border-line/25 ${
+                    n.read_at ? 'border-line/10' : 'border-medical/50'
                   }`}
                 >
                   <span className="mt-1.5 w-2 shrink-0">{!n.read_at && <UnreadDot />}</span>
                   <span className="min-w-0 flex-1">
-                    <span className={`block text-sm ${n.read_at ? 'text-silver/75' : 'font-semibold text-white'}`}>{line}</span>
-                    {detail && <span className="mt-0.5 block truncate text-sm text-silver/60">{detail}</span>}
-                    <span className="mt-1 block text-xs text-silver/40">{when(n.created_at)}</span>
+                    <span className={`block text-sm ${n.read_at ? 'text-soft/75' : 'font-semibold text-ink'}`}>{line}</span>
+                    {detail && <span className="mt-0.5 block truncate text-sm text-soft/60">{detail}</span>}
+                    <span className="mt-1 block text-xs text-soft/40">{when(n.created_at)}</span>
                   </span>
                 </button>
               </li>

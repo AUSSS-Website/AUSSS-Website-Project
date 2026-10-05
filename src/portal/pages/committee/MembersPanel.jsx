@@ -31,13 +31,13 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 // the positions and notes of both.
 
 const tagCls =
-  'inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-silver/60'
+  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
 
 function Fact({ label, children }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-silver/45">{label}</dt>
-      <dd className="mt-0.5 whitespace-pre-line text-sm text-silver/85">{children || '–'}</dd>
+      <dt className="text-[10px] font-semibold uppercase tracking-wider text-soft/45">{label}</dt>
+      <dd className="mt-0.5 whitespace-pre-line text-sm text-soft/85">{children || '–'}</dd>
     </div>
   )
 }
@@ -63,10 +63,10 @@ function Notes({ member, committee }) {
   }
 
   return (
-    <div className="mt-5 border-t border-white/10 pt-5">
-      <p className="text-sm font-semibold text-white">
+    <div className="mt-5 border-t border-line/10 pt-5">
+      <p className="text-sm font-semibold text-ink">
         Officer notes{' '}
-        <span className="font-normal text-silver/55">
+        <span className="font-normal text-soft/55">
           · only {committee.abbr}&rsquo;s officers and the Executive Board see these, never the member
         </span>
       </p>
@@ -75,16 +75,16 @@ function Notes({ member, committee }) {
       ) : (
         <ul className="mt-3 space-y-3">
           {(notes.data || []).map((n) => (
-            <li key={n.id} className="rounded-xl border border-white/10 bg-forest-900 px-4 py-3">
-              <p className="whitespace-pre-line text-sm text-silver/85">{n.body}</p>
-              <p className="mt-1 flex items-center gap-3 text-xs text-silver/45">
+            <li key={n.id} className="rounded-xl border border-line/10 bg-sunk px-4 py-3">
+              <p className="whitespace-pre-line text-sm text-soft/85">{n.body}</p>
+              <p className="mt-1 flex items-center gap-3 text-xs text-soft/45">
                 {when(n.created_at)}
                 {(n.author_id === user?.id || isEB) && (
                   <button
                     type="button"
                     disabled={remove.isPending}
                     onClick={() => remove.mutate(n.id)}
-                    className="font-semibold text-silver/60 hover:text-red-300"
+                    className="font-semibold text-soft/60 hover:text-danger"
                   >
                     Delete
                   </button>
@@ -146,10 +146,10 @@ function Assign({ member, committee, positions }) {
   }
 
   return (
-    <form onSubmit={onAssign} className="mt-5 border-t border-white/10 pt-5">
-      <p className="text-sm font-semibold text-white">Position in {committee.abbr}</p>
+    <form onSubmit={onAssign} className="mt-5 border-t border-line/10 pt-5">
+      <p className="text-sm font-semibold text-ink">Position in {committee.abbr}</p>
       {locked ? (
-        <p className="mt-2 text-sm text-silver/70">
+        <p className="mt-2 text-sm text-soft/70">
           {member.position.title}. Only the Executive Board changes an officer&rsquo;s position.
         </p>
       ) : (
@@ -178,7 +178,7 @@ function Assign({ member, committee, positions }) {
         </div>
       )}
       {note && (
-        <p className="mt-2 text-xs text-emerald-300" role="status">
+        <p className="mt-2 text-xs text-ok" role="status">
           {note}
         </p>
       )}
@@ -198,11 +198,11 @@ function ExtraPositions({ extras, committee }) {
   const [asking, setAsking] = useState('')
   if (extras.length === 0) return null
   return (
-    <div className="mt-5 border-t border-white/10 pt-5">
-      <p className="text-sm font-semibold text-white">Also holds in {committee.abbr}</p>
+    <div className="mt-5 border-t border-line/10 pt-5">
+      <p className="text-sm font-semibold text-ink">Also holds in {committee.abbr}</p>
       <ul className="mt-3 space-y-2">
         {extras.map((h) => (
-          <li key={h.assignment_id} className="flex flex-wrap items-center gap-3 text-sm text-silver/85">
+          <li key={h.assignment_id} className="flex flex-wrap items-center gap-3 text-sm text-soft/85">
             <span>{h.position.title}</span>
             {h.can_remove &&
               (asking === h.assignment_id ? (
@@ -211,11 +211,11 @@ function ExtraPositions({ extras, committee }) {
                     type="button"
                     disabled={remove.isPending}
                     onClick={() => remove.mutate(h.assignment_id)}
-                    className="text-red-300 hover:text-red-200 disabled:opacity-40"
+                    className="text-danger hover:text-danger disabled:opacity-40"
                   >
                     {remove.isPending ? 'Removing…' : 'Yes, remove'}
                   </button>
-                  <button type="button" onClick={() => setAsking('')} className="text-silver/60 hover:text-white">
+                  <button type="button" onClick={() => setAsking('')} className="text-soft/60 hover:text-ink">
                     Keep
                   </button>
                 </span>
@@ -223,7 +223,7 @@ function ExtraPositions({ extras, committee }) {
                 <button
                   type="button"
                   onClick={() => setAsking(h.assignment_id)}
-                  className="text-xs font-semibold text-silver/60 hover:text-white"
+                  className="text-xs font-semibold text-soft/60 hover:text-ink"
                 >
                   Remove
                 </button>
@@ -242,7 +242,7 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
   const { user } = useAuth()
   const isSelf = member.profile_id && member.profile_id === user?.id
   return (
-    <li className="rounded-2xl border border-white/10 bg-forest-800 p-5">
+    <li className="rounded-2xl border border-line/10 bg-card p-5">
       <button
         type="button"
         onClick={onToggle}
@@ -250,11 +250,11 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
         className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-left"
       >
         <span className="min-w-0">
-          <span className="block truncate text-base font-semibold text-white">{member.full_name}</span>
-          <span className="block truncate text-sm text-silver/60">{member.email || 'No email on file'}</span>
+          <span className="block truncate text-base font-semibold text-ink">{member.full_name}</span>
+          <span className="block truncate text-sm text-soft/60">{member.email || 'No email on file'}</span>
         </span>
-        <span className="flex flex-wrap items-center gap-2 text-xs text-silver/70">
-          <span className="font-semibold text-medical-light">{member.status || 'No status'}</span>
+        <span className="flex flex-wrap items-center gap-2 text-xs text-soft/70">
+          <span className="font-semibold text-accent">{member.status || 'No status'}</span>
           {member.position && <span className={tagCls}>{member.position.title}</span>}
           {member.is_contact_person && <span className={tagCls}>Contact person</span>}
           {member.notes > 0 && (
@@ -265,7 +265,7 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
         </span>
       </button>
       {open && (
-        <div className="mt-4 border-t border-white/10 pt-5">
+        <div className="mt-4 border-t border-line/10 pt-5">
           <dl className="grid grid-cols-2 gap-5 sm:grid-cols-4">
             <Fact label="Year joined">{member.joined_year}</Fact>
             <Fact label="Years spent">{member.years_spent}</Fact>
@@ -275,12 +275,12 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
               <Fact label="Other positions">{member.current_position}</Fact>
             </div>
           </dl>
-          <p className="mt-4 text-xs text-silver/50">
+          <p className="mt-4 text-xs text-soft/50">
             {member.profile_id ? 'Has signed in to the portal.' : 'Has not signed in to the portal yet.'}{' '}
             {member.positions.length > 0 && (
               <>
                 Holds a position here, so they can be given{' '}
-                <Link to="/portal/tasks" className="font-semibold text-medical-light hover:text-white">
+                <Link to="/portal/tasks" className="font-semibold text-accent hover:text-ink">
                   tasks
                 </Link>
                 .
@@ -354,7 +354,7 @@ export default function MembersPanel({ committee: opened }) {
   if (roster.data.length === 0) {
     return (
       <Panel>
-        <p className="text-sm text-silver/70">
+        <p className="text-sm text-soft/70">
           Nobody on the membership roster is linked to {committee.abbr} yet. The Executive Board
           sets each member&rsquo;s committee on the Roster page; send the Secretary General your
           members list and they can place everyone at once.
@@ -365,7 +365,7 @@ export default function MembersPanel({ committee: opened }) {
 
   return (
     <>
-      <p className="max-w-2xl pb-5 text-sm text-silver/65">
+      <p className="max-w-2xl pb-5 text-sm text-soft/65">
         Everyone the membership roster places in {committee.abbr}. You can set each member&rsquo;s
         position and keep notes on them; someone who is not on this list yet is invited from the
         Invites tab. Their membership record (status, year joined, GA counts) is
@@ -380,7 +380,7 @@ export default function MembersPanel({ committee: opened }) {
           aria-label={`Search ${committee.abbr}'s members`}
           className={`${inputCls} max-w-sm`}
         />
-        <span className="text-xs text-silver/50" aria-live="polite">
+        <span className="text-xs text-soft/50" aria-live="polite">
           {members.length} {members.length === 1 ? 'member' : 'members'}
         </span>
         {roster.isFetching && <Spinner className="h-4 w-4" />}
@@ -397,7 +397,7 @@ export default function MembersPanel({ committee: opened }) {
       </div>
       {members.length === 0 ? (
         <Panel>
-          <p className="text-sm text-silver/70">Nobody matches that.</p>
+          <p className="text-sm text-soft/70">Nobody matches that.</p>
         </Panel>
       ) : (
         <ul className="space-y-3">
