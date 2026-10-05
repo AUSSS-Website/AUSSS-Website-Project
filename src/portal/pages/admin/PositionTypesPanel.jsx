@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAddPosition, useDeletePosition, usePositions, useUpdatePosition } from '../../rosterQueries.js'
 import { ErrorText, Field, Panel, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
@@ -46,15 +46,26 @@ export function PositionOptions({ positions, committeeId, committeeIds, current,
 export const localMemberOf = (positions, committeeId) =>
   positions.find((p) => p.committee_id === committeeId && p.key.endsWith('.member'))?.id || ''
 
-// The plus beside a heading and the minus beside a position.
-const roundBtnCls =
-  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/20 text-sm font-semibold leading-none text-white transition-colors hover:bg-white/10 disabled:opacity-40'
+// The plus beside a heading and the minus beside a position: one round shape,
+// quiet by default, red once the minus is armed.
+const roundShape =
+  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm font-semibold leading-none text-white transition-colors disabled:opacity-40'
+const roundBtnCls = `${roundShape} border-white/20 hover:bg-white/10`
+const roundArmedCls = `${roundShape} border-red-500 bg-red-500 hover:bg-red-400`
 
 function TypeRow({ position }) {
   const update = useUpdatePosition()
   const remove = useDeletePosition()
   const [title, setTitle] = useState(position.title)
-  const [asking, setAsking] = useState(false)
+  // The minus takes two clicks: the first arms it (it turns red), the second
+  // removes. Moving away from it disarms it, and so does leaving it alone for a
+  // few seconds, so a red button is never left waiting for a stray click.
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return undefined
+    const timer = setTimeout(() => setArmed(false), 4000)
+    return () => clearTimeout(timer)
+  }, [armed])
   const [error, setError] = useState('')
   const isDefault = position.key.endsWith('.member')
   const busy = update.isPending || remove.isPending
@@ -102,35 +113,22 @@ function TypeRow({ position }) {
               Bring back
             </button>
           )}
-          {asking ? (
-            <>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => run(() => remove.mutateAsync(position.id))}
-                className={`${outlineBtnCls} border-red-400/50 text-red-300`}
-              >
-                {remove.isPending ? 'Removing…' : 'Yes, remove'}
-              </button>
-              <button type="button" disabled={busy} onClick={() => setAsking(false)} className={outlineBtnCls}>
-                Keep
-              </button>
-              <span className="w-full text-xs text-silver/55">
-                Anyone who holds it becomes a Local Member of the committee.
-              </span>
-            </>
-          ) : (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setAsking(true)}
-              aria-label={`Remove ${position.title}`}
-              title="Remove this position"
-              className={roundBtnCls}
-            >
-              &minus;
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => (armed ? run(() => remove.mutateAsync(position.id)) : setArmed(true))}
+            onBlur={() => setArmed(false)}
+            onKeyDown={(e) => e.key === 'Escape' && setArmed(false)}
+            aria-label={armed ? `Click again to remove ${position.title}` : `Remove ${position.title}`}
+            title={
+              armed
+                ? 'Click again to remove it. Anyone who holds it becomes a Local Member.'
+                : 'Remove this position'
+            }
+            className={armed ? roundArmedCls : roundBtnCls}
+          >
+            &minus;
+          </button>
         </>
       )}
       <ErrorText>{error}</ErrorText>
@@ -227,8 +225,9 @@ export default function PositionTypesPanel({ committees, onClose }) {
         <p className="max-w-2xl text-sm text-silver/65">
           The positions each committee can give its members. Assistants and coordinators receive
           tasks like any member; only the committee&rsquo;s officer and the Executive Board assign
-          them. Use the plus beside a heading to add one there, and the minus beside a position to
-          remove it.
+          them. Use the plus beside a heading to add one there. The minus beside a position removes
+          it: the first click turns it red, the second removes it, and anyone who held it becomes
+          a Local Member.
         </p>
         <button type="button" onClick={onClose} className={outlineBtnCls}>
           Close

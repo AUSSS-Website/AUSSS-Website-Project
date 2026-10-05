@@ -680,8 +680,9 @@ assignment. No email on the roster: the title shows, nothing reaches an account.
 
 The list of positions is data, not code: **Position types** on the Roster page lets the
 EB add, rename or remove them per committee (the database makes the `key`). The plus beside
-a heading adds a position at that level; the minus beside a position removes it, after a
-second click. Removing deletes the position: its invites and assignments go with it, and
+a heading adds a position at that level; the minus beside a position removes it in two
+clicks (the first turns it red, the second removes; it goes back to normal after a few
+seconds or when you move away). Removing deletes the position: its invites and assignments go with it, and
 every member who held it becomes a Local Member of the committee, on the roster and on
 their account (the roster's own trigger does that; test `240-position-types.sql`). Local
 Member cannot be removed. Before 2026-10-05 a position was "retired" instead (kept on its
