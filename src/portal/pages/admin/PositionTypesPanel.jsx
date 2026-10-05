@@ -16,9 +16,12 @@ const POSITION_GROUPS = [
 
 // <optgroup>s for one committee's positions. Officers are offered only when
 // `withOfficers` (the Executive Board); retired ones only if currently held.
-export function PositionOptions({ positions, committeeId, current, withOfficers = false }) {
+// `committeeIds` widens it to a roster unit of several committees (SCOPE/SCORE,
+// see rosterUnits.js); the caller then passes that unit's positions.
+export function PositionOptions({ positions, committeeId, committeeIds, current, withOfficers = false }) {
+  const ids = committeeIds || [committeeId]
   const mine = positions.filter(
-    (p) => p.committee_id === committeeId && (p.active || p.id === current),
+    (p) => ids.includes(p.committee_id) && (p.active || p.id === current),
   )
   return POSITION_GROUPS.filter(([level]) => withOfficers || level !== 'officer').map(([level, label]) => {
     const group = mine.filter((p) => p.level === level)
@@ -28,7 +31,7 @@ export function PositionOptions({ positions, committeeId, current, withOfficers 
         {group.map((p) => (
           <option key={p.id} value={p.id}>
             {p.title}
-            {p.short_title && p.short_title !== p.title ? ` (${p.short_title})` : ''}
+            {p.short_title && !p.title.includes(p.short_title) ? ` (${p.short_title})` : ''}
             {p.active ? '' : ' · retired'}
           </option>
         ))}
