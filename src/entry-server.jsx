@@ -10,15 +10,18 @@ import App from './App.jsx'
 import { setBakedGallery } from './lib/gallery.js'
 import { setBakedMagazine } from './lib/magazine.js'
 import { setBakedStories } from './lib/exchangeStories.js'
+import { setBakedPeople } from './lib/people.js'
 
-// `albums`, `issues` and `stories` are the live gallery, magazine shelf and
-// published exchange stories the prerender fetched once (src/lib/gallery.js,
-// magazine.js, exchangeStories.js), so /gallery, every album page, /magazine
-// and the exchange pages render with the real content.
-export function render(url, albums, issues, stories = []) {
+// `albums`, `issues`, `stories` and `people` are the live gallery, magazine
+// shelf, published exchange stories and position holders the prerender fetched
+// once (src/lib/gallery.js, magazine.js, exchangeStories.js, people.js), so
+// /gallery, every album page, /magazine, the exchange pages and every page
+// that names an officer render with the real content.
+export function render(url, albums, issues, stories = [], people = []) {
   setBakedGallery(albums)
   setBakedMagazine(issues)
   setBakedStories(stories)
+  setBakedPeople(people)
   return new Promise((resolve, reject) => {
     const chunks = []
     const sink = new Writable({

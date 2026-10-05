@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(74);
+select plan(86);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -49,9 +49,24 @@ select ok(not has_table_privilege('anon', 'public.posts', 'select'), 'anon canno
 select ok(not has_table_privilege('anon', 'public.notifications', 'select'), 'anon cannot read notifications');
 select ok(not has_table_privilege('authenticated', 'public.notifications', 'insert'), 'authenticated cannot insert notifications');
 select ok(not has_column_privilege('authenticated', 'public.notifications', 'payload', 'update'), 'authenticated cannot rewrite a notification');
+select ok(has_table_privilege('authenticated', 'public.notifications', 'delete'), 'authenticated may clear notifications (their own, by policy)');
 select ok(not has_column_privilege('authenticated', 'public.task_updates', 'kind', 'insert'), 'authenticated cannot choose a task update kind');
 select ok(not has_table_privilege('authenticated', 'public.task_updates', 'update'), 'the task timeline is append-only');
 select ok(not has_function_privilege('anon', 'public.profile_names(uuid[])', 'execute'), 'anon cannot resolve names');
+select ok(not has_table_privilege('anon', 'public.task_files', 'select'), 'anon cannot read task files');
+select ok(not has_table_privilege('authenticated', 'public.task_files', 'insert'), 'task files are linked by the function only');
+select ok(not has_function_privilege('anon', 'public.attach_task_files(uuid, jsonb, text)', 'execute'), 'anon cannot attach task files');
+
+-- phase 5b: invites and positions are for signed-in officers; the public reads who holds the
+-- public-facing positions and nothing else; the rebuild machinery is closed to every API role
+select ok(not has_function_privilege('anon', 'public.committee_positions(uuid)', 'execute'), 'anon cannot list positions and invites');
+select ok(not has_function_privilege('anon', 'public.invite_to_position(text, uuid)', 'execute'), 'anon cannot invite');
+select ok(not has_function_privilege('anon', 'public.remove_position(uuid)', 'execute'), 'anon cannot remove a position');
+select ok(has_function_privilege('anon', 'public.people_public()', 'execute'), 'anon reads who holds the public-facing positions');
+select ok(not has_function_privilege('anon', 'public.directory()', 'execute'), 'anon cannot read the directory');
+select ok(not has_table_privilege('authenticated', 'app.site_rebuild', 'select'), 'no API role reads the rebuild state');
+select ok(not has_function_privilege('authenticated', 'app.fire_site_rebuild(boolean)', 'execute'), 'no API role fires a rebuild');
+select ok(not has_function_privilege('authenticated', 'app.request_site_rebuild(text)', 'execute'), 'no API role requests a rebuild directly');
 
 -- email digest: the queue and the run marker are for the secret key only
 select ok(not has_function_privilege('authenticated', 'public.admin_digest_batch(int)', 'execute'), 'authenticated cannot read the digest queue');

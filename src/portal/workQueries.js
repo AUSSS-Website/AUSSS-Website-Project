@@ -82,6 +82,47 @@ export function useNames(ids) {
 
 // ---- tasks -----------------------------------------------------------------
 
+// Attachments: what the `task-files` bucket accepts (migration
+// 20261005100001), checked here first so the message is a friendly one.
+const TASK_FILES_BUCKET = 'task-files'
+export const TASK_FILE_MAX_BYTES = 10 * 1024 * 1024
+export const TASK_FILES_PER_BATCH = 5
+const TASK_FILE_TYPES = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  zip: 'application/zip',
+}
+export const TASK_FILE_ACCEPT = Object.keys(TASK_FILE_TYPES)
+  .map((ext) => `.${ext}`)
+  .join(',')
+
+// The type is decided by the extension: browsers disagree about the MIME type
+// of the same file (a .csv is "application/vnd.ms-excel" on Windows).
+function fileType(file) {
+  const ext = (file.name.match(/\.([a-z0-9]{1,8})$/i)?.[1] || '').toLowerCase()
+  return TASK_FILE_TYPES[ext] ? { ext, mime: TASK_FILE_TYPES[ext] } : null
+}
+
+// '' when the file can be attached, otherwise why not.
+export function taskFileProblem(file) {
+  if (!fileType(file)) return `${file.name}: this kind of file can’t be attached.`
+  if (file.size > TASK_FILE_MAX_BYTES) return `${file.name}: larger than 10 MB.`
+  if (file.size === 0) return `${file.name}: the file is empty.`
+  return ''
+}
+
 const TASK_SELECT =
   'id, title, body, status, priority, due_on, completed_at, committee_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color), assignees:task_assignees(profile_id)'
 
@@ -98,7 +139,7 @@ async function fetchTasks() {
 }
 
 async function fetchTask(id) {
-  const [task, updates] = await Promise.all([
+  const [task, updates, files] = await Promise.all([
     supabase.from('tasks').select(TASK_SELECT).eq('id', id).maybeSingle(),
     supabase
       .from('task_updates')
@@ -106,10 +147,42 @@ async function fetchTask(id) {
       .eq('task_id', id)
       .order('created_at', { ascending: true })
       .order('id', { ascending: true }),
+    supabase
+      .from('task_files')
+      .select('id, task_id, update_id, path, name, size_bytes, mime, uploaded_by, created_at')
+      .eq('task_id', id)
+      .order('created_at', { ascending: true })
+      .order('name', { ascending: true }),
   ])
   const row = unwrap(task)
   if (!row) return null
-  return { ...row, updates: unwrap(updates) || [] }
+  return { ...row, updates: unwrap(updates) || [], files: unwrap(files) || [] }
+}
+
+// Open tasks in the same committee with the same title and the same people:
+// what the editor warns about before creating a repeat. Compared here, not in
+// SQL, so the title match can ignore case and spacing.
+const sameTitle = (t) => t.trim().replace(/\s+/g, ' ').toLowerCase()
+
+export async function findDuplicateTasks({ committee_id, title, assignees = [] }) {
+  let q = supabase
+    .from('tasks')
+    .select('id, title, due_on, status, assignees:task_assignees(profile_id)')
+    .neq('status', 'done')
+    .order('created_at', { ascending: false })
+    .limit(300)
+  q = committee_id ? q.eq('committee_id', committee_id) : q.is('committee_id', null)
+  const rows = unwrap(await q) || []
+  const wanted = sameTitle(title)
+  const people = [...assignees].sort().join(',')
+  return rows.filter(
+    (t) =>
+      sameTitle(t.title) === wanted &&
+      t.assignees
+        .map((a) => a.profile_id)
+        .sort()
+        .join(',') === people,
+  )
 }
 
 async function fetchAssignable(committeeId) {
@@ -129,10 +202,19 @@ async function addAssignees(taskId, ids) {
 }
 
 // fields: { committee_id, title, body, priority, due_on, status }
-async function createTask({ assignees = [], ...fields }) {
+// The task is saved before its files go up. If the files then fail the task
+// still stands, and the caller is told through `fileError` instead of an
+// exception, so nobody retries and creates the task twice.
+async function createTask({ assignees = [], files = [], ...fields }) {
   const row = unwrap(await supabase.from('tasks').insert(fields).select('id').single())
   await addAssignees(row.id, assignees)
-  return row
+  if (!files.length) return row
+  try {
+    await addTaskComment({ task_id: row.id, files })
+    return row
+  } catch (err) {
+    return { ...row, fileError: err?.message || 'The files could not be attached.' }
+  }
 }
 
 // `assignees` (when given) is the wanted set; only the difference is written,
@@ -153,12 +235,57 @@ async function updateTask({ id, assignees, previousAssignees = [], ...patch }) {
   }
 }
 
+// The task's files go first: once the task is gone the storage policy can no
+// longer tell who managed it, and the objects would be left behind.
 async function deleteTask(id) {
+  const files = unwrap(await supabase.from('task_files').select('path').eq('task_id', id)) || []
+  if (files.length) {
+    unwrap(await supabase.storage.from(TASK_FILES_BUCKET).remove(files.map((f) => f.path)))
+  }
   unwrap(await supabase.from('tasks').delete().eq('id', id))
 }
 
-async function addTaskComment({ task_id, body }) {
-  unwrap(await supabase.from('task_updates').insert({ task_id, body }))
+// A comment, files, or both. Files are uploaded first and then linked to the
+// task as one timeline row by rpc/attach_task_files; if the link fails the
+// uploads are taken back so nothing is stored that no task points to.
+async function addTaskComment({ task_id, body = '', files = [] }) {
+  if (!files.length) {
+    unwrap(await supabase.from('task_updates').insert({ task_id, body }))
+    return
+  }
+  const bucket = supabase.storage.from(TASK_FILES_BUCKET)
+  const uploaded = []
+  try {
+    for (const file of files) {
+      const type = fileType(file)
+      const path = `${task_id}/${crypto.randomUUID()}.${type.ext}`
+      const { error } = await bucket.upload(path, file, { contentType: type.mime, upsert: false })
+      if (error) throw new Error(`${file.name}: ${error.message}`)
+      uploaded.push({ path, name: file.name })
+    }
+    unwrap(
+      await supabase.rpc('attach_task_files', { p_task: task_id, p_files: uploaded, p_body: body }),
+    )
+  } catch (err) {
+    if (uploaded.length) await bucket.remove(uploaded.map((u) => u.path)).catch(() => {})
+    throw err
+  }
+}
+
+async function deleteTaskFile(file) {
+  unwrap(await supabase.storage.from(TASK_FILES_BUCKET).remove([file.path]))
+  unwrap(await supabase.from('task_files').delete().eq('id', file.id))
+}
+
+// A link that downloads the file under the name it was attached with. Short
+// lived: it is made when the person clicks.
+export async function taskFileUrl(file) {
+  const data = unwrap(
+    await supabase.storage
+      .from(TASK_FILES_BUCKET)
+      .createSignedUrl(file.path, 120, { download: file.name }),
+  )
+  return data.signedUrl
 }
 
 export function useTasks() {
@@ -195,6 +322,10 @@ export function useTaskMutations() {
     update: useMutation({ mutationFn: updateTask, onSettled }),
     remove: useMutation({ mutationFn: deleteTask, onSettled }),
     comment: useMutation({ mutationFn: addTaskComment, onSettled }),
+    removeFile: useMutation({
+      mutationFn: deleteTaskFile,
+      onSettled: (_d, _e, file) => qc.invalidateQueries({ queryKey: workKeys.task(file.task_id) }),
+    }),
   }
 }
 
@@ -313,9 +444,13 @@ async function markNotificationsRead(ids) {
   unwrap(await q)
 }
 
-export function useNotifications() {
+export function useNotifications(enabled = true) {
   const { user } = useAuth()
-  return useQuery({ queryKey: workKeys.notifications(user.id), queryFn: fetchNotifications })
+  return useQuery({
+    queryKey: workKeys.notifications(user.id),
+    queryFn: fetchNotifications,
+    enabled,
+  })
 }
 
 // Polled once a minute while the portal is open; cheap (a head count on a
@@ -329,10 +464,24 @@ export function useUnreadCount() {
   })
 }
 
+// Clearing deletes the person's own rows (the policy allows nothing else).
+async function clearNotifications(uid) {
+  unwrap(await supabase.from('notifications').delete().eq('profile_id', uid))
+}
+
 export function useMarkNotificationsRead() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: markNotificationsRead,
+    onSettled: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
+
+export function useClearNotifications() {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => clearNotifications(user.id),
     onSettled: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   })
 }

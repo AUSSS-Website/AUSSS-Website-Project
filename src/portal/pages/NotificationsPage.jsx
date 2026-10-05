@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
-import { useMarkNotificationsRead, useNames, useNotifications } from '../workQueries.js'
+import { useClearNotifications, useMarkNotificationsRead, useNames, useNotifications } from '../workQueries.js'
 import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../portalUi.jsx'
-import { STATUS_LABEL, UnreadDot, personName, when } from '../workUi.jsx'
+import { UnreadDot, describeNotification, notificationTarget, when } from '../workUi.jsx'
 
 // /portal/notifications. What happened on tasks this person is part of. Rows
 // are written by database triggers (never for your own actions); opening one
@@ -11,45 +11,21 @@ import { STATUS_LABEL, UnreadDot, personName, when } from '../workUi.jsx'
 
 const EMPTY = []
 
-function describe(n, names) {
-  const p = n.payload || {}
-  const who = personName(names, p.actor_id, 'Someone')
-  switch (n.kind) {
-    case 'task_assigned':
-      return { line: `${who} assigned you a task`, detail: p.title }
-    case 'task_status':
-      return { line: `${who} moved a task to ${STATUS_LABEL[p.to] || p.to}`, detail: p.title }
-    case 'task_comment':
-      return { line: `${who} commented on “${p.title}”`, detail: p.excerpt }
-    case 'order_new':
-      return {
-        line: `New merch pre-order${p.flagged ? ' (check the amount)' : ''}`,
-        detail: `${p.name || 'Someone'} · ${p.ref || ''}${p.subtotal != null ? ` · ${p.subtotal} EGP` : ''}`,
-      }
-    case 'story_new':
-      return {
-        line: 'New exchange story',
-        detail: `${p.name || 'Someone'}${p.destination ? ` · ${p.destination}` : ''} · ${p.ref || ''}`,
-      }
-    default:
-      return { line: 'Something changed', detail: p.title }
-  }
-}
-
 export default function NotificationsPage() {
   usePageTitle('Notifications')
   const navigate = useNavigate()
   const feed = useNotifications()
   const markRead = useMarkNotificationsRead()
+  const clear = useClearNotifications()
+  const [confirming, setConfirming] = useState(false)
   const rows = feed.data || EMPTY
   const names = useNames(useMemo(() => rows.map((n) => n.payload?.actor_id), [rows]))
   const unread = rows.filter((n) => !n.read_at).length
 
   const open = (n) => {
     if (!n.read_at) markRead.mutate([n.id])
-    if (n.payload?.task_id) navigate(`/portal/tasks/${n.payload.task_id}`)
-    else if (n.kind === 'order_new') navigate('/portal/submissions?tab=orders')
-    else if (n.kind === 'story_new') navigate('/portal/submissions?tab=stories')
+    const to = notificationTarget(n)
+    if (to) navigate(to)
   }
 
   return (
@@ -59,10 +35,33 @@ export default function NotificationsPage() {
         title="Notifications"
         subtitle="Activity on your tasks, and what came in through the website forms."
         action={
-          unread > 0 && (
-            <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate(undefined)} className={outlineBtnCls}>
-              Mark all as read
-            </button>
+          rows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {unread > 0 && (
+                <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate(undefined)} className={outlineBtnCls}>
+                  Mark all as read
+                </button>
+              )}
+              {confirming ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={clear.isPending}
+                    onClick={() => clear.mutate(undefined, { onSettled: () => setConfirming(false) })}
+                    className={`${outlineBtnCls} border-red-400/50 text-red-300`}
+                  >
+                    {clear.isPending ? 'Clearing…' : 'Yes, clear all'}
+                  </button>
+                  <button type="button" onClick={() => setConfirming(false)} className={outlineBtnCls}>
+                    Keep
+                  </button>
+                </>
+              ) : (
+                <button type="button" onClick={() => setConfirming(true)} className={outlineBtnCls}>
+                  Clear all
+                </button>
+              )}
+            </div>
           )
         }
       />
@@ -82,7 +81,7 @@ export default function NotificationsPage() {
       ) : (
         <ul className="max-w-3xl space-y-3">
           {rows.map((n) => {
-            const { line, detail } = describe(n, names)
+            const { line, detail } = describeNotification(n, names)
             return (
               <li key={n.id}>
                 <button

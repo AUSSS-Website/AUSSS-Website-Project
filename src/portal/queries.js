@@ -74,6 +74,49 @@ async function updateProfile(uid, patch) {
   )
 }
 
+// ---- the photo a person chooses ---------------------------------------------
+
+// Stored in the public `avatars` bucket under the person's own folder. The
+// profile keeps the object (photo_path) and the address every byline shows
+// (avatar_url). The previous photo is removed once the profile points at the
+// new one, so a failed save never leaves the profile without a picture.
+const AVATARS = 'avatars'
+
+async function setProfilePhoto({ uid, blob, previousPath }) {
+  const path = `${uid}/${crypto.randomUUID()}.jpg`
+  const bucket = supabase.storage.from(AVATARS)
+  const { error } = await bucket.upload(path, blob, {
+    contentType: 'image/jpeg',
+    upsert: false,
+    cacheControl: '31536000',
+  })
+  if (error) throw error
+  let row
+  try {
+    row = await updateProfile(uid, {
+      photo_path: path,
+      avatar_url: bucket.getPublicUrl(path).data.publicUrl,
+    })
+  } catch (err) {
+    await bucket.remove([path]).catch(() => {})
+    throw err
+  }
+  if (previousPath) await bucket.remove([previousPath]).catch(() => {})
+  return row
+}
+
+// Back to the picture of the account they sign in with, when it has one.
+async function clearProfilePhoto({ uid, previousPath, fallbackUrl }) {
+  const row = await updateProfile(uid, { photo_path: null, avatar_url: fallbackUrl || null })
+  if (previousPath) await supabase.storage.from(AVATARS).remove([previousPath]).catch(() => {})
+  return row
+}
+
+// The members who opted in to the directory, with this term's positions.
+async function fetchDirectory() {
+  return unwrap(await supabase.rpc('directory')) || []
+}
+
 async function requestVerification(uid, message) {
   return unwrap(
     await supabase
@@ -134,8 +177,29 @@ export function useUpdateProfile(uid) {
     mutationFn: (patch) => updateProfile(uid, patch),
     onSuccess: (row) => {
       qc.setQueryData(keys.profile(uid), row)
+      // the name and the directory switch show elsewhere in the portal
+      qc.invalidateQueries({ queryKey: ['names'] })
+      qc.invalidateQueries({ queryKey: ['directory'] })
     },
   })
+}
+
+// Photo changes show in every byline, so the cached names go too.
+export function useProfilePhoto(uid) {
+  const qc = useQueryClient()
+  const onSuccess = (row) => {
+    qc.setQueryData(keys.profile(uid), row)
+    qc.invalidateQueries({ queryKey: ['names'] })
+    qc.invalidateQueries({ queryKey: ['directory'] })
+  }
+  return {
+    set: useMutation({ mutationFn: (args) => setProfilePhoto({ uid, ...args }), onSuccess }),
+    clear: useMutation({ mutationFn: (args) => clearProfilePhoto({ uid, ...args }), onSuccess }),
+  }
+}
+
+export function useDirectory() {
+  return useQuery({ queryKey: ['directory'], queryFn: fetchDirectory })
 }
 
 export function useRequestVerification(uid) {

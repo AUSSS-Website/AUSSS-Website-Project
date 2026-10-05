@@ -3,7 +3,7 @@
 -- triggers. Posts reach their audience once published, and readers leave receipts that only the
 -- post's managers can see.
 begin;
-select plan(37);
+select plan(39);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -173,6 +173,21 @@ select is((select count(*)::int from public.notifications where read_at is not n
 select throws_ok(
   $$ update public.notifications set payload = '{}'::jsonb $$,
   '42501', null, 'the payload is not theirs to rewrite'
+);
+select tests.clear_auth();
+select tests.authenticate_as('leo@pgtap.test');
+delete from public.notifications;
+select tests.clear_auth();
+select is(
+  (select count(*)::int from public.notifications where profile_id = tests.user_id('sara@pgtap.test')),
+  1, 'clearing your notifications leaves everyone else''s alone'
+);
+select tests.authenticate_as('sara@pgtap.test');
+delete from public.notifications;
+select tests.clear_auth();
+select is(
+  (select count(*)::int from public.notifications where profile_id = tests.user_id('sara@pgtap.test')),
+  0, '...and removes your own'
 );
 select tests.clear_auth();
 select tests.authenticate_as('stranger@pgtap.test');

@@ -25,6 +25,7 @@ import { when } from '../../workUi.jsx'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
 import RosterUpgradesPanel from './RosterUpgradesPanel.jsx'
 import PositionTypesPanel, { PositionOptions, localMemberOf } from './PositionTypesPanel.jsx'
+import PositionsPanel from '../committee/PositionsPanel.jsx'
 import {
   ErrorText,
   Field,
@@ -521,6 +522,7 @@ export default function RosterPage() {
   const committees = useCommittees().data || []
   const positions = usePositions().data || []
   const [showTypes, setShowTypes] = useState(false)
+  const [showBoard, setShowBoard] = useState(false)
   const matches = useMemo(() => {
     const found = searchRoster(prepared, term, status)
     if (!committee) return found
@@ -587,6 +589,14 @@ export default function RosterPage() {
             </button>
             <button
               type="button"
+              aria-expanded={showBoard}
+              onClick={() => setShowBoard((v) => !v)}
+              className={`${outlineBtnCls} px-5 py-2`}
+            >
+              Executive Board
+            </button>
+            <button
+              type="button"
               aria-expanded={showTypes}
               onClick={() => setShowTypes((v) => !v)}
               className={`${outlineBtnCls} px-5 py-2`}
@@ -610,6 +620,17 @@ export default function RosterPage() {
       {bulk && <RosterBulkPanel key={bulk} initialAction={bulk} committees={committees} onClose={() => setBulk('')} />}
 
       {showTypes && <PositionTypesPanel committees={committees} onClose={() => setShowTypes(false)} />}
+
+      {/* The board is not on anybody's committee roster: its positions are
+          handed out here, by address, the same way a committee invites. */}
+      {showBoard && (
+        <div className="mb-8">
+          <p className="pb-4 text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">
+            Executive Board and webmaster
+          </p>
+          <PositionsPanel />
+        </div>
+      )}
 
       {openId === 'new' && (
         <Panel title="New member" className="mb-6">

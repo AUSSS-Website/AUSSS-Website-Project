@@ -1,13 +1,8 @@
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { Link } from 'react-router-dom'
-import {
-  executiveBoard,
-  committees,
-  society,
-  socials,
-  slugFor,
-} from '../data/society.js'
+import { committees, society, socials, slugFor } from '../data/society.js'
+import { committeeOfficers, resolveBoard, usePeople } from '../lib/people.js'
 import { publicEmail } from '../data/emailConfig.js'
 import SocialIcon from '../components/SocialIcon.jsx'
 
@@ -62,16 +57,18 @@ export default function ContactPage() {
   const standing = committees.filter((c) => !isSupport(c.group))
   const support = committees.filter((c) => isSupport(c.group))
 
+  // Names follow whoever holds each position this term (src/lib/people.js);
+  // the inboxes are the roles' own and stay as society.js lists them.
+  const holders = usePeople()
+  const executiveBoard = resolveBoard(holders)
+
   const unitRows = (c) => {
-    const people =
-      Array.isArray(c.officers) && c.officers.length > 0
-        ? c.officers
-        : [{ name: c.holder, role: c.officer }]
+    const people = committeeOfficers(c, holders)
     return people.map((p, i) => (
       <Row
         key={(p.abbr || p.name || i) + '-' + i}
         name={p.name}
-        role={`${c.abbr} · ${p.abbr || p.role || c.officer || ''}`.replace(
+        role={`${c.abbr} · ${p.role || p.abbr || c.officer || ''}`.replace(
           /·\s*$/,
           '',
         )}

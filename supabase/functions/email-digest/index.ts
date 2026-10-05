@@ -75,6 +75,8 @@ function describe(n: Notification) {
       return `“${title}” moved to ${STATUS[n.payload.to ?? ''] || n.payload.to}`
     case 'task_comment':
       return `New comment on “${title}”`
+    case 'task_files':
+      return `${Number(n.payload.count) > 1 ? 'New files' : 'A new file'} on “${title}”`
     case 'order_new':
       return `New merch pre-order ${n.payload.ref || ''}${n.payload.subtotal ? ` (${n.payload.subtotal} EGP)` : ''}`
     case 'story_new':

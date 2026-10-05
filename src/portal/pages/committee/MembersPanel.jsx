@@ -4,10 +4,12 @@ import { useAuth } from '../../../auth/AuthProvider.jsx'
 import {
   useAddMemberNote,
   useAssignRosterMember,
+  useCommitteePositions,
   useCommitteeRoster,
   useDeleteMemberNote,
   useMemberNotes,
   usePositions,
+  useRemovePosition,
 } from '../../rosterQueries.js'
 import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
 import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
@@ -174,7 +176,56 @@ function Assign({ member, committee, positions }) {
   )
 }
 
-function Member({ member, committee, positions, open, onToggle }) {
+// Positions the member holds here beyond the one the roster gives them: an
+// invite accepted from the Invites tab, or one left from before the roster kept
+// positions. These are the ones that can be taken away; the roster's own is
+// changed with the picker above.
+function ExtraPositions({ extras, committee }) {
+  const remove = useRemovePosition()
+  const [asking, setAsking] = useState('')
+  if (extras.length === 0) return null
+  return (
+    <div className="mt-5 border-t border-white/10 pt-5">
+      <p className="text-sm font-semibold text-white">Also holds in {committee.abbr}</p>
+      <ul className="mt-3 space-y-2">
+        {extras.map((h) => (
+          <li key={h.assignment_id} className="flex flex-wrap items-center gap-3 text-sm text-silver/85">
+            <span>{h.position.title}</span>
+            {h.can_remove &&
+              (asking === h.assignment_id ? (
+                <span className="flex items-center gap-3 text-xs font-semibold">
+                  <button
+                    type="button"
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(h.assignment_id)}
+                    className="text-red-300 hover:text-red-200 disabled:opacity-40"
+                  >
+                    {remove.isPending ? 'Removing…' : 'Yes, remove'}
+                  </button>
+                  <button type="button" onClick={() => setAsking('')} className="text-silver/60 hover:text-white">
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAsking(h.assignment_id)}
+                  className="text-xs font-semibold text-silver/60 hover:text-white"
+                >
+                  Remove
+                </button>
+              ))}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2">
+        <ErrorText>{remove.error?.message}</ErrorText>
+      </div>
+    </div>
+  )
+}
+
+function Member({ member, committee, positions, extras, open, onToggle }) {
   const { user } = useAuth()
   const isSelf = member.profile_id && member.profile_id === user?.id
   return (
@@ -224,12 +275,15 @@ function Member({ member, committee, positions, open, onToggle }) {
             )}
           </p>
           <Assign member={member} committee={committee} positions={positions} />
+          <ExtraPositions extras={extras} committee={committee} />
           {!isSelf && <Notes member={member} committee={committee} />}
         </div>
       )}
     </li>
   )
 }
+
+const NO_EXTRAS = []
 
 const MEMBER_COLUMNS = [
   { label: 'Name', value: (m) => m.full_name },
@@ -246,6 +300,7 @@ const MEMBER_COLUMNS = [
 export default function MembersPanel({ committee }) {
   const roster = useCommitteeRoster(committee.id)
   const positions = usePositions().data || []
+  const held = useCommitteePositions(committee.id)
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState(null)
 
@@ -256,6 +311,17 @@ export default function MembersPanel({ committee }) {
       return words.every((w) => hay.includes(w))
     })
   }, [roster.data, q])
+
+  // profile id -> the positions that person holds here which the roster did not give
+  const extrasByProfile = useMemo(() => {
+    const map = new Map()
+    for (const h of held.data?.holders || []) {
+      if (h.from_roster) continue
+      if (!map.has(h.profile_id)) map.set(h.profile_id, [])
+      map.get(h.profile_id).push(h)
+    }
+    return map
+  }, [held.data])
 
   if (roster.isPending) {
     return (
@@ -287,7 +353,8 @@ export default function MembersPanel({ committee }) {
     <>
       <p className="max-w-2xl pb-5 text-sm text-silver/65">
         Everyone the membership roster places in {committee.abbr}. You can set each member&rsquo;s
-        position and keep notes on them. Their membership record (status, year joined, GA counts) is
+        position and keep notes on them; someone who is not on this list yet is invited from the
+        Invites tab. Their membership record (status, year joined, GA counts) is
         kept by the Executive Board and cannot be changed here.
       </p>
       <div className="flex flex-wrap items-center gap-3 pb-5">
@@ -326,6 +393,7 @@ export default function MembersPanel({ committee }) {
               member={m}
               committee={committee}
               positions={positions}
+              extras={(m.profile_id && extrasByProfile.get(m.profile_id)) || NO_EXTRAS}
               open={openId === m.id}
               onToggle={() => setOpenId(openId === m.id ? null : m.id)}
             />

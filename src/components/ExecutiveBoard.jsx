@@ -1,4 +1,4 @@
-import { executiveBoard } from '../data/society.js'
+import { useBoard } from '../lib/people.js'
 import { initials } from '../lib/text.js'
 
 function Member({ m, size = 'md' }) {
@@ -97,6 +97,8 @@ function Member({ m, size = 'md' }) {
 }
 
 export default function ExecutiveBoard() {
+  // society.js with this term's holders laid over it (src/lib/people.js)
+  const executiveBoard = useBoard()
   const patron = executiveBoard.find((m) => m.tier === 'patron')
   const lead = executiveBoard.find((m) => m.tier === 'lead')
   const vps = executiveBoard.filter((m) => m.tier === 'vp')

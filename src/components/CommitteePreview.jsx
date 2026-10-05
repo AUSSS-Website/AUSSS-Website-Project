@@ -1,6 +1,7 @@
 import { readableAccent, rgba } from '../lib/color.js'
 import { driveImg } from '../lib/img.js'
 import { PersonCard, SectionLabel } from './committeeUi.jsx'
+import { committeeOfficers, usePeople } from '../lib/people.js'
 
 // Live preview of the editable parts of a committee page, fed by the officer
 // editor's in-progress form state. It reuses the SAME PersonCard / SectionLabel
@@ -19,16 +20,9 @@ export default function CommitteePreview({
 }) {
   const accent = readableAccent(c.color)
 
-  const baseOfficers =
-    Array.isArray(c.officers) && c.officers.length > 0
-      ? c.officers
-      : [{ name: c.holder, abbr: c.officerAbbr, photo: c.photo }]
-  // The edited photo applies to the lead officer (same rule as the live page).
-  const officers = photo
-    ? baseOfficers.map((o, i) =>
-        i === 0 ? { ...o, photo: driveImg(photo) } : o,
-      )
-    : baseOfficers
+  // Same rule as the live page: this term's holders over society.js, the
+  // edited photo on the lead officer unless they chose one on their profile.
+  const officers = committeeOfficers(c, usePeople(), photo)
 
   const memberCards = membersEnabled
     ? members

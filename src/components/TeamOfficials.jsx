@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { committees, slugFor } from '../data/society.js'
 import { readableAccent, rgba } from '../lib/color.js'
-import { driveImg } from '../lib/img.js'
 import { initials } from '../lib/text.js'
 import { useOfficerOverrides } from '../hooks/useOfficerOverrides.js'
+import { committeeOfficers, usePeople } from '../lib/people.js'
 
 const isSupport = (g) => /support|division|psd|pnsd|cbsd/i.test(g || '')
 
@@ -57,23 +57,12 @@ function Avatar({ person, color }) {
   )
 }
 
-function CommitteeCard({ c, i, ov }) {
+function CommitteeCard({ c, i, ov, holders }) {
   // The full title is shown once as a header. Each person below it shows
-  // just name + abbreviation. Multi-officer committees use `officers`;
-  // single ones derive a one-entry list from officerAbbr / holder.
-  const basePeople =
-    Array.isArray(c.officers) && c.officers.length > 0
-      ? c.officers
-      : [{ name: c.holder, abbr: c.officerAbbr, photo: c.photo }]
-  // The officer photo edited in the portal (override keyed by slug) applies to
-  // the lead officer, so it shows here on the home page, not just the
-  // committee page.
-  const people =
-    ov && ov.photo
-      ? basePeople.map((o, idx) =>
-          idx === 0 ? { ...o, photo: driveImg(ov.photo) } : o,
-        )
-      : basePeople
+  // just name + abbreviation: whoever holds the position this term, with
+  // society.js as the fallback and the committee page's officer photo applied
+  // to the lead officer (src/lib/people.js).
+  const people = committeeOfficers(c, holders, ov && ov.photo)
 
   const accent = readableAccent(c.color)
 
@@ -182,6 +171,7 @@ function CommitteeCard({ c, i, ov }) {
 
 export default function TeamOfficials() {
   const { overrides } = useOfficerOverrides()
+  const holders = usePeople()
   const { standing, support } = useMemo(() => {
     return {
       standing: committees.filter((c) => !isSupport(c.group)),
@@ -236,6 +226,7 @@ export default function TeamOfficials() {
                   c={c}
                   i={i}
                   ov={overrides[slugFor(c)]}
+                  holders={holders}
                 />
               ))}
             </div>
@@ -256,6 +247,7 @@ export default function TeamOfficials() {
                   c={c}
                   i={i}
                   ov={overrides[slugFor(c)]}
+                  holders={holders}
                 />
               ))}
             </div>

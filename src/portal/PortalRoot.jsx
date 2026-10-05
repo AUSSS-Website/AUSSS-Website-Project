@@ -10,6 +10,7 @@ import SignInPage from './pages/SignInPage.jsx'
 import CallbackPage from './pages/CallbackPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import DirectoryPage from './pages/DirectoryPage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
 import TasksPage from './pages/tasks/TasksPage.jsx'
 import TaskPage from './pages/tasks/TaskPage.jsx'
@@ -62,6 +63,8 @@ export default function PortalRoot() {
             <Route index element={<DashboardPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="verify" element={<VerifyPage />} />
+            {/* Members who opted in; the database refuses an unverified account. */}
+            <Route path="directory" element={<DirectoryPage />} />
             {/* The database decides which tasks and updates each person gets. */}
             <Route path="tasks" element={<TasksPage />} />
             <Route path="tasks/:id" element={<TaskPage />} />

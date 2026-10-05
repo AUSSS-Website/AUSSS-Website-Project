@@ -346,9 +346,10 @@ where i.email_normalized = app.norm_email('person@example.com');
 and are assigned now. `accepted_at` null means it will happen on their first
 sign-in with that exact email (Google account or magic link).
 
-EB members and committee officers can also do this from the portal in a later
-phase; in Phase 1 an EB user could insert the invite through the Data API
-(RLS `can_manage_position` allows it), but there is no page for it yet.
+Since Phase 5b the portal does this without SQL: the "Invites" tab of a committee
+for its positions, and Roster page > "Executive Board" for the board and the
+webmaster (section 23). The SQL here is for when nobody who could do it can
+sign in.
 
 To **remove** access, end the assignment rather than deleting it (history stays):
 
@@ -1003,11 +1004,13 @@ every night. Three workflows do the work:
 object records in `storage`), and the migration history (`history_schema.sql`,
 `history_data.sql`). `ausss-storage-<date>.tar.gz.gpg` has every file of every bucket as
 `storage/<bucket>/<path>` plus `storage/manifest.json` (size, type and version of each
-file). Not in a backup, because they live outside the dump: the two Vault secrets
-(`roster_cron_secret`, `digest_cron_secret`), the three scheduled jobs (`roster-sheet-sync`,
-`roster-years-spent`, `email-digest`), the Edge Function and its secrets, and the Auth
-settings in the dashboard. The migrations recreate the first two; section 5 and section 13
-cover the rest.
+file). Not in a backup, because they live outside the dump: the Vault secrets
+(`roster_cron_secret`, `digest_cron_secret`, and `site_deploy_hook` of section 23), the
+scheduled jobs (`roster-sheet-sync`, `roster-years-spent`, `email-digest`, and since
+Phase 5b `site-rebuild`, `site-rebuild-nightly`, `cron-history-trim`), the Edge Function
+and its secrets, and the Auth settings in the dashboard. The migrations recreate the jobs
+and the two generated secrets; the deploy hook is saved again by hand (section 23);
+section 5 and section 13 cover the rest.
 
 **Where it goes.** The repository is public, so both archives are encrypted on the runner
 (AES-256, `gpg --symmetric`) with the repo secret `BACKUP_PASSPHRASE` before anything is
@@ -1226,3 +1229,154 @@ ticked line passed on 2026-10-04.
 - [x] `public/robots.txt` keeps the portal and the account pages out of search results
       for every crawler. It is a note to crawlers, not a control: the protection is the
       row-level security above.
+
+## 23. Portal and people (Phase 5b)
+
+Built 2026-10-05. Four migrations (`20261005090001_notifications_clear`,
+`20261005100001_task_files`, `20261005110001_invites_screen`, `20261005120001_people`),
+tests `210-task-files.sql`, `220-invites-screen.sql`, `230-people.sql`, and new lines in
+`090-grants.sql` and `130-tasks-and-posts.sql`.
+
+### The header and the bell
+
+The header reads in the order people work (`src/portal/PortalLayout.jsx`): Dashboard,
+Tasks, Updates, Directory; then the editing pages a person's positions give them
+(Committees, Gallery, Magazine, Submissions); then the board's pages (Roster,
+Verification, Site settings); with the bell, the profile link and Sign out at the side.
+A page a person cannot use is not listed, and a group with nothing in it is not drawn.
+
+The bell (`src/portal/NotificationBell.jsx`) shows a red dot while anything is unread.
+Its panel lists the eight latest notifications, one line each; opening one marks it read
+and goes to its task, story or order. "Mark all as read" sets `read_at`; "Clear all"
+deletes the person's own rows (policy `notifications_delete`: `profile_id = auth.uid()`),
+after a second click. A cleared notification that was never emailed drops out of the next
+digest. `/portal/notifications` stays as the full list ("See all").
+
+### Tasks: the date, the repeat warning, files
+
+A new task opens with today's date (the Cairo day); editing keeps the task's own. Before a
+task is created, the open tasks of that committee are read and compared in the browser
+(`findDuplicateTasks` in `src/portal/workQueries.js`): the same title, ignoring case and
+spacing, and exactly the same people. A match shows "This task already exists. Create it
+again?" with the existing task linked. It never blocks. The check sees what the person can
+see, so an assistant who may assign tasks is warned about their own tasks, an officer about
+the committee's.
+
+**Files.** Private Storage bucket `task-files`, 10 MB a file, documents, sheets, slides,
+PDFs, images, plain text and zip (no HTML, no SVG). The storage key is
+`<task id>/<random id>.<ext>`; the name the person gave the file lives in
+`public.task_files`. The browser uploads first, then calls `rpc/attach_task_files`, which
+checks every path against Storage and writes ONE timeline row for the batch: a comment when
+there is text, a `files` row when there is none (the others on the task then get a
+`task_files` notification; a comment notifies as a comment). Up to 5 files a batch and 20 a
+task. Who can open a file = who can see the task; a download is a signed link made on the
+click, valid two minutes. Whoever attached a file removes it, and so does a manager of the
+task. Deleting a task removes its objects first (`deleteTask`), because once the task is
+gone the storage policy can no longer tell who managed it.
+
+If an upload succeeds and the link fails, the browser takes the uploads back. If a browser
+dies in between, an object is left that no row points to: find them with
+
+```sql
+select o.name, o.created_at
+from storage.objects o
+where o.bucket_id = 'task-files'
+  and not exists (select 1 from public.task_files f where f.path = o.name);
+```
+
+and remove them in the dashboard (Storage > task-files); deleting from `storage.objects`
+in SQL is refused by Storage.
+
+### The invites screen
+
+The "Invites" tab of `/portal/committees/<slug>` (`PositionsPanel.jsx`), and the
+"Executive Board" button on the Roster page, which is the same panel for the positions
+that belong to no committee (the board, the webmaster).
+
+- **Invite by email.** Address plus position (`rpc/invite_to_position`). If an account
+  with that address exists the position is on it at once; otherwise it waits for their
+  first sign-in. No email is sent: whoever invites tells the person. Officers hand out
+  the positions below their own, the board any.
+- **Waiting for a first sign-in.** The invites nobody has accepted. Ones made here have
+  "Withdraw" (a delete; policy `invites_delete`). The members list's own invites are
+  counted and can be shown, but are changed on the Members tab.
+- **Holding a position.** Everyone with an active assignment there this term, with
+  "Remove" (`rpc/remove_position`: the assignment ends, its invite goes). Nobody removes
+  their own position.
+
+One rule runs through it: a position that the membership roster gave
+(`roster_entries.position_id`) is changed on the roster. Withdrawing or removing it here is
+refused by the database with a message that says so (`app.position_from_roster`). On the
+Members tab, a member's extra positions (an accepted invite on top of their roster
+position) are listed under "Also holds" with Remove.
+
+**Changing the Executive Board** is therefore: Roster page > Executive Board > invite the
+new holder's address to the position, then Remove the old holder. Section 8's SQL still
+works and is only needed when nobody on the board can sign in.
+
+### People: one source of truth
+
+A person's name and photo come from their profile, everywhere.
+
+- **The photo.** Profile page > "Your photo". The browser shrinks it to 512 px and puts it
+  in the public bucket `avatars` under `<profile id>/`; `profiles.photo_path` is that
+  object and `profiles.avatar_url` its address (without a chosen photo, `avatar_url` is the
+  picture of the Google account, and only the portal shows that). A person writes only
+  inside their own folder, and a check constraint keeps `photo_path` there.
+- **The portal** shows `avatar_url` beside names: the header, task comments and assignees,
+  update bylines, the assignee picker, the invites screen, the directory.
+- **The public site** asks `rpc/people_public()` who holds each officer and board position
+  this term (position key, name, chosen photo; nothing else, nobody below officer) and lays
+  that over `src/data/society.js` (`src/lib/people.js`): the board on the home page, the
+  committee cards, each committee page and the contact page. The file stays the fallback
+  for a position nobody has claimed with an account. When the holder is somebody else than
+  the file names, the file's photo and candidature are dropped, so a new officer never
+  appears under their predecessor's face; until they choose a photo they show as initials.
+  The officer photo set in the committee page editor still applies to the lead officer
+  unless they chose one on their profile.
+- **The directory** (`/portal/directory`, `rpc/directory()`): members who turned on "Show
+  me in the members directory", with name, photo and this term's positions. For verified
+  members and position holders; no contact details.
+
+Still read from `society.js` alone: the role inboxes and their blurbs (they belong to the
+role), and the position cards of the membership lookup (`src/lib/teamIndex.js`).
+
+### Rebuild on publish
+
+The public pages are pre-rendered at build time (section 15) with the gallery, the
+magazine shelf, the published stories and the position holders baked in. A visitor's
+browser refreshes all of that live; the rebuild is for search engines and link previews.
+
+`app.site_rebuild` (one row) records when a rebuild was last asked for and last fired.
+Triggers ask for one when an album, a photo, a magazine edition, a published story, a
+committee page, an officer or board assignment, or such a holder's name or photo changes.
+The cron job `site-rebuild` runs `app.fire_site_rebuild()` every five minutes: it calls
+the deploy hook only when something asked since the last rebuild, the last change is at
+least three minutes old, and the last rebuild is at least twenty minutes old.
+`site-rebuild-nightly` fires one regardless at 02:30 UTC. `cron-history-trim` keeps a week
+of `cron.job_run_details`. The board sees the state on Site settings ("Public pages").
+
+**One-time set-up (the webmaster).** Until this is done the function answers `no hook` and
+nothing else changes.
+
+1. Vercel > the `ausss-ainshams` project > Settings > Git > Deploy Hooks: create one named
+   `supabase-publish` on branch `main`. Copy its address. Anyone holding it can start a
+   deploy, so it goes nowhere but the next step and the vault.
+2. Supabase > SQL editor:
+
+   ```sql
+   select vault.create_secret('<the address>', 'site_deploy_hook',
+     'Vercel deploy hook called by app.fire_site_rebuild()');
+   ```
+
+3. Check: `select app.fire_site_rebuild(true);` answers `fired`, and a deployment named
+   "Deploy Hook" appears in Vercel within a minute.
+
+To replace the hook: delete it in Vercel, create a new one, then
+`select vault.update_secret((select id from vault.secrets where name = 'site_deploy_hook'), '<new address>');`.
+To stop rebuilds: delete the hook in Vercel (the function's calls then go nowhere), or
+`select cron.unschedule('site-rebuild'); select cron.unschedule('site-rebuild-nightly');`.
+
+Each rebuild is a production deployment: it runs `after-deploy` (IndexNow, section 15)
+and counts against the plan's daily deployments, which is what the twenty-minute spacing
+is for (at most 72 a day, in practice a handful).

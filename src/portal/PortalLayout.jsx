@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { SIGN_IN_PATH } from './constants.js'
-import { useUnreadCount } from './workQueries.js'
+import NotificationBell from './NotificationBell.jsx'
+import { Avatar } from './Avatar.jsx'
 
 // The portal's own dark chrome. It deliberately does not sit inside the
 // public <Layout/> (navbar, footer, theme toggle) so signed-in pages stay
@@ -37,7 +38,28 @@ export default function PortalLayout() {
   const canTriage = isEB || officerOf('scope') || officerOf('score')
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
-  const unread = useUnreadCount().data || 0
+
+  const groups = [
+    [
+      { to: '/portal', label: 'Dashboard', end: true },
+      { to: '/portal/tasks', label: 'Tasks' },
+      { to: '/portal/updates', label: 'Updates' },
+      { to: '/portal/directory', label: 'Directory' },
+    ],
+    [
+      canEditCommittees && { to: '/portal/committees', label: 'Committees' },
+      canEditGallery && { to: '/portal/gallery', label: 'Gallery' },
+      canEditMagazine && { to: '/portal/magazine', label: 'Magazine' },
+      canTriage && { to: '/portal/submissions', label: 'Submissions' },
+    ],
+    [
+      isEB && { to: '/portal/admin/roster', label: 'Roster' },
+      isEB && { to: '/portal/admin/verification', label: 'Verification' },
+      isEB && { to: '/portal/admin/settings', label: 'Site settings' },
+    ],
+  ]
+    .map((group) => group.filter(Boolean))
+    .filter((group) => group.length > 0)
 
   const handleSignOut = async () => {
     setBusy(true)
@@ -67,73 +89,44 @@ export default function PortalLayout() {
             </span>
           </Link>
 
+          {/* In the order people work: everyone's pages, then the editing pages a
+              person's positions give them, then the EB's admin pages. */}
           <nav aria-label="Portal" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <NavLink to="/portal" end className={navCls}>
-              Dashboard
-            </NavLink>
-            <NavLink to="/portal/tasks" className={navCls}>
-              Tasks
-            </NavLink>
-            <NavLink to="/portal/updates" className={navCls}>
-              Updates
-            </NavLink>
-            <NavLink to="/portal/notifications" className={navCls}>
-              Notifications
-              {unread > 0 && (
-                <span
-                  aria-label={`${unread} unread`}
-                  className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-medical px-1.5 py-0.5 text-[10px] font-bold text-forest-950"
-                >
-                  {unread > 99 ? '99+' : unread}
-                </span>
-              )}
-            </NavLink>
-            <NavLink to="/portal/profile" className={navCls}>
-              Profile
-            </NavLink>
-            {canEditCommittees && (
-              <NavLink to="/portal/committees" className={navCls}>
-                Committees
-              </NavLink>
-            )}
-            {canEditGallery && (
-              <NavLink to="/portal/gallery" className={navCls}>
-                Gallery
-              </NavLink>
-            )}
-            {canEditMagazine && (
-              <NavLink to="/portal/magazine" className={navCls}>
-                Magazine
-              </NavLink>
-            )}
-            {canTriage && (
-              <NavLink to="/portal/submissions" className={navCls}>
-                Submissions
-              </NavLink>
-            )}
-            {isEB && (
-              <NavLink to="/portal/admin/roster" className={navCls}>
-                Roster
-              </NavLink>
-            )}
-            {isEB && (
-              <NavLink to="/portal/admin/verification" className={navCls}>
-                Verification
-              </NavLink>
-            )}
-            {isEB && (
-              <NavLink to="/portal/admin/settings" className={navCls}>
-                Site settings
-              </NavLink>
-            )}
+            {groups.map((group, i) => (
+              <div
+                key={group[0].to}
+                className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${
+                  i > 0 ? 'border-l border-white/15 pl-5' : ''
+                }`}
+              >
+                {group.map((item) => (
+                  <NavLink key={item.to} to={item.to} end={item.end} className={navCls}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
           </nav>
 
-          <div className="flex items-center gap-4">
-            {name && (
-              <span className="hidden max-w-[14rem] truncate text-sm text-silver/70 md:inline">
-                {name}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <NavLink
+              to="/portal/profile"
+              title="Your profile"
+              className={(state) => `${navCls(state)} flex min-w-0 items-center gap-2`}
+            >
+              <Avatar name={name} src={profile?.avatar_url} size="sm" />
+              <span className="max-w-[11rem] truncate">
+                {name ? (
+                  <>
+                    <span className="hidden md:inline">{name}</span>
+                    <span className="md:hidden">Profile</span>
+                  </>
+                ) : (
+                  'Profile'
+                )}
               </span>
-            )}
+            </NavLink>
             <button
               type="button"
               onClick={handleSignOut}

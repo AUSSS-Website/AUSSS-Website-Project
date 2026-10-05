@@ -221,6 +221,21 @@ async function loadStories(vite) {
   }
 }
 
+// And who holds each officer and board position this term (src/lib/people.js),
+// so the board, the committee cards and the contact page are pre-rendered with
+// the names and photos from the portal. An empty list renders society.js.
+async function loadPeople(vite) {
+  const mod = await vite.ssrLoadModule('/src/lib/people.js')
+  try {
+    const live = await mod.fetchPeople()
+    console.log('prerender: ' + live.length + ' position holders from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the position holders (' + err.message + '); the pages use society.js this build')
+    return []
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -250,6 +265,7 @@ async function main() {
     const albums = await loadAlbums(vite)
     const issues = await loadIssues(vite)
     const stories = await loadStories(vite)
+    const people = await loadPeople(vite)
     const pages = publicPages(albums, issues)
 
     const seen = new Set()
@@ -257,7 +273,7 @@ async function main() {
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues, stories)
+      const appHtml = await render(page.path, albums, issues, stories, people)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }
