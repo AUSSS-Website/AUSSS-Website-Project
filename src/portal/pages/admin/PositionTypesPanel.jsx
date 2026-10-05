@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { useAddPosition, usePositions, useUpdatePosition } from '../../rosterQueries.js'
+import { useAddPosition, useDeletePosition, usePositions, useUpdatePosition } from '../../rosterQueries.js'
 import { ErrorText, Field, Panel, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
 // The positions a committee can hand out, below its officer: Local Member, Core
 // Team Member, the assistants and the coordinators. Seeded from the titles the
-// membership sheet uses; the Executive Board adds, renames or retires them here
-// so the list never needs a developer. A retired position stays on whoever
-// holds it and simply stops being offered.
+// membership sheet uses; the Executive Board adds, renames or removes them here
+// so the list never needs a developer. Removing a position deletes it: whoever
+// held it falls back to Local Member (the roster does that by itself when the
+// position goes). A few positions were "retired" before removing existed; they
+// show struck through and can be brought back or removed.
 
 const POSITION_GROUPS = [
   ['member', 'Members'],
@@ -46,14 +48,17 @@ export const localMemberOf = (positions, committeeId) =>
 
 function TypeRow({ position }) {
   const update = useUpdatePosition()
+  const remove = useDeletePosition()
   const [title, setTitle] = useState(position.title)
+  const [asking, setAsking] = useState(false)
   const [error, setError] = useState('')
   const isDefault = position.key.endsWith('.member')
+  const busy = update.isPending || remove.isPending
 
-  const run = async (patch) => {
+  const run = async (fn) => {
     setError('')
     try {
-      await update.mutateAsync({ id: position.id, patch })
+      await fn()
     } catch (e) {
       setError(e?.message || 'Could not save.')
     }
@@ -69,49 +74,141 @@ function TypeRow({ position }) {
         className={`${inputCls} max-w-sm ${position.active ? '' : 'line-through opacity-60'}`}
       />
       {title.trim() && title.trim() !== position.title && (
-        <button type="button" disabled={update.isPending} onClick={() => run({ title })} className={outlineBtnCls}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => run(() => update.mutateAsync({ id: position.id, patch: { title } }))}
+          className={outlineBtnCls}
+        >
           Rename
         </button>
       )}
       {isDefault ? (
         <span className="text-xs text-silver/50">Given to every new member of the committee</span>
       ) : (
-        <button
-          type="button"
-          disabled={update.isPending}
-          onClick={() => run({ active: !position.active })}
-          className={outlineBtnCls}
-        >
-          {position.active ? 'Retire' : 'Bring back'}
-        </button>
+        <>
+          {/* Positions retired before removing existed can still be brought back. */}
+          {!position.active && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => run(() => update.mutateAsync({ id: position.id, patch: { active: true } }))}
+              className={outlineBtnCls}
+            >
+              Bring back
+            </button>
+          )}
+          {asking ? (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => run(() => remove.mutateAsync(position.id))}
+                className={`${outlineBtnCls} border-red-400/50 text-red-300`}
+              >
+                {remove.isPending ? 'Removing…' : 'Yes, remove'}
+              </button>
+              <button type="button" disabled={busy} onClick={() => setAsking(false)} className={outlineBtnCls}>
+                Keep
+              </button>
+              <span className="w-full text-xs text-silver/55">
+                Anyone who holds it becomes a Local Member of the committee.
+              </span>
+            </>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => setAsking(true)} className={outlineBtnCls}>
+              Remove
+            </button>
+          )}
+        </>
       )}
       <ErrorText>{error}</ErrorText>
     </li>
   )
 }
 
-export default function PositionTypesPanel({ committees, onClose }) {
-  const positions = usePositions()
+// One level of a committee's positions ("Members", "Assistants and
+// coordinators"): its rows, and a plus beside the heading that opens a field
+// to add another at that level.
+function TypeSection({ committee, level, label, positions }) {
   const add = useAddPosition()
-  const [committeeId, setCommitteeId] = useState('')
+  const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
-  const [level, setLevel] = useState('assistant')
   const [error, setError] = useState('')
-  const committee = committees.find((c) => c.id === committeeId)
-  const mine = (positions.data || []).filter((p) => p.committee_id === committeeId && p.level !== 'officer')
+
+  const close = () => {
+    setAdding(false)
+    setTitle('')
+    setError('')
+  }
 
   const onAdd = async (e) => {
     e.preventDefault()
     setError('')
     try {
-      await add.mutateAsync({ committee_id: committeeId, title, level })
-      setTitle('')
+      await add.mutateAsync({ committee_id: committee.id, title, level })
+      close()
     } catch (err) {
       setError(
-        err?.code === '23505' ? `${committee?.abbr} already has a position with that title.` : err?.message || 'Could not add it.',
+        err?.code === '23505'
+          ? `${committee.abbr} already has a position with that title.`
+          : err?.message || 'Could not add it.',
       )
     }
   }
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">{label}</p>
+        <button
+          type="button"
+          aria-expanded={adding}
+          aria-label={`Add a position under ${label} in ${committee.abbr}`}
+          title="Add a position here"
+          onClick={() => (adding ? close() : setAdding(true))}
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-sm font-semibold leading-none text-white transition-colors hover:bg-white/10"
+        >
+          +
+        </button>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {positions.map((p) => (
+          <TypeRow key={p.id} position={p} />
+        ))}
+        {adding && (
+          <li>
+            <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
+              <input
+                autoFocus
+                required
+                maxLength={120}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={level === 'member' ? 'e.g. Core Team Member' : 'e.g. Peer Education Coordinator'}
+                aria-label={`New position under ${label} in ${committee.abbr}`}
+                className={`${inputCls} max-w-sm`}
+              />
+              <button type="submit" disabled={add.isPending || !title.trim()} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
+                {add.isPending ? 'Adding…' : 'Add'}
+              </button>
+              <button type="button" disabled={add.isPending} onClick={close} className={outlineBtnCls}>
+                Cancel
+              </button>
+              <ErrorText>{error}</ErrorText>
+            </form>
+          </li>
+        )}
+      </ul>
+    </div>
+  )
+}
+
+export default function PositionTypesPanel({ committees, onClose }) {
+  const positions = usePositions()
+  const [committeeId, setCommitteeId] = useState('')
+  const committee = committees.find((c) => c.id === committeeId)
+  const mine = (positions.data || []).filter((p) => p.committee_id === committeeId && p.level !== 'officer')
 
   return (
     <Panel title="Position types" className="mb-6">
@@ -119,7 +216,7 @@ export default function PositionTypesPanel({ committees, onClose }) {
         <p className="max-w-2xl text-sm text-silver/65">
           The positions each committee can give its members. Assistants and coordinators receive
           tasks like any member; only the committee&rsquo;s officer and the Executive Board assign
-          them.
+          them. Use the plus beside a heading to add one there.
         </p>
         <button type="button" onClick={onClose} className={outlineBtnCls}>
           Close
@@ -139,52 +236,16 @@ export default function PositionTypesPanel({ committees, onClose }) {
         </Field>
       </div>
 
-      {committee && (
-        <>
-          {POSITION_GROUPS.filter(([lvl]) => lvl !== 'officer').map(([lvl, label]) => (
-            <div key={lvl} className="mt-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-medical-light">{label}</p>
-              <ul className="mt-3 space-y-2">
-                {mine
-                  .filter((p) => p.level === lvl)
-                  .map((p) => (
-                    <TypeRow key={p.id} position={p} />
-                  ))}
-              </ul>
-            </div>
-          ))}
-
-          <form onSubmit={onAdd} className="mt-6 flex flex-wrap items-end gap-3 border-t border-white/10 pt-5">
-            <div className="w-full max-w-sm">
-              <Field label={`New position in ${committee.abbr}`} htmlFor="pt-title">
-                <input
-                  id="pt-title"
-                  required
-                  maxLength={120}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Peer Education Coordinator"
-                  className={inputCls}
-                />
-              </Field>
-            </div>
-            <div>
-              <Field label="Kind" htmlFor="pt-level">
-                <select id="pt-level" value={level} onChange={(e) => setLevel(e.target.value)} className={inputCls}>
-                  <option value="assistant">Assistant or coordinator</option>
-                  <option value="member">Member</option>
-                </select>
-              </Field>
-            </div>
-            <button type="submit" disabled={add.isPending || !title.trim()} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
-              {add.isPending ? 'Adding…' : 'Add'}
-            </button>
-          </form>
-          <div className="mt-2">
-            <ErrorText>{error}</ErrorText>
-          </div>
-        </>
-      )}
+      {committee &&
+        POSITION_GROUPS.filter(([lvl]) => lvl !== 'officer').map(([lvl, label]) => (
+          <TypeSection
+            key={`${committee.id}-${lvl}`}
+            committee={committee}
+            level={lvl}
+            label={label}
+            positions={mine.filter((p) => p.level === lvl)}
+          />
+        ))}
     </Panel>
   )
 }
