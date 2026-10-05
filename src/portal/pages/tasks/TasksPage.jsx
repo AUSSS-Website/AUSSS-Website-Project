@@ -15,6 +15,7 @@ import {
   personName,
 } from '../../workUi.jsx'
 import TaskEditor from './TaskEditor.jsx'
+import { byPortalOrder } from '../../officerQueries.js'
 
 // /portal/tasks. Everything the database lets this person see: tasks assigned
 // to them, tasks they created, and (officers, EB) their committees' tasks.
@@ -105,7 +106,7 @@ export default function TasksPage() {
   const committees = useMemo(() => {
     const map = new Map()
     for (const t of rows) if (t.committee) map.set(t.committee.id, t.committee)
-    return [...map.values()].sort((a, b) => a.abbr.localeCompare(b.abbr))
+    return [...map.values()].sort(byPortalOrder)
   }, [rows])
 
   const visible = useMemo(

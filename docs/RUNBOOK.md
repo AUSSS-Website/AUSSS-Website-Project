@@ -679,8 +679,20 @@ their first sign-in otherwise. Changing it withdraws the old invite and ends the
 assignment. No email on the roster: the title shows, nothing reaches an account.
 
 The list of positions is data, not code: **Position types** on the Roster page lets the
-EB add, rename or retire them per committee (the database makes the `key`; a retired
-position stays on its holders and stops being offered; Local Member cannot be retired).
+EB add, rename or remove them per committee (the database makes the `key`). The plus beside
+a heading adds a position at that level; the minus beside a position removes it, after a
+second click. Removing deletes the position: its invites and assignments go with it, and
+every member who held it becomes a Local Member of the committee, on the roster and on
+their account (the roster's own trigger does that; test `240-position-types.sql`). Local
+Member cannot be removed. Before 2026-10-05 a position was "retired" instead (kept on its
+holders, no longer offered); the few retired ones show struck through and can be brought
+back or removed.
+
+**The order of committees in the portal** (every drop-down and list) is fixed in
+`COMMITTEE_ORDER` in `src/portal/officerQueries.js`: SCOPE, SCORE (one entry, SCOPE/SCORE,
+on the Roster page), SCORA, SCOPH, SCOME, SCORP, CBSD, PNSD, PSD, RSD. The public site keeps
+its own order, the order of `src/data/society.js`, which is also what `committees.sort`
+in the database follows.
 Assistants and coordinators share the level `assistant`; they receive tasks but do not
 assign them unless `positions.can_assign_tasks` is switched on for that position (SQL or
 the table editor for now). The seed came from the titles the sheet used on 2026-09-21;

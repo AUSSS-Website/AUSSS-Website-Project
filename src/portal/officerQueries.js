@@ -73,11 +73,27 @@ export function useUpsertSiteSetting() {
 
 const COMMITTEE_SELECT = 'id, slug, name, abbr, kind, color, logo, sort, active, page'
 
+// The order every committee list and drop-down in the portal uses: exchange
+// first, then the other standing committees, then the support divisions. It is
+// the portal's own order (the webmaster's, 2026-10-05); `committees.sort` in the
+// database follows the public site's order in src/data/society.js and only
+// places a committee this list does not know yet, after the rest.
+const COMMITTEE_ORDER = ['scope', 'score', 'scora', 'scoph', 'scome', 'scorp', 'cbsd', 'pnsd', 'psd', 'rsd']
+
+function portalRank(c) {
+  const i = COMMITTEE_ORDER.indexOf(c?.slug)
+  return i === -1 ? COMMITTEE_ORDER.length : i
+}
+
+// Comparator for any list of committee rows ({ slug }).
+export const byPortalOrder = (a, b) => portalRank(a) - portalRank(b)
+
 async function fetchCommittees() {
   const rows = unwrap(
     await supabase.from('committees').select(COMMITTEE_SELECT).eq('active', true).order('sort'),
   )
-  return rows || []
+  // Array.prototype.sort is stable, so unknown committees keep their database order
+  return (rows || []).sort(byPortalOrder)
 }
 
 export function useCommittees(enabled = true) {

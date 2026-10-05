@@ -46,6 +46,10 @@ export function PositionOptions({ positions, committeeId, committeeIds, current,
 export const localMemberOf = (positions, committeeId) =>
   positions.find((p) => p.committee_id === committeeId && p.key.endsWith('.member'))?.id || ''
 
+// The plus beside a heading and the minus beside a position.
+const roundBtnCls =
+  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/20 text-sm font-semibold leading-none text-white transition-colors hover:bg-white/10 disabled:opacity-40'
+
 function TypeRow({ position }) {
   const update = useUpdatePosition()
   const remove = useDeletePosition()
@@ -116,8 +120,15 @@ function TypeRow({ position }) {
               </span>
             </>
           ) : (
-            <button type="button" disabled={busy} onClick={() => setAsking(true)} className={outlineBtnCls}>
-              Remove
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setAsking(true)}
+              aria-label={`Remove ${position.title}`}
+              title="Remove this position"
+              className={roundBtnCls}
+            >
+              &minus;
             </button>
           )}
         </>
@@ -167,7 +178,7 @@ function TypeSection({ committee, level, label, positions }) {
           aria-label={`Add a position under ${label} in ${committee.abbr}`}
           title="Add a position here"
           onClick={() => (adding ? close() : setAdding(true))}
-          className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-sm font-semibold leading-none text-white transition-colors hover:bg-white/10"
+          className={roundBtnCls}
         >
           +
         </button>
@@ -216,7 +227,8 @@ export default function PositionTypesPanel({ committees, onClose }) {
         <p className="max-w-2xl text-sm text-silver/65">
           The positions each committee can give its members. Assistants and coordinators receive
           tasks like any member; only the committee&rsquo;s officer and the Executive Board assign
-          them. Use the plus beside a heading to add one there.
+          them. Use the plus beside a heading to add one there, and the minus beside a position to
+          remove it.
         </p>
         <button type="button" onClick={onClose} className={outlineBtnCls}>
           Close
