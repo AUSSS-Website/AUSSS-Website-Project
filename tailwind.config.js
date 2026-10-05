@@ -40,8 +40,12 @@ export default {
         // green is too faint on white.
         line: 'rgb(var(--c-line) / calc(var(--line-k) * <alpha-value>))',
         veil: 'rgb(var(--c-veil) / calc(var(--veil-k) * <alpha-value>))',
-        // The inverse button: a white pill with forest text on dark, a
-        // forest pill with white text on light.
+        // The green button, green in both themes: a fresh mid green on
+        // light, the deep forest on dark. White text on it.
+        leaf: 'rgb(var(--c-leaf) / <alpha-value>)',
+        'leaf-hover': 'rgb(var(--c-leaf-hover) / <alpha-value>)',
+        // The inverse button: a white pill with forest text on dark, the
+        // green button (leaf) with white text on light.
         solid: 'rgb(var(--c-solid) / <alpha-value>)',
         'solid-hover': 'rgb(var(--c-solid-hover) / <alpha-value>)',
         'on-solid': 'rgb(var(--c-on-solid) / <alpha-value>)',

@@ -132,7 +132,7 @@ export default function CartDrawer({ open, onClose }) {
               <Link
                 to="/merch/checkout"
                 onClick={onClose}
-                className="block w-full rounded-full bg-forest py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-forest-600 dark:bg-medical dark:text-forest-950 dark:hover:bg-medical-light"
+                className="block w-full rounded-full bg-leaf py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover"
               >
                 Checkout
               </Link>
@@ -171,7 +171,7 @@ function EmptyState({ onClose }) {
       <button
         type="button"
         onClick={onClose}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-forest px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-forest-600 dark:bg-medical dark:text-forest-950 dark:hover:bg-medical-light"
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-leaf px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover"
       >
         Keep browsing
       </button>

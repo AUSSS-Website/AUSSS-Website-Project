@@ -16,9 +16,9 @@ const VARIANTS = {
   // Scientific-blue pill, secondary emphasis (magazine, auth, quiz).
   accent:
     'bg-cta text-on-cta hover:bg-cta-hover focus-visible:ring-medical/60',
-  // Forest pill, used on light surfaces (cart checkout, footer).
+  // Green pill on the light theme, the blue button on the dark one.
   forest:
-    'bg-forest text-white hover:bg-forest-600 focus-visible:ring-forest/50 dark:bg-medical dark:text-forest-950 dark:hover:bg-medical-light',
+    'bg-leaf text-white hover:bg-leaf-hover focus-visible:ring-forest/50 dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover',
   // Hairline outline, tertiary action over dark/hero backgrounds.
   outline:
     'border border-line/25 text-ink hover:bg-veil/10 focus-visible:ring-line/50',

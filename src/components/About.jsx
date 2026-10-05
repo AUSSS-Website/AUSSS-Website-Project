@@ -121,7 +121,7 @@ export default function About() {
                 }`}
                 style={{ transitionDelay: `${i * 90}ms` }}
               >
-                <span className="grid h-12 w-12 place-items-center rounded-xl bg-forest text-silver transition-colors group-hover:bg-forest-600">
+                <span className="grid h-12 w-12 place-items-center rounded-xl bg-leaf text-white transition-colors group-hover:bg-leaf-hover dark:text-silver">
                   <svg
                     viewBox="0 0 24 24"
                     className="h-6 w-6"
