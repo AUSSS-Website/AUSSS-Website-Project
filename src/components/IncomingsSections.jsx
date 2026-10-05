@@ -4,32 +4,81 @@ import { publicEmail } from '../data/emailConfig.js'
 import { committeeOfficers, usePeople } from '../lib/people.js'
 import { useGallery } from '../lib/gallery.js'
 import Markdown from './Markdown.jsx'
+import FAQ from './FAQ.jsx'
 import { PersonCard } from './committeeUi.jsx'
 
-// The parts of /exchange/incomings that the exchange officers edit from the
-// portal (block `exchange.incomings`, src/content/schemas/exchangeIncomings.js).
+// The sections of /exchange/incomings whose copy the exchange officers edit
+// from the portal (block `exchange.incomings`,
+// src/content/schemas/exchangeIncomings.js). The page speaks to a student
+// abroad, in our own voice; keep any fixed wording here in "we" and "you".
 // The portal's preview draws these same components.
 
-// "Why Ain Shams": one card per section, with its picture when it has one.
+const h2Cls = 'heading-serif text-center text-3xl text-ink sm:text-4xl'
+const leadCls = 'mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/70'
+
+// A row of figures under the introduction.
+export function IncomingsFacts({ facts }) {
+  if (!facts?.length) return null
+  return (
+    <dl className="reveal mx-auto grid max-w-4xl grid-cols-2 gap-4 lg:grid-cols-4">
+      {facts.map((f, i) => (
+        <div key={i} className="rounded-2xl border border-line/10 bg-card px-4 py-5 text-center">
+          <dt className="sr-only">{f.label}</dt>
+          <dd>
+            <span className="heading-serif block text-3xl text-accent sm:text-4xl">{f.figure}</span>
+            <span aria-hidden="true" className="mt-1.5 block text-xs leading-snug text-soft/65">
+              {f.label}
+            </span>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+// "What we give you": the month in a few ticked lines.
+export function IncomingsIncludes({ points }) {
+  if (!points?.length) return null
+  return (
+    <section className="reveal mx-auto max-w-3xl">
+      <h2 className={h2Cls}>What we give you</h2>
+      <ul className="mt-9 space-y-3">
+        {points.map((p, i) => (
+          <li key={i} className="flex gap-4 rounded-2xl border border-line/10 bg-card p-5">
+            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-medical/20 text-xs font-bold text-accent">
+              ✓
+            </span>
+            <p className="text-sm leading-relaxed text-soft/80">{p.text}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// "Why choose us": one card per reason, with its picture when it has one.
 export function IncomingsWhy({ sections }) {
   if (!sections?.length) return null
   return (
-    <section className="reveal mx-auto max-w-5xl">
-      <h2 className="heading-serif text-center text-3xl text-ink">Why Ain Shams</h2>
-      <div className="mt-10 grid gap-5 md:grid-cols-2">
+    <section className="reveal mx-auto max-w-6xl">
+      <h2 className={h2Cls}>Why choose us</h2>
+      <p className={leadCls}>
+        You have a whole world of local committees to pick from. Here is what a month with us looks like.
+      </p>
+      <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {sections.map((s, i) => (
-          <article key={i} className="overflow-hidden rounded-2xl border border-line/10 bg-card">
+          <article key={i} className="flex flex-col overflow-hidden rounded-3xl border border-line/10 bg-card">
             {s.image && (
               <img
                 src={s.image}
                 alt=""
                 loading="lazy"
                 decoding="async"
-                className="aspect-[16/9] w-full object-cover"
+                className="aspect-[4/3] w-full object-cover"
               />
             )}
-            <div className="p-6">
-              <h3 className="heading-serif text-xl text-ink">{s.title}</h3>
+            <div className="p-6 sm:p-7">
+              <h3 className="heading-serif text-2xl text-ink">{s.title}</h3>
               <Markdown text={s.body} className="mt-3 text-sm leading-relaxed text-soft/75" />
             </div>
           </article>
@@ -39,12 +88,43 @@ export function IncomingsWhy({ sections }) {
   )
 }
 
+// "How you get to us": numbered steps, in the outgoing page's card style.
+export function IncomingsSteps({ steps }) {
+  if (!steps?.length) return null
+  return (
+    <section className="reveal mx-auto max-w-5xl">
+      <h2 className={h2Cls}>How you get to us</h2>
+      <ol className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map((s, i) => (
+          <li key={i} className="rounded-2xl border border-line/10 bg-card p-6">
+            <span className="heading-serif text-3xl text-accent">{String(i + 1).padStart(2, '0')}</span>
+            <h3 className="mt-2 text-base font-semibold text-ink">{s.title}</h3>
+            <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-soft/65">{s.body}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+// "Before you land": our practical tips, one per line of an accordion.
+export function IncomingsTips({ tips }) {
+  if (!tips?.length) return null
+  return (
+    <section className="reveal mx-auto max-w-3xl">
+      <h2 className={h2Cls}>Before you land</h2>
+      <p className={leadCls}>The things we tell every incoming student, so nothing catches you out.</p>
+      <FAQ items={tips.map((t) => ({ q: t.title, a: t.body }))} className="mt-8" />
+    </section>
+  )
+}
+
 // The two officers an incoming student writes to: the LEO-In for a clinical
 // exchange, the LORE for a research one. Names and photos follow whoever holds
 // the position (src/lib/people.js).
 const CONTACTS = [
-  { committee: 'scope', alias: 'leo-in', role: 'Clinical exchanges (SCOPE)' },
-  { committee: 'score', alias: 'lore', role: 'Research exchanges (SCORE)' },
+  { committee: 'scope', alias: 'leo-in', role: 'For a clinical exchange (SCOPE)' },
+  { committee: 'score', alias: 'lore', role: 'For a research exchange (SCORE)' },
 ]
 
 export function IncomingsContacts() {
@@ -56,11 +136,10 @@ export function IncomingsContacts() {
   }).filter(Boolean)
   if (cards.length === 0) return null
   return (
-    <section className="reveal mx-auto max-w-3xl text-center">
-      <h2 className="heading-serif text-3xl text-ink">Who to contact</h2>
-      <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-soft/70">
-        Write to the officer for your kind of exchange. They answer questions before you apply and
-        look after your placement once you are accepted.
+    <section id="write-to-us" className="reveal mx-auto max-w-3xl scroll-mt-28 text-center">
+      <h2 className={h2Cls}>Write to us</h2>
+      <p className={leadCls}>
+        Ask us anything before you apply. Write to the officer for your kind of exchange and we will answer.
       </p>
       <ul className="mt-9 grid gap-5 sm:grid-cols-2">
         {cards.map(({ officer, color, role, alias }) => {
@@ -102,10 +181,8 @@ function AlbumStrip({ slug }) {
   const shown = album.photos.slice(0, 8)
   return (
     <section className="reveal mx-auto max-w-5xl">
-      <h2 className="heading-serif text-center text-3xl text-ink">With our incomings</h2>
-      {album.blurb && (
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-soft/70">{album.blurb}</p>
-      )}
+      <h2 className={h2Cls}>With our incomings</h2>
+      {album.blurb && <p className={`${leadCls} max-w-2xl`}>{album.blurb}</p>}
       <ul className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {shown.map((p) => (
           <li key={p.id} className="overflow-hidden rounded-xl border border-line/10 bg-sunk">
@@ -138,7 +215,7 @@ function AlbumStrip({ slug }) {
 export function NationalBookletLink({ href }) {
   if (!href) return null
   return (
-    <section className="reveal mx-auto max-w-3xl">
+    <section className="reveal mx-auto max-w-4xl">
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-line/10 bg-card p-7 text-center sm:flex-row sm:text-left">
         <div className="min-w-0 flex-1">
           <h2 className="heading-serif text-xl text-ink">The IFMSA-Egypt welcome booklet</h2>

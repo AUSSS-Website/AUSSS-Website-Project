@@ -99,13 +99,13 @@ export default function ExchangeJoinPage() {
               to="/exchange/outgoings"
               className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
-              Going abroad instead
+              Outgoings instead
             </Link>
             <Link
               to="/exchange/incomings"
               className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
-              Hosting in Cairo instead
+              Incomings instead
             </Link>
           </div>
         </section>

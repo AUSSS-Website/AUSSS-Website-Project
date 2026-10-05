@@ -5,15 +5,19 @@ import { readableAccent, rgba } from '../lib/color.js'
 // SCOPE and SCORE, the two committees exchange runs through. This applies
 // whichever direction you're travelling in, so it renders on both
 // /exchange/outgoings and /exchange/incomings rather than on the chooser.
-export default function ExchangeTracks() {
+// `audience="incoming"` words it for a student coming to us (our voice, their
+// month here); the default speaks to our own students going abroad.
+export default function ExchangeTracks({ audience = 'outgoing' }) {
+  const incoming = audience === 'incoming'
   return (
     <section className="reveal mx-auto max-w-5xl">
-      <h2 className="heading-serif text-center text-3xl text-ink">
-        Two tracks
+      <h2 className={`heading-serif text-center text-3xl text-ink ${incoming ? 'sm:text-4xl' : ''}`}>
+        {incoming ? 'Two ways to come to us' : 'Two tracks'}
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/65">
-        Every exchange runs through one of two standing committees: a clinical
-        clerkship, or a research project.
+        {incoming
+          ? 'You come to us through one of IFMSA’s two exchange committees: for a clinical clerkship, or for a research project.'
+          : 'Every exchange runs through one of two standing committees: a clinical clerkship, or a research project.'}
       </p>
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         {exchange.tracks.map((t) => (
@@ -36,10 +40,10 @@ export default function ExchangeTracks() {
               {t.name}
             </h3>
             <p className="relative mt-3 text-sm leading-relaxed text-soft/70">
-              {t.blurb}
+              {incoming ? t.incomingBlurb || t.blurb : t.blurb}
             </p>
             <span className="relative mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent">
-              Explore {t.abbr}
+              {incoming ? `Meet our ${t.abbr} committee` : `Explore ${t.abbr}`}
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

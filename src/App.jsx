@@ -18,6 +18,9 @@ const ExchangePage = lazy(() => import('./pages/ExchangePage.jsx'))
 const ExchangeDirectionPage = lazy(
   () => import('./pages/ExchangeDirectionPage.jsx'),
 )
+const ExchangeIncomingsPage = lazy(
+  () => import('./pages/ExchangeIncomingsPage.jsx'),
+)
 const ExchangeJoinPage = lazy(() => import('./pages/ExchangeJoinPage.jsx'))
 const ShareStoryPage = lazy(() => import('./pages/ShareStoryPage.jsx'))
 const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'))
@@ -67,7 +70,7 @@ export default function App() {
                 />
                 <Route
                   path="/exchange/incomings"
-                  element={<ExchangeDirectionPage dir="incoming" />}
+                  element={<ExchangeIncomingsPage />}
                 />
                 {/* Singular forms people will type. */}
                 <Route

@@ -810,19 +810,22 @@ build differs from section 9: the schemas live in `src/content/schemas`
 through the same files; and a block's row is created by a migration, with
 its editors named in the row, so the database decides who may publish.
 Step 2: `/exchange/incomings` reads the block `exchange.incomings`, edited
-by the exchange officers and the EB. The page gained "Why Ain Shams"
-sections, the LEO-In's and the LORE's contact cards (name and photo from
-their profiles), a strip of photos from a gallery album chosen in the
-editor, and a link to the IFMSA-Egypt welcome booklet; the welcome booklet
-reader was already there. It ships with the copy it had, plus four short
-sections that only restate what the site and the booklet already say, so
-the pitch itself (the hospitals, the departments, the social programme,
-Cairo) is for the exchange officers to write in the portal. Two things are
-left for them: choosing or making the album, and pasting the address of
-the national booklet. The page's title is still "Hosting in Cairo", which
-speaks to our members more than to a student abroad; changing it is the
-webmaster's decision (it lives in `src/data/society.js` and
-`src/seo/pages.js`). The reminder of step 2 below stands for when the pull
+by the exchange officers and the EB. On the webmaster's instruction
+(2026-10-05) the page was rebuilt from the ground up for one reader, a
+student abroad choosing where to go, and written in the first person: who
+we are, what we give you, why choose us (six reasons with pictures), two
+ways to come to us, how you get to us, the welcome booklet, before you
+land, write to us (the LEO-In's and the LORE's cards, name and photo from
+their profiles), and stories from students we hosted. Its facts and its
+pictures come from our incomings booklet. Two things are left for the
+exchange officers: choosing or making the gallery album for the photo
+strip, and pasting the address of the national booklet. Two things in the
+shipped copy do not come from the booklet and are theirs to confirm: the
+four steps of "How you get to us" (the standard IFMSA procedure) and "at
+least one meal a day" (the standard IFMSA exchange condition). The two exchange pages are titled "Incomings" and
+"Outgoings" (the webmaster's choice, 2026-10-05; the titles live in
+`src/data/society.js`, and `src/seo/pages.js` reads them from there). The
+reminder of step 2 below stands for when the pull
 request is merged.
 
 1. **The editor foundation.** Field schemas, the `RecordEditor`,

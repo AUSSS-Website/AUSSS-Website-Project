@@ -1674,7 +1674,18 @@ opens each in the same form, drawn from the block's field schema.
 | Block | Page | Edited by | Holds |
 | --- | --- | --- | --- |
 | `join.faq` | `/join` | the EB | the questions and answers |
-| `exchange.incomings` | `/exchange/incomings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the short points, the "Why Ain Shams" sections (heading, text, optional picture), which gallery album to show, whether to show the contact cards, the link to the IFMSA-Egypt welcome booklet, the links at the foot |
+| `exchange.incomings` | `/exchange/incomings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What we give you", the "Why choose us" reasons (heading, text, optional picture), "How you get to us", the "Before you land" tips, which gallery album to show, whether to show the contact cards, the link to the IFMSA-Egypt welcome booklet, the links at the foot |
+
+**The incomings page is written for a student abroad** who is choosing which local
+committee to spend an exchange month with, and it speaks in our own voice: "we", "our",
+"us", to "you". Keep new copy that way; what we say to our own members about hosting
+belongs on `/exchange/join`. The page has its own file
+(`src/pages/ExchangeIncomingsPage.jsx`); `/exchange/outgoings` keeps
+`ExchangeDirectionPage.jsx`. The copy it ships with, and its six pictures
+(`public/assets/exchange/incomings`), come from our incomings booklet. The two track
+cards and the stories section take an `audience="incoming"` setting that words them for
+the same reader; the stories shown there are the ones whose destination is Egypt, Cairo or
+Ain Shams.
 
 On the incomings page three things are deliberately not in the block. The photos are a
 gallery album chosen in the editor, so they are managed in the Gallery editor and nothing

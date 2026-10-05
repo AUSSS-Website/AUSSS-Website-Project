@@ -11,30 +11,39 @@ import { useExchangeStories } from '../lib/exchangeStories.js'
 // first and highlighted), then the hand-written testimonials in society.js
 // (with photos). With nothing published it renders the empty state, which is
 // what keeps /exchange/share reachable from browsing.
-export default function ExchangeStories() {
+//
+// `audience="incoming"` is the incomings page: it speaks to a student coming
+// to us, so it lists only the stories of students we hosted (a story whose
+// destination is Egypt, Cairo or Ain Shams) and words the invitation for them.
+const HOSTED_RE = /egypt|cairo|ain\s*shams/i
+
+export default function ExchangeStories({ audience = 'outgoing' }) {
+  const incoming = audience === 'incoming'
   const live = useExchangeStories()
-  const visible = [...live, ...testimonials.filter((t) => t.published !== false)]
+  const all = [...live, ...testimonials.filter((t) => t.published !== false)]
+  const visible = incoming ? all.filter((t) => HOSTED_RE.test(t.destination || '')) : all
 
   return (
     <section className="reveal mx-auto max-w-4xl">
-      <h2 className="heading-serif text-center text-3xl text-ink">
-        Exchange stories
+      <h2 className={`heading-serif text-center text-3xl text-ink ${incoming ? 'sm:text-4xl' : ''}`}>
+        {incoming ? 'From students we hosted' : 'Exchange stories'}
       </h2>
 
       {visible.length === 0 ? (
         <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center">
           <p className="heading-serif text-xl text-ink">
-            Be the first story here
+            {incoming ? 'Were you one of our incomings?' : 'Be the first story here'}
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-soft/70">
-            Went abroad or hosted an incoming student with AUSSS? Share how it
-            went. Your story helps the next student take the leap.
+            {incoming
+              ? 'Tell the next student what your month with us was like. We read every story before we publish it.'
+              : 'Went abroad or hosted an incoming student with AUSSS? Share how it went. Your story helps the next student take the leap.'}
           </p>
           <Link
             to="/exchange/share"
             className="mt-5 inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
           >
-            Share your experience
+            {incoming ? 'Share your story' : 'Share your experience'}
           </Link>
         </div>
       ) : (
@@ -102,7 +111,7 @@ export default function ExchangeStories() {
               to="/exchange/share"
               className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
             >
-              Share your exchange story
+              {incoming ? 'Were you one of our incomings? Share your story' : 'Share your exchange story'}
             </Link>
           </div>
         </>
