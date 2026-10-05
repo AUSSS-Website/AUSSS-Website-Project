@@ -5,8 +5,10 @@ import {
   useInviteToPosition,
   usePositions,
   useRemovePosition,
+  useSetWorkEmail,
   useSocietyPositions,
   useWithdrawInvite,
+  useWorkEmails,
 } from '../../rosterQueries.js'
 import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
 import { ErrorText, Panel, Spinner, inputCls, primaryBtnCls } from '../../portalUi.jsx'
@@ -20,8 +22,12 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 //
 // Three things live here: offering a position to an email address, the offers
 // still waiting for a first sign-in, and the people who hold a position now.
+// For the Executive Board there is a fourth: the work email of each officer's
+// and board position, the one address such a position can be given to.
 // A position that the membership roster gave (the Members tab) is shown but
 // changed there, never here; the database refuses it either way.
+
+const NO_EMAILS = {}
 
 const tagCls =
   'inline-flex shrink-0 items-center rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-silver/60'
@@ -49,13 +55,27 @@ function ConfirmButton({ label, confirmLabel, busy, onConfirm }) {
   )
 }
 
-function InviteForm({ committee, positions }) {
+// An officer's, a board member's or the webmaster's position: it opens editors
+// and admin pages, so it has one work email and goes to no other address.
+const isPrivileged = (p) => p?.level === 'officer' || p?.level === 'eb' || p?.level === 'webmaster'
+
+function InviteForm({ committee, positions, workEmails }) {
   const { isEB } = useAuth()
   const invite = useInviteToPosition()
-  const [email, setEmail] = useState('')
+  const [typed, setTyped] = useState('')
   const [position, setPosition] = useState('')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
+
+  // what the picker offers: a committee's unit positions, or the society-level ones
+  const offered = committee
+    ? unitPositions(positions, { id: committee.homeId, ids: committee.ids })
+    : positions
+  const chosen = offered.find((p) => p.id === position)
+  // such a position is not typed an address: it has one, or cannot be given yet
+  const fixed = isPrivileged(chosen)
+  const workEmail = fixed ? workEmails[position] || '' : ''
+  const email = fixed ? workEmail : typed
 
   const submit = async (e) => {
     e.preventDefault()
@@ -66,9 +86,9 @@ function InviteForm({ committee, positions }) {
       setNote(
         state === 'assigned'
           ? `${email.trim()} already has an account, so the position is on it now.`
-          : `Saved. ${email.trim()} gets the position the first time they sign in with that address. No email is sent, so let them know.`,
+          : `Saved. ${email.trim()} gets the position the first time it signs in. No email is sent, so let them know.`,
       )
-      setEmail('')
+      setTyped('')
     } catch (err) {
       setError(err?.message || 'Could not save the invite.')
     }
@@ -77,16 +97,6 @@ function InviteForm({ committee, positions }) {
   return (
     <form onSubmit={submit}>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="name@example.com"
-          aria-label="Email address to invite"
-          autoComplete="off"
-          className={`${inputCls} max-w-xs`}
-        />
         <select
           required
           value={position}
@@ -96,11 +106,7 @@ function InviteForm({ committee, positions }) {
         >
           <option value="">Choose a position</option>
           {committee ? (
-            <PositionOptions
-              positions={unitPositions(positions, { id: committee.homeId, ids: committee.ids })}
-              committeeIds={committee.ids}
-              withOfficers={isEB}
-            />
+            <PositionOptions positions={offered} committeeIds={committee.ids} withOfficers={isEB} />
           ) : (
             positions.map((p) => (
               <option key={p.id} value={p.id}>
@@ -109,10 +115,32 @@ function InviteForm({ committee, positions }) {
             ))
           )}
         </select>
-        <button type="submit" disabled={invite.isPending} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setTyped(e.target.value)}
+          readOnly={fixed}
+          placeholder={fixed ? 'No work email set' : 'name@example.com'}
+          aria-label={fixed ? 'The position’s work email' : 'Email address to invite'}
+          autoComplete="off"
+          className={`${inputCls} max-w-xs ${fixed ? 'cursor-not-allowed opacity-70' : ''}`}
+        />
+        <button
+          type="submit"
+          disabled={invite.isPending || (fixed && !workEmail)}
+          className={`${primaryBtnCls} px-5 py-2 text-xs`}
+        >
           {invite.isPending ? 'Saving…' : 'Invite'}
         </button>
       </div>
+      {fixed && (
+        <p className="mt-3 text-xs text-silver/60">
+          {workEmail
+            ? 'This position opens editors and admin pages, so it only ever goes to its work email.'
+            : 'This position has no work email yet. Set it under “Work emails” below; it can only be given to that address.'}
+        </p>
+      )}
       {note && (
         <p className="mt-3 text-xs text-emerald-300" role="status">
           {note}
@@ -122,6 +150,84 @@ function InviteForm({ committee, positions }) {
         <ErrorText>{error}</ErrorText>
       </div>
     </form>
+  )
+}
+
+function WorkEmailRow({ position, email, locked }) {
+  const save = useSetWorkEmail()
+  const [value, setValue] = useState(email)
+  const [saved, setSaved] = useState(false)
+  const changed = value.trim().toLowerCase() !== email
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setSaved(false)
+    try {
+      await save.mutateAsync({ position_id: position.id, email: value })
+      setSaved(true)
+    } catch {
+      // save.error is rendered below
+    }
+  }
+
+  return (
+    <li>
+      <form onSubmit={submit} className="flex flex-wrap items-center gap-2 py-2.5">
+        <span className="w-full text-sm font-semibold text-white sm:w-64">{position.title}</span>
+        <input
+          type="email"
+          required
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setSaved(false)
+          }}
+          readOnly={locked}
+          placeholder="role@example.com"
+          aria-label={`Work email of ${position.title}`}
+          autoComplete="off"
+          className={`${inputCls} max-w-xs ${locked ? 'cursor-not-allowed opacity-70' : ''}`}
+        />
+        {!locked && changed && value.trim() && (
+          <button type="submit" disabled={save.isPending} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
+            {save.isPending ? 'Saving…' : 'Save'}
+          </button>
+        )}
+        {saved && !changed && <span className="text-xs text-emerald-300">Saved.</span>}
+        {locked && <span className="text-xs text-silver/45">Only the webmaster changes this one</span>}
+        {save.error && (
+          <span className="w-full">
+            <ErrorText>{save.error.message}</ErrorText>
+          </span>
+        )}
+      </form>
+    </li>
+  )
+}
+
+// The Executive Board's list of which address each officer's or board position
+// belongs to. The database gives such a position to that address and to no
+// other (migration 20261005180001).
+function WorkEmails({ positions, workEmails }) {
+  const { isWebmaster } = useAuth()
+  return (
+    <Panel title="Work emails">
+      <p className="mt-3 text-sm text-silver/65">
+        Each of these positions belongs to one work email, the only address that can hold it and
+        open its pages. A personal email is never given one. Changing an address here does not
+        move anybody&rsquo;s access: remove the current holder below, then invite the new address.
+      </p>
+      <ul className="mt-3 divide-y divide-white/5">
+        {positions.map((p) => (
+          <WorkEmailRow
+            key={`${p.id}-${workEmails[p.id] || ''}`}
+            position={p}
+            email={workEmails[p.id] || ''}
+            locked={p.level === 'webmaster' && !isWebmaster}
+          />
+        ))}
+      </ul>
+    </Panel>
   )
 }
 
@@ -199,6 +305,13 @@ export default function PositionsPanel({ committee: opened = null }) {
   const societyPositions = useSocietyPositions(!committee)
   const positions = (committee ? committeePositions.data : societyPositions.data) || []
   const [showRoster, setShowRoster] = useState(false)
+  const { isEB } = useAuth()
+  const workEmails = useWorkEmails(isEB).data || NO_EMAILS
+  // the positions here that have a work email: a committee's officers, or the
+  // board's own and the webmaster's
+  const privileged = (
+    committee ? unitPositions(positions, { id: committee.homeId, ids: committee.ids }) : positions
+  ).filter(isPrivileged)
 
   const { direct, fromRoster } = useMemo(() => {
     const invites = held.data?.invites || []
@@ -231,11 +344,13 @@ export default function PositionsPanel({ committee: opened = null }) {
       <Panel title="Invite by email">
         <p className="mt-3 text-sm text-silver/65">
           {committee
-            ? `For someone who is not on ${committee.abbr}’s members list yet. Choose the position they should hold; they get it the first time they sign in with that address. An officer’s position opens the committee’s editors, so it goes to the position’s work email, never a personal one.`
-            : 'Gives a board position, and with it the board’s access to the portal, to an address. Use the position’s work email, never a personal one: it holds the position from its first sign-in, and the public pages follow.'}
+            ? `For someone who is not on ${committee.abbr}’s members list yet. Choose the position they should hold; they get it the first time they sign in with that address. An officer’s position opens the committee’s editors, so it goes to its work email and no other address.`
+            : 'Gives a board position, and with it the board’s access to the portal, to its work email. No other address can be given one. It holds the position from its first sign-in, and the public pages follow.'}
         </p>
-        <InviteForm committee={committee} positions={positions} />
+        <InviteForm committee={committee} positions={positions} workEmails={workEmails} />
       </Panel>
+
+      {isEB && privileged.length > 0 && <WorkEmails positions={privileged} workEmails={workEmails} />}
 
       <Panel title={`Waiting for a first sign-in (${direct.length + fromRoster.length})`}>
         {direct.length === 0 && fromRoster.length === 0 ? (

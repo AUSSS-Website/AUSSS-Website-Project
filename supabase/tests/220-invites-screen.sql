@@ -5,7 +5,7 @@
 -- The outsider is SCORA's officer: SCOPE and SCORE share one roster (test 250), so SCORE's
 -- officer is no stranger to SCOPE's members.
 begin;
-select plan(22);
+select plan(23);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -19,6 +19,7 @@ on conflict (slug) do nothing;
 
 insert into public.positions (key, committee_id, title, short_title, level)
 values ('eb.president', null, 'President', 'President', 'eb'),
+       ('eb.vp-internal', null, 'Vice President, Internal Affairs', 'VPI', 'eb'),
        ('scope.leo-out', (select id from public.committees where slug = 'scope'), 'Local Exchange Officer (LEO-Out)', 'LEO-Out', 'officer'),
        ('scope.assistant', (select id from public.committees where slug = 'scope'), 'SCOPE Assistant', 'Assistant', 'assistant'),
        ('scope.member', (select id from public.committees where slug = 'scope'), 'Local Member', null, 'member'),
@@ -178,9 +179,16 @@ select throws_ok(
        (select a.id from public.assignments a where a.profile_id = tests.user_id('eb@pgtap.test'))) $$,
   '22023', null, '...and the function agrees'
 );
+select throws_ok(
+  $$ select public.invite_to_position('leo@pgtap.test', (select id from public.positions where key = 'eb.vp-internal')) $$,
+  '22023', null, 'the board cannot hand a board position to an address that is not its work email'
+);
+select tests.clear_auth();
+select tests.work_email('leo@pgtap.test', 'eb.vp-internal');
+select tests.authenticate_as('eb@pgtap.test');
 select is(
-  public.invite_to_position('leo@pgtap.test', (select id from public.positions where key = 'eb.president')),
-  'assigned', 'the board hands out a board position'
+  public.invite_to_position('leo@pgtap.test', (select id from public.positions where key = 'eb.vp-internal')),
+  'assigned', '...and hands it to the work email'
 );
 
 select tests.clear_auth();

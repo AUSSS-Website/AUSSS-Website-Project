@@ -635,8 +635,9 @@ webmaster: creating that deploy hook and saving it (RUNBOOK section 23,
 position on a member's roster row (their personal email) gives that account
 nothing when it is an officer's, a board member's or the webmaster's; it is a
 record of who holds the position. Only an invite to the position's work email
-opens the committee editors and the board's pages. Positions below officer
-still reach the member's account. This narrows request 10: an officer's name and
+opens the committee editors and the board's pages, and the database refuses
+to give such a position to any other address (`position_work_emails`).
+Positions below officer still reach the member's account. This narrows request 10: an officer's name and
 photo on the public pages come from the profile of the work account that holds
 the position (RUNBOOK section 14).
 

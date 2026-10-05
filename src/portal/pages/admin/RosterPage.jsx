@@ -89,9 +89,8 @@ function toForm(row) {
 function RecordOnlyNote({ what }) {
   return (
     <p className="mt-2 text-xs text-silver/60" role="note">
-      Recorded on the roster only. This member&rsquo;s own email stays a normal member&rsquo;s:
-      access to {what} belongs to the position&rsquo;s work email, which the Executive Board
-      invites.
+      A title only. This member&rsquo;s own email stays a normal member&rsquo;s: access to {what}
+      belongs to the position&rsquo;s work email and can be given to no other address.
     </p>
   )
 }

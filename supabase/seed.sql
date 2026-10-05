@@ -205,6 +205,28 @@ begin
 end
 $$;
 
+-- The work email of an officer's, a board member's or the webmaster's position: the only
+-- address that position can be held on (public.position_work_emails).
+create or replace function tests.work_email(email text, position_key text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_position uuid;
+begin
+  select p.id into v_position from public.positions p where p.key = work_email.position_key;
+  if v_position is null then
+    raise exception 'tests.work_email: no position with key %', work_email.position_key;
+  end if;
+  insert into public.position_work_emails (position_id, email)
+  values (v_position, work_email.email)
+  on conflict (position_id) do update set email = excluded.email;
+end
+$$;
+
+alter function tests.work_email(text, text) owner to postgres;
 alter function tests.create_user(text, text) owner to postgres;
 alter function tests.user_id(text) owner to postgres;
 alter function tests.authenticate_as(text) owner to postgres;

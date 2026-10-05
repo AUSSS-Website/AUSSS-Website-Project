@@ -165,6 +165,8 @@ select is(
   (select membership_status from public.profiles where id = tests.user_id('omar.nabil@example.com')),
   'candidate', 'an email on the roster is verified even when the row has no status'
 );
+-- an officer's position is only ever taken up by its work email (test 270)
+select tests.work_email('lore.officer@pgtap.test', 'score.lore');
 select tests.invite('lore.officer@pgtap.test', 'score.lore');
 select tests.create_user('lore.officer@pgtap.test', 'Officer Not On Roster');
 select is(

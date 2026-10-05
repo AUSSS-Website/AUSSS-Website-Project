@@ -4,7 +4,7 @@
 -- and the officers' pages is given by an invite to the position's work email and nothing
 -- else. An assistant's position, like every position below officer, still reaches the account.
 begin;
-select plan(18);
+select plan(19);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -31,6 +31,7 @@ select tests.create_user('aide@pgtap.test', 'Adam Aide');
 select tests.create_user('pat.personal@pgtap.test', 'Pat Personal');
 select tests.assign('eb@pgtap.test', 'eb.president');
 select tests.assign('lora@pgtap.test', 'scora.lora');
+select tests.work_email('vpi.work@pgtap.test', 'eb.vp-internal');
 
 create temporary table pgtap_ids on commit drop as
 select (select id from public.positions where key = 'eb.vp-internal') as vpi,
@@ -100,9 +101,13 @@ select tests.clear_auth();
 
 -- ---- access is an invite to the work email -----------------------------------------------------
 select tests.authenticate_as('eb@pgtap.test');
+select throws_ok(
+  $$ select public.invite_to_position('vera.personal@pgtap.test', (select vpi from pgtap_ids)) $$,
+  '22023', null, 'the board cannot invite the Vice President''s personal email to the position'
+);
 select is(
   public.invite_to_position('vpi.work@pgtap.test', (select vpi from pgtap_ids)),
-  'assigned', 'the board invites the position''s work email'
+  'assigned', '...only the position''s work email'
 );
 select is(
   public.assign_roster_member((select id from public.roster_entries where source_key = 'b6'), (select lora from pgtap_ids)),
