@@ -22,6 +22,18 @@ import { useCommittees } from './officerQueries.js'
 
 const MERGED = [{ label: 'SCOPE/SCORE', slugs: ['scope', 'score'] }]
 
+// The Executive Board is offered beside the committees but is not one: its
+// positions belong to no committee, so a member of it is a roster row with no
+// committee and one of these positions (migration 20261005160001). The value
+// below is what the pickers use for that choice.
+export const BOARD = 'board'
+export const BOARD_LABEL = 'Executive Board'
+
+// Of the society-level positions, the ones a roster row can carry: the board's
+// own and the assistants to its members. The webmaster's is given by invite.
+export const boardPositions = (societyPositions) =>
+  societyPositions.filter((p) => p.level === 'eb' || p.level === 'assistant')
+
 export function rosterUnits(committees) {
   const units = []
   const done = new Set()

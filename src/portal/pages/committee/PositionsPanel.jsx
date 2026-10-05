@@ -286,7 +286,11 @@ export default function PositionsPanel({ committee: opened = null }) {
         ) : (
           <ul className="mt-2 divide-y divide-white/5">
             {holders.map((h) => (
-              <HolderRow key={h.assignment_id} holder={h} rosterHint="Set on the Members tab" />
+              <HolderRow
+                key={h.assignment_id}
+                holder={h}
+                rosterHint={committee ? 'Set on the Members tab' : 'Set on the roster below'}
+              />
             ))}
           </ul>
         )}

@@ -8,6 +8,7 @@ import {
   useReleaseRosterEntry,
   useRevokeToken,
   usePositions,
+  useSocietyPositions,
   useRoster,
   useRotateToken,
   useSaveRosterEntry,
@@ -26,7 +27,7 @@ import RosterBulkPanel from './RosterBulkPanel.jsx'
 import RosterUpgradesPanel from './RosterUpgradesPanel.jsx'
 import PositionTypesPanel, { PositionOptions, localMemberOf } from './PositionTypesPanel.jsx'
 import PositionsPanel from '../committee/PositionsPanel.jsx'
-import { rosterUnits, unitOf, unitPositions } from '../../rosterUnits.js'
+import { BOARD, BOARD_LABEL, boardPositions, rosterUnits, unitOf, unitPositions } from '../../rosterUnits.js'
 import {
   ErrorText,
   Field,
@@ -81,13 +82,19 @@ function toForm(row) {
 
 // `committees` here and below are roster units (rosterUnits.js): one entry per
 // committee, except SCOPE and SCORE, which are one entry.
-function Editor({ row, committees, positions, onClose }) {
+// `board` are the Executive Board's positions; a member of the board has no
+// committee and one of them.
+function Editor({ row, committees, positions, board, onClose }) {
   const save = useSaveRosterEntry()
   const remove = useDeleteRosterEntry()
   const release = useReleaseRosterEntry()
   const [form, setForm] = useState(() => (row ? toForm(row) : BLANK))
   // the unit the member is in: SCOPE/SCORE for either of the two committees
   const unit = unitOf(committees, form.committee_id)
+  // "Executive Board" was picked, or the member already holds one of its positions
+  const [pickedBoard, setPickedBoard] = useState(false)
+  const boardPosition = board.find((p) => p.id === form.position_id)
+  const onBoard = !unit && (pickedBoard || Boolean(boardPosition))
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
   const busy = save.isPending || remove.isPending || release.isPending
@@ -110,6 +117,10 @@ function Editor({ row, committees, positions, onClose }) {
     <form
       onSubmit={(e) => {
         e.preventDefault()
+        if (onBoard && !form.position_id) {
+          setError('Choose their position on the Executive Board, or pick "No committee".')
+          return
+        }
         run(() => save.mutateAsync({ id: row?.id, values: form }))
       }}
       className="mt-4 space-y-5 border-t border-white/10 pt-5"
@@ -174,8 +185,15 @@ function Editor({ row, committees, positions, onClose }) {
         >
           <select
             id="r-committee"
-            value={unit?.id || ''}
+            value={onBoard ? BOARD : unit?.id || ''}
             onChange={(e) => {
+              if (e.target.value === BOARD) {
+                // the board has no starting position: which one is chosen below
+                setPickedBoard(true)
+                setForm((f) => ({ ...f, committee_id: '', position_id: '' }))
+                return
+              }
+              setPickedBoard(false)
               // a new committee starts them as its Local Member; the position is then theirs to change
               const committee_id = e.target.value
               setForm((f) => ({ ...f, committee_id, position_id: localMemberOf(positions, committee_id) }))
@@ -183,6 +201,7 @@ function Editor({ row, committees, positions, onClose }) {
             className={inputCls}
           >
             <option value="">No committee</option>
+            <option value={BOARD}>{BOARD_LABEL}</option>
             {committees.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.abbr}
@@ -198,6 +217,46 @@ function Editor({ row, committees, positions, onClose }) {
             Exchange contact person (held alongside their committee)
           </label>
         </Field>
+        {onBoard && (
+          <Field
+            label="Position on the Executive Board"
+            hint="Reaches their portal account by itself: at once if they have signed in, otherwise at their first sign-in."
+            htmlFor="r-board-position"
+          >
+            <select
+              id="r-board-position"
+              value={form.position_id}
+              onChange={set('position_id')}
+              className={inputCls}
+            >
+              <option value="">Choose a position</option>
+              <optgroup label="Executive Board">
+                {board
+                  .filter((p) => p.level === 'eb')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+              </optgroup>
+              <optgroup label="Assistants">
+                {board
+                  .filter((p) => p.level === 'assistant')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+              </optgroup>
+            </select>
+            {boardPosition?.level === 'eb' && (
+              <p className="mt-2 text-xs text-amber-300" role="note">
+                This gives {form.email ? form.email : 'the account with this member’s email'} the
+                Executive Board&rsquo;s access to the whole portal the next time it signs in.
+              </p>
+            )}
+          </Field>
+        )}
         {form.committee_id && (
           <Field
             label="Position in the committee"
@@ -274,9 +333,10 @@ function Editor({ row, committees, positions, onClose }) {
   )
 }
 
-function Row({ row, committees, positions, open, onToggle }) {
-  const committee = unitOf(committees, row.committee_id)
-  const position = positions.find((p) => p.id === row.position_id)
+function Row({ row, committees, positions, board, open, onToggle }) {
+  const boardPosition = board.find((p) => p.id === row.position_id)
+  const committee = boardPosition ? { abbr: BOARD_LABEL } : unitOf(committees, row.committee_id)
+  const position = boardPosition || positions.find((p) => p.id === row.position_id)
   return (
     <li className="rounded-2xl border border-white/10 bg-forest-800 p-5">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-left">
@@ -297,7 +357,7 @@ function Row({ row, committees, positions, open, onToggle }) {
           {row.portal_edited_at && <span className={tagCls}>Portal</span>}
         </span>
       </button>
-      {open && <Editor row={row} committees={committees} positions={positions} onClose={onToggle} />}
+      {open && <Editor row={row} committees={committees} positions={positions} board={board} onClose={onToggle} />}
     </li>
   )
 }
@@ -545,6 +605,8 @@ export default function RosterPage() {
   const allCommittees = useCommittees().data
   const committees = useMemo(() => rosterUnits(allCommittees || []), [allCommittees])
   const positions = usePositions().data || []
+  const societyPositions = useSocietyPositions().data
+  const board = useMemo(() => boardPositions(societyPositions || []), [societyPositions])
   const [showTypes, setShowTypes] = useState(false)
   const [showBoard, setShowBoard] = useState(false)
   const matches = useMemo(() => {
@@ -552,9 +614,10 @@ export default function RosterPage() {
     if (!committee) return found
     if (committee === 'none') return found.filter((r) => !r.committee_id)
     if (committee === 'contact') return found.filter((r) => r.is_contact_person)
+    if (committee === BOARD) return found.filter((r) => board.some((p) => p.id === r.position_id))
     const unit = committees.find((c) => c.id === committee)
     return found.filter((r) => (unit ? unit.ids.includes(r.committee_id) : r.committee_id === committee))
-  }, [prepared, term, status, committee, committees])
+  }, [prepared, term, status, committee, committees, board])
   const total = matches.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const committeeAbbr = useMemo(
@@ -570,11 +633,15 @@ export default function RosterPage() {
       { label: 'Years', value: (r) => r.years_spent },
       { label: 'LGAs', value: (r) => r.lgas },
       { label: 'NGAs', value: (r) => r.ngas },
-      { label: 'Committee', value: (r) => committeeAbbr[r.committee_id] || '' },
+      {
+        label: 'Committee',
+        value: (r) =>
+          board.some((p) => p.id === r.position_id) ? BOARD_LABEL : committeeAbbr[r.committee_id] || '',
+      },
       { label: 'Other positions', value: (r) => r.current_position },
       { label: 'Contact person', value: (r) => (r.is_contact_person ? 'yes' : '') },
     ],
-    [committeeAbbr],
+    [committeeAbbr, board],
   )
   const exportSubtitle = [
     term ? `matching “${term}”` : '',
@@ -583,9 +650,11 @@ export default function RosterPage() {
       ? 'no committee'
       : committee === 'contact'
         ? 'contact persons'
-        : committee
-          ? committeeAbbr[committee]
-          : '',
+        : committee === BOARD
+          ? BOARD_LABEL
+          : committee
+            ? committeeAbbr[committee]
+            : '',
   ]
     .filter(Boolean)
     .join(', ')
@@ -662,7 +731,7 @@ export default function RosterPage() {
 
       {openId === 'new' && (
         <Panel title="New member" className="mb-6">
-          <Editor row={null} committees={committees} positions={positions} onClose={() => setOpenId(null)} />
+          <Editor row={null} committees={committees} positions={positions} board={board} onClose={() => setOpenId(null)} />
         </Panel>
       )}
 
@@ -703,6 +772,7 @@ export default function RosterPage() {
           className={`${inputCls} sm:w-auto`}
         >
           <option value="">All committees</option>
+          <option value={BOARD}>{BOARD_LABEL}</option>
           {committees.map((c) => (
             <option key={c.id} value={c.id}>
               {c.abbr}
@@ -747,7 +817,7 @@ export default function RosterPage() {
         <>
           <ul className="space-y-3">
             {visible.map((row) => (
-              <Row key={row.id} row={row} committees={committees} positions={positions} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />
+              <Row key={row.id} row={row} committees={committees} positions={positions} board={board} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />
             ))}
           </ul>
           {pages > 1 && (

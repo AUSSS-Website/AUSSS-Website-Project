@@ -348,7 +348,9 @@ sign-in with that exact email (Google account or magic link).
 
 Since Phase 5b the portal does this without SQL: the "Invites" tab of a committee
 for its positions, and Roster page > "Executive Board" for the board and the
-webmaster (section 23). The SQL here is for when nobody who could do it can
+webmaster (section 23). A board member or a board assistant who is on the
+membership roster is better set on their roster row (Committee: Executive Board;
+section 14), so the roster and the account say the same thing. The SQL here is for when nobody who could do it can
 sign in.
 
 To **remove** access, end the assignment rather than deleting it (history stays):
@@ -649,6 +651,24 @@ an officer of the other (`app.is_officer_of` is unchanged; the shared parts ask
 reaches the people who hold a SCORE position, so the shared members, filed under SCOPE, get
 SCOPE's updates only. To put another pair of committees on one roster, give both the same
 `roster_group` value and add the pair to `MERGED` in `src/portal/rosterUnits.js`.
+
+**The Executive Board on the Roster page (migration `20261005160001_board_on_roster`, test
+`260-board-on-roster.sql`).** The Committee field and the committee filter offer "Executive
+Board" beside the committees. It is not a committee: the board's positions belong to none,
+so a member of the board is a roster row with no committee and one of these positions:
+President, the two Vice Presidents, the Secretary General, or an assistant to one of them
+(`eb.president-assistant`, `eb.vp-internal-assistant`, `eb.vp-external-assistant`,
+`eb.secretary-general-assistant`; level `assistant`, so an assistant receives tasks and
+updates like any assistant and has none of the board's access). The position reaches the
+account like every roster position, which means: **giving a row a board position gives that
+email the Executive Board's access to the whole portal at its next sign-in**, and clearing
+it ends that access. The page says so when one is chosen. Three things keep it deliberate:
+only the board can write the roster; the position is only ever chosen by hand (the sheet
+sync and the "other positions" text never set it, and a row that holds one is not moved
+into a committee because its text names one); and the webmaster's position cannot ride on a
+roster row at all, it is given by invite (Roster page > Executive Board). A board position
+set here shows in that panel as "Set on the roster below" and is changed on the row, not
+there.
 
 **"Other positions"** is the roster's name for the sheet's "Current Position" text since
 2026-10-05 (the Roster page editor, its export, and the Members tab): with the committee
