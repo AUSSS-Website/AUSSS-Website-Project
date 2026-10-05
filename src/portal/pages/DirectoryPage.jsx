@@ -79,16 +79,16 @@ export default function DirectoryPage() {
               {shown.map((m) => (
                 <li
                   key={m.id}
-                  className="flex items-center gap-4 rounded-2xl border border-line/10 bg-card p-4"
+                  className="flex min-w-0 items-center gap-4 rounded-2xl border border-line/10 bg-card p-4"
                 >
                   <Avatar name={m.full_name} src={m.avatar_url} size="row" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{m.full_name}</p>
+                    <p className="break-words text-sm font-semibold text-ink">{m.full_name}</p>
                     {m.positions.length === 0 ? (
                       <p className="mt-0.5 text-xs text-soft/45">Member</p>
                     ) : (
                       m.positions.map((p, i) => (
-                        <p key={i} className="mt-0.5 truncate text-xs text-soft/60">
+                        <p key={i} className="mt-0.5 break-words text-xs text-soft/60">
                           {positionLine(p)}
                         </p>
                       ))

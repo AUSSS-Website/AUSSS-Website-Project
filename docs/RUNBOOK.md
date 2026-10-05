@@ -1243,6 +1243,14 @@ npm run walk -- --contrast --no-shots  # text contrast (WCAG AA) on every page
   measured and is not listed. Both are in `report.json` (`overflow`, `contrast`) and in the
   summary the command prints. The walk runs with reduced motion, so anything that only
   moves (the aurora behind the gallery and the magazine) has to be looked at in a browser.
+- **The portal without a sign-in.** `npm run walk:portal-sample`
+  (`scripts/portal-sample-walk.mjs`) opens every portal page as a made-up webmaster with
+  sample rows, at the same widths and themes, and measures the same two things. It answers
+  every database call itself, so it shows no real person and cannot write anything. It is
+  the quick check for a design change on the portal; long names and titles are in the
+  sample on purpose. Arguments are themes, widths and an optional path:
+  `npm run walk:portal-sample -- light 320,375 /portal/tasks`. When a portal page gains a
+  query, give it a sample row in the script.
 - **Pages.** The public list is the sitemap (the base's own, else the one in `dist/`, else
   production's) plus the checkout, the quiz and the sign-in page. The portal list is in the
   script (`PORTAL_FIXED`, `PORTAL_DETAIL`); add a route there when the portal gains one.
@@ -1580,5 +1588,6 @@ read (`--stack-left`, `--stack-right`); the shadow of the lifting page is the li
 **Checking a change to any of this.** `npm run walk -- --contrast` (section 21) must end
 with no page scrolling sideways and no low-contrast colour pairs; then look at the
 screenshots of the pages touched at 320 and 1920 px in both themes. State on 2026-10-05:
-the 37 public pages pass at all six widths in both themes. The portal pages need a
-signed-in walk (`npm run walk -- --login` first).
+the 37 public pages pass at all six widths in both themes, and so do the 18 portal pages
+of `npm run walk:portal-sample`. A signed-in walk of the portal against the real data
+(`npm run walk -- --login` first) has not been done yet.

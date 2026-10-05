@@ -12,6 +12,7 @@
     "preview:prerendered": "node scripts/serve-dist.mjs",
     "preview:host": "vite preview --host",
     "walk": "node scripts/page-walk.mjs",
+    "walk:portal-sample": "node scripts/portal-sample-walk.mjs",
     "db": "node scripts/db/supa.mjs",
     "db:new": "node scripts/db/supa.mjs migration new",
     "db:link": "node scripts/db/supa.mjs link --project-ref wjijkqrdaakiwbtdssio",
