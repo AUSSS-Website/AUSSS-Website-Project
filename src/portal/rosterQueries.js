@@ -250,14 +250,16 @@ const deletePosition = async (id) => {
 
 const NOTE_COLUMNS = 'id, roster_entry_id, committee_id, author_id, body, created_at, updated_at'
 
-async function fetchMemberNotes({ entryId, committeeId }) {
+// committeeIds: every committee of the roster unit (SCOPE and SCORE share
+// their notes); a note is filed under the committee the member is filed under.
+async function fetchMemberNotes({ entryId, committeeIds }) {
   return (
     unwrap(
       await supabase
         .from('member_notes')
         .select(NOTE_COLUMNS)
         .eq('roster_entry_id', entryId)
-        .eq('committee_id', committeeId)
+        .in('committee_id', committeeIds)
         .order('created_at', { ascending: false }),
     ) || []
   )
@@ -370,11 +372,11 @@ export const useAddPosition = () => usePositionMutation(addPosition)
 export const useUpdatePosition = () => usePositionMutation(updatePosition)
 export const useDeletePosition = () => usePositionMutation(deletePosition)
 
-export function useMemberNotes(entryId, committeeId) {
+export function useMemberNotes(entryId, committeeIds) {
   return useQuery({
-    queryKey: rosterKeys.notes(entryId, committeeId),
-    queryFn: () => fetchMemberNotes({ entryId, committeeId }),
-    enabled: Boolean(entryId && committeeId),
+    queryKey: rosterKeys.notes(entryId, committeeIds.join(',')),
+    queryFn: () => fetchMemberNotes({ entryId, committeeIds }),
+    enabled: Boolean(entryId && committeeIds.length),
   })
 }
 

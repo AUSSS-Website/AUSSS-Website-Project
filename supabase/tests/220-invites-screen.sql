@@ -2,6 +2,8 @@
 -- sees what is waiting and who holds what, withdraws an offer and removes a position; the
 -- roster's own positions are changed on the roster and nowhere else; the society-level
 -- positions are the Executive Board's.
+-- The outsider is SCORA's officer: SCOPE and SCORE share one roster (test 250), so SCORE's
+-- officer is no stranger to SCOPE's members.
 begin;
 select plan(22);
 
@@ -12,7 +14,7 @@ on conflict (label) do update set is_current = true;
 
 insert into public.committees (slug, name, abbr, kind)
 values ('scope', 'Professional Exchange', 'SCOPE', 'standing'),
-       ('score', 'Research Exchange', 'SCORE', 'standing')
+       ('scora', 'Sexual and Reproductive Health', 'SCORA', 'standing')
 on conflict (slug) do nothing;
 
 insert into public.positions (key, committee_id, title, short_title, level)
@@ -20,24 +22,24 @@ values ('eb.president', null, 'President', 'President', 'eb'),
        ('scope.leo-out', (select id from public.committees where slug = 'scope'), 'Local Exchange Officer (LEO-Out)', 'LEO-Out', 'officer'),
        ('scope.assistant', (select id from public.committees where slug = 'scope'), 'SCOPE Assistant', 'Assistant', 'assistant'),
        ('scope.member', (select id from public.committees where slug = 'scope'), 'Local Member', null, 'member'),
-       ('score.lore', (select id from public.committees where slug = 'score'), 'Local Officer on Research Exchange', 'LORE', 'officer'),
-       ('score.member', (select id from public.committees where slug = 'score'), 'Local Member', null, 'member')
+       ('scora.lora', (select id from public.committees where slug = 'scora'), 'Local Officer on SRHR', 'LORA', 'officer'),
+       ('scora.member', (select id from public.committees where slug = 'scora'), 'Local Member', null, 'member')
 on conflict do nothing;
 
 select tests.create_user('eb@pgtap.test', 'EB Person');
 select tests.create_user('leo@pgtap.test', 'Scope Officer');
-select tests.create_user('lore@pgtap.test', 'Score Officer');
+select tests.create_user('lora@pgtap.test', 'Scora Officer');
 select tests.create_user('sara@pgtap.test', 'Sara Signed In');
 select tests.assign('eb@pgtap.test', 'eb.president');
 select tests.assign('leo@pgtap.test', 'scope.leo-out');
-select tests.assign('lore@pgtap.test', 'score.lore');
+select tests.assign('lora@pgtap.test', 'scora.lora');
 
 create temporary table pgtap_ids on commit drop as
 select (select id from public.committees where slug = 'scope') as scope,
        (select id from public.positions where key = 'scope.assistant') as assistant,
        (select id from public.positions where key = 'scope.member') as member,
        (select id from public.positions where key = 'scope.leo-out') as leo_out,
-       (select id from public.positions where key = 'score.member') as score_member;
+       (select id from public.positions where key = 'scora.member') as scora_member;
 grant select on pgtap_ids to authenticated;
 
 -- a roster member of SCOPE with no account: the roster writes her invite itself
@@ -64,7 +66,7 @@ select throws_ok(
   '42501', null, 'an officer cannot hand out an officer''s position'
 );
 select throws_ok(
-  $$ select public.invite_to_position('x@pgtap.test', (select score_member from pgtap_ids)) $$,
+  $$ select public.invite_to_position('x@pgtap.test', (select scora_member from pgtap_ids)) $$,
   '42501', null, '...nor a position in another committee'
 );
 select throws_ok(
@@ -94,7 +96,7 @@ select throws_ok(
   '42501', null, 'the society-level positions are not an officer''s to see'
 );
 select tests.clear_auth();
-select tests.authenticate_as('lore@pgtap.test');
+select tests.authenticate_as('lora@pgtap.test');
 select throws_ok(
   $$ select public.committee_positions((select scope from pgtap_ids)) $$,
   '42501', null, 'another committee''s officer sees none of it'

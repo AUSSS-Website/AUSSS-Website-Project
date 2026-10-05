@@ -16,6 +16,7 @@ import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } fro
 import { when } from '../../workUi.jsx'
 import { MEMBERSHIP_LABELS } from '../../constants.js'
 import ExportButtons from '../../ExportButtons.jsx'
+import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 
 // The "Members" tab of /portal/committees/:slug: the people the Executive
 // Board has linked to this committee on the membership roster, whether or not
@@ -24,6 +25,10 @@ import ExportButtons from '../../ExportButtons.jsx'
 // The membership record itself is read-only here: status, joining year and GA
 // counts stay with the EB and the Secretary General's sheet, and the database
 // enforces that (rpc/committee_roster is the only door to these rows).
+//
+// SCOPE and SCORE share one members list (rosterUnits.js): opened from either
+// committee this tab shows the same people under the name SCOPE/SCORE, with
+// the positions and notes of both.
 
 const tagCls =
   'inline-flex items-center rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-silver/60'
@@ -39,7 +44,7 @@ function Fact({ label, children }) {
 
 function Notes({ member, committee }) {
   const { user, isEB } = useAuth()
-  const notes = useMemberNotes(member.id, committee.id)
+  const notes = useMemberNotes(member.id, committee.ids)
   const add = useAddMemberNote()
   const remove = useDeleteMemberNote()
   const [body, setBody] = useState('')
@@ -49,7 +54,8 @@ function Notes({ member, committee }) {
     e.preventDefault()
     setError('')
     try {
-      await add.mutateAsync({ entryId: member.id, committeeId: committee.id, body })
+      // filed under the committee the member is filed under
+      await add.mutateAsync({ entryId: member.id, committeeId: member.committee_id || committee.id, body })
       setBody('')
     } catch (err) {
       setError(err?.message || 'Could not save the note.')
@@ -153,7 +159,12 @@ function Assign({ member, committee, positions }) {
             aria-label={`Position for ${member.full_name}`}
             className={`${inputCls} max-w-xs`}
           >
-            <PositionOptions positions={positions} committeeId={committee.id} current={current} withOfficers={isEB} />
+            <PositionOptions
+              positions={unitPositions(positions, { id: committee.homeId, ids: committee.ids }, current)}
+              committeeIds={committee.ids}
+              current={current}
+              withOfficers={isEB}
+            />
           </select>
           <button
             type="submit"
@@ -297,7 +308,8 @@ const MEMBER_COLUMNS = [
   { label: 'Signed in', value: (m) => (m.profile_id ? 'yes' : '') },
 ]
 
-export default function MembersPanel({ committee }) {
+export default function MembersPanel({ committee: opened }) {
+  const committee = useRosterUnit(opened)
   const roster = useCommitteeRoster(committee.id)
   const positions = usePositions().data || []
   const held = useCommitteePositions(committee.id)
@@ -373,7 +385,7 @@ export default function MembersPanel({ committee }) {
         <span className="ml-auto">
           <ExportButtons
             title={`${committee.abbr} members`}
-            subtitle={`${committee.name}: everyone the membership roster places in the committee${q ? `, matching “${q}”` : ''}.`}
+            subtitle={`${committee.abbr}: everyone the membership roster places in the committee${q ? `, matching “${q}”` : ''}.`}
             filename={`ausss-${committee.slug}-members`}
             columns={MEMBER_COLUMNS}
             rows={members}

@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(86);
+select plan(87);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -67,6 +67,7 @@ select ok(not has_function_privilege('anon', 'public.directory()', 'execute'), '
 select ok(not has_table_privilege('authenticated', 'app.site_rebuild', 'select'), 'no API role reads the rebuild state');
 select ok(not has_function_privilege('authenticated', 'app.fire_site_rebuild(boolean)', 'execute'), 'no API role fires a rebuild');
 select ok(not has_function_privilege('authenticated', 'app.request_site_rebuild(text)', 'execute'), 'no API role requests a rebuild directly');
+select ok(not has_function_privilege('anon', 'app.is_roster_officer_of(uuid)', 'execute'), 'anon cannot ask who shares a roster');
 
 -- email digest: the queue and the run marker are for the secret key only
 select ok(not has_function_privilege('authenticated', 'public.admin_digest_batch(int)', 'execute'), 'authenticated cannot read the digest queue');

@@ -1,3 +1,6 @@
+import { useMemo } from 'react'
+import { useCommittees } from './officerQueries.js'
+
 // What the roster offers as "a committee".
 //
 // SCOPE and SCORE are two committees everywhere else (two public pages, two
@@ -11,6 +14,11 @@
 // below. That is where a new member of the unit is filed and where its shared
 // positions (everything below officer) live; an officer position keeps its own
 // committee, so choosing LORE files the member under SCORE by itself.
+//
+// The database knows the same grouping as committees.roster_group (migration
+// 20261005150001): the officers of the committees in a unit see one members
+// list, hand out its positions below officer, share their notes and can give
+// their tasks to the same people.
 
 const MERGED = [{ label: 'SCOPE/SCORE', slugs: ['scope', 'score'] }]
 
@@ -39,6 +47,21 @@ export const unitOf = (units, committeeId) =>
 // The label for a committee slug as stored in the bulk-update history.
 export const unitLabelForSlug = (slug) =>
   MERGED.find((m) => m.slugs.includes(slug))?.label || String(slug || '').toUpperCase()
+
+// A committee as its own Members and Invites tabs show it: the committee that
+// was opened (its `id` is what the database is asked about; either committee
+// of a unit gets the same answer), under the unit's name, with the unit's
+// committees in `ids` and the home committee in `homeId`.
+export function useRosterUnit(committee) {
+  const all = useCommittees().data
+  return useMemo(() => {
+    if (!committee) return null
+    const unit = unitOf(rosterUnits(all || []), committee.id)
+    return unit
+      ? { ...committee, abbr: unit.abbr, ids: unit.ids, homeId: unit.id }
+      : { ...committee, ids: [committee.id], homeId: committee.id }
+  }, [all, committee])
+}
 
 // The positions a unit hands out: every officer position of its committees,
 // and the home committee's positions below officer (the other committee holds
