@@ -634,8 +634,21 @@ committees in the database and on the public site. A member of the unit is filed
 SCOPE, where the shared positions below officer live (Local Member, the assistants, CBDA);
 choosing an officer position files them where that position belongs, so LORE puts the
 member under SCORE by itself. SCORE's own copies of the shared positions are no longer
-offered. One consequence to know: the Members tab of a committee still lists the members
-filed under that committee, so the shared members appear on SCOPE's tab, not on SCORE's.
+offered.
+
+**The exchange officers share that list (migration `20261005150001_exchange_shared_roster`,
+test `250-exchange-shared-roster.sql`).** `committees.roster_group` is `exchange` for SCOPE
+and SCORE, and for the committees of one group these are shared: the Members tab and the
+Invites tab (opened from either committee they show the same people, under the name
+SCOPE/SCORE), handing out the positions below officer, the officer notes, and who a task can
+be given to (a SCORE task can go to a member filed under SCOPE, and the other way round).
+Everything else stays with each committee's own officers: its public page, its open calls
+and applications, its updates, and creating or managing its tasks. An officer of one is not
+an officer of the other (`app.is_officer_of` is unchanged; the shared parts ask
+`app.is_roster_officer_of`). Updates are the gap to know about: an update posted to SCORE
+reaches the people who hold a SCORE position, so the shared members, filed under SCOPE, get
+SCOPE's updates only. To put another pair of committees on one roster, give both the same
+`roster_group` value and add the pair to `MERGED` in `src/portal/rosterUnits.js`.
 
 **"Other positions"** is the roster's name for the sheet's "Current Position" text since
 2026-10-05 (the Roster page editor, its export, and the Members tab): with the committee

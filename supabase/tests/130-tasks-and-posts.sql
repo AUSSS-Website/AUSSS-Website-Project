@@ -2,6 +2,8 @@
 -- assignee moves the status and nothing else; the timeline and the notifications are written by
 -- triggers. Posts reach their audience once published, and readers leave receipts that only the
 -- post's managers can see.
+-- The outsider is SCORA's officer: SCOPE and SCORE share one roster (test 250), so SCORE's
+-- officer is no stranger to SCOPE's members.
 begin;
 select plan(39);
 
@@ -12,7 +14,7 @@ on conflict (label) do update set is_current = true;
 
 insert into public.committees (slug, name, abbr, kind)
 values ('scope', 'Professional Exchange', 'SCOPE', 'standing'),
-       ('score', 'Research Exchange', 'SCORE', 'standing')
+       ('scora', 'Sexual and Reproductive Health', 'SCORA', 'standing')
 on conflict (slug) do nothing;
 
 insert into public.positions (key, committee_id, title, short_title, level, can_assign_tasks)
@@ -20,7 +22,7 @@ values ('eb.president', null, 'President', 'President', 'eb', false),
        ('scope.leo-out', (select id from public.committees where slug = 'scope'), 'Local Exchange Officer (LEO-Out)', 'LEO-Out', 'officer', false),
        ('scope.assistant', (select id from public.committees where slug = 'scope'), 'SCOPE Assistant', 'Assistant', 'assistant', true),
        ('scope.member', (select id from public.committees where slug = 'scope'), 'SCOPE Member', 'Member', 'member', false),
-       ('score.lore', (select id from public.committees where slug = 'score'), 'Local Officer on Research Exchange', 'LORE', 'officer', false)
+       ('scora.lora', (select id from public.committees where slug = 'scora'), 'Local Officer on SRHR', 'LORA', 'officer', false)
 on conflict do nothing;
 update public.positions set can_assign_tasks = true where key = 'scope.assistant';
 
@@ -28,13 +30,13 @@ select tests.create_user('eb@pgtap.test', 'EB Person');
 select tests.create_user('leo@pgtap.test', 'Scope Officer');
 select tests.create_user('helper@pgtap.test', 'Scope Assistant');
 select tests.create_user('sara@pgtap.test', 'Scope Member');
-select tests.create_user('lore@pgtap.test', 'Score Officer');
+select tests.create_user('lora@pgtap.test', 'Scora Officer');
 select tests.create_user('stranger@pgtap.test', 'Signed In Only');
 select tests.assign('eb@pgtap.test', 'eb.president');
 select tests.assign('leo@pgtap.test', 'scope.leo-out');
 select tests.assign('helper@pgtap.test', 'scope.assistant');
 select tests.assign('sara@pgtap.test', 'scope.member');
-select tests.assign('lore@pgtap.test', 'score.lore');
+select tests.assign('lora@pgtap.test', 'scora.lora');
 
 -- ---- creating and assigning -----------------------------------------------------------------
 select tests.authenticate_as('leo@pgtap.test');
@@ -50,7 +52,7 @@ select is(
 );
 select throws_ok(
   $$ insert into public.tasks (committee_id, title)
-     values ((select id from public.committees where slug = 'score'), 'Not mine') $$,
+     values ((select id from public.committees where slug = 'scora'), 'Not mine') $$,
   '42501', null, 'an officer cannot create a task in another committee'
 );
 select throws_ok(
@@ -69,7 +71,7 @@ select lives_ok(
 );
 select throws_ok(
   $$ insert into public.task_assignees (task_id, profile_id)
-     select id, tests.user_id('lore@pgtap.test') from public.tasks $$,
+     select id, tests.user_id('lora@pgtap.test') from public.tasks $$,
   '22023', null, 'somebody outside the committee cannot be assigned'
 );
 
@@ -93,7 +95,7 @@ select tests.clear_auth();
 select tests.authenticate_as('helper@pgtap.test');
 select is((select count(*)::int from public.tasks), 0, 'a committee colleague who is not assigned does not');
 select tests.clear_auth();
-select tests.authenticate_as('lore@pgtap.test');
+select tests.authenticate_as('lora@pgtap.test');
 select is((select count(*)::int from public.tasks), 0, 'another committee''s officer does not');
 select is((select count(*)::int from public.task_updates), 0, '...nor its timeline');
 select tests.clear_auth();
@@ -226,11 +228,11 @@ select lives_ok(
 select tests.clear_auth();
 create temporary table pgtap_posts on commit drop as select title, id from public.posts;
 grant select on pgtap_posts to authenticated;
-select tests.authenticate_as('lore@pgtap.test');
+select tests.authenticate_as('lora@pgtap.test');
 select is((select count(*)::int from public.posts), 0, 'another committee sees none of it');
 select throws_ok(
   $$ insert into public.post_reads (post_id, profile_id)
-     select id, tests.user_id('lore@pgtap.test') from pgtap_posts where title = 'Exchange season opens' $$,
+     select id, tests.user_id('lora@pgtap.test') from pgtap_posts where title = 'Exchange season opens' $$,
   '42501', null, 'no receipts for posts you cannot see'
 );
 

@@ -12,6 +12,7 @@ import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
 import { ErrorText, Panel, Spinner, inputCls, primaryBtnCls } from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
 import { Avatar } from '../../Avatar.jsx'
+import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 
 // The invites screen. For a committee it is the "Invites" tab of
 // /portal/committees/:slug; with no committee it is the Executive Board panel
@@ -95,7 +96,11 @@ function InviteForm({ committee, positions }) {
         >
           <option value="">Choose a position</option>
           {committee ? (
-            <PositionOptions positions={positions} committeeId={committee.id} withOfficers={isEB} />
+            <PositionOptions
+              positions={unitPositions(positions, { id: committee.homeId, ids: committee.ids })}
+              committeeIds={committee.ids}
+              withOfficers={isEB}
+            />
           ) : (
             positions.map((p) => (
               <option key={p.id} value={p.id}>
@@ -186,7 +191,9 @@ function HolderRow({ holder, rosterHint }) {
 }
 
 // committee: the row from `committees`, or null for the society-level positions.
-export default function PositionsPanel({ committee = null }) {
+export default function PositionsPanel({ committee: opened = null }) {
+  // SCOPE and SCORE share their positions and invites (rosterUnits.js)
+  const committee = useRosterUnit(opened)
   const held = useCommitteePositions(committee?.id || null)
   const committeePositions = usePositions()
   const societyPositions = useSocietyPositions(!committee)
