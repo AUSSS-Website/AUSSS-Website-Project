@@ -708,6 +708,18 @@ It comes after 5b so the new header, bell and directory are audited in their
 final form, and before phase 6 so every new page is built to the finished
 sizing and colour rules.
 
+**Status, 2026-10-05: built on branch `phase-5c`; RUNBOOK section 24 has the
+rules.** The whole site and the portal moved from dark-only colours to theme
+tokens, so light mode is a real theme and the dark theme is unchanged (proved
+by comparing screenshots before and after). The 37 public pages pass the page
+walk at 320, 375, 768, 1024, 1440 and 1920 px in both themes: none scrolls
+sideways and no text is below WCAG AA (341 texts were below it in dark and 352
+in light before). Sizing follows the screen through the root font size. The
+portal header has the navbar's dimensions and a theme toggle. The magazine
+reader has its depth. Still to do: the signed-in walk of the portal pages in
+both themes, which needs the webmaster to sign in once
+(`npm run walk -- --login`).
+
 0. **The portal header at the public site's size (noted 2026-10-05).** The
    portal header is to be expanded so that its dimensions (height, logo, type
    and spacing) are similar to the public site's navbar. It belongs to this

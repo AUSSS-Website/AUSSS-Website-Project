@@ -1229,8 +1229,20 @@ npm run walk                           # everything, against npm run dev (localh
 npm run walk -- --public-only --base https://ausss-ainshams.org
 npm run walk -- --widths 320,1280 --themes dark --only /gallery
 npm run walk -- --no-shots --strict    # console only; exit 1 on a message of our own
+npm run walk -- --contrast --no-shots  # text contrast (WCAG AA) on every page
 ```
 
+- **Widths and themes.** Without `--widths` it walks 320, 375, 768, 1024, 1440 and 1920 px,
+  each in dark and in light. One width in one theme takes about two minutes for the public
+  pages, so the full set is about twenty-five; split it over two or three terminals with
+  `--themes` and `--widths` when in a hurry.
+- **What it measures on every visit.** Whether the page scrolls sideways, and which
+  elements stick out of the viewport (the innermost one is the one to fix). With
+  `--contrast` it also runs axe-core's colour-contrast rule and lists every text below
+  WCAG AA with the two colours and the ratio; text over a photo or a gradient cannot be
+  measured and is not listed. Both are in `report.json` (`overflow`, `contrast`) and in the
+  summary the command prints. The walk runs with reduced motion, so anything that only
+  moves (the aurora behind the gallery and the magazine) has to be looked at in a browser.
 - **Pages.** The public list is the sitemap (the base's own, else the one in `dist/`, else
   production's) plus the checkout, the quiz and the sign-in page. The portal list is in the
   script (`PORTAL_FIXED`, `PORTAL_DETAIL`); add a route there when the portal gains one.
@@ -1499,3 +1511,74 @@ To stop rebuilds: delete the hook in Vercel (the function's calls then go nowher
 Each rebuild is a production deployment: it runs `after-deploy` (IndexNow, section 15)
 and counts against the plan's daily deployments, which is what the twenty-minute spacing
 is for (at most 72 a day, in practice a handful).
+
+## 24. Themes, colours and sizing (Phase 5c)
+
+The site and the portal have two themes, dark and light. A visitor's choice is kept in
+`localStorage.theme`; without one the device's preference decides
+(`public/theme-init.js`, `src/lib/theme.js`). The toggle is in the public navbar and in
+the portal header.
+
+**Write a page once: use the theme tokens.** `tailwind.config.js` has a second set of
+colour names whose values live in `src/index.css`, under `:root` for light and `.dark`
+for dark. A class built on a token follows the theme by itself, so new markup needs no
+`dark:` pairs.
+
+| Token | For | Dark | Light |
+| --- | --- | --- | --- |
+| `page` | the page background | forest-950 | cream |
+| `sunk` | inputs, alternate bands | forest-900 | a pale green-grey |
+| `card` | panels and cards | forest-800 | white |
+| `ink` | headings, strong text | white | forest-900 |
+| `soft` | body and muted text (`text-soft/70`) | silver | a dark green-grey |
+| `line` | borders, dividers, rings (`border-line/10`) | white | forest |
+| `veil` | translucent fills (`bg-veil/10`) | white | forest |
+| `accent` | blue text and links | medical-light | a deep blue |
+| `solid`, `on-solid`, `solid-hover` | the inverse button | white pill, forest text | forest pill, white text |
+| `danger`, `warn`, `ok` | status text | red, amber, emerald (pale) | the same hues, dark |
+
+- **Muted text always passes WCAG AA.** The opacity steps of `soft` are remapped in
+  `index.css` (`--soft-k`, `--soft-c0`, `--soft-c1`), so `text-soft/40` is still at least
+  4.5:1 on a page, a band or a card in both themes. Use the steps for hierarchy without
+  checking each one. `line` and `veil` have a strength multiplier per theme for the same
+  reason: a 10% white line on dark green and a 10% green line on white do not look alike.
+- **The fixed colours are for things that look the same in both themes:** a blue button
+  (`bg-medical` with `text-forest-950`, never white, which is 3.5:1), a green button
+  (`bg-forest text-white`), a photo's scrim, shadows.
+- **A block that is dark in both themes** gets the class `dark` on its outer element: the
+  home hero, the footer, text laid over a photo (album covers), the photo and merch
+  viewers, the two bespoke sorting results. Everything inside then resolves the tokens to
+  their dark values. A modal's backdrop is a fixed `bg-forest-950/85`.
+- **A white logo** (the committee marks, IFMSA, IFMSA-Egypt) gets the class `logo-ink`,
+  which inverts it on a light page and keeps a red emblem red. Inside a `dark` block it is
+  left white.
+- **A colour worked out in JavaScript** (a committee's own colour) goes through
+  `readableAccent(hex)` in `src/lib/color.js`, or `chipAccent(hex)` when the text sits on a
+  chip tinted with that colour. Both return one CSS value that holds a shade for each theme
+  and picks through `--theme-light` and `--theme-dark`, so it works in an inline style and
+  inside a `dark` block. Each shade is lightened or darkened until it reaches 4.5:1.
+- **The aurora** (`GalleryAurora.jsx`) has a pastel palette for the light theme; pass
+  `tone="dark"` where it sits in a block that is always dark.
+
+**Sizing.** Every size is in rem and the root font size follows the screen (`html` in
+`index.css`): 15px on a 320px phone, 16px from 360px to 1280px, then rising to 18px at
+1920px and 20px at 2560px, on top of the reader's own browser setting. So a page built
+with the ordinary Tailwind scale needs nothing extra to fill a large monitor. On touch
+screens a form field's text is never under 16px, because iOS zooms the page in when a
+smaller field takes focus.
+
+**The portal header** has the public navbar's dimensions (the 6rem bar, the logo, the type
+and the side padding); the links sit on a row of their own below it, on one line that
+scrolls sideways on a phone and wraps from a tablet up.
+
+**The magazine reader's depth** (`Flipbook.jsx`, the `.flipbook` rules in `index.css`):
+the gutter shading and the page edges are CSS on the classes the page-flip library puts
+on each page (`--simple`, `--left`, `--right`); the edges grow on the side that has been
+read (`--stack-left`, `--stack-right`); the shadow of the lifting page is the library's own
+(`maxShadowOpacity`). With reduced motion a page turns at once.
+
+**Checking a change to any of this.** `npm run walk -- --contrast` (section 21) must end
+with no page scrolling sideways and no low-contrast colour pairs; then look at the
+screenshots of the pages touched at 320 and 1920 px in both themes. State on 2026-10-05:
+the 37 public pages pass at all six widths in both themes. The portal pages need a
+signed-in walk (`npm run walk -- --login` first).
