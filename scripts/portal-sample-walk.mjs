@@ -65,6 +65,11 @@ const tables = {
     { id: 'r-2', full_name: 'Second Sample', email: 'member2@example.com', status: 'Candidate Member', joined_year: 2025, years_spent: 1, lgas: 1, ngas: 0, current_position: '', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: null, is_contact_person: false, position_id: null },
     { id: 'r-3', full_name: 'Third Sample', email: 'member3@example.com', status: 'Associate Member', joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: 'Local Member', origin: 'portal', portal_edited_at: iso(2), profile_id: null, import_batch: null, updated_at: iso(2), committee_id: 'c-scope', is_contact_person: false, position_id: null },
   ],
+  albums: [
+    { id: 'al-1', slug: 'national-general-assembly-aswan-2026', title: 'National General Assembly, Aswan 2026', blurb: 'Three days in Aswan.', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(20), updated_at: iso(2) },
+    { id: 'al-2', slug: 'orientation-day', title: 'Orientation day', blurb: '', cover_photo_id: null, sort_order: 1, published: true, created_at: iso(15), updated_at: iso(3) },
+    { id: 'al-3', slug: 'world-diabetes-day-campaign', title: 'World Diabetes Day campaign', blurb: '', cover_photo_id: null, sort_order: 2, published: false, created_at: iso(5), updated_at: iso(1) },
+  ],
   content_blocks: [
     { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
     // nothing saved yet: the editor opens on the copy that ships in the code
