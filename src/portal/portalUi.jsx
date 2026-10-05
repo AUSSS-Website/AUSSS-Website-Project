@@ -48,7 +48,7 @@ export function AuthCard({ eyebrow, title, subtitle, children }) {
 // Content panel used on the dashboard and profile pages.
 export function Panel({ title, children, className = '' }) {
   return (
-    <section className={`rounded-2xl border border-line/10 bg-card p-5 ${className}`}>
+    <section className={`min-w-0 rounded-2xl border border-line/10 bg-card p-5 ${className}`}>
       {title && (
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
           {title}

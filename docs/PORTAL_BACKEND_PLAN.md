@@ -716,8 +716,12 @@ walk at 320, 375, 768, 1024, 1440 and 1920 px in both themes: none scrolls
 sideways and no text is below WCAG AA (341 texts were below it in dark and 352
 in light before). Sizing follows the screen through the root font size. The
 portal header has the navbar's dimensions and a theme toggle. The magazine
-reader has its depth. Still to do: the signed-in walk of the portal pages in
-both themes, which needs the webmaster to sign in once
+reader has its depth. The 18 portal pages pass the same two measurements at
+the six widths in both themes when walked with sample data
+(`npm run walk:portal-sample`, which needs no sign-in); that walk found and
+fixed two phone overflows, on the dashboard's task panel and in the directory.
+Still to do: a signed-in look at the portal with the real data in both
+themes, which needs the webmaster to sign in once
 (`npm run walk -- --login`).
 
 0. **The portal header at the public site's size (noted 2026-10-05).** The

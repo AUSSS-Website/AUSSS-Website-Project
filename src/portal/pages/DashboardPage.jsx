@@ -37,7 +37,7 @@ function MyTasksPanel({ uid }) {
                 className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm text-ink hover:text-accent"
               >
                 <CommitteeTag committee={t.committee} />
-                <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
+                <span className="min-w-[9rem] flex-1 truncate font-medium">{t.title}</span>
                 <PriorityPill priority={t.priority} />
                 <DueLabel task={t} />
               </Link>
