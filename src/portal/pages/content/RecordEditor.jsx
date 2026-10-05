@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { emptyRow } from '../../../content/schema.js'
+import { useGallery } from '../../../lib/gallery.js'
 import { uploadContentImage } from '../../contentQueries.js'
 import { ErrorText, Toggle, inputCls, outlineBtnCls } from '../../portalUi.jsx'
 
@@ -135,6 +136,24 @@ function ImageControl({ field, value, onChange, blockKey, id, disabled }) {
   )
 }
 
+// One of the gallery's albums, or none. An album chosen earlier and since
+// deleted stays in the list, marked, so saving does not silently drop it.
+function AlbumControl({ value, onChange, id, disabled }) {
+  const { albums, loading } = useGallery()
+  const known = albums.some((a) => a.slug === value || a.aliases.includes(value))
+  return (
+    <select id={id} value={value || ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} className={inputCls}>
+      <option value="">No album</option>
+      {value && !known && <option value={value}>{loading ? value : `${value} (not in the gallery any more)`}</option>}
+      {albums.map((a) => (
+        <option key={a.slug} value={a.aliases.includes(value) ? value : a.slug}>
+          {a.title} ({a.count} photos)
+        </option>
+      ))}
+    </select>
+  )
+}
+
 function Arrow({ up }) {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -243,7 +262,7 @@ function FieldRow({ field, value, onChange, path, errors, blockKey, disabled }) 
             {field.required && <span className="ml-1 normal-case tracking-normal text-soft/45">(needed)</span>}
           </label>
         )}
-        {field.type !== 'list' && field.type !== 'select' && field.type !== 'image' && (
+        {field.type !== 'list' && field.type !== 'select' && field.type !== 'image' && field.type !== 'album' && (
           <Count value={value} max={field.max} />
         )}
       </div>
@@ -259,6 +278,8 @@ function FieldRow({ field, value, onChange, path, errors, blockKey, disabled }) 
               </option>
             ))}
           </select>
+        ) : field.type === 'album' ? (
+          <AlbumControl value={value} onChange={onChange} id={id} disabled={disabled} />
         ) : field.type === 'image' ? (
           <ImageControl field={field} value={value} onChange={onChange} blockKey={blockKey} id={id} disabled={disabled} />
         ) : (

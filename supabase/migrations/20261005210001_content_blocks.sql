@@ -163,8 +163,12 @@ begin
   if (select auth.uid()) is null then
     raise exception 'Sign in first.' using errcode = '42501';
   end if;
+  -- asked before the row is locked, so someone who may not edit never holds a lock on it
+  if not app.can_edit_content(p_key) then
+    raise exception 'You cannot edit that part of the site.' using errcode = '42501';
+  end if;
   select b.* into v_row from public.content_blocks b where b.key = p_key for update;
-  if not found or not app.is_content_editor(v_row.editors) then
+  if not found then
     raise exception 'You cannot edit that part of the site.' using errcode = '42501';
   end if;
   if p_doc is not null then
@@ -292,7 +296,8 @@ on conflict (id) do update set
   allowed_mime_types = excluded.allowed_mime_types;
 
 -- A public bucket serves its files by address without a policy; the select policy is for the
--- editors, who need to list and replace what they uploaded.
+-- editors, who need to list and remove what they uploaded. There is no update policy: a
+-- replaced picture is a new file under a new name.
 drop policy if exists content_media_read on storage.objects;
 create policy content_media_read on storage.objects
   for select to authenticated
@@ -322,7 +327,7 @@ alter function public.content_public() owner to postgres;
 revoke execute on function app.audit() from public;
 revoke execute on function app.is_content_editor(text[]) from public;
 revoke execute on function app.can_edit_content(text) from public;
-revoke execute on function app.content_block_for_write(text, jsonb, timestamptz) from public;
+revoke execute on function app.content_block_for_write(text, jsonb, timestamptz) from public, anon, authenticated;
 grant execute on function app.is_content_editor(text[]) to authenticated;
 grant execute on function app.can_edit_content(text) to authenticated;
 

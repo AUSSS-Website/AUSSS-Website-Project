@@ -168,7 +168,8 @@ function Editor({ schema, block }) {
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Preview: how it will look on the site
           </p>
-          <div className="rounded-2xl border border-line/10 bg-page p-5 sm:p-8">
+          {/* no-reveal: the public pages fade their sections in on scroll; here they just show. */}
+          <div className="no-reveal rounded-2xl border border-line/10 bg-page p-5 sm:p-8">
             <Preview doc={clean} />
           </div>
         </section>

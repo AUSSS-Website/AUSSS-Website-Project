@@ -10,6 +10,7 @@ const schema = {
     { name: 'link', type: 'url', label: 'Link' },
     { name: 'photo', type: 'image', label: 'Photo' },
     { name: 'shown', type: 'toggle', label: 'Shown', default: true },
+    { name: 'album', type: 'album', label: 'Album' },
     { name: 'tone', type: 'select', label: 'Tone', options: [{ value: 'calm', label: 'Calm' }, { value: 'loud', label: 'Loud' }] },
     {
       name: 'items',
@@ -31,7 +32,7 @@ describe('normalizeDoc', () => {
   it('returns exactly the schema shape, whatever it is given', () => {
     for (const junk of [null, undefined, 'text', 7, [], [1, 2]]) {
       expect(normalizeDoc(schema, junk)).toEqual({
-        title: '', intro: '', link: '', photo: '', shown: true, tone: 'calm', items: [],
+        title: '', intro: '', link: '', photo: '', shown: true, album: '', tone: 'calm', items: [],
       })
     }
   })
@@ -45,7 +46,7 @@ describe('normalizeDoc', () => {
       items: [{ q: 'kept', a: 5, extra: 1 }, 'not a row', null, ['nor', 'this']],
     })
     expect(doc).toEqual({
-      title: '', intro: '', link: '', photo: '', shown: true, tone: 'calm',
+      title: '', intro: '', link: '', photo: '', shown: true, album: '', tone: 'calm',
       items: [{ q: 'kept', a: '' }],
     })
   })
@@ -67,6 +68,11 @@ describe('normalizeDoc', () => {
     for (const bad of ['data:image/png;base64,AAAA', 'javascript:alert(1)', 'http://x.org/a.jpg', '//x.org/a.jpg']) {
       expect(normalizeDoc(schema, { photo: bad }).photo).toBe('')
     }
+  })
+
+  it('keeps an album only as an address name', () => {
+    expect(normalizeDoc(schema, { album: 'incomings-2026' }).album).toBe('incomings-2026')
+    for (const bad of ['Incomings 2026', '../x', 'a/b', 7]) expect(normalizeDoc(schema, { album: bad }).album).toBe('')
   })
 
   it('cuts a list at its limit', () => {
@@ -107,7 +113,7 @@ describe('validateDoc', () => {
 describe('defaultDoc, emptyRow, sameDoc, resolveDoc', () => {
   it('opens with the shipped copy', () => {
     expect(defaultDoc(schema).title).toBe('Shipped')
-    expect(emptyRow(schema.fields[6])).toEqual({ q: '', a: '' })
+    expect(emptyRow(schema.fields.find((f) => f.name === 'items'))).toEqual({ q: '', a: '' })
   })
 
   it('compares documents whatever their key order', () => {

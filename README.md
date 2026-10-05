@@ -40,6 +40,7 @@ back to its static content.
 | --- | --- |
 | People, committees and page copy | `src/data/society.js` |
 | Join-page FAQ | The portal content editor (`/portal/content`, EB); `src/data/faq.js` is the copy shown until one is published |
+| Incomings exchange page copy | The portal content editor (`/portal/content`, exchange officers and EB) |
 | Parts of pages edited from the portal | Schemas in `src/content/`, documents in `content_blocks` (`docs/RUNBOOK.md` section 25) |
 | Magazine editions | The portal magazine editor (`/portal/magazine`, CBSD and EB) |
 | Merch catalogue, payment handles, shop switch | `src/data/merchProducts.js`, `src/data/merchConfig.js` |

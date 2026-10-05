@@ -59,6 +59,7 @@ const PORTAL_FIXED = [
   '/portal/admin/verification',
   '/portal/content',
   '/portal/content/join.faq',
+  '/portal/content/exchange.incomings',
   '/portal/admin/audit',
 ]
 const PORTAL_DETAIL = [
