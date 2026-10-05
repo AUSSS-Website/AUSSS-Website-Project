@@ -14,13 +14,10 @@ const STOPS = {
   light: ['#a8dcc2', '#aacbe8', '#d3e4f3'],
 }
 
-// `tone` pins the palette for a block that does not follow the theme (the
-// footer is dark in both).
 export default function GalleryAurora({
   className = '',
   opacityClass = 'opacity-90',
   colorStops,
-  tone,
   amplitude = 1.0,
   blend = 0.5,
   speed = 0.4,
@@ -28,7 +25,7 @@ export default function GalleryAurora({
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const { theme } = useTheme()
   if (reduceMotion) return null
-  const palette = (tone || theme) === 'light' ? 'light' : 'dark'
+  const palette = theme === 'light' ? 'light' : 'dark'
   return (
     <div
       className={`pointer-events-none absolute inset-0 z-0 ${opacityClass} ${className}`}

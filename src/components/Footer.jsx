@@ -10,13 +10,13 @@ const GalleryAurora = lazy(() => import('./GalleryAurora.jsx'))
 export default function Footer() {
   // On the magazine page only, a faint aurora (bright at the top, fading down)
   // lets the page's glow leak a little way over the top of the footer before
-  // settling back into the solid forest. The footer stays its own section.
+  // settling back into the footer's own colour. The footer stays its own section.
   const onMagazine = useLocation().pathname === '/magazine'
   return (
-    <footer className="dark relative overflow-hidden border-t border-line/10 bg-page py-14">
+    <footer className="relative overflow-hidden border-t border-line/10 bg-sunk py-14 dark:bg-page">
       {onMagazine && (
         <Suspense fallback={null}>
-          <GalleryAurora tone="dark" opacityClass="opacity-30" amplitude={1.1} blend={0.55} />
+          <GalleryAurora opacityClass="opacity-30" amplitude={1.1} blend={0.55} />
         </Suspense>
       )}
       <div className="container-prose relative z-10">
@@ -30,7 +30,7 @@ export default function Footer() {
                 height="449"
                 loading="lazy"
                 decoding="async"
-                className="h-24 w-auto"
+                className="logo-ink h-24 w-auto"
               />
             </Link>
             <p className="heading-serif text-base text-soft/75">
@@ -140,7 +140,7 @@ export default function Footer() {
                 height="2316"
                 loading="lazy"
                 decoding="async"
-                className="h-10 w-auto opacity-60 transition-opacity hover:opacity-100 sm:h-12"
+                className="logo-ink h-10 w-auto opacity-60 transition-opacity hover:opacity-100 sm:h-12"
               />
             </a>
             <a
@@ -156,7 +156,7 @@ export default function Footer() {
                 height="1262"
                 loading="lazy"
                 decoding="async"
-                className="h-9 w-auto opacity-60 transition-opacity hover:opacity-100 sm:h-11"
+                className="logo-ink h-9 w-auto opacity-60 transition-opacity hover:opacity-100 sm:h-11"
               />
             </a>
           </div>

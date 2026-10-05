@@ -1552,11 +1552,14 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
   reason: a 10% white line on dark green and a 10% green line on white do not look alike.
 - **The fixed colours are for things that look the same in both themes:** a blue button
   (`bg-medical` with `text-forest-950`, never white, which is 3.5:1), a green button
-  (`bg-forest text-white`), a photo's scrim, shadows.
+  (`bg-forest text-white`), a photo's scrim, shadows. The navbar's magazine button is the
+  one blue button with a look per theme: on the light theme's bar it is `bg-medical-deep`
+  with white text (6.4:1), on dark and over the home hero it is the usual blue.
 - **A block that is dark in both themes** gets the class `dark` on its outer element: the
-  home hero, the footer, text laid over a photo (album covers), the photo and merch
+  home hero, text laid over a photo (album covers), the photo and merch
   viewers, the two bespoke sorting results. Everything inside then resolves the tokens to
-  their dark values. A modal's backdrop is a fixed `bg-forest-950/85`.
+  their dark values. A modal's backdrop is a fixed `bg-forest-950/85`. The footer is not
+  one of these: it follows the theme (a pale band with dark logos on light).
 - **A white logo** (the committee marks, IFMSA, IFMSA-Egypt) gets the class `logo-ink`,
   which inverts it on a light page and keeps a red emblem red. Inside a `dark` block it is
   left white.
@@ -1565,8 +1568,7 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
   chip tinted with that colour. Both return one CSS value that holds a shade for each theme
   and picks through `--theme-light` and `--theme-dark`, so it works in an inline style and
   inside a `dark` block. Each shade is lightened or darkened until it reaches 4.5:1.
-- **The aurora** (`GalleryAurora.jsx`) has a pastel palette for the light theme; pass
-  `tone="dark"` where it sits in a block that is always dark.
+- **The aurora** (`GalleryAurora.jsx`) has a pastel palette for the light theme.
 
 **Sizing.** Every size is in rem and the root font size follows the screen (`html` in
 `index.css`): 15px on a 320px phone, 16px from 360px to 1280px, then rising to 18px at

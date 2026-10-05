@@ -28,6 +28,15 @@ const LINKS = [
 // Catchy CTA for the magazine, shown as a highlighted pill.
 const MAGAZINE_CTA = 'Read the latest issue of the AUSSS Magazine'
 
+// The pill's colours. On a dark surface (the dark theme, and the bar while it
+// is clear over the home hero) it is the scientific blue with dark text. On
+// the light theme's cream bar that blue looks washed out, so there it is a
+// deep blue with white text.
+const MAGAZINE_ON_DARK =
+  'bg-medical text-forest-950 shadow-lg shadow-medical/20 hover:bg-medical-light'
+const MAGAZINE_ON_THEME =
+  'bg-medical-deep text-white shadow-md shadow-medical-deep/30 hover:bg-medical-deeper dark:bg-medical dark:text-forest-950 dark:shadow-lg dark:shadow-medical/20 dark:hover:bg-medical-light'
+
 function parseTo(to) {
   const [pathname, hash] = to.split('#')
   return { pathname: pathname || '/', hash: hash ? `#${hash}` : '' }
@@ -260,7 +269,9 @@ export default function Navbar() {
             <li>
               <Link
                 to="/magazine"
-                className="whitespace-nowrap rounded-full bg-medical px-5 py-2 text-sm font-semibold text-forest-950 shadow-lg shadow-medical/20 transition-colors duration-300 hover:bg-medical-light 2xl:px-6 2xl:py-2.5 2xl:text-base"
+                className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-semibold transition-colors duration-300 2xl:px-6 2xl:py-2.5 2xl:text-base ${
+                  solid ? MAGAZINE_ON_THEME : MAGAZINE_ON_DARK
+                }`}
               >
                 {MAGAZINE_CTA}
               </Link>
@@ -371,7 +382,7 @@ export default function Navbar() {
             <li className="pt-4">
               <Link
                 to="/magazine"
-                className="block w-full rounded-full bg-medical py-3 text-center text-sm font-semibold text-forest-950"
+                className={`block w-full rounded-full py-3 text-center text-sm font-semibold transition-colors ${MAGAZINE_ON_THEME}`}
               >
                 {MAGAZINE_CTA}
               </Link>
