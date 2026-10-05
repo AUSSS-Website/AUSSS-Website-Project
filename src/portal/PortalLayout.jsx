@@ -90,8 +90,10 @@ export default function PortalLayout() {
           </Link>
 
           {/* In the order people work: everyone's pages, then the editing pages a
-              person's positions give them, then the EB's admin pages. */}
-          <nav aria-label="Portal" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              person's positions give them, then the EB's admin pages. They take
+              the header's second row (order-3), so the bell, profile and sign
+              out stay at the top right however many links a person has. */}
+          <nav aria-label="Portal" className="order-3 flex w-full flex-wrap items-center gap-x-5 gap-y-2">
             {groups.map((group, i) => (
               <div
                 key={group[0].to}
@@ -108,7 +110,7 @@ export default function PortalLayout() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="order-2 flex items-center gap-3">
             <NotificationBell />
             <NavLink
               to="/portal/profile"
