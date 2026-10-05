@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
-import { useCommittees } from './officerQueries.js'
+import { byPortalOrder, useCommittees } from './officerQueries.js'
 
 // Tasks and their timeline, updates (posts) and read receipts, and the
 // notifications feed. Same shape as queries.js: plain async functions first,
@@ -53,7 +53,7 @@ export function useWorkScopes() {
         task.push(c)
       }
     }
-    return { loading: false, society: false, task, post }
+    return { loading: false, society: false, task: task.sort(byPortalOrder), post: post.sort(byPortalOrder) }
   }, [isEB, assignments, all.data, all.isPending])
 }
 
