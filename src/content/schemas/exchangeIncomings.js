@@ -124,12 +124,12 @@ export default {
       { figure: '1971', label: 'the year AUSSS was founded' },
       { figure: '1984', label: 'the year our Specialized Hospital opened' },
       { figure: '4 weeks', label: 'with us, for a clerkship or a research project' },
-      { figure: '1 of us', label: 'paired with you as your contact person' },
+      { figure: 'All month', label: 'we are there with you, first day to last' },
     ],
     points: [
       { text: 'A clinical clerkship (SCOPE) or a research project (SCORE) at Ain Shams, with a doctor or mentor supervising you.' },
       { text: 'A bed in the hospital dorms, on campus, and at least one meal a day.' },
-      { text: 'A contact person: one of us, paired with you for the whole month.' },
+      { text: 'Us, all month long: our contact persons are with you from your first day to your last.' },
       { text: 'A social programme all month, and a trip out of Cairo most weekends.' },
       { text: 'Your official IFMSA certificate at the end, with at least 80% attendance.' },
     ],
@@ -145,8 +145,8 @@ export default {
         image: '/assets/exchange/incomings/campus.jpg',
       },
       {
-        title: 'One of us is with you all month',
-        body: 'We pair each of you with a contact person: one of our members, who meets you, shows you around the hospital and the city, and picks up when you call, at any time of day.',
+        title: 'We are with you all month long',
+        body: 'You are never left to work Cairo out alone. Our contact persons are a whole team of us, and we are there the entire month: we meet you when you arrive, show you around the hospital and the city, come along on the nights out and the trips, and pick up when you call, at any time of day.',
         image: '/assets/exchange/incomings/together.jpg',
       },
       {
@@ -180,13 +180,13 @@ export default {
       },
       {
         title: 'We meet you in Cairo',
-        body: 'Your contact person takes it from there. Our welcome booklet, further down this page, has everything else.',
+        body: 'We take it from there, and we stay with you all month. Our welcome booklet, further down this page, has everything else.',
       },
     ],
     tips: [
       {
         title: 'Getting around',
-        body: 'You will mostly use Uber or inDrive. Drivers pick you up at the hospital gate and drop you off there too.',
+        body: 'Most of our contact persons have their own cars, so you will often ride with us. The rest of the time you will mostly use Uber or inDrive: drivers pick you up at the hospital gate and drop you off there too. Public transport is an option as well, and we will help you find your way around it.',
       },
       {
         title: 'Your SIM card',

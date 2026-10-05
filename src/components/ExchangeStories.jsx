@@ -36,7 +36,7 @@ export default function ExchangeStories({ audience = 'outgoing' }) {
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-soft/70">
             {incoming
-              ? 'Tell the next student what your month with us was like. We read every story before we publish it.'
+              ? 'Tell the next student what your month with us was like.'
               : 'Went abroad or hosted an incoming student with AUSSS? Share how it went. Your story helps the next student take the leap.'}
           </p>
           <Link

@@ -7,8 +7,8 @@ import RoleNode from '../components/RoleNode.jsx'
 // /exchange/join, the recruitment page for the exchange team.
 //
 // The structure is the content: three officers own the three halves of the
-// programme, three assistants work the season alongside them, and a contact
-// person is paired with every arrival. Each position explains itself in a card
+// programme, three assistants work the season alongside them, and the contact
+// persons look after every arrival as a team. Each position explains itself in a card
 // on hover/focus (RoleNode), so the page stays a readable chart rather than
 // seven paragraphs.
 //
@@ -84,8 +84,8 @@ export default function ExchangeJoinPage() {
 
           <TierLabel>Contact persons</TierLabel>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/60">
-            As many seats as there are arrivals. Open to any member each
-            season, and where most people start.
+            The team that is with our incoming students all month. Open to
+            any member each season, and where most people start.
           </p>
           <div className="mx-auto mt-8 max-w-xl">
             <RoleNode role={contactPersons} tier="assistant" />
