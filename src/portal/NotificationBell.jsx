@@ -12,8 +12,9 @@ import { UnreadDot, describeNotification, notificationTarget, when } from './wor
 
 // The bell at the side of the portal header. A red dot while anything is
 // unread; the panel lists the latest notifications one line each. Opening one
-// marks it read and goes to its task, story or order. The full list stays at
-// /portal/notifications ("See all").
+// marks it read and goes to its task, story or order. "Clear all" empties this
+// list and nothing else: what the notifications were about is untouched. The
+// full list stays at /portal/notifications ("See all").
 
 const EMPTY = []
 const SHOWN = 8
@@ -183,7 +184,7 @@ export default function NotificationBell() {
                     onClick={() => clear.mutate(undefined, { onSuccess: () => setConfirming(false) })}
                     className="text-xs font-semibold text-red-300 transition-colors hover:text-red-200 disabled:opacity-40"
                   >
-                    {clear.isPending ? 'Clearing…' : 'Yes, clear all'}
+                    {clear.isPending ? 'Clearing…' : 'Yes, clear notifications'}
                   </button>
                   <button type="button" onClick={() => setConfirming(false)} className={linkBtnCls}>
                     Keep

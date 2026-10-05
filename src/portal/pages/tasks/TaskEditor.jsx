@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { findDuplicateTasks, useAssignable, useTaskMutations } from '../../workQueries.js'
 import { todayCairo } from '../../officerQueries.js'
@@ -38,6 +38,12 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
   const [checking, setChecking] = useState(false)
   // A second click lands before React has re-rendered the disabled button.
   const saving = useRef(false)
+  // The warning sits under a long form; bring it to the person, do not make
+  // them find it.
+  const warning = useRef(null)
+  useEffect(() => {
+    if (repeats) warning.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [repeats])
 
   const committeeId = scope === SOCIETY ? null : scope
   const people = useAssignable(committeeId, Boolean(scope))
@@ -222,6 +228,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
 
       {repeats && (
         <div
+          ref={warning}
           role="alert"
           className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-5"
         >

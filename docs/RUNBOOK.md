@@ -1232,8 +1232,9 @@ ticked line passed on 2026-10-04.
 
 ## 23. Portal and people (Phase 5b)
 
-Built 2026-10-05. Four migrations (`20261005090001_notifications_clear`,
-`20261005100001_task_files`, `20261005110001_invites_screen`, `20261005120001_people`),
+Built 2026-10-05. Five migrations (`20261005103501_notifications_clear`,
+`20261005103539_task_files`, `20261005103632_invites_screen`, `20261005103724_people`,
+`20261005130001_directory_and_stale_notifications`),
 tests `210-task-files.sql`, `220-invites-screen.sql`, `230-people.sql`, and new lines in
 `090-grants.sql` and `130-tasks-and-posts.sql`.
 
@@ -1249,8 +1250,11 @@ The bell (`src/portal/NotificationBell.jsx`) shows a red dot while anything is u
 Its panel lists the eight latest notifications, one line each; opening one marks it read
 and goes to its task, story or order. "Mark all as read" sets `read_at`; "Clear all"
 deletes the person's own rows (policy `notifications_delete`: `profile_id = auth.uid()`),
-after a second click. A cleared notification that was never emailed drops out of the next
-digest. `/portal/notifications` stays as the full list ("See all").
+after a second click. Clearing touches the notifications and nothing else: the task, order
+or story a notification was about stays where it is. The other way round, deleting a task
+removes the notifications about it (trigger `drop_task_notifications`), so the feed never
+points at a task that is gone. A cleared notification that was never emailed drops out of
+the next digest. `/portal/notifications` stays as the full list ("See all").
 
 ### Tasks: the date, the repeat warning, files
 
@@ -1334,9 +1338,11 @@ A person's name and photo come from their profile, everywhere.
   appears under their predecessor's face; until they choose a photo they show as initials.
   The officer photo set in the committee page editor still applies to the lead officer
   unless they chose one on their profile.
-- **The directory** (`/portal/directory`, `rpc/directory()`): members who turned on "Show
-  me in the members directory", with name, photo and this term's positions. For verified
-  members and position holders; no contact details.
+- **The directory** (`/portal/directory`, `rpc/directory()`): every member with an
+  account (verified, or holding a position this term), with name, photo and this term's
+  positions. Read by the same people; no contact details. There is no switch: an account
+  nobody has verified is simply not listed. (`profiles.directory_opt_in` remains from the
+  first design and is not read.)
 
 Still read from `society.js` alone: the role inboxes and their blurbs (they belong to the
 role), and the position cards of the membership lookup (`src/lib/teamIndex.js`).

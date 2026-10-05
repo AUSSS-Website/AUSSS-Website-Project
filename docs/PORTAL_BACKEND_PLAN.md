@@ -613,8 +613,8 @@ President and the VPE (section 12.5).
 
 #### Phase 5b. Portal and people
 
-**Status, 2026-10-05: built; RUNBOOK section 23 describes every part.** Four
-migrations (`20261005090001` to `20261005120001`) and three new test files.
+**Status, 2026-10-05: built; RUNBOOK section 23 describes every part.** Five
+migrations (`20261005103501` to `20261005130001`) and three new test files.
 Decisions made while building, each of them the simpler of two options:
 attachments arrive as one timeline row per batch (a comment with files, or a
 "files" row), up to 5 a batch, 20 a task, 10 MB each; the duplicate check runs
@@ -624,7 +624,9 @@ board's positions, which is the whole of "executive board editable"; an invite
 sends no email (the inviter tells the person); a position the roster gave is
 changed on the roster and nowhere else; the public pages take a holder's name
 always and their photo only when they chose one on their profile, never the
-picture of their sign-in account; the rebuild trigger is a Vercel deploy hook
+picture of their sign-in account; the directory lists every member with an
+account and has no switch (the webmaster's call, 2026-10-05); a deleted task
+takes its notifications with it; the rebuild trigger is a Vercel deploy hook
 kept in Vault and called by a scheduled database job. One thing waits on the
 webmaster: creating that deploy hook and saving it (RUNBOOK section 23,
 "One-time set-up"); until then pages are rebuilt on each code release only.
@@ -681,8 +683,9 @@ into it.
    - **Executive board editable.** With the board drawn from this term's
      assignments, changing it is assigning a position, and no separate editor
      is needed. The term-rollover wizard in phase 7 relies on the same thing.
-   - **Directory.** Opted-in members with their positions, searchable, built
-     on the same read.
+   - **Directory.** Every member with an account, with their positions,
+     searchable, built on the same read. (Planned as opt-in; changed on
+     2026-10-05 so that everyone is listed.)
    - **Rebuild on publish.** A deploy hook fired when published content
      changes, plus a nightly rebuild (section 6), so the pre-rendered pages
      follow a profile change, a new album or a published story without a
@@ -695,6 +698,10 @@ It comes after 5b so the new header, bell and directory are audited in their
 final form, and before phase 6 so every new page is built to the finished
 sizing and colour rules.
 
+0. **The portal header at the public site's size (noted 2026-10-05).** The
+   portal header is to be expanded so that its dimensions (height, logo, type
+   and spacing) are similar to the public site's navbar. It belongs to this
+   pass because the sizing work below touches the same file.
 1. **Sizing and light mode together (requests 6 and 15).** Both mean walking
    every page of the public site and the portal, so the walk is done once,
    with the page-walk script producing each page at 320, 375, 768, 1024, 1440
