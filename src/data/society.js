@@ -708,6 +708,9 @@ export const exchange = {
       slug: 'scope',
       color: '#0181c1',
       blurb: 'A four-week clinical clerkship in a hospital abroad.',
+      // The same track as an incoming student meets it (/exchange/incomings).
+      incomingBlurb:
+        'Four weeks in a clinical department of our Specialized Hospital, with a doctor supervising you.',
     },
     {
       abbr: 'SCORE',
@@ -715,7 +718,9 @@ export const exchange = {
       slug: 'score',
       color: '#2e4a9c',
       blurb:
-        'A four-to-eight-week research project under an international mentor.',
+        'A four-week research project under an international mentor.',
+      incomingBlurb:
+        'Four weeks on a research project at Ain Shams, with one of our mentors and a structured plan.',
     },
   ],
   // The two directions exchange runs in. Each one is its own page,
@@ -725,13 +730,13 @@ export const exchange = {
   directions: {
     outgoing: {
       slug: 'outgoings',
-      tab: 'Going abroad',
+      tab: 'Outgoings',
       cta: 'How to apply',
       blurb:
         'A four-week clinical or research clerkship somewhere else in the world, arranged through IFMSA.',
       eyebrow: 'Outgoing exchange',
-      title: 'Going abroad',
-      label: 'Going abroad (outgoing)',
+      title: 'Outgoings',
+      label: 'Outgoings',
       intro:
         'Four weeks in a hospital or a lab somewhere else in the world, arranged through IFMSA. You pick the country, apply through AUSSS and IFMSA-Egypt, and arrive to lodging, a meal a day and a doctor or mentor expecting you.',
       meta:
@@ -739,37 +744,28 @@ export const exchange = {
       points: [
         'Pick a country and project from the IFMSA exchange portal.',
         'Apply through AUSSS and IFMSA-Egypt with the required documents.',
-        'Travel for a four-week (SCOPE) or four-to-eight-week (SCORE) clerkship.',
+        'Travel for a four-week clinical clerkship (SCOPE) or research project (SCORE).',
         'Get lodging, at least one meal a day, and a supervising doctor or mentor.',
         'Earn an official certificate with at least 80% attendance.',
       ],
       links: [{ label: 'IFMSA exchange portal', href: 'https://exchange.ifmsa.org' }],
     },
+    // The incomings page speaks to a student abroad who is choosing where to
+    // go, in our own voice ("we", "our"). Only what the hub, the switcher and
+    // the search engines need is here; the page's copy is the block
+    // `exchange.incomings`, edited in the portal, and the copy it ships with
+    // is in src/content/schemas/exchangeIncomings.js.
     incoming: {
       slug: 'incomings',
-      tab: 'Hosting in Cairo',
-      cta: 'How hosting works',
+      tab: 'Incomings',
+      cta: 'Come to Ain Shams',
       blurb:
-        'Students arrive at Ain Shams for their clerkship and AUSSS looks after them for the month.',
-      eyebrow: 'Incoming exchange',
-      title: 'Hosting in Cairo',
-      label: 'Hosting in Cairo (incoming)',
-      intro:
-        'Every year students from around the world come to Ain Shams for their clerkship, and AUSSS hosts them: a placement at the Specialized Hospital, a contact person each, and a month of social programme across Cairo and the rest of Egypt.',
+        'Coming to Cairo on exchange? See what your month with us includes, why to choose us and who to write to.',
+      eyebrow: 'Exchange at Ain Shams',
+      title: 'Incomings',
+      label: 'Incomings',
       meta:
-        'Coming to Ain Shams on a SCOPE or SCORE exchange, or hosting someone who is? Read the AUSSS incomings booklet and see how the month works.',
-      points: [
-        'Welcome students from around the world to Ain Shams hospitals.',
-        'Buddy up as a contact person and run the social programme.',
-        'Join IFMSA-Egypt National Weekends (Cairo, Alexandria, Dahab).',
-        'Share Egyptian medicine and culture with future colleagues abroad.',
-      ],
-      links: [
-        {
-          label: 'Egypt explore page',
-          href: 'https://exchange.ifmsa.org/explore-pages/national/view/6',
-        },
-      ],
+        'Coming to Cairo on a SCOPE or SCORE exchange? We are AUSSS at Ain Shams University: what your month with us includes, why to choose us and who to write to.',
     },
   },
   // The third thing people arrive at /exchange looking for: not a direction,

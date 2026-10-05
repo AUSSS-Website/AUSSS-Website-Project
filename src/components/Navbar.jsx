@@ -15,8 +15,8 @@ const LINKS = [
     to: '/exchange',
     label: 'Exchange',
     children: [
-      { to: '/exchange/outgoings', label: 'Going abroad', hint: 'Clerkship overseas' },
-      { to: '/exchange/incomings', label: 'Hosting in Cairo', hint: 'Students arriving at Ain Shams' },
+      { to: '/exchange/outgoings', label: 'Outgoings', hint: 'Our students going abroad' },
+      { to: '/exchange/incomings', label: 'Incomings', hint: 'Coming to Ain Shams on exchange' },
       { to: '/exchange/join', label: 'Join the exchange team', hint: 'Officer and assistant roles' },
     ],
   },

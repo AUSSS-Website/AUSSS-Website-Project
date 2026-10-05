@@ -2,6 +2,10 @@ import FAQ from '../../../components/FAQ.jsx'
 import {
   IncomingsAlbum,
   IncomingsContacts,
+  IncomingsFacts,
+  IncomingsIncludes,
+  IncomingsSteps,
+  IncomingsTips,
   IncomingsWhy,
   NationalBookletLink,
 } from '../../../components/IncomingsSections.jsx'
@@ -17,27 +21,20 @@ export const previews = {
     </div>
   ),
   // The edited parts of /exchange/incomings, in page order. The page's title,
-  // the welcome booklet, the tracks and the stories are not part of the block.
+  // the two track cards, the welcome booklet and the stories are not part of
+  // the block, so they are left out here. Half-typed rows are skipped.
   'exchange.incomings': ({ doc }) => (
-    <div className="space-y-14">
-      <p className="mx-auto max-w-2xl text-center text-lg font-light leading-relaxed text-soft/75">{doc.intro}</p>
-      {doc.points.some((p) => p.text) && (
-        <ul className="mx-auto max-w-3xl space-y-3">
-          {doc.points
-            .filter((p) => p.text)
-            .map((p, i) => (
-              <li key={i} className="flex gap-4 rounded-2xl border border-line/10 bg-card p-5">
-                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-medical/20 text-xs font-bold text-accent">
-                  ✓
-                </span>
-                <p className="text-sm leading-relaxed text-soft/80">{p.text}</p>
-              </li>
-            ))}
-        </ul>
-      )}
+    <div className="space-y-16">
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-light leading-relaxed text-soft/75">
+        {doc.intro}
+      </p>
+      <IncomingsFacts facts={doc.facts.filter((f) => f.figure)} />
+      <IncomingsIncludes points={doc.points.filter((p) => p.text)} />
       <IncomingsWhy sections={doc.sections.filter((s) => s.title || s.body)} />
+      <IncomingsSteps steps={doc.steps.filter((s) => s.title || s.body)} />
       <IncomingsAlbum slug={doc.album} />
       <NationalBookletLink href={doc.nationalBooklet} />
+      <IncomingsTips tips={doc.tips.filter((t) => t.title || t.body)} />
       {doc.showContacts && <IncomingsContacts />}
       {doc.links.some((l) => l.label) && (
         <p className="text-center text-sm text-soft/60">
