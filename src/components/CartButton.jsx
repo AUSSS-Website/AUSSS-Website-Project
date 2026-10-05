@@ -10,7 +10,7 @@ export default function CartButton({ tone = 'solid', className = '' }) {
   const skin =
     tone === 'solid'
       ? 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/15 dark:text-silver dark:hover:bg-white/5'
-      : 'border-white/25 text-white hover:bg-white/10'
+      : 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10'
 
   return (
     <button

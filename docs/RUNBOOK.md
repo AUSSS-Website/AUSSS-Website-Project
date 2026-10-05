@@ -1553,13 +1553,15 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
 - **The fixed colours are for things that look the same in both themes:** a blue button
   (`bg-medical` with `text-forest-950`, never white, which is 3.5:1), a green button
   (`bg-forest text-white`), a photo's scrim, shadows. The navbar's magazine button is the
-  one blue button with a look per theme: on the light theme's bar it is `bg-medical-deep`
-  with white text (6.4:1), on dark and over the home hero it is the usual blue.
+  one blue button with a look per theme: on the light theme it is `bg-medical-deep` with
+  white text (6.4:1), on dark it is the usual blue.
 - **A block that is dark in both themes** gets the class `dark` on its outer element: the
-  home hero, text laid over a photo (album covers), the photo and merch
+  text laid over a photo (album covers), the photo and merch
   viewers, the two bespoke sorting results. Everything inside then resolves the tokens to
-  their dark values. A modal's backdrop is a fixed `bg-forest-950/85`. The footer is not
-  one of these: it follows the theme (a pale band with dark logos on light).
+  their dark values. A modal's backdrop is a fixed `bg-forest-950/85`. The home hero and
+  the footer are not among these: both follow the theme. The hero is a cream stage with
+  a dark logo on light, and its moving ECG trace (`ECGBackground.jsx`, a canvas) has a
+  palette per theme in `PALETTES`; the footer is a pale band with dark logos.
 - **A white logo** (the committee marks, IFMSA, IFMSA-Egypt) gets the class `logo-ink`,
   which inverts it on a light page and keeps a red emblem red. Inside a `dark` block it is
   left white.

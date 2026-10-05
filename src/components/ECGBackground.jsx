@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react'
+import { useTheme } from '../lib/theme.js'
 
 // Cardiac-monitor ECG sweep for the home hero. A glowing PQRST trace draws
-// left→right with a fading history trail, like a real monitor, on a black
-// stage under a faint field of twinkling stars.
+// left→right with a fading history trail, like a real monitor, under a faint
+// field of twinkling stars. On the dark theme it is a pale trace on a black
+// stage; on the light theme a forest-green trace on cream, like ECG paper.
 //
 // Logo sync: twice per sweep the beat anchors to the AUSSS logo, tall spikes
 // fire exactly under the logo's own printed ECG spikes (at ~31% and ~68% of
@@ -43,12 +45,38 @@ function waveY(t) {
   return y
 }
 
-// Glow = same polyline stroked widest-first: halo / glow / core.
-const LAYERS = [
-  ['#5B8DB8', 10, 0.06], // medical
-  ['#8FB4D4', 4, 0.16], // medical-light
-  ['#EEF2F5', 1.6, 0.50], // silver-light
-]
+// What the canvas draws with, per theme. `layers` is the glow: the same
+// polyline stroked widest-first (halo / glow / core), each as
+// [colour, width, alpha while moving, alpha in the still frame]. `head` and
+// `bloom` are "R, G, B" for the pen's dot and the flash around a beat.
+const PALETTES = {
+  dark: {
+    layers: [
+      ['#5B8DB8', 10, 0.06, 0.05], // medical
+      ['#8FB4D4', 4, 0.16, 0.13], // medical-light
+      ['#EEF2F5', 1.6, 0.5, 0.45], // silver-light
+    ],
+    starStroke: '#EEF2F5',
+    starFill: '#FFFFFF',
+    starAlpha: 1,
+    head: '238, 242, 245',
+    bloom: '143, 180, 212',
+    bloomAlpha: 0.1,
+  },
+  light: {
+    layers: [
+      ['#5B8DB8', 10, 0.1, 0.08], // medical
+      ['#2A618C', 4, 0.2, 0.16], // medical-deep
+      ['#06402B', 1.6, 0.8, 0.7], // forest
+    ],
+    starStroke: '#5B8DB8',
+    starFill: '#2A618C',
+    starAlpha: 0.8,
+    head: '6, 64, 43',
+    bloom: '91, 141, 184',
+    bloomAlpha: 0.16,
+  },
+}
 // Two-level trail: full brightness for the newest ~75% of its life, then one
 // short faded step until it expires, exactly one visible fade.
 const BUCKET_ALPHAS = [0.2, 1] // faded tail, full-bright head
@@ -82,6 +110,17 @@ export default function ECGBackground({
   logoRef = null,
 }) {
   const canvasRef = useRef(null)
+  // The drawing code reads the palette through a ref, so switching theme
+  // recolours the next frame without restarting the sweep.
+  const { theme } = useTheme()
+  const paletteRef = useRef(PALETTES.dark)
+  paletteRef.current = PALETTES[theme] || PALETTES.dark
+  // Under reduced motion nothing redraws by itself: this redraws the still
+  // frame when the theme changes.
+  const redrawStillRef = useRef(null)
+  useEffect(() => {
+    redrawStillRef.current?.()
+  }, [theme])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -243,8 +282,9 @@ export default function ECGBackground({
     // Four-point sparkles: a thin cross with a bright core. Pass now=null
     // for a static frame (fixed alpha, no lifecycle).
     function drawStars(now) {
-      ctx.strokeStyle = '#EEF2F5'
-      ctx.fillStyle = '#FFFFFF'
+      const pal = paletteRef.current
+      ctx.strokeStyle = pal.starStroke
+      ctx.fillStyle = pal.starFill
       ctx.lineWidth = 1
       for (let i = 0; i < stars.length; i++) {
         let s = stars[i]
@@ -254,9 +294,9 @@ export default function ECGBackground({
             s = stars[i] = spawnStar(now) // expired → reappear elsewhere
             p = 0
           }
-          ctx.globalAlpha = s.baseA * Math.sin(Math.PI * Math.max(p, 0))
+          ctx.globalAlpha = pal.starAlpha * s.baseA * Math.sin(Math.PI * Math.max(p, 0))
         } else {
-          ctx.globalAlpha = s.baseA * 0.7
+          ctx.globalAlpha = pal.starAlpha * s.baseA * 0.7
         }
         const len = s.r * 3
         ctx.beginPath()
@@ -274,8 +314,9 @@ export default function ECGBackground({
 
     function drawHead(head) {
       const g = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 7)
-      g.addColorStop(0, 'rgba(238, 242, 245, 0.9)')
-      g.addColorStop(1, 'rgba(238, 242, 245, 0)')
+      const { head: rgb } = paletteRef.current
+      g.addColorStop(0, `rgba(${rgb}, 0.9)`)
+      g.addColorStop(1, `rgba(${rgb}, 0)`)
       ctx.fillStyle = g
       ctx.beginPath()
       ctx.arc(head.x, head.y, 7, 0, Math.PI * 2)
@@ -283,10 +324,11 @@ export default function ECGBackground({
     }
 
     function drawBloom(head) {
-      const a = 0.1 * Math.min(pulse, 1.6)
+      const { bloom: rgb, bloomAlpha } = paletteRef.current
+      const a = bloomAlpha * Math.min(pulse, 1.6)
       const g = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 90)
-      g.addColorStop(0, `rgba(143, 180, 212, ${a.toFixed(3)})`)
-      g.addColorStop(1, 'rgba(143, 180, 212, 0)')
+      g.addColorStop(0, `rgba(${rgb}, ${a.toFixed(3)})`)
+      g.addColorStop(1, `rgba(${rgb}, 0)`)
       ctx.fillStyle = g
       ctx.beginPath()
       ctx.arc(head.x, head.y, 90, 0, Math.PI * 2)
@@ -296,7 +338,7 @@ export default function ECGBackground({
     function render(now) {
       ctx.clearRect(0, 0, width, height)
       drawStars(now)
-      for (const [color, w, a] of LAYERS) strokeTrace(now, color, w, a)
+      for (const [color, w, a] of paletteRef.current.layers) strokeTrace(now, color, w, a)
       // The newest entry can be the wrap's path-break marker (null), the
       // pen head is the last REAL point. Never blank the whole frame for it:
       // that one-frame flash read as the page "reloading" at each wrap.
@@ -441,10 +483,11 @@ export default function ECGBackground({
         )
         ctx.stroke()
       }
-      drawPath('#5B8DB8', 10, 0.05)
-      drawPath('#8FB4D4', 4, 0.13)
-      drawPath('#EEF2F5', 1.6, 0.45)
+      for (const [color, w, , a] of paletteRef.current.layers) drawPath(color, w, a)
       ctx.globalAlpha = 1
+    }
+    redrawStillRef.current = () => {
+      if (reduced) drawStatic()
     }
 
     // ── Interactions ──────────────────────────────────────────────────────
@@ -597,6 +640,7 @@ export default function ECGBackground({
     }
 
     return () => {
+      redrawStillRef.current = null
       cancelAnimationFrame(raf)
       clearTimeout(settleTimer)
       clearTimeout(holdTimer)

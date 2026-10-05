@@ -17,13 +17,14 @@ export default function Hero() {
       // shouldn't select text or pop the long-press image menu on mobile.
       // min-h-svh (not screen/100vh): on phones 100vh changes as the URL bar
       // collapses, reflowing the whole page on scroll, svh stays stable.
-      className="dark relative flex min-h-svh select-none items-center overflow-hidden bg-black"
+      className="relative flex min-h-svh select-none items-center overflow-hidden bg-page dark:bg-black"
       style={{ WebkitTouchCallout: 'none' }}
     >
-      {/* Black stage: near-black base easing into forest at the bottom so
-          the seam into the next section still blends. The canvas draws the
-          stage lights and the ECG trace. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black via-black to-page" />
+      {/* The stage. Dark theme: near-black easing into forest at the bottom,
+          so the seam into the next section blends. Light theme: a pale band
+          easing into the page. The canvas draws the stars and the ECG trace
+          in the colours of the theme. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-sunk via-page to-page dark:from-black dark:via-black" />
       {/* Baseline lays across the middle of the CTA row. */}
       <ECGBackground anchorRef={ctaRef} logoRef={logoRef} band={0.68} />
 
@@ -50,7 +51,7 @@ export default function Hero() {
           fetchpriority="high"
           decoding="async"
           draggable={false}
-          className="animate-fade-up mx-auto h-52 w-auto sm:h-64 lg:h-80"
+          className="logo-ink animate-fade-up mx-auto h-52 w-auto sm:h-64 lg:h-80"
         />
 
         <p
