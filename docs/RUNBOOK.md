@@ -704,8 +704,25 @@ be put on a roster row at all.
 **"Other positions"** is the roster's name for the sheet's "Current Position" text since
 2026-10-05 (the Roster page editor, its export, and the Members tab): with the committee
 position kept in its own field, the free text is for what a member holds beyond it. The
-column is still `current_position`, still filled by the sheet sync, and still what the
-public membership lookup shows.
+column is still `current_position` and still filled by the sheet sync.
+
+**The public member lookup follows the roster (migration `20261005190001_lookup_follows_roster`,
+test `280-lookup-follows-roster.sql`).** `/members` asks `rpc/check_membership`, which reads
+the roster row live, so a change on the Roster page or in the sheet shows on the next lookup
+with nothing to publish. Status, year joined and GA counts come straight from the row. The
+positions are put together by `app.roster_positions_text`, one per line:
+
+1. the position set on the roster: an officer by the short name ("LORE", "LEO-In"), a board
+   position or a board assistant's by its title, anything else as committee plus title
+   ("SCORA Core Team Member", "SCOPE/SCORE Incomings Assistant");
+2. the lines of "Other positions" that do not say the same thing again ("SCORA Core Team",
+   "Exchange Incomings Assistant" and "PnSDD" are recognised as repeats of the position);
+3. "Exchange Contact Person", when the row is marked as one.
+
+A member with none of these shows as "General Member". If a lookup shows a position twice
+in different words, the text names it in a way the comparison does not recognise: delete
+that line from "Other positions" on the member's row. The special result cards (officers,
+the board) are chosen in the browser from these lines (`src/lib/teamIndex.js`).
 
 What officers get: the **Members** tab of `/portal/committees/<slug>`, fed by
 `rpc/committee_roster` (the roster table itself stays EB-only). Membership facts are

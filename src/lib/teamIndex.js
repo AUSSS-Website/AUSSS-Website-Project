@@ -1,6 +1,9 @@
-// Maps a membership "Current Position" string → the committee/division or
-// Executive-Board metadata, so the special result pages work regardless of
-// who currently holds the post. Branding (logo/colour/slug) comes from the
+// Maps a looked-up position → the committee/division or Executive-Board
+// metadata, so the special result pages work regardless of who currently holds
+// the post. The positions come from the roster through rpc/check_membership,
+// one per line: the position set on the roster first (an officer by the short
+// name used here as an alias, "LORE", "LEO-In"), then the member's other
+// positions. Branding (logo/colour/slug) comes from the
 // post; a personal photo is only attached when the looked-up name matches
 // the currently-known holder in society.js.
 
@@ -9,12 +12,13 @@ import { normalize as norm, splitPositions } from './text.js'
 
 const compact = (v) => norm(v).replace(/[^a-z0-9]/g, '')
 
-// "President" / "AUSSS President" → true, but NOT "Vice President".
-// Multi-position safe, true if any sub-position is a presidential role.
+// "President" / "AUSSS President" → true, but NOT "Vice President" and NOT
+// "Assistant to the President" (a roster position since the board is on the
+// roster). Multi-position safe, true if any sub-position is a presidential role.
 export function isPresidentPosition(pos) {
   return splitPositions(pos).some((part) => {
     const p = norm(part).replace(/^ausss\s+/, '')
-    return /\bpresident\b/.test(p) && !/\bvice\b/.test(p)
+    return /\bpresident\b/.test(p) && !/\b(vice|assistant)\b/.test(p)
   })
 }
 
