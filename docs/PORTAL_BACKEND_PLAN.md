@@ -717,8 +717,9 @@ sideways and no text is below WCAG AA (341 texts were below it in dark and 352
 in light before). Sizing follows the screen through the root font size. The
 portal header has the navbar's dimensions and a theme toggle. After the
 webmaster's first look: the home hero, the footer and the two bespoke
-member-lookup cards follow the theme too, and every blue button is a deep
-blue with white text on the light theme. The magazine
+member-lookup cards follow the theme too, every blue button is a deep
+blue with white text on the light theme, and every green button a fresher
+green there. The magazine
 reader has its depth. The 18 portal pages pass the same two measurements at
 the six widths in both themes when walked with sample data
 (`npm run walk:portal-sample`, which needs no sign-in); that walk found and

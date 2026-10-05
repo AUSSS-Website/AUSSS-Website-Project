@@ -283,8 +283,8 @@ export default function Navbar() {
               to="/members"
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 2xl:px-6 2xl:py-2.5 2xl:text-base ${
                 solid
-                  ? 'bg-forest-600 text-silver-light hover:bg-forest-500'
-                  : 'bg-forest-600 text-silver-light hover:bg-forest-500 dark:bg-white dark:text-forest dark:hover:bg-silver-light'
+                  ? 'bg-leaf text-white hover:bg-leaf-hover dark:bg-forest-600 dark:text-silver-light dark:hover:bg-forest-500'
+                  : 'bg-leaf text-white hover:bg-leaf-hover dark:bg-white dark:text-forest dark:hover:bg-silver-light'
               }`}
             >
               Members
@@ -388,7 +388,7 @@ export default function Navbar() {
           <li className="pt-3">
             <Link
               to="/members"
-              className="block w-full rounded-full bg-forest-600 py-3 text-center text-sm font-semibold text-silver-light"
+              className="block w-full rounded-full bg-leaf py-3 text-center text-sm font-semibold text-white dark:bg-forest-600 dark:text-silver-light"
             >
               Members
             </Link>

@@ -1542,7 +1542,8 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
 | `line` | borders, dividers, rings (`border-line/10`) | white | forest |
 | `veil` | translucent fills (`bg-veil/10`) | white | forest |
 | `accent` | blue text and links | medical-light | a deep blue |
-| `solid`, `on-solid`, `solid-hover` | the inverse button | white pill, forest text | forest pill, white text |
+| `leaf`, `leaf-hover` | the green button, with `text-white` | forest | forest-500, a fresher green |
+| `solid`, `on-solid`, `solid-hover` | the inverse button | white pill, forest text | the green button |
 | `cta`, `on-cta`, `cta-hover` | the blue button | medical blue, dark text | a deep blue, white text |
 | `danger`, `warn`, `ok` | status text | red, amber, emerald (pale) | the same hues, dark |
 
@@ -1557,9 +1558,13 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
   washed out on cream. Never white text on `bg-medical` (3.5:1). A button filled with a
   committee's own colour takes `text-page`, which is dark on the lightened shade and
   light on the darkened one.
-- **The fixed colours are for things that look the same in both themes:** a green button
-  (`bg-forest text-white`), the thin blue rules and dots (`bg-medical`), a photo's scrim,
-  shadows.
+- **A green button** is `bg-leaf text-white hover:bg-leaf-hover` when it is green in both
+  themes (Back, back to top, Members), or the `solid` tokens when it is the white pill on
+  dark. On light both are the same green, `--c-leaf` in `index.css`: change that one value
+  to change every green button. White on it is 5.3:1, so keep such a button opaque on
+  light (at 90% over cream it drops under 4.5:1).
+- **The fixed colours are for things that look the same in both themes:** the thin blue
+  rules and dots (`bg-medical`), a photo's scrim, shadows.
 - **A block that is dark in both themes** gets the class `dark` on its outer element: the
   text laid over a photo (album covers), the photo and merch
   viewers. Everything inside then resolves the tokens to

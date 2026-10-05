@@ -25,8 +25,13 @@
     --line-k: 1.6;
     --c-veil: 6 64 43;
     --veil-k: 1;
-    --c-solid: 6 64 43;
-    --c-solid-hover: 10 92 62; /* forest-600 */
+    /* Green buttons on light: forest-500, lively on cream where the deep
+       forest reads as near black. White on it is 5.3:1. Change the shade of
+       every green button here. */
+    --c-leaf: 15 122 83;
+    --c-leaf-hover: 10 92 62; /* forest-600 */
+    --c-solid: var(--c-leaf);
+    --c-solid-hover: var(--c-leaf-hover);
     --c-on-solid: 255 255 255;
     --c-cta: 42 97 140; /* white on it is 6.4:1 */
     --c-cta-hover: 31 79 117;
@@ -59,6 +64,8 @@
     --line-k: 1;
     --c-veil: 255 255 255;
     --veil-k: 1;
+    --c-leaf: 6 64 43; /* forest */
+    --c-leaf-hover: 10 92 62; /* forest-600 */
     --c-solid: 255 255 255;
     --c-solid-hover: 238 242 245; /* silver-light */
     --c-on-solid: 6 64 43;

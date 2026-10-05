@@ -15,7 +15,7 @@ export default function BackToTop() {
       aria-label="Back to top"
       aria-hidden={!show}
       tabIndex={show ? undefined : -1}
-      className={`fixed bottom-6 right-6 z-50 grid h-12 w-12 place-items-center rounded-full bg-forest text-white shadow-lg shadow-forest-900/30 transition-all duration-300 hover:bg-forest-600 hover:shadow-xl ${
+      className={`fixed bottom-6 right-6 z-50 grid h-12 w-12 place-items-center rounded-full bg-leaf text-white shadow-lg shadow-forest-900/30 transition-all duration-300 hover:bg-leaf-hover hover:shadow-xl ${
         show
           ? 'translate-y-0 opacity-100'
           : 'pointer-events-none translate-y-4 opacity-0'
