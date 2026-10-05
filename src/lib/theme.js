@@ -1,10 +1,16 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 
 // Theme state lives on <html class="dark"> + localStorage.theme.
-// Initial value is set by the no-flash bootstrap in index.html, so the
-// first render already matches the DOM.
+// Initial value is set by the no-flash bootstrap (public/theme-init.js), so
+// the first render already matches the DOM.
+//
+// Light is the default: the site is dark only for a visitor who picked dark
+// with the toggle. The device's own light/dark setting is not followed.
 
 const STORAGE_KEY = 'theme'
+
+// The colour of the browser's own bar on a phone, per theme (the page colour).
+const BAR = { light: '#fafcfb', dark: '#021c12' }
 
 function currentTheme() {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
@@ -19,6 +25,7 @@ function subscribe(cb) {
 function setTheme(next) {
   const isDark = next === 'dark'
   document.documentElement.classList.toggle('dark', isDark)
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? BAR.dark : BAR.light)
   try {
     localStorage.setItem(STORAGE_KEY, next)
   } catch (_) {}
@@ -31,22 +38,5 @@ function toggleTheme() {
 
 export function useTheme() {
   const theme = useSyncExternalStore(subscribe, currentTheme, () => 'light')
-
-  // Keep following the OS preference as long as the user hasn't picked
-  // explicitly. Once they click the toggle, localStorage.theme is set and
-  // we stop reacting to the OS.
-  useEffect(() => {
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = (e) => {
-      try {
-        if (localStorage.getItem(STORAGE_KEY)) return
-      } catch (_) {}
-      document.documentElement.classList.toggle('dark', e.matches)
-      listeners.forEach((cb) => cb())
-    }
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [])
-
   return { theme, setTheme, toggleTheme }
 }
