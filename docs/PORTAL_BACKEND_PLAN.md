@@ -631,6 +631,15 @@ kept in Vault and called by a scheduled database job. One thing waits on the
 webmaster: creating that deploy hook and saving it (RUNBOOK section 23,
 "One-time set-up"); until then pages are rebuilt on each code release only.
 
+**Decided 2026-10-05, after 5b shipped: access belongs to the work emails.** A
+position on a member's roster row (their personal email) gives that account
+nothing when it is an officer's, a board member's or the webmaster's; it is a
+record of who holds the position. Only an invite to the position's work email
+opens the committee editors and the board's pages. Positions below officer
+still reach the member's account. This narrows request 10: an officer's name and
+photo on the public pages come from the profile of the work account that holds
+the position (RUNBOOK section 14).
+
 Everything the portal itself still needs, finished before members are invited
 into it.
 

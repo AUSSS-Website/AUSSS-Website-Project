@@ -132,11 +132,13 @@ function Assign({ member, committee, positions }) {
     try {
       const state = await assign.mutateAsync({ entry: member.id, position })
       setNote(
-        state === 'assigned'
-          ? 'Saved. It is on their portal account now.'
-          : state === 'invited'
-            ? 'Saved. It reaches their account the first time they sign in with this email.'
-            : 'Saved. The roster has no email for them, so it cannot reach an account yet.',
+        state === 'recorded'
+          ? 'Saved on the roster. An officer’s access belongs to the position’s work email, so this member’s own account is unchanged.'
+          : state === 'assigned'
+            ? 'Saved. It is on their portal account now.'
+            : state === 'invited'
+              ? 'Saved. It reaches their account the first time they sign in with this email.'
+              : 'Saved. The roster has no email for them, so it cannot reach an account yet.',
       )
     } catch (err) {
       setError(err?.message || 'Could not save that position.')
