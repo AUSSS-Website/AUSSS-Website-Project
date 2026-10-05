@@ -9,6 +9,7 @@
 //   npm run walk -- --widths 320,1280 --themes dark --only /gallery
 //   npm run walk -- --no-shots --strict           console check only; exit 1 on our own errors
 //   npm run walk -- --login                       sign in once so the portal pages can be walked
+//   npm run walk -- --contrast --no-shots         measure text contrast (WCAG AA) on every page
 //
 // One-time setup: `npx playwright install chromium`.
 //
@@ -19,9 +20,15 @@
 // like a password and delete it when you are done. Without it the walk covers
 // the public pages and says so.
 //
+// Every visit also measures the page for sideways scrolling and names the
+// elements that stick out of the viewport. With `--contrast` it runs axe-core's
+// colour-contrast rule as well, which is how the design pass checks both themes
+// against WCAG AA.
+//
 // Output: .page-walk/<run>/<theme>-<width>/<page>.png and report.json there.
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import { chromium } from 'playwright'
 
 const PRODUCTION = 'https://ausss-ainshams.org'
@@ -61,13 +68,14 @@ const PORTAL_DETAIL = [
 function parseArgs(argv) {
   const opts = {
     base: 'http://localhost:5173',
-    widths: [320, 390, 768, 1280, 1920],
+    widths: [320, 375, 768, 1024, 1440, 1920],
     themes: ['dark', 'light'],
     only: '',
     login: false,
     publicOnly: false,
     shots: true,
     strict: false,
+    contrast: false,
   }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -84,6 +92,7 @@ function parseArgs(argv) {
     else if (arg === '--public-only') opts.publicOnly = true
     else if (arg === '--no-shots') opts.shots = false
     else if (arg === '--strict') opts.strict = true
+    else if (arg === '--contrast') opts.contrast = true
     else throw new Error(`unknown option ${arg}`)
   }
   if (opts.widths.length === 0 || opts.themes.length === 0) throw new Error('no widths or themes left to walk')
@@ -175,6 +184,7 @@ const READ_RPCS = new Set([
   'check_membership',
   'committee_roster',
   'gallery_public',
+  'people_public',
   'magazine_insights',
   'magazine_public',
   'match_roster_lines',
@@ -204,6 +214,70 @@ async function guardWrites(context, blocked) {
     if (reading) return route.continue()
     blocked.add(`${method} ${url.pathname}`)
     return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' })
+  })
+}
+
+// Does the page scroll sideways, and which elements cause it? Runs in the page.
+// An element counts only if nothing above it clips it, and of a nested set
+// only the innermost is named, since that is the one to fix.
+function measureOverflow() {
+  const doc = document.documentElement
+  const vw = doc.clientWidth
+  const by = Math.max(doc.scrollWidth, document.body.scrollWidth) - vw
+  if (by <= 1) return null
+  const clipped = (el) => {
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      if (getComputedStyle(p).overflowX === 'visible') continue
+      if (p.getBoundingClientRect().right <= vw + 1) return true
+    }
+    return false
+  }
+  const hits = []
+  for (const el of document.body.querySelectorAll('*')) {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 || r.height === 0 || r.right <= vw + 1) continue
+    if (getComputedStyle(el).position === 'fixed' || clipped(el)) continue
+    hits.push(el)
+  }
+  const innermost = hits.filter((el) => !hits.some((o) => o !== el && el.contains(o)))
+  return {
+    by: Math.round(by),
+    culprits: innermost.slice(0, 6).map((el) => ({
+      el: `${el.tagName.toLowerCase()}.${String(el.className?.baseVal ?? el.className).slice(0, 90)}`,
+      text: (el.textContent || '').trim().slice(0, 50),
+      right: Math.round(el.getBoundingClientRect().right),
+    })),
+  }
+}
+
+// axe-core's colour-contrast rule: every piece of text it can measure against
+// a flat background, with the ratio found and the one WCAG AA asks for. Text
+// over a photo or a gradient cannot be measured and is not listed.
+let axeSource = ''
+async function measureContrast(page) {
+  if (!axeSource) {
+    const require = createRequire(import.meta.url)
+    axeSource = await fs.readFile(require.resolve('axe-core/axe.min.js'), 'utf8')
+  }
+  // evaluate() is not subject to the page's Content-Security-Policy.
+  await page.evaluate(`${axeSource}; null`)
+  return page.evaluate(async () => {
+    const result = await window.axe.run(document, { runOnly: ['color-contrast'], resultTypes: ['violations'] })
+    return result.violations.flatMap((v) =>
+      v.nodes.map((n) => {
+        const d = n.any[0]?.data || {}
+        const text = n.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+        return {
+          target: n.target.join(' ').slice(0, 160),
+          text: (text || n.html).slice(0, 70),
+          fg: d.fgColor,
+          bg: d.bgColor,
+          ratio: d.contrastRatio,
+          needs: d.expectedContrastRatio,
+          size: d.fontSize,
+        }
+      }),
+    )
   })
 }
 
@@ -250,6 +324,8 @@ async function visit(context, opts, route, shotDir, report) {
   }
 
   let finalPath = route
+  let overflow = null
+  let contrast = []
   try {
     await page.goto(`${opts.base}${route}`, { waitUntil: 'networkidle', timeout: 45000 })
     // Scroll to the end and back so everything lazy (images, the map and
@@ -265,6 +341,8 @@ async function visit(context, opts, route, shotDir, report) {
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
     await page.waitForTimeout(400)
     finalPath = new URL(page.url()).pathname
+    overflow = await page.evaluate(measureOverflow)
+    if (opts.contrast) contrast = await measureContrast(page)
     if (opts.shots) {
       await fs.mkdir(shotDir, { recursive: true })
       await page.screenshot({ path: path.join(shotDir, `${slugOf(route)}.png`), fullPage: true })
@@ -272,7 +350,7 @@ async function visit(context, opts, route, shotDir, report) {
   } catch (err) {
     record('pageerror', `walk: ${err.message.split('\n')[0]}`)
   }
-  report.push({ route, finalPath, messages })
+  report.push({ route, finalPath, messages, overflow, contrast })
   return page
 }
 
@@ -342,7 +420,12 @@ async function walk(opts) {
 
         report.runs.push({ theme, width, pages })
         const noisy = pages.filter((p) => p.messages.length > 0).length
-        console.log(`page walk: ${theme} ${width}px: ${pages.length} pages, ${noisy} with console output`)
+        const wide = pages.filter((p) => p.overflow).length
+        const faint = pages.reduce((n, p) => n + p.contrast.length, 0)
+        console.log(
+          `page walk: ${theme} ${width}px: ${pages.length} pages, ${noisy} with console output, ` +
+            `${wide} scrolling sideways${opts.contrast ? `, ${faint} low-contrast texts` : ''}`,
+        )
         await context.close()
       }
     }
@@ -368,6 +451,37 @@ async function walk(opts) {
 
   report.blockedWrites = [...blocked].sort()
 
+  // Page views that scroll sideways, and the low-contrast colour pairs with
+  // how many pages show each.
+  report.overflow = report.runs.flatMap((run) =>
+    run.pages
+      .filter((p) => p.overflow)
+      .map((p) => ({ theme: run.theme, width: run.width, route: p.route, ...p.overflow })),
+  )
+  const pairs = new Map()
+  for (const run of report.runs) {
+    for (const page of run.pages) {
+      for (const c of page.contrast) {
+        const key = `${run.theme}|${c.fg}|${c.bg}`
+        const hit = pairs.get(key) || { ...c, theme: run.theme, routes: new Set(), samples: new Set() }
+        hit.routes.add(page.route)
+        if (hit.samples.size < 4) hit.samples.add(c.text)
+        pairs.set(key, hit)
+      }
+    }
+  }
+  report.contrast = [...pairs.values()]
+    .map(({ theme, fg, bg, ratio, needs, routes, samples }) => ({
+      theme,
+      fg,
+      bg,
+      ratio,
+      needs,
+      routes: [...routes],
+      samples: [...samples],
+    }))
+    .sort((a, b) => a.theme.localeCompare(b.theme) || b.routes.length - a.routes.length)
+
   await fs.mkdir(outDir, { recursive: true })
   await fs.writeFile(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2))
   if (blocked.size > 0) {
@@ -379,6 +493,26 @@ async function walk(opts) {
   for (const m of report.summary) {
     const sample = m.routes.slice(0, 3).join(', ') + (m.routes.length > 3 ? `, +${m.routes.length - 3}` : '')
     console.log(`  [${m.owner}] ${m.kind}: ${m.text.slice(0, 160)}  (${sample})`)
+  }
+  if (report.overflow.length > 0) {
+    console.log(`\npage walk: ${report.overflow.length} page views scroll sideways`)
+    const listed = new Set()
+    for (const o of report.overflow) {
+      const key = `${o.width}|${o.route}`
+      if (listed.has(key)) continue
+      listed.add(key)
+      const who = o.culprits.map((c) => c.el).join(' | ').slice(0, 200)
+      console.log(`  ${o.width}px ${o.route}: ${o.by}px over, ${who}`)
+    }
+  }
+  if (opts.contrast) {
+    console.log(`\npage walk: ${report.contrast.length} low-contrast colour pairs`)
+    for (const c of report.contrast) {
+      console.log(
+        `  [${c.theme}] ${c.fg} on ${c.bg} = ${c.ratio} (needs ${c.needs}), ${c.routes.length} pages, ` +
+          `e.g. ${c.routes[0]}: "${c.samples[0]}"`,
+      )
+    }
   }
   console.log(`page walk: report and screenshots in ${outDir}`)
 
