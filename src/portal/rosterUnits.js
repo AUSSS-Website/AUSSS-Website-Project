@@ -16,7 +16,7 @@ import { useCommittees } from './officerQueries.js'
 // committee, so choosing LORE files the member under SCORE by itself.
 //
 // The database knows the same grouping as committees.roster_group (migration
-// 20261005150001): the officers of the committees in a unit see one members
+// 20261005112802): the officers of the committees in a unit see one members
 // list, hand out its positions below officer, share their notes and can give
 // their tasks to the same people.
 

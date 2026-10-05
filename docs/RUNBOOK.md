@@ -636,7 +636,7 @@ choosing an officer position files them where that position belongs, so LORE put
 member under SCORE by itself. SCORE's own copies of the shared positions are no longer
 offered.
 
-**The exchange officers share that list (migration `20261005150001_exchange_shared_roster`,
+**The exchange officers share that list (migration `20261005112802_exchange_shared_roster`,
 test `250-exchange-shared-roster.sql`).** `committees.roster_group` is `exchange` for SCOPE
 and SCORE, and for the committees of one group these are shared: the Members tab and the
 Invites tab (opened from either committee they show the same people, under the name
