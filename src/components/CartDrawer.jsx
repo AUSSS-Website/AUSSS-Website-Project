@@ -8,11 +8,12 @@ import {
   removeFromCart,
   formatEGP,
 } from '../lib/cart.js'
-import { productById } from '../data/merchProducts.js'
+import { useMerchCatalogue } from '../lib/merch.js'
 import useFocusTrap from '../hooks/useFocusTrap.js'
 
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart()
+  const { byId: productById } = useMerchCatalogue()
   const count = cartCount(cart)
   const subtotal = cartSubtotal(cart)
   const panelRef = useFocusTrap(open, onClose)
@@ -82,11 +83,23 @@ export default function CartDrawer({ open, onClose }) {
                 if (!p) return null
                 return (
                   <li key={`${it.productId}::${it.size}::${it.design}`} className="flex gap-4 py-5">
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="h-20 w-16 flex-shrink-0 rounded-md object-cover"
-                    />
+                    {p.image ? (
+
+                      <img
+
+                        src={p.image}
+
+                        alt={p.name}
+
+                        className="h-20 w-16 flex-shrink-0 rounded-md object-cover"
+
+                      />
+
+                    ) : (
+
+                      <span className="h-20 w-16 flex-shrink-0 rounded-md bg-sunk" aria-hidden="true" />
+
+                    )}
                     <div className="flex flex-1 flex-col">
                       <h3 className="text-sm font-semibold text-forest dark:text-white">
                         {p.name}

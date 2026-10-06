@@ -77,6 +77,7 @@ export default function PortalLayout() {
       canEditGallery && { to: '/portal/gallery', label: 'Gallery' },
       canEditMagazine && { to: '/portal/magazine', label: 'Magazine' },
       canEditContent && { to: '/portal/content', label: 'Site content' },
+      isEB && { to: '/portal/merch', label: 'Merch' },
       canTriage && { to: '/portal/submissions', label: 'Submissions' },
     ],
     [

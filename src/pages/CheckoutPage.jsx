@@ -8,12 +8,12 @@ import {
   cartCount,
   clearCart,
   formatEGP,
-  takeDroppedLines,
+  cartDropped,
 } from '../lib/cart.js'
-import { productById } from '../data/merchProducts.js'
+import { useMerchCatalogue } from '../lib/merch.js'
+import { useSiteSettings } from '../hooks/useSiteSettings.js'
 import { submitOrder } from '../lib/orders.js'
 import {
-  ORDERS_OPEN,
   availablePaymentMethods,
   paymentMethodById,
 } from '../data/merchConfig.js'
@@ -38,11 +38,13 @@ export default function CheckoutPage() {
   usePageTitle('Checkout')
   const navigate = useNavigate()
   const cart = useCart()
+  const { byId: productById } = useMerchCatalogue()
+  const { settings } = useSiteSettings()
   const count = cartCount(cart)
   const subtotal = cartSubtotal(cart)
-  // Lines the cart store dropped because their product left the catalogue,
-  // surfaced once so the user isn't surprised by a smaller order.
-  const [droppedCount] = useState(() => takeDroppedLines().length)
+  // Lines the cart store dropped because the EB removed or hid their product,
+  // surfaced so the user isn't surprised by a smaller order.
+  const droppedCount = cartDropped(cart)
 
   const [contact, setContact] = useState({
     name: '',
@@ -75,7 +77,9 @@ export default function CheckoutPage() {
     }
   }, [count, result, navigate])
 
-  if (!ORDERS_OPEN) {
+  // The EB closes pre-orders from the portal (Merch); the database refuses an
+  // order while they are closed, so this is only the polite half.
+  if (settings.merchOrdersOpen === false) {
     return <OrdersClosed />
   }
 
@@ -194,8 +198,8 @@ export default function CheckoutPage() {
         {droppedCount > 0 && (
           <p className="mx-auto mb-8 max-w-2xl rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-warn">
             {droppedCount === 1
-              ? 'One item from a previous visit is no longer available and was removed from your cart.'
-              : `${droppedCount} items from a previous visit are no longer available and were removed from your cart.`}{' '}
+              ? 'One item in your cart is no longer available and was removed.'
+              : `${droppedCount} items in your cart are no longer available and were removed.`}{' '}
             Please double-check your order below.
           </p>
         )}
@@ -435,11 +439,23 @@ export default function CheckoutPage() {
                       key={`${it.productId}::${it.size}::${it.design}`}
                       className="flex gap-4 py-4"
                     >
-                      <img
-                        src={p.image}
-                        alt=""
-                        className="h-20 w-16 flex-shrink-0 rounded-md object-cover"
-                      />
+                      {p.image ? (
+
+                        <img
+
+                          src={p.image}
+
+                          alt=""
+
+                          className="h-20 w-16 flex-shrink-0 rounded-md object-cover"
+
+                        />
+
+                      ) : (
+
+                        <span className="h-20 w-16 flex-shrink-0 rounded-md bg-sunk" aria-hidden="true" />
+
+                      )}
                       <div className="flex flex-1 flex-col">
                         <span className="text-sm font-semibold text-ink">
                           {p.name}

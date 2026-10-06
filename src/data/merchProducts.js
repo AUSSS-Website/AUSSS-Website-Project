@@ -1,4 +1,10 @@
-// AUSSS 2025–26 merch catalogue. Every product is a pre-order: per the
+// AUSSS 2025–26 merch catalogue, as it shipped in the code. The live catalogue
+// is the table public.merch_products, edited by the EB in the portal (Merch);
+// src/lib/merch.js reads it, and falls back to this copy only when the
+// database cannot be reached and this browser has never seen the live one.
+// Editing this file changes nothing a visitor sees once the database answers.
+//
+// Every product is a pre-order: per the
 // booklet, "all orders are on a pre-order basis, so no expenses or incomes are
 // held by AUSSS. What you pay for is what you get."
 //
@@ -15,7 +21,7 @@
 //   wideDesigns  designs that take a full-width row in the picker (optional)
 //   available    false hides the product from the shop
 
-const merchProducts = [
+export const shippedProducts = [
   {
     id: 'tshirt-55',
     name: 'AUSSS T-Shirt, 55th Limited Edition',
@@ -68,8 +74,3 @@ const merchProducts = [
     available: true,
   },
 ]
-
-// Lookups used by the cart and the checkout.
-export const productById = Object.fromEntries(merchProducts.map((p) => [p.id, p]))
-
-export const availableProducts = merchProducts.filter((p) => p.available)

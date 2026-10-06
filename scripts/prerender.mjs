@@ -251,6 +251,20 @@ async function loadContent(vite) {
   }
 }
 
+// And the merch catalogue (src/lib/merch.js), edited by the EB in the portal.
+// With none, the shop renders the copy that ships in src/data/merchProducts.js.
+async function loadMerch(vite) {
+  const mod = await vite.ssrLoadModule('/src/lib/merch.js')
+  try {
+    const live = await mod.fetchMerchProducts()
+    console.log('prerender: ' + live.length + ' merch products from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the merch catalogue (' + err.message + '); the shop uses the shipped copy this build')
+    return []
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -282,6 +296,7 @@ async function main() {
     const stories = await loadStories(vite)
     const people = await loadPeople(vite)
     const content = await loadContent(vite)
+    const merch = await loadMerch(vite)
     const pages = publicPages(albums, issues, content)
 
     const seen = new Set()
@@ -289,7 +304,7 @@ async function main() {
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues, stories, people, content)
+      const appHtml = await render(page.path, albums, issues, stories, people, content, merch)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }

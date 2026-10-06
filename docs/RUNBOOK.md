@@ -1005,10 +1005,10 @@ the form shows. Nobody inserts into the tables directly. The story and order ref
 (`STORY-…`, `AUSSS-…`) are made by the browser and kept by the database, so the success
 screen and the row match.
 
-**Orders.** `submit_order` prices every line from `merch_products` (seeded from
-`src/data/merchProducts.js`; keep the two in step: an EB member can edit a price in the table,
-but the shop page still reads the file, and a mismatch is written into `price_flag` on the
-order instead of refusing it). The buyer's payment screenshot is shrunk in the browser
+**Orders.** `submit_order` prices every line from `merch_products`, the same rows the shop
+shows (section 26). A product that is unknown or hidden is dropped, and a total that differs
+from the one the browser sent is written into `price_flag` on the order instead of refusing
+it. While the setting `merchOrdersOpen` is off, every order is refused. The buyer's payment screenshot is shrunk in the browser
 (1600 px JPEG) and uploaded to the private bucket `receipts` as `<order id>.jpg`; the bucket
 policy accepts one file per order placed in the last 30 minutes (`app.receipt_upload_ok`),
 then `order_receipt_attached` records it. The portal opens receipts through ten-minute signed
@@ -1744,3 +1744,47 @@ every save; there is no trimming yet, which is a job for Phase 7 if the table gr
 The files sit beside what they test: `src/lib/markdown.test.js` (what a link may point
 at, what the reader understands), `src/content/schema.test.js` (documents are forced into
 their schema's shape; a broken published document is never rendered), `src/lib/text.test.js`.
+
+## 26. The merch shop (Phase 6, step 3)
+
+**Where it lives.** The table `public.merch_products` holds each product whole: name, tagline,
+description, picture, price, sizes, size chart, designs (and which of them take a full row in
+the picker), whether it is on sale, and its place in the shop. It is also the price book
+`submit_order` prices against (section 18), so what a buyer sees and what they pay are the
+same row. The EB edits it on the portal's **Merch** page (`/portal/merch`); the database
+refuses anyone else (row-level security). Pictures go to the public bucket `merch` as
+`<product id>/<random>.jpg`, shrunk in the browser to 1400 px. Every change asks for a rebuild
+of the public pages (section 23), and the shop reads the live rows on every visit anyway.
+
+**How the site reads it.** `src/lib/merch.js` holds one catalogue for the page: the one the
+pre-render baked into `/merch`, else the last one this browser saw, else the copy that ships in
+`src/data/merchProducts.js`; then the live rows replace it. The cart (`src/lib/cart.js`) keeps
+its lines until the live rows arrive, then drops any whose product was removed or hidden, and
+the checkout says how many it dropped. Editing `merchProducts.js` changes nothing once the
+database answers; it is only the fallback.
+
+**Day to day (EB).**
+
+- *Open or close pre-orders:* the "Taking pre-orders" switch at the top of the Merch page (also
+  on Site settings). Closed, the shop stays up and the checkout says pre-orders are closed; the
+  database refuses an order sent anyway.
+- *Hide a product:* its switch on the Merch page. It leaves the shop and the carts, and an
+  order for it is not taken. Prefer this to removing it.
+- *Change a price or the text:* open the product, edit, Save. Orders already placed keep the
+  price they were placed at.
+- *A new product:* "New product", give a name, price and (optionally) an id. The id is
+  permanent: carts and orders use it. It starts hidden; add the picture and description, then
+  switch it on.
+- *Order:* drag a product by its handle (the arrow keys work on the handle too).
+- *Remove:* at the foot of the product's page, with a second click to confirm. Its uploaded
+  pictures go too; past orders keep their lines.
+
+**Not editable yet.** The booklet on `/merch` (the page images in `public/assets/merch` and
+`src/data/merch.js`) and the payment methods (`src/data/merchConfig.js`) are still files.
+
+**Tests.** `supabase/tests/300-merch-catalogue.sql` (who may write, the picture and design
+checks, hidden products not sold, a closed shop refusing orders, the rebuild request) and
+`src/lib/merch.test.js`. The portal pages are in the sample walk:
+`npm run walk:portal-sample -- dark,light 320,1440 /portal/merch`. In Git Bash, prefix that
+with `MSYS_NO_PATHCONV=1`, or the route argument is turned into a Windows path and nothing
+is walked.

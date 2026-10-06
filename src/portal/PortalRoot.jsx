@@ -25,6 +25,8 @@ import GalleryEditorPage from './pages/gallery/GalleryPage.jsx'
 import AlbumEditorPage from './pages/gallery/AlbumEditorPage.jsx'
 import MagazineEditorPage from './pages/magazine/MagazinePage.jsx'
 import IssueEditorPage from './pages/magazine/IssueEditorPage.jsx'
+import MerchEditorPage from './pages/merch/MerchPage.jsx'
+import ProductEditorPage from './pages/merch/ProductEditorPage.jsx'
 import SubmissionsPage from './pages/submissions/SubmissionsPage.jsx'
 import ContentPage from './pages/content/ContentPage.jsx'
 import ContentEditorPage from './pages/content/ContentEditorPage.jsx'
@@ -83,6 +85,9 @@ export default function PortalRoot() {
             {/* Magazine editor: CBSD officers and the EB (the page checks officerOf('cbsd')). */}
             <Route path="magazine" element={<MagazineEditorPage />} />
             <Route path="magazine/:slug" element={<IssueEditorPage />} />
+            {/* Merch shop: the EB (the page checks isEB; the database decides). */}
+            <Route path="merch" element={<MerchEditorPage />} />
+            <Route path="merch/:id" element={<ProductEditorPage />} />
             {/* Submissions: the EB (orders, stories, waitlist) and the exchange officers (stories). */}
             <Route path="submissions" element={<SubmissionsPage />} />
             {/* Site content: the EB, and officers for the parts that name their
