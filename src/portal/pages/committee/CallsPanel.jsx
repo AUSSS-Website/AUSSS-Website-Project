@@ -8,6 +8,7 @@ import {
   useUpdateApplication,
 } from '../../officerQueries.js'
 import {
+  ConfirmButton,
   ErrorText,
   Field,
   Spinner,
@@ -101,7 +102,6 @@ export default function CallsPanel({ committee }) {
   const calls = useCommitteeCalls(committee.slug, committee.id)
   const mutations = useCallMutations(committee.slug, committee.id)
   const [view, setView] = useState({ mode: 'list' }) // list | edit | applications
-  const [confirming, setConfirming] = useState('') // id pending delete confirm
   const [busyId, setBusyId] = useState('')
   const [actionError, setActionError] = useState('') // last failed status/remove
 
@@ -127,7 +127,6 @@ export default function CallsPanel({ committee }) {
     } catch (e) {
       setActionError(e?.message || 'Could not remove that call.')
     } finally {
-      setConfirming('')
       setBusyId('')
     }
   }
@@ -249,34 +248,13 @@ export default function CallsPanel({ committee }) {
                   </button>
                 )}
 
-                {confirming === call.id ? (
-                  <span className="flex flex-wrap items-center gap-3 text-xs text-soft/60">
-                    Remove this call? Applications already sent are kept.
-                    <button
-                      type="button"
-                      disabled={busyId === call.id}
-                      onClick={() => remove(call.id)}
-                      className="font-semibold text-danger hover:text-danger disabled:opacity-40"
-                    >
-                      Yes, remove
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirming('')}
-                      className="font-semibold text-soft/70 hover:text-ink"
-                    >
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(call.id)}
-                    className="text-xs font-semibold text-danger/80 hover:text-danger"
-                  >
-                    Remove
-                  </button>
-                )}
+                <ConfirmButton
+                  variant="text"
+                  label="Remove"
+                  title="Applications already sent are kept."
+                  disabled={busyId === call.id}
+                  onConfirm={() => remove(call.id)}
+                />
 
                 {call.effectiveStatus === 'expired' && (
                   <span className="text-xs text-soft/45">

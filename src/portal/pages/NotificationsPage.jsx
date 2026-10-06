@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useClearNotifications, useMarkNotificationsRead, useNames, useNotifications } from '../workQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../portalUi.jsx'
+import { Centered, ConfirmButton, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../portalUi.jsx'
 import { UnreadDot, describeNotification, notificationTarget, when } from '../workUi.jsx'
 
 // /portal/notifications. What happened on tasks this person is part of. Rows
@@ -17,7 +17,6 @@ export default function NotificationsPage() {
   const feed = useNotifications()
   const markRead = useMarkNotificationsRead()
   const clear = useClearNotifications()
-  const [confirming, setConfirming] = useState(false)
   const rows = feed.data || EMPTY
   const names = useNames(useMemo(() => rows.map((n) => n.payload?.actor_id), [rows]))
   const unread = rows.filter((n) => !n.read_at).length
@@ -42,25 +41,12 @@ export default function NotificationsPage() {
                   Mark all as read
                 </button>
               )}
-              {confirming ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={clear.isPending}
-                    onClick={() => clear.mutate(undefined, { onSettled: () => setConfirming(false) })}
-                    className={`${outlineBtnCls} border-red-400/50 text-danger`}
-                  >
-                    {clear.isPending ? 'Clearing…' : 'Yes, clear notifications'}
-                  </button>
-                  <button type="button" onClick={() => setConfirming(false)} className={outlineBtnCls}>
-                    Keep
-                  </button>
-                </>
-              ) : (
-                <button type="button" onClick={() => setConfirming(true)} className={outlineBtnCls}>
-                  Clear all
-                </button>
-              )}
+              <ConfirmButton
+                label="Clear all"
+                busyLabel="Clearing…"
+                busy={clear.isPending}
+                onConfirm={() => clear.mutate()}
+              />
             </div>
           )
         }

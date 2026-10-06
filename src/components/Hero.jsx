@@ -1,8 +1,14 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import ECGBackground from './ECGBackground.jsx'
 import CountUp from './CountUp.jsx'
 import Button from './ui/Button.jsx'
 import { useMemberCount } from '../hooks/useMemberCount.js'
+
+// Two taps or clicks on the logo this close together, in time (ms) and in
+// place (px), count as a double click. Counted by hand because phones do not
+// all send dblclick for a double tap.
+const DOUBLE_MS = 350
+const DOUBLE_PX = 30
 
 export default function Hero() {
   // The ECG baseline anchors just below this CTA row on every viewport.
@@ -10,6 +16,20 @@ export default function Hero() {
   // The logo img: the trace's big spikes sync to its printed ECG spikes.
   const logoRef = useRef(null)
   const memberCount = useMemberCount()
+  // The heartbeat is off until the logo is double-clicked (or double-tapped);
+  // doing it again turns it off.
+  const [ecgOn, setEcgOn] = useState(false)
+  const lastTap = useRef(null)
+  const onLogoTap = (e) => {
+    const prev = lastTap.current
+    const now = e.timeStamp
+    if (prev && now - prev.t < DOUBLE_MS && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < DOUBLE_PX) {
+      lastTap.current = null
+      setEcgOn((v) => !v)
+      return
+    }
+    lastTap.current = { t: now, x: e.clientX, y: e.clientY }
+  }
   return (
     <section
       id="home"
@@ -26,7 +46,7 @@ export default function Hero() {
           in the colours of the theme. */}
       <div className="absolute inset-0 bg-gradient-to-b from-sunk via-page to-page dark:from-black dark:via-black" />
       {/* Baseline lays across the middle of the CTA row. */}
-      <ECGBackground anchorRef={ctaRef} logoRef={logoRef} band={0.68} />
+      <ECGBackground anchorRef={ctaRef} logoRef={logoRef} band={0.68} on={ecgOn} />
 
       <div className="container-prose relative z-10 py-32 text-center">
         <p className="animate-fade-in mb-4 inline-flex items-center gap-2 rounded-full border border-medical/40 bg-medical/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-accent">
@@ -51,6 +71,9 @@ export default function Hero() {
           fetchpriority="high"
           decoding="async"
           draggable={false}
+          onPointerUp={onLogoTap}
+          // manipulation: a double tap on the logo is ours, not the browser's zoom.
+          style={{ touchAction: 'manipulation' }}
           className="logo-ink animate-fade-up mx-auto h-52 w-auto sm:h-64 lg:h-80"
         />
 

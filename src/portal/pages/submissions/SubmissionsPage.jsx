@@ -4,12 +4,14 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { itemsSummary, receiptUrl, useSubmissionMutations, useSubmissions } from '../../submissionsQueries.js'
 import ExportButtons from '../../ExportButtons.jsx'
+import { paymentMethodLabel } from '../../../data/merchConfig.js'
+import { usePaymentMethods } from '../../merchQueries.js'
 import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import { chipBtnCls, smallInputCls, when } from '../../workUi.jsx'
 import { ConfirmButton } from '../gallery/galleryUi.jsx'
 
 // /portal/submissions. The three public forms that used to land in Google
-// Sheets: merch pre-orders, exchange stories and the recruitment waitlist.
+// Sheets: merch orders, exchange stories and the recruitment waitlist.
 // One tab per kind, newest first, with a status per row and private notes.
 // The EB sees all three; the SCOPE and SCORE officers see the stories.
 // Reads and writes go through submissionsQueries.js; authorisation lives in
@@ -18,9 +20,8 @@ import { ConfirmButton } from '../gallery/galleryUi.jsx'
 const STATUSES = {
   orders: [
     ['new', 'New'],
-    ['confirmed', 'Confirmed'],
-    ['collected', 'Collected'],
-    ['cancelled', 'Cancelled'],
+    ['contacted', 'Contacted'],
+    ['delivered', 'Delivered'],
   ],
   stories: [
     ['new', 'New'],
@@ -33,6 +34,14 @@ const STATUSES = {
     ['contacted', 'Contacted'],
     ['archived', 'Archived'],
   ],
+}
+
+// The export columns for a tab, with each order's payment method by name.
+function exportColumns(kind, methods) {
+  if (kind !== 'orders') return EXPORT_COLUMNS[kind]
+  return EXPORT_COLUMNS.orders.map((c) =>
+    c.label === 'Payment method' ? { ...c, value: (r) => paymentMethodLabel(methods, r.payment_method) } : c,
+  )
 }
 
 const TAB_LABEL = { orders: 'Orders', stories: 'Stories', signups: 'Waitlist' }
@@ -173,7 +182,6 @@ function Triage({ kind, row, notesField, onPatch, onRemove, canDelete }) {
           <span className="ml-auto">
             <ConfirmButton
               label="Delete"
-              confirmLabel="Yes, delete it"
               disabled={Boolean(busy)}
               onConfirm={() => run('remove', () => onRemove(row.id))}
             />
@@ -211,7 +219,10 @@ function Triage({ kind, row, notesField, onPatch, onRemove, canDelete }) {
 
 // ── Orders ───────────────────────────────────────────────────────────────────
 
-function ReceiptButton({ path }) {
+// Opens the buyer's payment screenshot in a new tab. The tab is opened on the
+// click itself and pointed at the signed link once it arrives, because a
+// browser blocks a tab opened after a wait as a pop-up.
+export function ReceiptButton({ path, label = 'View receipt', className = outlineBtnCls }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   if (!path) {
@@ -220,10 +231,17 @@ function ReceiptButton({ path }) {
   const open = async () => {
     setBusy(true)
     setError('')
+    const tab = window.open('', '_blank')
     try {
       const url = await receiptUrl(path)
-      window.open(url, '_blank', 'noopener')
+      if (tab) {
+        tab.opener = null
+        tab.location.href = url
+      } else {
+        window.location.assign(url)
+      }
     } catch (e) {
+      tab?.close()
       setError(e?.message || 'Could not open the receipt.')
     } finally {
       setBusy(false)
@@ -231,8 +249,8 @@ function ReceiptButton({ path }) {
   }
   return (
     <span className="inline-flex items-center gap-2">
-      <button type="button" onClick={open} disabled={busy} className={outlineBtnCls}>
-        {busy ? 'Opening…' : 'View receipt'}
+      <button type="button" onClick={open} disabled={busy} className={className}>
+        {busy ? 'Opening…' : label}
       </button>
       {error && <span className="text-xs text-danger">{error}</span>}
     </span>
@@ -240,6 +258,7 @@ function ReceiptButton({ path }) {
 }
 
 function OrderCard({ row, onPatch, onRemove, canDelete }) {
+  const methods = usePaymentMethods()
   const items = Array.isArray(row.items) ? row.items : []
   return (
     <article className="rounded-2xl border border-line/10 bg-card p-5">
@@ -252,7 +271,7 @@ function OrderCard({ row, onPatch, onRemove, canDelete }) {
         {row.is_member != null && (
           <span>{row.is_member ? 'AUSSS member' : `Not a member${row.lc ? ` · ${row.lc}` : ''}`}</span>
         )}
-        {row.payment_method && <span>Paid via {row.payment_method}</span>}
+        {row.payment_method && <span>Paid via {paymentMethodLabel(methods, row.payment_method)}</span>}
       </p>
 
       <ul className="mt-4 divide-y divide-line/10 rounded-xl border border-line/10 bg-page/60 px-4">
@@ -467,7 +486,6 @@ function SignupRow({ row, onPatch, onRemove, canDelete }) {
       {canDelete && (
         <ConfirmButton
           label="Delete"
-          confirmLabel="Yes, delete"
           disabled={busy}
           onConfirm={() => run(() => onRemove(row.id))}
         />
@@ -484,6 +502,7 @@ function SubmissionList({ kind, canDelete }) {
   const { update, remove } = useSubmissionMutations(kind)
   const [status, setStatus] = useState('new')
   const [query, setQuery] = useState('')
+  const methods = usePaymentMethods()
   const rows = list.data || []
 
   const q = query.trim().toLowerCase()
@@ -545,7 +564,7 @@ function SubmissionList({ kind, canDelete }) {
             q ? `, matching “${query.trim()}”` : ''
           }.`}
           filename={`ausss-${kind}`}
-          columns={EXPORT_COLUMNS[kind]}
+          columns={exportColumns(kind, methods)}
           rows={shown}
           layout={kind === 'signups' ? 'table' : 'records'}
         />
@@ -610,7 +629,7 @@ export default function SubmissionsPage() {
       <PageHeader
         eyebrow="Submissions"
         title="Submissions"
-        subtitle="What people sent through the website: merch pre-orders, exchange stories and the recruitment waitlist."
+        subtitle="What people sent through the website: merch orders, exchange stories and the recruitment waitlist."
       />
 
       {tabs.length > 1 && (

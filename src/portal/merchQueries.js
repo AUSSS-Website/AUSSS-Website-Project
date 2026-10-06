@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 import { resizeImage } from '../lib/resizeImage.js'
+import { paymentMethodsFrom } from '../data/merchConfig.js'
+import { useSiteSettingsAdmin } from './officerQueries.js'
 
 // Merch catalogue reads and writes (the EB). Same shape as magazineQueries.js.
 // Authorisation lives in the database (row-level security on merch_products
@@ -80,6 +83,13 @@ export function useProductMutations() {
   const remove = useMutation({ mutationFn: deleteProduct, onSuccess: done })
   const reorder = useMutation({ mutationFn: reorderProducts, onSuccess: done })
   return { create, update, remove, reorder }
+}
+
+// The checkout's payment methods (the site setting, else the shipped copy),
+// for showing a method's name where an order recorded its id.
+export function usePaymentMethods() {
+  const setting = useSiteSettingsAdmin().data?.merchPaymentMethods
+  return useMemo(() => paymentMethodsFrom(setting), [setting])
 }
 
 // ---- pictures --------------------------------------------------------------

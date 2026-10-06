@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
@@ -13,10 +13,7 @@ import {
 import { useMerchCatalogue } from '../lib/merch.js'
 import { useSiteSettings } from '../hooks/useSiteSettings.js'
 import { submitOrder } from '../lib/orders.js'
-import {
-  availablePaymentMethods,
-  paymentMethodById,
-} from '../data/merchConfig.js'
+import { paymentMethodsFrom } from '../data/merchConfig.js'
 
 const YEAR_OPTIONS = [
   '1st year',
@@ -40,6 +37,12 @@ export default function CheckoutPage() {
   const cart = useCart()
   const { byId: productById } = useMerchCatalogue()
   const { settings } = useSiteSettings()
+  // The payment methods the EB set on the portal's Merch page, or the shipped
+  // ones (src/data/merchConfig.js) until that setting is read.
+  const availablePaymentMethods = useMemo(
+    () => paymentMethodsFrom(settings.merchPaymentMethods).filter((m) => m.available),
+    [settings.merchPaymentMethods],
+  )
   const count = cartCount(cart)
   const subtotal = cartSubtotal(cart)
   // Lines the cart store dropped because the EB removed or hid their product,
@@ -56,9 +59,12 @@ export default function CheckoutPage() {
     notes: '',
     website: '', // honeypot: hidden, stays blank for people
   })
-  const [paymentMethod, setPaymentMethod] = useState(
-    availablePaymentMethods[0]?.id || '',
-  )
+  const [picked, setPaymentMethod] = useState('')
+  // The buyer's pick, else the first method on offer (the list can change
+  // under them when the live setting arrives).
+  const paymentMethod = availablePaymentMethods.some((m) => m.id === picked)
+    ? picked
+    : availablePaymentMethods[0]?.id || ''
   const [screenshot, setScreenshot] = useState(null) // File | null
   const [screenshotError, setScreenshotError] = useState('')
   const [errors, setErrors] = useState({})
@@ -77,7 +83,7 @@ export default function CheckoutPage() {
     }
   }, [count, result, navigate])
 
-  // The EB closes pre-orders from the portal (Merch); the database refuses an
+  // The EB closes orders from the portal (Merch); the database refuses an
   // order while they are closed, so this is only the polite half.
   if (settings.merchOrdersOpen === false) {
     return <OrdersClosed />
@@ -90,7 +96,7 @@ export default function CheckoutPage() {
   const updateContact = (key, value) =>
     setContact((c) => ({ ...c, [key]: value }))
 
-  const selectedMethod = paymentMethodById[paymentMethod]
+  const selectedMethod = availablePaymentMethods.find((m) => m.id === paymentMethod)
 
   const validate = () => {
     const next = {}
@@ -185,7 +191,7 @@ export default function CheckoutPage() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
-            Confirm your pre-order
+            Confirm your order
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/75">
             Tell us how to reach you. We&rsquo;ll confirm details and arrange
@@ -419,7 +425,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    Place pre-order · {formatEGP(subtotal)}
+                    Place order · {formatEGP(subtotal)}
                   </>
                 )}
               </button>
@@ -484,7 +490,7 @@ export default function CheckoutPage() {
               </div>
 
               <p className="mt-3 text-xs leading-relaxed text-soft/55">
-                All items are pre-orders. We collect orders, run production,
+                All items are made to order. We collect orders, run production,
                 then arrange pickup. What you pay for is what you get.
               </p>
             </div>
@@ -723,7 +729,7 @@ function OrderSuccess({ result, contact }) {
             </svg>
           </div>
           <h1 className="heading-serif mt-6 text-3xl text-ink sm:text-4xl">
-            Pre-order received
+            Order received
           </h1>
           <p className="mt-4 text-base text-soft/75">
             Thanks{contact.name ? `, ${contact.name.split(' ')[0]}` : ''}!
@@ -783,11 +789,11 @@ function OrdersClosed() {
       <div className="container-prose pt-32 pb-24 sm:pt-40">
         <div className="mx-auto max-w-xl rounded-2xl border border-line/10 bg-sunk p-8 text-center sm:p-12">
           <h1 className="heading-serif text-3xl text-ink sm:text-4xl">
-            Pre-orders are closed
+            Orders are closed
           </h1>
           <p className="mt-4 text-base text-soft/75">
             We&rsquo;re between drops right now. Follow our channels to hear
-            when the next pre-order window opens.
+            when orders open again.
           </p>
           <Link
             to="/merch"

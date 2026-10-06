@@ -15,8 +15,8 @@ const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
 const MembersPage = lazy(() => import('./pages/MembersPage.jsx'))
 const ConstitutionPage = lazy(() => import('./pages/ConstitutionPage.jsx'))
 const ExchangePage = lazy(() => import('./pages/ExchangePage.jsx'))
-const ExchangeDirectionPage = lazy(
-  () => import('./pages/ExchangeDirectionPage.jsx'),
+const ExchangeOutgoingsPage = lazy(
+  () => import('./pages/ExchangeOutgoingsPage.jsx'),
 )
 const ExchangeIncomingsPage = lazy(
   () => import('./pages/ExchangeIncomingsPage.jsx'),
@@ -66,7 +66,7 @@ export default function App() {
                 <Route path="/exchange" element={<ExchangePage />} />
                 <Route
                   path="/exchange/outgoings"
-                  element={<ExchangeDirectionPage dir="outgoing" />}
+                  element={<ExchangeOutgoingsPage />}
                 />
                 <Route
                   path="/exchange/incomings"

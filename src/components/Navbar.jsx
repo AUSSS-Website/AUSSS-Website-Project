@@ -1,23 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle.jsx'
-import CartButton from './CartButton.jsx'
+import NavCartButton, { FloatingCartPill } from './NavCartButton.jsx'
 import { useSiteSettings } from '../hooks/useSiteSettings.js'
+import { committees, slugFor } from '../data/society.js'
 
 // `to` may be a route ("/ifmsa") or a home-section hash ("/#about").
-// A `children` array turns the item into a menu instead of a link: Exchange
-// forks three ways and there's no single page worth landing on first, so
-// clicking it offers the three destinations rather than a page about them.
+// A `groups` array turns the item into a menu instead of a link, its links in
+// labelled groups. Committees offers every committee and division page, with
+// exchange split into its three pages (exchange forks three ways and has no
+// single page worth landing on first). `match` lists the paths that mark the
+// menu as the current section.
+const committeeLinks = (group) =>
+  committees
+    .filter((c) => c.group === group)
+    .map((c) => ({ to: `/committees/${slugFor(c)}`, label: c.abbr, hint: c.name }))
+
 const LINKS = [
   { to: '/', label: 'Home' },
   { to: '/ifmsa', label: 'IFMSA' },
   {
-    to: '/exchange',
-    label: 'Exchange',
-    children: [
-      { to: '/exchange/outgoings', label: 'Outgoings', hint: 'Our students going abroad' },
-      { to: '/exchange/incomings', label: 'Incomings', hint: 'Coming to Ain Shams on exchange' },
-      { to: '/exchange/join', label: 'Join the exchange team', hint: 'Officer and assistant roles' },
+    to: '/committees',
+    label: 'Committees',
+    match: ['/committees', '/exchange'],
+    groups: [
+      {
+        label: 'Exchange',
+        links: [
+          { to: '/exchange/outgoings', label: 'Outgoings', hint: 'Our students going abroad' },
+          { to: '/exchange/incomings', label: 'Incomings', hint: 'Coming to Ain Shams on exchange' },
+          { to: '/exchange/join', label: 'Join the exchange team', hint: 'Officer and assistant roles' },
+        ],
+      },
+      { label: 'Standing committees', links: committeeLinks('Standing Committee') },
+      { label: 'Support divisions', links: committeeLinks('Support Division') },
     ],
   },
   { to: '/gallery', label: 'Gallery' },
@@ -25,8 +41,11 @@ const LINKS = [
   { to: '/contact', label: 'Contact' },
 ]
 
-// Catchy CTA for the magazine, shown as a highlighted pill.
+// Catchy CTA for the magazine, shown as a highlighted pill. The bar only has
+// room for the long wording from 1440px; below that the pill says the short
+// one, or the links would push the logo out of the bar.
 const MAGAZINE_CTA = 'Read the latest issue of the AUSSS Magazine'
+const MAGAZINE_CTA_SHORT = 'AUSSS Magazine'
 
 // The pill is the site's blue button (the cta tokens) with a soft glow of its
 // own colour under it.
@@ -45,7 +64,7 @@ function NavMenu({ item, solid }) {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
   const wrapRef = useRef(null)
-  const active = pathname.startsWith(item.to)
+  const active = (item.match || [item.to]).some((m) => pathname.startsWith(m))
 
   useEffect(() => {
     setOpen(false)
@@ -104,38 +123,48 @@ function NavMenu({ item, solid }) {
       </button>
 
       {/* The gap between the trigger and the panel would drop the hover, so the
-          panel's wrapper starts flush against the header and pads inward. */}
+          panel's wrapper starts flush against the header and pads inward. One
+          column per group, side by side. */}
       <div
-        className={`absolute left-1/2 top-full z-50 w-[19rem] -translate-x-1/2 pt-4 transition-all duration-200 ${
+        className={`absolute -left-4 top-full z-50 w-[46rem] max-w-[calc(100vw-2rem)] pt-4 transition-all duration-200 ${
           open
             ? 'visible translate-y-0 opacity-100'
             : 'invisible -translate-y-1 opacity-0'
         }`}
       >
-        <ul className="overflow-hidden rounded-2xl border border-forest-600/15 bg-cream p-1.5 shadow-xl shadow-forest-950/10 dark:border-white/10 dark:bg-forest-800 dark:shadow-black/40">
-          {item.children.map((c) => (
-            <li key={c.to}>
-              <NavLink
-                to={c.to}
-                tabIndex={open ? undefined : -1}
-                className={({ isActive }) =>
-                  `block rounded-xl px-4 py-3 transition-colors ${
-                    isActive
-                      ? 'bg-medical/10 text-accent'
-                      : 'text-forest-900 hover:bg-forest-600/5 dark:text-silver dark:hover:bg-white/5'
-                  }`
-                }
-              >
-                <span className="block text-sm font-semibold">{c.label}</span>
-                {c.hint && (
-                  <span className="mt-0.5 block text-xs text-forest-900/55 dark:text-silver/50">
-                    {c.hint}
-                  </span>
-                )}
-              </NavLink>
-            </li>
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-forest-600/15 bg-cream p-2 shadow-xl shadow-forest-950/10 dark:border-white/10 dark:bg-forest-800 dark:shadow-black/40">
+          {item.groups.map((g) => (
+            <div key={g.label}>
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-forest-900/50 dark:text-silver/45">
+                {g.label}
+              </p>
+              <ul>
+                {g.links.map((c) => (
+                  <li key={c.to}>
+                    <NavLink
+                      to={c.to}
+                      tabIndex={open ? undefined : -1}
+                      className={({ isActive }) =>
+                        `block rounded-xl px-3 py-2 transition-colors ${
+                          isActive
+                            ? 'bg-medical/10 text-accent'
+                            : 'text-forest-900 hover:bg-forest-600/5 dark:text-silver dark:hover:bg-white/5'
+                        }`
+                      }
+                    >
+                      <span className="block text-sm font-semibold">{c.label}</span>
+                      {c.hint && (
+                        <span className="mt-0.5 block text-xs leading-snug text-forest-900/55 dark:text-silver/50">
+                          {c.hint}
+                        </span>
+                      )}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </li>
   )
@@ -197,6 +226,7 @@ export default function Navbar() {
   }, [open])
 
   return (
+    <>
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
         solid
@@ -212,7 +242,7 @@ export default function Navbar() {
         // with page content on laptops, then grows on very large screens.
         className="flex h-24 w-full items-center justify-between px-6 sm:px-10 lg:px-16 min-[1920px]:px-24"
       >
-        <Link to="/" className="group flex items-center" aria-label="AUSSS home">
+        <Link to="/" className="group flex shrink-0 items-center" aria-label="AUSSS home">
           {/* Black logo on the light theme, white on the dark one: the hero
               behind the clear bar follows the theme too. */}
           <img
@@ -232,9 +262,9 @@ export default function Navbar() {
           />
         </Link>
 
-        <ul className="hidden items-center gap-6 md:flex lg:gap-7 xl:gap-8 2xl:gap-10">
+        <ul className="ml-8 hidden items-center gap-5 lg:flex xl:gap-8 2xl:gap-10">
           {LINKS.map((l) =>
-            l.children ? (
+            l.groups ? (
               <NavMenu key={l.to} item={l} solid={solid} />
             ) : (
             <li key={l.to}>
@@ -266,16 +296,18 @@ export default function Navbar() {
             <li>
               <Link
                 to="/magazine"
+                aria-label={MAGAZINE_CTA}
                 className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-semibold transition-colors duration-300 2xl:px-6 2xl:py-2.5 2xl:text-base ${
                   MAGAZINE_PILL
                 }`}
               >
-                {MAGAZINE_CTA}
+                <span className="min-[1440px]:hidden">{MAGAZINE_CTA_SHORT}</span>
+                <span className="hidden min-[1440px]:inline">{MAGAZINE_CTA}</span>
               </Link>
             </li>
           )}
           <li className="flex items-center gap-2">
-            <CartButton tone={solid ? 'solid' : 'transparent'} />
+            <NavCartButton tone={solid ? 'solid' : 'transparent'} />
             <ThemeToggle tone={solid ? 'solid' : 'transparent'} />
           </li>
           <li>
@@ -292,8 +324,8 @@ export default function Navbar() {
           </li>
         </ul>
 
-        <div className="flex items-center gap-2 md:hidden">
-          <CartButton tone={solid ? 'solid' : 'transparent'} className="h-9 w-9" />
+        <div className="flex items-center gap-2 lg:hidden">
+          <NavCartButton tone={solid ? 'solid' : 'transparent'} compact />
           <ThemeToggle tone={solid ? 'solid' : 'transparent'} className="h-9 w-9" />
         <button
           ref={menuToggleRef}
@@ -322,7 +354,7 @@ export default function Navbar() {
         aria-label="Mobile navigation"
         aria-hidden={!open}
         inert={!open ? '' : undefined}
-        className={`overflow-hidden bg-cream transition-[max-height] duration-500 md:hidden dark:bg-forest-950 ${
+        className={`overflow-hidden bg-cream transition-[max-height] duration-500 lg:hidden dark:bg-forest-950 ${
           open
             ? 'max-h-[calc(100dvh-6rem)] border-t border-forest-600/10 dark:border-white/10'
             : 'max-h-0'
@@ -330,31 +362,37 @@ export default function Navbar() {
       >
         <ul className="container-prose flex max-h-[calc(100dvh-6rem)] flex-col overflow-y-auto overscroll-contain py-4">
           {LINKS.map((l, i) =>
-            l.children ? (
+            l.groups ? (
               // No disclosure toggle here: the drawer is already a list, and
-              // hiding three links behind an extra tap helps nobody.
+              // hiding the links behind an extra tap helps nobody. Each group
+              // is a small heading over its links.
               <li key={l.to} className="border-b border-forest-600/10 py-3 dark:border-white/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-forest-900/50 dark:text-silver/40">
                   {l.label}
                 </p>
-                <ul>
-                  {l.children.map((c) => (
-                    <li key={c.to}>
-                      <NavLink
-                        to={c.to}
-                        className={({ isActive }) =>
-                          `block w-full py-2.5 text-left text-base ${
-                            isActive
-                              ? 'font-semibold text-accent'
-                              : 'font-medium text-forest-900 dark:text-silver'
-                          }`
-                        }
-                      >
-                        {c.label}
-                      </NavLink>
-                    </li>
-                  ))}
-                </ul>
+                {l.groups.map((g) => (
+                  <div key={g.label} className="mt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">{g.label}</p>
+                    <ul className="grid grid-cols-2 gap-x-4">
+                      {g.links.map((c) => (
+                        <li key={c.to} className={g.label === 'Exchange' ? 'col-span-2' : ''}>
+                          <NavLink
+                            to={c.to}
+                            className={({ isActive }) =>
+                              `block w-full py-2 text-left text-base ${
+                                isActive
+                                  ? 'font-semibold text-accent'
+                                  : 'font-medium text-forest-900 dark:text-silver'
+                              }`
+                            }
+                          >
+                            {c.label}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </li>
             ) : (
             <li key={l.to}>
@@ -396,5 +434,9 @@ export default function Navbar() {
         </ul>
       </div>
     </header>
+    {/* The desktop cart pill for the shop section of /merch; outside the
+        header so it floats over the page, not inside the bar. */}
+    <FloatingCartPill />
+    </>
   )
 }

@@ -43,7 +43,7 @@ back to its static content.
 | Incomings exchange page copy | The portal content editor (`/portal/content`, exchange officers and EB) |
 | Parts of pages edited from the portal | Schemas in `src/content/`, documents in `content_blocks` (`docs/RUNBOOK.md` section 25) |
 | Magazine editions | The portal magazine editor (`/portal/magazine`, CBSD and EB) |
-| Merch catalogue and the pre-orders switch | Portal, Merch page (EB); `src/data/merchProducts.js` is only the fallback copy |
+| Merch catalogue, orders and the orders switch | Portal, Merch page (EB); `src/data/merchProducts.js` is only the fallback copy |
 | Merch payment handles | `src/data/merchConfig.js` |
 | Form switches (waitlist, stories, orders) | `src/data/*Config.js` |
 | Merch orders, exchange stories, waitlist sign-ups | The portal Submissions page (`/portal/submissions`, EB; exchange officers for stories) |

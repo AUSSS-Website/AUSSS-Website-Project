@@ -9,7 +9,7 @@ import {
   usePosts,
   useWorkScopes,
 } from '../../workQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { Centered, ConfirmButton, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import { CommitteeTag, LEVEL_LABELS, POST_KIND_LABEL, RichText, UnreadDot, personName, when } from '../../workUi.jsx'
 import PostEditor from './PostEditor.jsx'
 import { Avatar } from '../../Avatar.jsx'
@@ -57,7 +57,6 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
   const long = post.body.length > LONG
   const [open, setOpen] = useState(false)
   const [showAudience, setShowAudience] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const label = stateLabel(post)
   const levels = LEVEL_LABELS.filter(([v]) => post.levels.includes(v)).map(([, l]) => l)
 
@@ -120,25 +119,13 @@ function PostCard({ post, names, uid, canManage, onRead, onEdit, onDelete, delet
             <button type="button" onClick={() => onEdit(post)} className="text-xs font-semibold text-soft/60 hover:text-ink">
               Edit
             </button>
-            {confirming ? (
-              <>
-                <button
-                  type="button"
-                  disabled={deleting}
-                  onClick={() => onDelete(post.id)}
-                  className="text-xs font-semibold text-danger hover:text-danger"
-                >
-                  {deleting ? 'Deleting…' : 'Yes, delete'}
-                </button>
-                <button type="button" onClick={() => setConfirming(false)} className="text-xs font-semibold text-soft/60 hover:text-ink">
-                  Keep
-                </button>
-              </>
-            ) : (
-              <button type="button" onClick={() => setConfirming(true)} className="text-xs font-semibold text-soft/60 hover:text-ink">
-                Delete
-              </button>
-            )}
+            <ConfirmButton
+              variant="text"
+              label="Delete"
+              busyLabel="Deleting…"
+              busy={deleting}
+              onConfirm={() => onDelete(post.id)}
+            />
           </>
         )}
       </div>

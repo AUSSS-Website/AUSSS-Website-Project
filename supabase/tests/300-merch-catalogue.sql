@@ -1,9 +1,9 @@
 -- The merch catalogue: the EB adds, edits, hides and removes products; everyone reads them; a
 -- member or an officer changes nothing; the table refuses a bad picture address; a hidden
--- product is not sold; closing pre-orders (site setting merchOrdersOpen) refuses an order; and
+-- product is not sold; closing orders (site setting merchOrdersOpen) refuses an order; and
 -- a change asks for a rebuild of the public pages.
 begin;
-select plan(16);
+select plan(18);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -40,7 +40,7 @@ select is(
 select is(
   (select value from public.site_settings where key = 'merchOrdersOpen'),
   'true'::jsonb,
-  'pre-orders start open'
+  'orders start open'
 );
 
 -- anon reads, writes nothing
@@ -121,13 +121,26 @@ select is(
   'the hidden product is dropped and the order flagged'
 );
 
--- closing pre-orders
+-- the EB works through an order: new, contacted, delivered
+select tests.authenticate_as('eb@pgtap.test');
+select lives_ok(
+  $$ update public.orders set status = 'delivered' where ref = 'AUSSS-MUG1' $$,
+  'the EB marks an order delivered'
+);
+select throws_ok(
+  $$ update public.orders set status = 'confirmed' where ref = 'AUSSS-MUG1' $$,
+  '23514', null,
+  'the old statuses are gone'
+);
+select tests.clear_auth();
+
+-- closing orders
 update public.site_settings set value = 'false'::jsonb where key = 'merchOrdersOpen';
 select tests.authenticate_as_anon();
 select throws_ok(
   $$ select public.submit_order('AUSSS-SHUT', 'Omar', 'omar@example.com', '01000000000',
        '[{"productId":"notebook","qty":1}]'::jsonb) $$,
-  '22023', 'Pre-orders are closed at the moment.',
+  '22023', 'Orders are closed at the moment.',
   'a closed shop refuses an order'
 );
 

@@ -7,11 +7,12 @@ import Markdown from './Markdown.jsx'
 import FAQ from './FAQ.jsx'
 import { PersonCard } from './committeeUi.jsx'
 
-// The sections of /exchange/incomings whose copy the exchange officers edit
-// from the portal (block `exchange.incomings`,
-// src/content/schemas/exchangeIncomings.js). The page speaks to a student
-// abroad, in our own voice; keep any fixed wording here in "we" and "you".
-// The portal's preview draws these same components.
+// The sections of /exchange/incomings and /exchange/outgoings whose copy the
+// exchange officers edit from the portal (blocks `exchange.incomings` and
+// `exchange.outgoings`, src/content/schemas/). Both pages speak in our own
+// voice, "we" to "you". The fixed headings default to the incomings wording;
+// the outgoings page passes its own. The portal's previews draw these same
+// components.
 
 const h2Cls = 'heading-serif text-center text-3xl text-ink sm:text-4xl'
 const leadCls = 'mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/70'
@@ -37,11 +38,11 @@ export function IncomingsFacts({ facts }) {
 }
 
 // "What we give you": the month in a few ticked lines.
-export function IncomingsIncludes({ points }) {
+export function IncomingsIncludes({ points, heading = 'What we give you' }) {
   if (!points?.length) return null
   return (
     <section className="reveal mx-auto max-w-3xl">
-      <h2 className={h2Cls}>What we give you</h2>
+      <h2 className={h2Cls}>{heading}</h2>
       <ul className="mt-9 space-y-3">
         {points.map((p, i) => (
           <li key={i} className="flex gap-4 rounded-2xl border border-line/10 bg-card p-5">
@@ -57,14 +58,15 @@ export function IncomingsIncludes({ points }) {
 }
 
 // "Why choose us": one card per reason, with its picture when it has one.
-export function IncomingsWhy({ sections }) {
+const WHY_LEAD =
+  'You have a whole world of local committees to pick from. Here is what a month with us looks like.'
+
+export function IncomingsWhy({ sections, heading = 'Why choose us', lead = WHY_LEAD }) {
   if (!sections?.length) return null
   return (
     <section className="reveal mx-auto max-w-6xl">
-      <h2 className={h2Cls}>Why choose us</h2>
-      <p className={leadCls}>
-        You have a whole world of local committees to pick from. Here is what a month with us looks like.
-      </p>
+      <h2 className={h2Cls}>{heading}</h2>
+      {lead && <p className={leadCls}>{lead}</p>}
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {sections.map((s, i) => (
           <article key={i} className="flex flex-col overflow-hidden rounded-3xl border border-line/10 bg-card">
@@ -88,13 +90,16 @@ export function IncomingsWhy({ sections }) {
   )
 }
 
-// "How you get to us": numbered steps, in the outgoing page's card style.
-export function IncomingsSteps({ steps }) {
+// "How you get to us" (or "How to apply"): numbered steps. Three, five or six
+// steps sit three to a row on a wide screen, so no row is left with one card.
+export function IncomingsSteps({ steps, heading = 'How you get to us', id }) {
   if (!steps?.length) return null
+  const n = steps.length
+  const lgCols = n % 3 === 0 || n === 5 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
   return (
-    <section className="reveal mx-auto max-w-5xl">
-      <h2 className={h2Cls}>How you get to us</h2>
-      <ol className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <section id={id} className="reveal mx-auto max-w-5xl scroll-mt-28">
+      <h2 className={h2Cls}>{heading}</h2>
+      <ol className={`mt-10 grid gap-5 sm:grid-cols-2 ${lgCols}`}>
         {steps.map((s, i) => (
           <li key={i} className="rounded-2xl border border-line/10 bg-card p-6">
             <span className="heading-serif text-3xl text-accent">{String(i + 1).padStart(2, '0')}</span>
@@ -108,12 +113,14 @@ export function IncomingsSteps({ steps }) {
 }
 
 // "Before you land": our practical tips, one per line of an accordion.
-export function IncomingsTips({ tips }) {
+const TIPS_LEAD = 'The things we tell every incoming student, so nothing catches you out.'
+
+export function IncomingsTips({ tips, heading = 'Before you land', lead = TIPS_LEAD }) {
   if (!tips?.length) return null
   return (
     <section className="reveal mx-auto max-w-3xl">
-      <h2 className={h2Cls}>Before you land</h2>
-      <p className={leadCls}>The things we tell every incoming student, so nothing catches you out.</p>
+      <h2 className={h2Cls}>{heading}</h2>
+      {lead && <p className={leadCls}>{lead}</p>}
       <FAQ items={tips.map((t) => ({ q: t.title, a: t.body }))} className="mt-8" />
     </section>
   )
@@ -121,15 +128,38 @@ export function IncomingsTips({ tips }) {
 
 // The two officers an incoming student writes to: the LEO-In for a clinical
 // exchange, the LORE for a research one. Names and photos follow whoever holds
-// the position (src/lib/people.js).
+// the position (src/lib/people.js). The outgoings page passes its own pair
+// (OUTGOING_CONTACTS: the LEO-Out and the LORE).
 const CONTACTS = [
   { committee: 'scope', alias: 'leo-in', role: 'For a clinical exchange (SCOPE)' },
   { committee: 'score', alias: 'lore', role: 'For a research exchange (SCORE)' },
 ]
 
-export function IncomingsContacts() {
+export const OUTGOING_CONTACTS = [
+  { committee: 'scope', alias: 'leo-out', role: 'For a clinical exchange (SCOPE)' },
+  { committee: 'score', alias: 'lore', role: 'For a research exchange (SCORE)' },
+]
+
+// The fixed wording of the outgoings page's sections (the defaults above are
+// the incomings page's), shared with the portal's preview of its block.
+export const OUTGOINGS_COPY = {
+  includes: 'What the exchange gives you',
+  whyHeading: 'Why go',
+  whyLead: 'Four weeks away is a big step. Here is what you go for.',
+  steps: 'How to apply',
+  album: 'With our outgoings',
+  tipsHeading: 'Before you fly',
+  tipsLead: 'The things we tell every student before they go, so nothing catches you out.',
+  contactsLead:
+    'Thinking of applying? Write to the officer for your kind of exchange and we will answer.',
+}
+
+const CONTACTS_LEAD =
+  'Ask us anything before you apply. Write to the officer for your kind of exchange and we will answer.'
+
+export function IncomingsContacts({ contacts = CONTACTS, lead = CONTACTS_LEAD }) {
   const people = usePeople()
-  const cards = CONTACTS.map((want) => {
+  const cards = contacts.map((want) => {
     const c = committees.find((x) => slugFor(x) === want.committee)
     const officer = c ? committeeOfficers(c, people).find((o) => o.alias === want.alias) : null
     return officer ? { ...want, officer, color: c.color } : null
@@ -138,9 +168,7 @@ export function IncomingsContacts() {
   return (
     <section id="write-to-us" className="reveal mx-auto max-w-3xl scroll-mt-28 text-center">
       <h2 className={h2Cls}>Write to us</h2>
-      <p className={leadCls}>
-        Ask us anything before you apply. Write to the officer for your kind of exchange and we will answer.
-      </p>
+      {lead && <p className={leadCls}>{lead}</p>}
       <ul className="mt-9 grid gap-5 sm:grid-cols-2">
         {cards.map(({ officer, color, role, alias }) => {
           const email = publicEmail(officer)
@@ -168,12 +196,12 @@ export function IncomingsContacts() {
 // album is chosen in the editor and its photos are managed in the gallery
 // editor, so there is no second place to upload them. Nothing renders when the
 // album is not set, was deleted or is empty.
-export function IncomingsAlbum({ slug }) {
+export function IncomingsAlbum({ slug, heading = 'With our incomings' }) {
   // The gallery is only fetched when an album is chosen.
-  return slug ? <AlbumStrip slug={slug} /> : null
+  return slug ? <AlbumStrip slug={slug} heading={heading} /> : null
 }
 
-function AlbumStrip({ slug }) {
+function AlbumStrip({ slug, heading }) {
   const { albums } = useGallery()
   // The album by its name, or by an older name if it was renamed since.
   const album = albums.find((a) => a.slug === slug) || albums.find((a) => a.aliases.includes(slug))
@@ -181,7 +209,7 @@ function AlbumStrip({ slug }) {
   const shown = album.photos.slice(0, 8)
   return (
     <section className="reveal mx-auto max-w-5xl">
-      <h2 className={h2Cls}>With our incomings</h2>
+      <h2 className={h2Cls}>{heading}</h2>
       {album.blurb && <p className={`${leadCls} max-w-2xl`}>{album.blurb}</p>}
       <ul className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {shown.map((p) => (

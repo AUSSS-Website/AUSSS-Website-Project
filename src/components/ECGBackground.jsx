@@ -11,7 +11,11 @@ import { useTheme } from '../lib/theme.js'
 // the logo's width) and reach up to its ECG line (~50% of its height), so the
 // animated waveform overlaps the brand mark's.
 //
-// Interactive:
+// Off by default: only the stars show until the visitor double-clicks (or
+// double-taps) the hero logo, which Hero.jsx turns into `on`; doing it again
+// turns the trace off. The sweep then starts fresh from the left.
+//
+// Interactive while it is on:
 //   • tap/click anywhere while the hero is on screen → premature (ectopic)
 //     beat: the QRS fires immediately, slightly taller, with a bigger bloom.
 //   • press & hold → the line flatlines (asystole); releasing fires a strong
@@ -69,9 +73,10 @@ const PALETTES = {
       ['#2A618C', 4, 0.2, 0.16], // medical-deep
       ['#06402B', 1.6, 0.8, 0.7], // forest
     ],
-    starStroke: '#5B8DB8',
-    starFill: '#2A618C',
-    starAlpha: 0.8,
+    // Darker than the dark theme's, so they read on the pale stage.
+    starStroke: '#2A618C', // medical-deep
+    starFill: '#173A57',
+    starAlpha: 1,
     head: '6, 64, 43',
     bloom: '91, 141, 184',
     bloomAlpha: 0.16,
@@ -108,6 +113,9 @@ export default function ECGBackground({
   anchorGap = 0,
   // The hero logo img; beats sync to its printed ECG spikes when present.
   logoRef = null,
+  // Whether the trace is drawn. Read through a ref, so switching it does not
+  // restart the stars.
+  on = false,
 }) {
   const canvasRef = useRef(null)
   // The drawing code reads the palette through a ref, so switching theme
@@ -121,6 +129,14 @@ export default function ECGBackground({
   useEffect(() => {
     redrawStillRef.current?.()
   }, [theme])
+  const onRef = useRef(on)
+  const restartRef = useRef(null)
+  useEffect(() => {
+    const was = onRef.current
+    onRef.current = on
+    if (on && !was) restartRef.current?.()
+    redrawStillRef.current?.()
+  }, [on])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -338,6 +354,7 @@ export default function ECGBackground({
     function render(now) {
       ctx.clearRect(0, 0, width, height)
       drawStars(now)
+      if (!onRef.current) return
       for (const [color, w, a] of paletteRef.current.layers) strokeTrace(now, color, w, a)
       // The newest entry can be the wrap's path-break marker (null), the
       // pen head is the last REAL point. Never blank the whole frame for it:
@@ -369,6 +386,12 @@ export default function ECGBackground({
     function frame(now) {
       const dt = Math.min(Math.max(now - lastTime, 0), 50) / 1000
       lastTime = now
+      // Switched off: keep the stars twinkling, leave the trace alone.
+      if (!onRef.current) {
+        render(now)
+        raf = requestAnimationFrame(frame)
+        return
+      }
 
       // Heart-rate dynamics: target decays toward base, current eases toward
       // target (~1s lag).
@@ -468,6 +491,7 @@ export default function ECGBackground({
     function drawStatic() {
       ctx.clearRect(0, 0, width, height)
       drawStars(null) // fixed alpha, no lifecycle
+      if (!onRef.current) return
       const beatLen = (60 / bpm) * speed // px per beat at the resting rate
       const pts = []
       for (let x = 0; x <= width; x += 2) {
@@ -489,6 +513,15 @@ export default function ECGBackground({
     redrawStillRef.current = () => {
       if (reduced) drawStatic()
     }
+    // Switched on: a fresh sweep from the left edge at the resting rate.
+    restartRef.current = () => {
+      points = []
+      headX = -24
+      phase = 0
+      flat = false
+      pulse = 0
+      anchorsFired = logoAnchors.map(() => false)
+    }
 
     // ── Interactions ──────────────────────────────────────────────────────
     let lastTap = 0
@@ -499,6 +532,7 @@ export default function ECGBackground({
     let downY = 0
 
     const onMotion = (e) => {
+      if (!onRef.current) return
       const a = e.accelerationIncludingGravity
       if (!a || a.x == null) return
       const mag = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
@@ -547,6 +581,7 @@ export default function ECGBackground({
     }
 
     const onPointerDown = (e) => {
+      if (!onRef.current) return
       enableMotion(true)
       if (!pageVisible || !inView) return
       downX = e.clientX
@@ -577,6 +612,7 @@ export default function ECGBackground({
 
     const onPointerUp = (e) => {
       clearTimeout(holdTimer)
+      if (!onRef.current) return
       if (flat) {
         flat = false
         // Recovery beat: the line jolts back with a strong spike.
@@ -641,6 +677,7 @@ export default function ECGBackground({
 
     return () => {
       redrawStillRef.current = null
+      restartRef.current = null
       cancelAnimationFrame(raf)
       clearTimeout(settleTimer)
       clearTimeout(holdTimer)

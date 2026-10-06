@@ -6,18 +6,19 @@ import { readableAccent, rgba } from '../lib/color.js'
 // whichever direction you're travelling in, so it renders on both
 // /exchange/outgoings and /exchange/incomings rather than on the chooser.
 // `audience="incoming"` words it for a student coming to us (our voice, their
-// month here); the default speaks to our own students going abroad.
+// month here); the default speaks to our own students going abroad
+// (/exchange/outgoings).
 export default function ExchangeTracks({ audience = 'outgoing' }) {
   const incoming = audience === 'incoming'
   return (
     <section className="reveal mx-auto max-w-5xl">
-      <h2 className={`heading-serif text-center text-3xl text-ink ${incoming ? 'sm:text-4xl' : ''}`}>
-        {incoming ? 'Two ways to come to us' : 'Two tracks'}
+      <h2 className="heading-serif text-center text-3xl text-ink sm:text-4xl">
+        {incoming ? 'Two ways to come to us' : 'Two ways to go'}
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/65">
         {incoming
           ? 'You come to us through one of IFMSA’s two exchange committees: for a clinical clerkship, or for a research project.'
-          : 'Every exchange runs through one of two standing committees: a clinical clerkship, or a research project.'}
+          : 'You go abroad through one of IFMSA’s two exchange committees: for a clinical clerkship, or for a research project.'}
       </p>
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         {exchange.tracks.map((t) => (

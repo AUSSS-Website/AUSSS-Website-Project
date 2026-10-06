@@ -1,9 +1,14 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import useReveal from '../hooks/useReveal.js'
+import { useWatchOrderSection } from '../lib/orderSectionView.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { merchPages, merchPdf } from '../data/merch.js'
 import { useMerchCatalogue } from '../lib/merch.js'
 import ProductCard from '../components/ProductCard.jsx'
+
+// The top offset of each desktop booklet column: alternate columns drop, so
+// the four columns keep the two-column zigzag's stagger.
+const BOOKLET_COLUMNS = ['', 'pt-24', '', 'pt-24']
 
 function BookletThumb({ page, idx, onOpen }) {
   return (
@@ -135,12 +140,14 @@ function SizeChartModal({ product, onClose }) {
 export default function MerchPage() {
   usePageTitle(
     'Merch',
-    'Official AUSSS 55th-edition merch: tees, the varsity jacket, bucket hats and notebooks. Pre-order to support the society.',
+    'Official AUSSS 55th-edition merch: tees, the varsity jacket, bucket hats and notebooks. Order to support the society.',
   )
   useReveal()
   const { available: availableProducts } = useMerchCatalogue()
   const [openPage, setOpenPage] = useState(null)
   const [chartFor, setChartFor] = useState(null)
+  const orderRef = useRef(null)
+  useWatchOrderSection(orderRef)
 
   const closePage = useCallback(() => setOpenPage(null), [])
   const prevPage = useCallback(
@@ -174,7 +181,7 @@ export default function MerchPage() {
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
             Life Savers, Change Makers. Every piece in this drop is{' '}
-            <strong className="text-ink">pre-order only</strong>: we collect
+            <strong className="text-ink">made to order</strong>: we collect
             orders, then run production, then coordinate pickup. What you pay
             for is what you get.
           </p>
@@ -234,10 +241,10 @@ export default function MerchPage() {
             </div>
           </div>
 
-          {/* Desktop: two-column staggered zigzag, right column is offset
-              down by half a page height so pages weave between each other. */}
-          <div className="mx-auto mt-12 hidden max-w-4xl gap-6 sm:grid sm:grid-cols-2 lg:gap-10">
-            <div className="flex flex-col gap-6 lg:gap-10">
+          {/* Tablet: two-column staggered zigzag, right column is offset
+              down so pages weave between each other. */}
+          <div className="mx-auto mt-12 hidden max-w-4xl grid-cols-2 gap-6 sm:grid lg:hidden">
+            <div className="flex flex-col gap-6">
               {merchPages.map((p, idx) =>
                 idx % 2 === 0 ? (
                   <BookletThumb
@@ -249,7 +256,7 @@ export default function MerchPage() {
                 ) : null,
               )}
             </div>
-            <div className="flex flex-col gap-6 pt-20 lg:gap-10 lg:pt-28">
+            <div className="flex flex-col gap-6 pt-20">
               {merchPages.map((p, idx) =>
                 idx % 2 === 1 ? (
                   <BookletThumb
@@ -262,16 +269,42 @@ export default function MerchPage() {
               )}
             </div>
           </div>
+
+          {/* Desktop: the same zigzag over four columns, so the booklet fills
+              the width instead of running twice as long. Pages still read left
+              to right, top to bottom (page 1 in column 1, page 2 in column 2),
+              and every other column sits lower. */}
+          <div className="mx-auto mt-12 hidden max-w-7xl grid-cols-4 gap-6 lg:grid xl:gap-8">
+            {BOOKLET_COLUMNS.map((offset, col) => (
+              <div key={offset + col} className={`flex flex-col gap-6 xl:gap-8 ${offset}`}>
+                {merchPages.map((p, idx) =>
+                  idx % BOOKLET_COLUMNS.length === col ? (
+                    <BookletThumb
+                      key={p.src}
+                      page={p}
+                      idx={idx}
+                      onOpen={setOpenPage}
+                    />
+                  ) : null,
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Order cards, the real shop, at the bottom */}
-      <section className="border-t border-line/10 bg-page py-20">
+      {/* Order cards, the real shop, at the bottom. While it is on screen the
+          navbar's cart button opens into a pill with the count and subtotal. */}
+      <section
+        id="place-your-order"
+        ref={orderRef}
+        className="border-t border-line/10 bg-page py-20"
+      >
         <div className="container-prose">
           <div className="reveal mx-auto mb-12 max-w-2xl text-center">
             <span className="eyebrow justify-center">
               <span className="h-px w-8 bg-medical" />
-              Place your pre-order
+              Place your order
               <span className="h-px w-8 bg-medical" />
             </span>
             <h2 className="heading-serif mt-5 text-3xl text-ink sm:text-4xl">

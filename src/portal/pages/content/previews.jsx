@@ -8,6 +8,8 @@ import {
   IncomingsTips,
   IncomingsWhy,
   NationalBookletLink,
+  OUTGOING_CONTACTS,
+  OUTGOINGS_COPY,
 } from '../../../components/IncomingsSections.jsx'
 
 // How each block looks on the site, drawn with the same component the public
@@ -36,6 +38,36 @@ export const previews = {
       <NationalBookletLink href={doc.nationalBooklet} />
       <IncomingsTips tips={doc.tips.filter((t) => t.title || t.body)} />
       {doc.showContacts && <IncomingsContacts />}
+      {doc.links.some((l) => l.label) && (
+        <p className="text-center text-sm text-soft/60">
+          Links at the foot of the page: {doc.links.filter((l) => l.label).map((l) => l.label).join(', ')}
+        </p>
+      )}
+    </div>
+  ),
+  // The edited parts of /exchange/outgoings, in page order, with the
+  // outgoings headings. The title, the track cards and the stories are not
+  // part of the block.
+  'exchange.outgoings': ({ doc }) => (
+    <div className="space-y-16">
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-light leading-relaxed text-soft/75">
+        {doc.intro}
+      </p>
+      <IncomingsFacts facts={doc.facts.filter((f) => f.figure)} />
+      <IncomingsIncludes points={doc.points.filter((p) => p.text)} heading={OUTGOINGS_COPY.includes} />
+      <IncomingsWhy
+        sections={doc.sections.filter((s) => s.title || s.body)}
+        heading={OUTGOINGS_COPY.whyHeading}
+        lead={OUTGOINGS_COPY.whyLead}
+      />
+      <IncomingsSteps steps={doc.steps.filter((s) => s.title || s.body)} heading={OUTGOINGS_COPY.steps} />
+      <IncomingsAlbum slug={doc.album} heading={OUTGOINGS_COPY.album} />
+      <IncomingsTips
+        tips={doc.tips.filter((t) => t.title || t.body)}
+        heading={OUTGOINGS_COPY.tipsHeading}
+        lead={OUTGOINGS_COPY.tipsLead}
+      />
+      {doc.showContacts && <IncomingsContacts contacts={OUTGOING_CONTACTS} lead={OUTGOINGS_COPY.contactsLead} />}
       {doc.links.some((l) => l.label) && (
         <p className="text-center text-sm text-soft/60">
           Links at the foot of the page: {doc.links.filter((l) => l.label).map((l) => l.label).join(', ')}

@@ -1028,7 +1028,7 @@ the text the site shows (blank = as submitted; the submission itself is never ed
 *Featured*, which pins the story first with a highlight. Declining or moving it back to
 `contacted` takes it off the site at once (the pre-rendered copy updates on the next deploy).
 
-**Triage.** Each row has a status (`orders`: new, confirmed, collected, cancelled; `stories`:
+**Triage.** Each row has a status (`orders`: new, contacted, delivered, also set from the Merch page, section 26; `stories`:
 new, contacted, published, declined; `signups`: new, contacted, archived) and private notes
 (`officer_notes` on orders). Filter chips, a search box and *Export CSV* (the filtered rows,
 UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes.
@@ -1648,7 +1648,7 @@ of `npm run walk:portal-sample`. A signed-in walk of the portal against the real
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
 Built 2026-10-05. Migrations `20261005210001_content_blocks` and
-`20261005220001_incomings_block`, pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`), pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
 
 **What it is.** A part of a public page that is plain content (the questions on `/join`
 first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The
@@ -1688,13 +1688,13 @@ opens each in the same form, drawn from the block's field schema.
 | --- | --- | --- | --- |
 | `join.faq` | `/join` | the EB | the questions and answers |
 | `exchange.incomings` | `/exchange/incomings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What we give you", the "Why choose us" reasons (heading, text, optional picture), "How you get to us", the "Before you land" tips, which gallery album to show, whether to show the contact cards, the link to the IFMSA-Egypt welcome booklet, the links at the foot |
+| `exchange.outgoings` | `/exchange/outgoings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What the exchange gives you", the "Why go" reasons (heading, text, optional picture), "How to apply", the "Before you fly" tips, which gallery album to show, whether to show the contact cards, the links at the foot |
 
 **The incomings page is written for a student abroad** who is choosing which local
 committee to spend an exchange month with, and it speaks in our own voice: "we", "our",
 "us", to "you". Keep new copy that way; what we say to our own members about hosting
 belongs on `/exchange/join`. The page has its own file
-(`src/pages/ExchangeIncomingsPage.jsx`); `/exchange/outgoings` keeps
-`ExchangeDirectionPage.jsx`. The copy it ships with, and its six pictures
+(`src/pages/ExchangeIncomingsPage.jsx`). The copy it ships with, and its six pictures
 (`public/assets/exchange/incomings`), come from our incomings booklet. The two track
 cards and the stories section take an `audience="incoming"` setting that words them for
 the same reader; the stories shown there are the ones whose destination is Egypt, Cairo or
@@ -1709,6 +1709,17 @@ take the name and photo from whoever holds the position (section 23) and the ema
 `src/data/society.js` and `src/seo/pages.js`, because the pre-rendered page and the
 browser tab must agree (section 15). The welcome booklet itself is
 `src/data/incomingsBooklet.js`.
+
+**The outgoings page has the same shape, for our own students** thinking of going abroad
+(added 2026-10-06, migration `20261006183133_outgoings_block`). Its file is
+`src/pages/ExchangeOutgoingsPage.jsx`; it draws the same section components
+(`src/components/IncomingsSections.jsx`) with its own headings (`OUTGOINGS_COPY` there),
+and the contact cards are the LEO-Out and the LORE (`OUTGOING_CONTACTS`). The copy it
+ships with is in `src/content/schemas/exchangeOutgoings.js`, written only from facts the
+site already stated (four weeks, SCOPE or SCORE, lodging and a meal a day, the 80%
+certificate, the exam, interview and contract steps, the pre-departure orientation). It
+has no switcher to the incomings page; `/exchange` is the hub for both. The stories
+section there lists every story whose destination is not Egypt, Cairo or Ain Shams.
 
 **Add an editable block.** Three files and one line:
 
@@ -1765,8 +1776,8 @@ database answers; it is only the fallback.
 
 **Day to day (EB).**
 
-- *Open or close pre-orders:* the "Taking pre-orders" switch at the top of the Merch page (also
-  on Site settings). Closed, the shop stays up and the checkout says pre-orders are closed; the
+- *Open or close orders:* the "Taking orders" switch at the top of the Merch page (also
+  on Site settings). Closed, the shop stays up and the checkout says orders are closed; the
   database refuses an order sent anyway.
 - *Hide a product:* its switch on the Merch page. It leaves the shop and the carts, and an
   order for it is not taken. Prefer this to removing it.
@@ -1779,12 +1790,20 @@ database answers; it is only the fallback.
 - *Remove:* at the foot of the product's page, with a second click to confirm. Its uploaded
   pictures go too; past orders keep their lines.
 
+- *Payment methods:* the "Payment methods" panel on the Merch page. Each method has a name,
+  a type (payment link, handle or phone number), the link, handle or number itself, a short
+  hint and an "On the checkout" switch. Edit in place, drag to reorder, then "Save payment
+  methods"; the list is the site setting `merchPaymentMethods`, and until it is first saved the
+  checkout uses the copy in `src/data/merchConfig.js`. A new method's id is made from its name
+  when it is saved and is permanent, because every order records it. Switch a method off rather
+  than removing it while orders may still name it.
+
 **Not editable yet.** The booklet on `/merch` (the page images in `public/assets/merch` and
-`src/data/merch.js`) and the payment methods (`src/data/merchConfig.js`) are still files.
+`src/data/merch.js`) is still a file.
 
 **Tests.** `supabase/tests/300-merch-catalogue.sql` (who may write, the picture and design
 checks, hidden products not sold, a closed shop refusing orders, the rebuild request) and
-`src/lib/merch.test.js`. The portal pages are in the sample walk:
+`src/lib/merch.test.js`, and `src/data/merchConfig.test.js` for the payment methods. The portal pages are in the sample walk:
 `npm run walk:portal-sample -- dark,light 320,1440 /portal/merch`. In Git Bash, prefix that
 with `MSYS_NO_PATHCONV=1`, or the route argument is turned into a Windows path and nothing
 is walked.

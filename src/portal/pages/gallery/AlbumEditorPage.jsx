@@ -348,7 +348,7 @@ function Bin({ photos, onRestore, onPurge, busy }) {
               </button>
               <ConfirmButton
                 label="Delete"
-                confirmLabel="Delete for good"
+                confirmLabel="Click again to delete for good"
                 onConfirm={() => onPurge(p)}
                 disabled={busy}
                 className={smallBtn}
@@ -483,7 +483,7 @@ function AlbumEditor({ album }) {
         <div className="mt-4">
           <ConfirmButton
             label="Delete this album"
-            confirmLabel="Delete album and photos"
+            confirmLabel="Click again to delete the album and its photos"
             onConfirm={deleteAlbum}
             disabled={removeAlbum.isPending || uploading}
           />

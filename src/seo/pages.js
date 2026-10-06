@@ -284,7 +284,7 @@ export function publicPages(albums = [], issues = [], content = {}) {
       path: '/merch',
       title: 'Merch',
       description:
-        'Official AUSSS 55th-edition merch: tees, the varsity jacket, bucket hats and notebooks. Pre-order to support the society.',
+        'Official AUSSS 55th-edition merch: tees, the varsity jacket, bucket hats and notebooks. Order to support the society.',
       changefreq: 'monthly',
       priority: 0.6,
     },

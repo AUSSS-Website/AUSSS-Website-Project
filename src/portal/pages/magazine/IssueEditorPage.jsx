@@ -369,7 +369,7 @@ function IssueEditor({ issue }) {
         <div className="mt-4">
           <ConfirmButton
             label="Delete this edition"
-            confirmLabel="Delete edition and pages"
+            confirmLabel="Click again to delete the edition and its pages"
             onConfirm={deleteIssue}
             disabled={remove.isPending}
           />

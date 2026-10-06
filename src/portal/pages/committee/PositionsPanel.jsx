@@ -11,7 +11,7 @@ import {
   useWorkEmails,
 } from '../../rosterQueries.js'
 import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
-import { ErrorText, Panel, Spinner, inputCls, primaryBtnCls } from '../../portalUi.jsx'
+import { ConfirmButton, ErrorText, Panel, Spinner, inputCls, primaryBtnCls } from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
 import { Avatar } from '../../Avatar.jsx'
 import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
@@ -33,27 +33,6 @@ const tagCls =
   'inline-flex shrink-0 items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
 const textBtnCls = 'text-xs font-semibold transition-colors disabled:opacity-40'
 
-// A two-step inline confirm, the portal's usual shape for anything destructive.
-function ConfirmButton({ label, confirmLabel, busy, onConfirm }) {
-  const [asking, setAsking] = useState(false)
-  if (!asking) {
-    return (
-      <button type="button" onClick={() => setAsking(true)} className={`${textBtnCls} text-soft/60 hover:text-ink`}>
-        {label}
-      </button>
-    )
-  }
-  return (
-    <span className="flex items-center gap-3">
-      <button type="button" disabled={busy} onClick={onConfirm} className={`${textBtnCls} text-danger hover:text-danger`}>
-        {busy ? 'Working…' : confirmLabel}
-      </button>
-      <button type="button" onClick={() => setAsking(false)} className={`${textBtnCls} text-soft/60 hover:text-ink`}>
-        Keep
-      </button>
-    </span>
-  )
-}
 
 // An officer's, a board member's or the webmaster's position: it opens editors
 // and admin pages, so it has one work email and goes to no other address.
@@ -245,8 +224,9 @@ function InviteRow({ invite }) {
       <span className={tagCls}>{invite.position.title}</span>
       {invite.can_withdraw && (
         <ConfirmButton
+          variant="text"
           label="Withdraw"
-          confirmLabel="Yes, withdraw"
+          busyLabel="Working…"
           busy={withdraw.isPending}
           onConfirm={() => withdraw.mutate(invite.id)}
         />
@@ -280,8 +260,9 @@ function HolderRow({ holder, rosterHint }) {
       ) : (
         holder.can_remove && (
           <ConfirmButton
+            variant="text"
             label="Remove"
-            confirmLabel="Yes, remove"
+            busyLabel="Working…"
             busy={remove.isPending}
             onConfirm={() => remove.mutate(holder.assignment_id)}
           />

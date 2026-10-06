@@ -144,7 +144,7 @@ export function describeNotification(n, names) {
       }
     case 'order_new':
       return {
-        line: `New merch pre-order${p.flagged ? ' (check the amount)' : ''}`,
+        line: `New merch order${p.flagged ? ' (check the amount)' : ''}`,
         detail: `${p.name || 'Someone'} · ${p.ref || ''}${p.subtotal != null ? ` · ${p.subtotal} EGP` : ''}`,
       }
     case 'story_new':

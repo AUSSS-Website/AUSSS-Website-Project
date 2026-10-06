@@ -940,12 +940,6 @@ Waiting on people:
 - **The exchange portal link:** changed by the exchange officers when the
   incomings page goes live (phase 6, step 2).
 
-Small fixes noted, to do with the next change to the same screen:
-
-- **Centre the "View public gallery" button** on the portal's gallery page
-  (`src/portal/pages/gallery/GalleryPage.jsx`, noted by the webmaster on
-  2026-10-06).
-
 Parked:
 
 - **The portal inside the site:** staying signed in while browsing the public
