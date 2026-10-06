@@ -3,9 +3,8 @@
 // public site reads from here.
 //
 // Inboxes: `email` is a role's Gmail inbox, `alias` its address on the
-// society's domain. Pages show whichever publicEmail() picks, see
+// society's domain. Pages show whichever usePublicEmail() picks, see
 // emailConfig.js.
-import { publicEmail } from './emailConfig.js'
 
 export const executiveBoard = [
   {
@@ -468,35 +467,14 @@ export const society = {
   // Official name per Constitution §1.1.
   name: "Ain Shams University Students' Scientific Society",
   // Public contact is the Secretary General (correspondence and member
-  // communication per Constitution §4.2.2 / §8).
-  contactEmail: publicEmail(executiveBoard.find((m) => m.role === 'Secretary General')),
+  // communication per Constitution §4.2.2 / §8). The role, not an address:
+  // pages show it through usePublicEmail().
+  contact: executiveBoard.find((m) => m.role === 'Secretary General'),
 }
 
-// --- Official social channels (Constitution §14.2) ---------------------
-// `key` selects the brand icon in the contact page and the footer.
-export const socials = [
-  {
-    key: 'instagram',
-    name: 'Instagram',
-    handle: '@ausss_ainshams',
-    href: 'https://instagram.com/ausss_ainshams',
-    blurb: 'Events, announcements and campaigns.',
-  },
-  {
-    key: 'facebook',
-    name: 'Facebook',
-    handle: 'Ain Shams University Students’ Scientific Society – AUSSS',
-    href: 'https://www.facebook.com/ausssofficial',
-    blurb: 'Events, announcements and campaigns.',
-  },
-  {
-    key: 'tiktok',
-    name: 'TikTok',
-    handle: '@ausss_ainshams',
-    href: 'https://www.tiktok.com/@ausss_ainshams',
-    blurb: 'Campaign highlights and behind-the-scenes.',
-  },
-]
+// The official social channels (Constitution §14.2), the address and the map
+// pin are the block `site.contact`, edited in the portal
+// (src/content/schemas/siteContact.js holds the shipped copy).
 
 // --- IFMSA page copy (editable) ----------------------------------------
 export const ifmsa = {

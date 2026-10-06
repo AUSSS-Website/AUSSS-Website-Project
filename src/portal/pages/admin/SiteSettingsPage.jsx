@@ -33,6 +33,27 @@ const KNOWN = [
     type: 'boolean',
     fallback: true,
   },
+  {
+    key: 'openCallsLive',
+    label: 'Show Open Calls on the public site',
+    hint: 'When on, the calls officers publish appear on their committee pages with an Apply button. When off, officers can still prepare calls in the portal and nobody else sees them.',
+    type: 'boolean',
+    fallback: false,
+  },
+  {
+    key: 'magazineCountersVisible',
+    label: 'Show reads and likes on the magazine',
+    hint: 'Shows the number of reads and a Like button under each edition. Reads and how far people read are recorded either way.',
+    type: 'boolean',
+    fallback: false,
+  },
+  {
+    key: 'domainEmailsLive',
+    label: 'Show the @ausss-ainshams.org addresses',
+    hint: 'Turn this on only after every forwarding rule is set up and a test message has arrived (RUNBOOK section 19), or mail sent to those addresses bounces. While it is off, the site shows the Gmail inboxes.',
+    type: 'boolean',
+    fallback: false,
+  },
 ]
 
 // Settings with an editor of their own, which checks what is typed. They are

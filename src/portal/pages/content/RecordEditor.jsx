@@ -177,7 +177,10 @@ function ListControl({ field, value, onChange, path, errors, blockKey, disabled 
   return (
     <div className="space-y-3">
       {rows.map((row, i) => {
-        const title = field.titleField ? String(row?.[field.titleField] || '').trim() : ''
+        const titleField = field.fields.find((f) => f.name === field.titleField)
+        const raw = titleField ? String(row?.[titleField.name] || '').trim() : ''
+        // A choice shows its label, not the stored value.
+        const title = titleField?.type === 'select' ? titleField.options.find((o) => o.value === raw)?.label || raw : raw
         return (
           <fieldset key={i} className="min-w-0 rounded-2xl border border-line/10 bg-sunk/60 p-4 sm:p-5">
             <legend className="sr-only">

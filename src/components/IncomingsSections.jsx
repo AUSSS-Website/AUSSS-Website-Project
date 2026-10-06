@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { committees, slugFor } from '../data/society.js'
-import { publicEmail } from '../data/emailConfig.js'
+import { usePublicEmail } from '../hooks/useSiteSettings.js'
 import { committeeOfficers, usePeople } from '../lib/people.js'
 import { useGallery } from '../lib/gallery.js'
 import Markdown from './Markdown.jsx'
@@ -159,6 +159,7 @@ const CONTACTS_LEAD =
 
 export function IncomingsContacts({ contacts = CONTACTS, lead = CONTACTS_LEAD }) {
   const people = usePeople()
+  const publicEmail = usePublicEmail()
   const cards = contacts.map((want) => {
     const c = committees.find((x) => slugFor(x) === want.committee)
     const officer = c ? committeeOfficers(c, people).find((o) => o.alias === want.alias) : null

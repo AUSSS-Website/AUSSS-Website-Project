@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
-import { publicEmail } from '../data/emailConfig.js'
+import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
 // One position in the exchange hierarchy, with its explanation in a card that
 // appears on hover.
@@ -16,7 +16,7 @@ export default function RoleNode({ role, tier = 'officer' }) {
   const wrapRef = useRef(null)
   const accent = readableAccent(role.color)
   const isOfficer = tier === 'officer'
-  const email = publicEmail(role)
+  const email = usePublicEmail()(role)
 
   useEffect(() => {
     if (!open) return

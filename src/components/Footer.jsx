@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { socials } from '../data/society.js'
-import SocialIcon from './SocialIcon.jsx'
+import { useContentBlock } from '../lib/content.js'
+import siteContact from '../content/schemas/siteContact.js'
+import { FindUs, SocialIconLinks } from './ContactDetails.jsx'
 
 // The aurora pulls in `ogl` (a full WebGL renderer, ~90 KB). It only ever
 // shows on /magazine, so load it lazily instead of in every page's bundle.
@@ -12,6 +13,8 @@ export default function Footer() {
   // lets the page's glow leak a little way over the top of the footer before
   // settling back into the footer's own colour. The footer stays its own section.
   const onMagazine = useLocation().pathname === '/magazine'
+  // Motto, address, map pin and channels: edited by the EB in the portal.
+  const contact = useContentBlock(siteContact)
   return (
     <footer className="relative overflow-hidden border-t border-line/10 bg-sunk py-14 dark:bg-page">
       {onMagazine && (
@@ -33,27 +36,11 @@ export default function Footer() {
                 className="logo-ink h-24 w-auto"
               />
             </Link>
-            <p className="heading-serif text-base text-soft/75">
-              Life Savers, Change Makers
+            <p className="heading-serif text-base text-soft/75">{contact.motto}</p>
+            <p className="mt-1 max-w-xs whitespace-pre-line text-xs leading-relaxed text-soft/55">
+              {contact.footerLine}
             </p>
-            <p className="mt-1 max-w-xs text-xs leading-relaxed text-soft/55">
-              Ain Shams University Students&rsquo; Scientific Society, the IFMSA
-              society at the Faculty of Medicine, Ain Shams University.
-            </p>
-            <div className="mt-1 flex gap-3">
-              {socials.map((s) => (
-                <a
-                  key={s.key}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={s.name}
-                  className="grid h-9 w-9 place-items-center rounded-full border border-line/15 text-soft/70 transition-colors hover:border-medical hover:text-ink"
-                >
-                  <SocialIcon name={s.key} className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
+            <SocialIconLinks socials={contact.socials} />
           </div>
 
           <nav
@@ -82,44 +69,7 @@ export default function Footer() {
           <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/55">
             Find us
           </p>
-          <div className="mx-auto grid max-w-3xl items-stretch gap-6 md:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl border border-line/10">
-              <iframe
-                title="Faculty of Medicine, Ain Shams University on Google Maps"
-                src="https://maps.google.com/maps?q=Faculty%20of%20Medicine%2C%20Ain%20Shams%20University&z=16&output=embed"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="block h-64 w-full border-0 grayscale-[0.2] md:h-full"
-              />
-            </div>
-            <address className="flex flex-col justify-center gap-3 rounded-2xl border border-line/10 bg-veil/[0.02] p-6 not-italic">
-              <p className="heading-serif text-base text-ink">
-                Faculty of Medicine, Ain Shams University
-              </p>
-              <p className="text-sm leading-relaxed text-soft/70">
-                38 Abbassia, next to Al-Nour Mosque
-                <br />
-                Cairo 1181, Egypt
-              </p>
-              <a
-                href="https://maps.google.com/maps?q=Faculty%20of%20Medicine%2C%20Ain%20Shams%20University"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-1.5 text-sm text-soft/70 transition-colors hover:text-ink"
-              >
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
-                  <path
-                    d="M12 21s-6-5.686-6-10a6 6 0 1 1 12 0c0 4.314-6 10-6 10Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="12" cy="11" r="2.25" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-                Open in Google Maps
-              </a>
-            </address>
-          </div>
+          <FindUs doc={contact} />
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-5 border-t border-line/10 pt-10">
