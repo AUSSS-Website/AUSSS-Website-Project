@@ -35,9 +35,9 @@ values ('pgtap.page', '{scope}'), ('pgtap.board', '{}');
 -- the blocks the site ships with, and who edits them
 select is(
   (select jsonb_object_agg(key, to_jsonb(editors)) from public.content_blocks
-   where key in ('join.faq', 'exchange.incomings', 'exchange.outgoings', 'site.contact')),
-  '{"join.faq": [], "exchange.incomings": ["scope", "score"], "exchange.outgoings": ["scope", "score"], "site.contact": []}'::jsonb,
-  'the FAQ and the contact details are the EB''s; the two exchange pages are also the exchange officers'''
+   where key in ('join.faq', 'exchange.incomings', 'exchange.outgoings', 'site.contact', 'home.page', 'ifmsa.page')),
+  '{"join.faq": [], "exchange.incomings": ["scope", "score"], "exchange.outgoings": ["scope", "score"], "site.contact": [], "home.page": [], "ifmsa.page": []}'::jsonb,
+  'the FAQ, the contact details, the home page and the IFMSA page are the EB''s; the two exchange pages are also the exchange officers'''
 );
 
 -- anon: the RPC only, and nothing is published yet

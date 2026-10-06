@@ -476,69 +476,30 @@ export const society = {
 // pin are the block `site.contact`, edited in the portal
 // (src/content/schemas/siteContact.js holds the shipped copy).
 
-// --- IFMSA page copy (editable) ----------------------------------------
-export const ifmsa = {
-  intro:
-    'The International Federation of Medical Students’ Associations (IFMSA) is one of the world’s oldest and largest student-run organisations. Founded in 1951, it represents, connects, and engages over a million medical students through National Member Organisations across more than 130 countries.',
-  membership:
-    'AUSSS is an autonomous affiliate member of IFMSA-Egypt, the National Member Organisation representing Egyptian medical students within IFMSA. Through IFMSA-Egypt, AUSSS is connected to a global federation of over a million medical students.',
-  points: [
-    {
-      title: 'Global standing committees',
-      body: 'IFMSA organises its work through standing committees on Professional & Research Exchange, Medical Education, Public Health, Human Rights & Peace, and Sexual & Reproductive Health, mirrored locally at AUSSS.',
-    },
-    {
-      title: 'International exchange',
-      body: 'Members access clinical and research clerkships hosted by partner faculties worldwide through the IFMSA exchange network.',
-    },
-    {
-      title: 'Advocacy & representation',
-      body: 'IFMSA brings the student voice to the WHO, UN, and other global health partners, advocating on health policy and medical education.',
-    },
-  ],
-  links: [
-    { label: 'ifmsa.org', href: 'https://ifmsa.org' },
-    { label: 'ifmsa-egypt.org.eg', href: 'https://www.ifmsa-egypt.org.eg' },
-  ],
-}
-
-// --- IFMSA / IFMSA-Egypt scale (sourced from ifmsa.org & ifmsa-egypt.org.eg)
-// Used by the /ifmsa lineage band. Figures are approximate, as published.
-export const ifmsaScale = {
-  ifmsa: [
-    { value: '1.5M+', label: 'Medical students' },
-    { value: '133+', label: 'National organisations' },
-    { value: '123', label: 'Countries' },
-    { value: '15,000', label: 'Exchanges / year' },
-  ],
-  egypt: [
-    { value: '1969', label: 'IFMSA-Egypt founded' },
-    { value: '80,000', label: 'Egyptian medical students' },
-    { value: '31', label: 'Local committees' },
-    { value: 'Ain Shams', label: 'AUSSS local committee' },
-  ],
-  // The federation lineage, rendered as a logo chain.
-  lineage: [
-    {
-      name: 'IFMSA',
-      logo: '/assets/ifmsa/ifmsa-horizontal-white.png',
-      note: 'Global federation · founded 1951',
-      href: 'https://ifmsa.org',
-    },
-    {
-      name: 'IFMSA-Egypt',
-      logo: '/assets/ifmsa/ifmsa-egypt-horizontal-white.png',
-      note: 'National Member Organisation · founded 1969',
-      href: 'https://www.ifmsa-egypt.org.eg',
-    },
-    {
-      name: 'AUSSS',
-      logo: '/assets/brand/ausss-horizontal-white.png',
-      note: 'Ain Shams local committee · autonomous affiliate',
-      href: '/',
-    },
-  ],
-}
+// --- IFMSA page ------------------------------------------------------------
+// Its words and figures are the block `ifmsa.page`, edited in the portal
+// (src/content/schemas/ifmsaPage.js holds the shipped copy). The federation
+// lineage, rendered on /ifmsa as a logo chain, stays here.
+export const ifmsaLineage = [
+  {
+    name: 'IFMSA',
+    logo: '/assets/ifmsa/ifmsa-horizontal-white.png',
+    note: 'Global federation · founded 1951',
+    href: 'https://ifmsa.org',
+  },
+  {
+    name: 'IFMSA-Egypt',
+    logo: '/assets/ifmsa/ifmsa-egypt-horizontal-white.png',
+    note: 'National Member Organisation · founded 1969',
+    href: 'https://www.ifmsa-egypt.org.eg',
+  },
+  {
+    name: 'AUSSS',
+    logo: '/assets/brand/ausss-horizontal-white.png',
+    note: 'Ain Shams local committee · autonomous affiliate',
+    href: '/',
+  },
+]
 
 // --- IFMSA history timeline (drives /ifmsa/history) --------------------
 // Founding years, name changes and blurbs taken from each committee's own

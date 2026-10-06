@@ -1,5 +1,9 @@
 import FAQ from '../../../components/FAQ.jsx'
 import { FindUs, SocialCards, SocialIconLinks } from '../../../components/ContactDetails.jsx'
+import About from '../../../components/About.jsx'
+import { HeroBadge, HeroFigures, HeroLead, HeroNote } from '../../../components/Hero.jsx'
+import { IfmsaLinks, IfmsaPoints, StatBand } from '../../../components/IfmsaSections.jsx'
+import { useMemberCount } from '../../../hooks/useMemberCount.js'
 import {
   IncomingsAlbum,
   IncomingsContacts,
@@ -101,4 +105,44 @@ export const previews = {
       </div>
     )
   },
+  // The hero's lines and figures without the logo, the heartbeat and the
+  // buttons, then the About section as it stands on the page. Half-typed rows
+  // are skipped.
+  'home.page': function HomePreview({ doc }) {
+    const memberCount = useMemberCount()
+    return (
+      <div className="space-y-10">
+        <div className="text-center">
+          <HeroBadge text={doc.badge} />
+          <p className="heading-serif mx-auto mt-4 text-balance text-3xl text-ink sm:text-4xl">
+            Life Savers, <span className="text-accent">Change Makers</span>
+          </p>
+          <HeroLead text={doc.lead} />
+          <HeroFigures memberCount={memberCount} figures={doc.figures.filter((f) => f.value && f.label)} />
+          <HeroNote text={doc.note} />
+        </div>
+        <div className="-mx-5 overflow-hidden rounded-2xl sm:-mx-8">
+          <About narrow doc={{ ...doc, pillars: doc.pillars.filter((p) => p.title || p.body) }} />
+        </div>
+      </div>
+    )
+  },
+  // The IFMSA page's words and figures in page order. The logo chain and the
+  // history link are not part of the block.
+  'ifmsa.page': ({ doc }) => (
+    <div className="space-y-12">
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-light leading-relaxed text-soft/75">
+        {doc.intro}
+      </p>
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-base leading-relaxed text-soft/75">
+        {doc.membership}
+      </p>
+      <StatBand title="IFMSA worldwide" items={doc.worldwide.filter((f) => f.value)} />
+      <StatBand title="IFMSA-Egypt" items={doc.egypt.filter((f) => f.value)} />
+      <IfmsaPoints points={doc.points.filter((p) => p.title || p.body)} />
+      <div className="text-center">
+        <IfmsaLinks links={doc.links.filter((l) => l.label && l.href)} />
+      </div>
+    </div>
+  ),
 }

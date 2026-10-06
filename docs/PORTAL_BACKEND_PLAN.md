@@ -861,6 +861,12 @@ request is merged.
    switches that were constants in config files became the site settings
    `openCallsLive`, `magazineCountersVisible` and `domainEmailsLive`, written
    into the saved pages by the build, with a rebuild on every change).
+   Home page sections and the IFMSA copy were **built the same day**: the
+   blocks `home.page` (the hero's lines and figures and the "About the
+   Society" section) and `ifmsa.page` (the IFMSA page's words and figures),
+   both the EB's. The exchange copy was already editable through the two
+   exchange pages (step 2 and its outgoings twin); the short hub at
+   `/exchange` stays in the code.
    Magazine issues, the first aim of this phase when the plan was written,
    have been editable since Phase 5. **Events wait on a decision:** the site
    has no events page today (the old calendar embed was removed in the
