@@ -57,7 +57,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
             {formatEGP(product.price)}
           </span>
           <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent sm:inline-block">
-            Pre-order
+            Made to order
           </span>
         </div>
 

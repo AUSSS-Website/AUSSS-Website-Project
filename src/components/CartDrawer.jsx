@@ -139,7 +139,7 @@ export default function CartDrawer({ open, onClose }) {
                 </span>
               </div>
               <p className="mb-4 text-xs leading-relaxed text-forest-900/60 dark:text-silver/55">
-                Everything is pre-order. We&rsquo;ll WhatsApp you to confirm the
+                Everything is made to order. We&rsquo;ll WhatsApp you to confirm the
                 details and arrange pickup.
               </p>
               <Link

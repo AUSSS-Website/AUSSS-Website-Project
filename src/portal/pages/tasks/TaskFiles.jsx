@@ -5,7 +5,7 @@ import {
   taskFileProblem,
   taskFileUrl,
 } from '../../workQueries.js'
-import { ErrorText } from '../../portalUi.jsx'
+import { ConfirmButton, ErrorText } from '../../portalUi.jsx'
 
 // The two halves of attachments: choosing files before they are sent (the task
 // editor and the comment box), and listing the ones a task already holds.
@@ -68,7 +68,7 @@ export function FileChooser({ files, onChange, disabled, id }) {
           type="button"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40"
         >
           <Clip className="h-3.5 w-3.5" />
           Attach files
@@ -106,7 +106,6 @@ export function FileChooser({ files, onChange, disabled, id }) {
 // remove control (whoever attached it, or a manager; the database agrees).
 export function FileLinks({ files, canRemove, onRemove, removing, className = '' }) {
   const [busy, setBusy] = useState('')
-  const [confirming, setConfirming] = useState('')
   const [error, setError] = useState('')
 
   if (!files.length) return null
@@ -140,31 +139,20 @@ export function FileLinks({ files, canRemove, onRemove, removing, className = ''
               </span>
             </button>
             <span className="shrink-0 text-xs text-soft/45">{sizeLabel(file.size_bytes)}</span>
-            {canRemove?.(file) &&
-              (confirming === file.id ? (
-                <span className="ml-auto flex shrink-0 items-center gap-2 text-xs font-semibold">
-                  <button
-                    type="button"
-                    disabled={removing}
-                    onClick={() => onRemove(file)}
-                    className="text-danger hover:text-danger disabled:opacity-40"
-                  >
-                    Remove
-                  </button>
-                  <button type="button" onClick={() => setConfirming('')} className="text-soft/60 hover:text-ink">
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirming(file.id)}
-                  aria-label={`Remove ${file.name}`}
-                  className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-soft/50 transition-colors hover:bg-veil/10 hover:text-ink"
+            {canRemove?.(file) && (
+              <span className="ml-auto shrink-0">
+                <ConfirmButton
+                  variant="text"
+                  label="Remove"
+                  ariaLabel={`Remove ${file.name}`}
+                  disabled={removing}
+                  onConfirm={() => onRemove(file)}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-soft/50 transition-colors hover:bg-veil/10 hover:text-ink"
                 >
                   &times;
-                </button>
-              ))}
+                </ConfirmButton>
+              </span>
+            )}
           </li>
         ))}
       </ul>

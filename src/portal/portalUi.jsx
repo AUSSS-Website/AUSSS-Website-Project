@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MEMBERSHIP_LABELS } from './constants.js'
 
@@ -87,11 +88,15 @@ export const inputCls =
 export const authInputCls =
   'w-full rounded-xl border border-line/15 bg-page px-4 py-3 text-ink placeholder:text-soft/40 focus-visible:border-medical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
-// Blue primary pill and hairline outline pill.
+// Blue primary pill and hairline outline pill. Both centre their content
+// both ways, on a <button> or on a link or label styled as one, even when a
+// flex row stretches them taller; the gap stands in for the space before an
+// icon, which a flex box drops.
+const btnCentreCls = 'inline-flex items-center justify-center gap-1.5 text-center'
 export const primaryBtnCls =
-  'rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover disabled:opacity-40'
+  `${btnCentreCls} rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover disabled:opacity-40`
 export const outlineBtnCls =
-  'rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40'
+  `${btnCentreCls} rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40`
 
 export function Field({ label, hint, htmlFor, children }) {
   return (
@@ -172,3 +177,81 @@ export function BackLink({ to = '/', children = 'Back to AUSSS home' }) {
     </Link>
   )
 }
+
+// Every remove, delete, withdraw and clear in the portal goes through this
+// button. The first click turns it red and asks again on the button itself
+// ("Click again to delete"); the second click does it. Clicking or tabbing
+// away, Escape, or leaving it alone for a few seconds turns it back, so a red
+// button never sits waiting for a stray click. No window.confirm (it blocks
+// the page).
+//
+//   <ConfirmButton label="Delete" onConfirm={…} />                an outline pill
+//   <ConfirmButton variant="text" label="Remove" onConfirm={…} />  a small text link
+//
+// `confirmLabel` replaces the "Click again to …" wording, `busyLabel` shows
+// while `busy`, and `children` (with `ariaLabel`) replaces the idle label, for
+// an icon such as ×. `className` styles the idle button; the armed one is red
+// whatever it is.
+const DISARM_MS = 5000
+
+const confirmIdle = {
+  button: outlineBtnCls,
+  text: 'text-xs font-semibold text-soft/60 transition-colors hover:text-ink disabled:opacity-40',
+}
+const confirmArmed = {
+  button: '!border-red-500 !bg-red-500 !text-white hover:!bg-red-600',
+  text: `${btnCentreCls} rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-40`,
+}
+
+export function ConfirmButton({
+  label,
+  confirmLabel,
+  busyLabel,
+  onConfirm,
+  busy = false,
+  disabled = false,
+  variant = 'button',
+  className,
+  ariaLabel,
+  title,
+  children,
+}) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return undefined
+    const timer = setTimeout(() => setArmed(false), DISARM_MS)
+    return () => clearTimeout(timer)
+  }, [armed])
+
+  const idleCls = className ?? confirmIdle[variant]
+  // The text link turns into a small red pill; any other button keeps its
+  // shape and turns red.
+  const armedCls = variant === 'text' ? confirmArmed.text : `${idleCls} ${confirmArmed.button}`
+  const askAgain = confirmLabel || `Click again to ${String(label || 'confirm').toLowerCase()}`
+  const text = busy && busyLabel ? busyLabel : armed ? askAgain : children ?? label
+
+  return (
+    <button
+      type="button"
+      disabled={disabled || busy}
+      onClick={() => {
+        if (!armed) {
+          setArmed(true)
+          return
+        }
+        setArmed(false)
+        onConfirm()
+      }}
+      onBlur={() => setArmed(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setArmed(false)
+      }}
+      aria-label={armed ? askAgain : ariaLabel}
+      title={armed ? askAgain : title}
+      className={armed ? armedCls : idleCls}
+    >
+      {text}
+    </button>
+  )
+}
+

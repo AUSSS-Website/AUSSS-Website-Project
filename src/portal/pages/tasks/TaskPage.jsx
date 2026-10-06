@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useNames, useTask, useTaskMutations, useWorkScopes } from '../../workQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { Centered, ConfirmButton, ErrorText, PageHeader, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import {
   CommitteeTag,
   DueLabel,
@@ -105,7 +105,6 @@ export default function TaskPage() {
   const { update, remove, comment, removeFile } = useTaskMutations()
   const notice = useLocation().state?.notice
   const [editing, setEditing] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const [draft, setDraft] = useState('')
   const [draftFiles, setDraftFiles] = useState([])
   const [error, setError] = useState('')
@@ -216,20 +215,7 @@ export default function TaskPage() {
               <button type="button" onClick={() => setEditing(true)} className={outlineBtnCls}>
                 Edit
               </button>
-              {confirming ? (
-                <>
-                  <button type="button" onClick={destroy} disabled={remove.isPending} className={`${outlineBtnCls} border-red-400/50 text-danger`}>
-                    {remove.isPending ? 'Deleting…' : 'Yes, delete'}
-                  </button>
-                  <button type="button" onClick={() => setConfirming(false)} className={outlineBtnCls}>
-                    Keep
-                  </button>
-                </>
-              ) : (
-                <button type="button" onClick={() => setConfirming(true)} className={outlineBtnCls}>
-                  Delete
-                </button>
-              )}
+              <ConfirmButton label="Delete" busyLabel="Deleting…" busy={remove.isPending} onConfirm={destroy} />
             </div>
           )
         }

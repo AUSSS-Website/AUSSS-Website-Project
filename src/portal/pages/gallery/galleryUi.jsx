@@ -41,39 +41,6 @@ export function ShareLinkButton({ slug, className = outlineBtnCls }) {
   )
 }
 
-// A two-step destructive button: the first click arms it, the second fires.
-// Avoids window.confirm (which blocks the page) while still asking twice.
-export function ConfirmButton({ label, confirmLabel = 'Yes, do it', onConfirm, disabled, className = outlineBtnCls }) {
-  const [armed, setArmed] = useState(false)
-  useEffect(() => {
-    if (!armed) return
-    const t = setTimeout(() => setArmed(false), 6000)
-    return () => clearTimeout(t)
-  }, [armed])
-
-  if (!armed) {
-    return (
-      <button type="button" className={className} onClick={() => setArmed(true)} disabled={disabled}>
-        {label}
-      </button>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-2">
-      <button
-        type="button"
-        className={`${className} border-red-400/50 text-danger hover:bg-red-500/10`}
-        onClick={() => {
-          setArmed(false)
-          onConfirm()
-        }}
-        disabled={disabled}
-      >
-        {confirmLabel}
-      </button>
-      <button type="button" className={className} onClick={() => setArmed(false)}>
-        Keep
-      </button>
-    </span>
-  )
-}
+// The two-click remove button lives in portalUi.jsx now; re-exported so the
+// editors that import it from here keep working.
+export { ConfirmButton } from '../../portalUi.jsx'

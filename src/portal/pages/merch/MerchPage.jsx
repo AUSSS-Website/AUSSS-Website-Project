@@ -7,6 +7,8 @@ import { useProductMutations, useProducts } from '../../merchQueries.js'
 import { slugify } from '../../merchForm.js'
 import { useSiteSettingsAdmin, useUpsertSiteSetting } from '../../officerQueries.js'
 import SortableList from '../../SortableList.jsx'
+import OrdersPanel from './OrdersPanel.jsx'
+import PaymentMethodsPanel from './PaymentMethodsPanel.jsx'
 import {
   Centered,
   ErrorText,
@@ -22,10 +24,10 @@ import {
 
 // /portal/merch. The shop: every product in the order visitors see it, with
 // its picture, price and whether it is on sale, and the switch that opens and
-// closes pre-orders. The EB adds products here and drags them into order; a
+// closes orders. The EB adds products here and drags them into order; a
 // product's text, sizes, designs and pictures are edited on its own page. The
 // same rows price the orders, so a price changed here is what the next buyer
-// pays.
+// pays. Below the products, the orders placed at the checkout (OrdersPanel.jsx).
 
 export function MerchGate({ children }) {
   const { isEB } = useAuth()
@@ -52,17 +54,17 @@ function OrdersOpenPanel() {
     <Panel className="mb-8">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <p className="text-sm font-semibold text-ink">Taking pre-orders</p>
+          <p className="text-sm font-semibold text-ink">Taking orders</p>
           <p className="mt-1 text-xs text-soft/55">
             {open
-              ? 'The checkout is open. Turn this off between drops: the shop stays up, and the checkout says pre-orders are closed.'
-              : 'Pre-orders are closed: visitors can browse the shop, and the checkout turns every order away.'}
+              ? 'The checkout is open. Turn this off between drops: the shop stays up, and the checkout says orders are closed.'
+              : 'Orders are closed: visitors can browse the shop, and the checkout turns every order away.'}
           </p>
         </div>
         <Toggle
           checked={open}
           onChange={(v) => save.mutate({ key: 'merchOrdersOpen', value: v })}
-          label="Taking pre-orders"
+          label="Taking orders"
           disabled={settings.isPending || save.isPending}
         />
       </div>
@@ -274,6 +276,10 @@ export default function MerchPage() {
           />
         </>
       )}
+
+      <PaymentMethodsPanel />
+
+      <OrdersPanel />
     </MerchGate>
   )
 }

@@ -4,9 +4,8 @@
 // database cannot be reached and this browser has never seen the live one.
 // Editing this file changes nothing a visitor sees once the database answers.
 //
-// Every product is a pre-order: per the
-// booklet, "all orders are on a pre-order basis, so no expenses or incomes are
-// held by AUSSS. What you pay for is what you get."
+// Every product is made to order, so AUSSS holds no stock, expenses or income:
+// what you pay for is what you get.
 //
 // Fields:
 //   id           stable slug, used as the React key and the cart key

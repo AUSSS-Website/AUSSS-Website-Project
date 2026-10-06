@@ -4,7 +4,7 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { committeeBySlug } from '../../../data/society.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useCommittee } from '../../officerQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.jsx'
+import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import PageEditor from './PageEditor.jsx'
 import CallsPanel from './CallsPanel.jsx'
 import MembersPanel from './MembersPanel.jsx'
@@ -107,7 +107,7 @@ export default function CommitteeEditorPage() {
             to={`/committees/${c.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10"
+            className={outlineBtnCls}
           >
             View public page ↗
           </Link>

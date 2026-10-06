@@ -724,40 +724,32 @@ export const exchange = {
     },
   ],
   // The two directions exchange runs in. Each one is its own page,
-  // /exchange/<slug>, rendered by src/pages/ExchangeDirectionPage.jsx, with
-  // /exchange itself as the hub that sends you to one of them. `tab` is the
-  // short label for the switcher that sits on both pages.
+  // /exchange/<slug>, with /exchange itself as the hub that sends you to one of
+  // them. Both pages speak in our own voice ("we", "our") and their copy is a
+  // block edited in the portal; only what the hub and the search engines need
+  // is here.
   directions: {
+    // The outgoings page speaks to one of our own students thinking of going
+    // abroad (src/pages/ExchangeOutgoingsPage.jsx). Its copy is the block
+    // `exchange.outgoings`, and the copy it ships with is in
+    // src/content/schemas/exchangeOutgoings.js.
     outgoing: {
       slug: 'outgoings',
-      tab: 'Outgoings',
       cta: 'How to apply',
       blurb:
         'A four-week clinical or research clerkship somewhere else in the world, arranged through IFMSA.',
       eyebrow: 'Outgoing exchange',
       title: 'Outgoings',
       label: 'Outgoings',
-      intro:
-        'Four weeks in a hospital or a lab somewhere else in the world, arranged through IFMSA. You pick the country, apply through AUSSS and IFMSA-Egypt, and arrive to lodging, a meal a day and a doctor or mentor expecting you.',
       meta:
         'Go abroad with AUSSS: a four-week SCOPE clinical clerkship or a SCORE research project, from picking a country to earning your certificate.',
-      points: [
-        'Pick a country and project from the IFMSA exchange portal.',
-        'Apply through AUSSS and IFMSA-Egypt with the required documents.',
-        'Travel for a four-week clinical clerkship (SCOPE) or research project (SCORE).',
-        'Get lodging, at least one meal a day, and a supervising doctor or mentor.',
-        'Earn an official certificate with at least 80% attendance.',
-      ],
-      links: [{ label: 'IFMSA exchange portal', href: 'https://exchange.ifmsa.org' }],
     },
     // The incomings page speaks to a student abroad who is choosing where to
-    // go, in our own voice ("we", "our"). Only what the hub, the switcher and
-    // the search engines need is here; the page's copy is the block
-    // `exchange.incomings`, edited in the portal, and the copy it ships with
-    // is in src/content/schemas/exchangeIncomings.js.
+    // go (src/pages/ExchangeIncomingsPage.jsx). Its copy is the block
+    // `exchange.incomings`, and the copy it ships with is in
+    // src/content/schemas/exchangeIncomings.js.
     incoming: {
       slug: 'incomings',
-      tab: 'Incomings',
       cta: 'Come to Ain Shams',
       blurb:
         'Coming to Cairo on exchange? See what your month with us includes, why to choose us and who to write to.',
@@ -873,15 +865,8 @@ export const exchange = {
       },
     ],
   },
-  // How you apply to go abroad, the outgoing flow, so it renders on
-  // /exchange/outgoings rather than the hub.
-  timeline: [
-    { step: 'Exchange exam', body: 'Register when the exchange exam opens, then sit it.' },
-    { step: 'Interview', body: 'Attend your exchange interview.' },
-    { step: 'Get your contract', body: 'Selected applicants are assigned their exchange contract.' },
-    { step: 'Prepare and travel', body: 'Complete the pre-departure preparation, then travel for your clerkship.' },
-    { step: 'Certificate', body: 'Finish with at least 80% attendance and receive your official certificate.' },
-  ],
+  // How you apply to go abroad is the "How to apply" list of the block
+  // `exchange.outgoings` (src/content/schemas/exchangeOutgoings.js).
   links: [
     { label: 'IFMSA exchange portal', href: 'https://exchange.ifmsa.org' },
     { label: 'Egypt explore page', href: 'https://exchange.ifmsa.org/explore-pages/national/view/6' },

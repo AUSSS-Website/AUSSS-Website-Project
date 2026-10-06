@@ -15,29 +15,31 @@ import { useExchangeStories } from '../lib/exchangeStories.js'
 // `audience="incoming"` is the incomings page: it speaks to a student coming
 // to us, so it lists only the stories of students we hosted (a story whose
 // destination is Egypt, Cairo or Ain Shams) and words the invitation for them.
+// The default, the outgoings page, speaks to our own students thinking of
+// going abroad, so it lists every other story: the ones from abroad.
 const HOSTED_RE = /egypt|cairo|ain\s*shams/i
 
 export default function ExchangeStories({ audience = 'outgoing' }) {
   const incoming = audience === 'incoming'
   const live = useExchangeStories()
   const all = [...live, ...testimonials.filter((t) => t.published !== false)]
-  const visible = incoming ? all.filter((t) => HOSTED_RE.test(t.destination || '')) : all
+  const visible = all.filter((t) => HOSTED_RE.test(t.destination || '') === incoming)
 
   return (
     <section className="reveal mx-auto max-w-4xl">
-      <h2 className={`heading-serif text-center text-3xl text-ink ${incoming ? 'sm:text-4xl' : ''}`}>
-        {incoming ? 'From students we hosted' : 'Exchange stories'}
+      <h2 className="heading-serif text-center text-3xl text-ink sm:text-4xl">
+        {incoming ? 'From students we hosted' : 'From our students abroad'}
       </h2>
 
       {visible.length === 0 ? (
         <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center">
           <p className="heading-serif text-xl text-ink">
-            {incoming ? 'Were you one of our incomings?' : 'Be the first story here'}
+            {incoming ? 'Were you one of our incomings?' : 'Went abroad with us?'}
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-soft/70">
             {incoming
               ? 'Tell the next student what your month with us was like.'
-              : 'Went abroad or hosted an incoming student with AUSSS? Share how it went. Your story helps the next student take the leap.'}
+              : 'Tell the next student what your exchange was like. Your story helps them take the leap.'}
           </p>
           <Link
             to="/exchange/share"

@@ -28,12 +28,18 @@ const KNOWN = [
   },
   {
     key: 'merchOrdersOpen',
-    label: 'Take merch pre-orders',
-    hint: 'When off, the shop stays up and the checkout says pre-orders are closed. The same switch is on the Merch page.',
+    label: 'Take merch orders',
+    hint: 'When off, the shop stays up and the checkout says orders are closed. The same switch is on the Merch page.',
     type: 'boolean',
     fallback: true,
   },
 ]
+
+// Settings with an editor of their own, which checks what is typed. They are
+// not offered here as raw JSON, where a hand edit could skip those checks.
+const EDITED_ELSEWHERE = {
+  merchPaymentMethods: 'the payment methods, on the Merch page',
+}
 
 function BooleanSetting({ def, value, onChange, busy }) {
   const on = typeof value === 'boolean' ? value : def.fallback
@@ -124,7 +130,7 @@ export default function SiteSettingsPage() {
     }
   }
 
-  const knownKeys = new Set(KNOWN.map((d) => d.key))
+  const knownKeys = new Set([...KNOWN.map((d) => d.key), ...Object.keys(EDITED_ELSEWHERE)])
   const others = Object.entries(settings.data || {}).filter(([k]) => !knownKeys.has(k))
 
   return (

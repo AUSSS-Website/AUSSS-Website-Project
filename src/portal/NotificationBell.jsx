@@ -7,7 +7,7 @@ import {
   useNotifications,
   useUnreadCount,
 } from './workQueries.js'
-import { ErrorText, Spinner } from './portalUi.jsx'
+import { ConfirmButton, ErrorText, Spinner } from './portalUi.jsx'
 import { UnreadDot, describeNotification, notificationTarget, when } from './workUi.jsx'
 
 // The bell at the side of the portal header. A red dot while anything is
@@ -24,7 +24,6 @@ const linkBtnCls =
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const wrapRef = useRef(null)
   const btnRef = useRef(null)
   const navigate = useNavigate()
@@ -41,13 +40,11 @@ export default function NotificationBell() {
 
   const close = () => {
     setOpen(false)
-    setConfirming(false)
   }
 
   // Going anywhere closes the panel.
   useEffect(() => {
     setOpen(false)
-    setConfirming(false)
   }, [location.pathname, location.search])
 
   useEffect(() => {
@@ -175,26 +172,16 @@ export default function NotificationBell() {
             <Link to="/portal/notifications" onClick={close} className={linkBtnCls}>
               See all{rows.length > SHOWN ? ` (${rows.length})` : ''} &rarr;
             </Link>
-            {rows.length > 0 &&
-              (confirming ? (
-                <span className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    disabled={clear.isPending}
-                    onClick={() => clear.mutate(undefined, { onSuccess: () => setConfirming(false) })}
-                    className="text-xs font-semibold text-danger transition-colors hover:text-danger disabled:opacity-40"
-                  >
-                    {clear.isPending ? 'Clearing…' : 'Yes, clear notifications'}
-                  </button>
-                  <button type="button" onClick={() => setConfirming(false)} className={linkBtnCls}>
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button type="button" onClick={() => setConfirming(true)} className={linkBtnCls}>
-                  Clear all
-                </button>
-              ))}
+            {rows.length > 0 && (
+              <ConfirmButton
+                variant="text"
+                className={linkBtnCls}
+                label="Clear all"
+                busyLabel="Clearing…"
+                busy={clear.isPending}
+                onConfirm={() => clear.mutate()}
+              />
+            )}
           </div>
         </div>
       )}
