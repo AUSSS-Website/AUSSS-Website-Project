@@ -883,19 +883,29 @@ request is merged.
      add, edit and remove; visitors read the published ones through one RPC;
      a change asks for a rebuild of the public pages (section 23, "rebuild on
      publish").
-   - **Public pages:** `/events`, upcoming events first and past ones under
-     them; each committee page shows its own upcoming events; the home page
-     shows the next three. Read like the gallery (what the build baked in,
-     then the browser's last copy, then the live answer), listed in the
-     sitemap, and each event carries schema.org `Event` data so search
-     engines can show it.
+   - **Public pages:** `/events` lists the upcoming events; each committee
+     page shows its own upcoming events; the home page shows the next three.
+     Read like the gallery (what the build baked in, then the browser's last
+     copy, then the live answer), listed in the sitemap, and each event
+     carries schema.org `Event` data so search engines can show it.
+   - **Header (decided by the webmaster, 2026-10-07):** "Events" gets its
+     own place in the public header, as a link of its own beside the
+     Committees menu. The header was tight at 1024 px before (pull request
+     12), so the fit is checked again at 1024, 1280 and 1440 px.
+   - **Archive (decided by the webmaster, 2026-10-07):** old events move to
+     an archive and leave the main list. My reading, to confirm when the step
+     starts: an event moves on its own once it has ended (no button, no
+     rollover step needed), to `/events/archive`, grouped by term, and any
+     link to it keeps working.
    - **Portal:** an Events tab on each committee's page in the portal, with
      the same editor for the EB's society-wide events.
-   - **To settle with the webmaster when the step starts:** whether "Events"
-     gets its own place in the header; whether past events stay on `/events`
-     or move to a per-term archive at rollover (phase 7, step 1, beside the
-     gallery archive); and whether the first version should be smaller (the
-     home page list alone).
+   - **Still to settle with the webmaster:** how much the first build holds.
+     Answers 1 and 2 rule out the smallest version (a list on the home page
+     alone), since the header link and the archive both need the page. The
+     open part is whether the first build also takes the upcoming events on
+     each committee page and on the home page, one page per event with its
+     own link and preview card for sharing, and an "Add to calendar" button,
+     or whether those follow later.
    - **Why here:** it is the last piece of this phase's "done when" (an
      officer publishes an event with no developer), it reuses what the phase
      built (the editor patterns, the rebuild, the committee pages and the
