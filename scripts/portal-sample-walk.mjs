@@ -75,6 +75,11 @@ const tables = {
     // nothing saved yet: the editor opens on the copy that ships in the code
     { key: 'exchange.incomings', editors: ['scope', 'score'], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
   ],
+  merch_products: [
+    { id: 'tshirt-55', name: 'AUSSS T-Shirt, 55th Limited Edition', tagline: 'Think Global. Act Local.', description: 'Forest-green ringer tee with white trim.', image: '/assets/merch/page-04.jpg', price: 300, sizes: ['S', 'M', 'L', 'XL', 'XXL'], size_chart: '/assets/merch/size-chart-tshirt.jpg', designs: [], wide_designs: [], available: true, sort_order: 0, updated_at: iso(3) },
+    { id: 'notebook', name: 'AUSSS Notebook', tagline: 'Like it? Note it down.', description: 'Spiral-bound notebook with a committee-themed cover.', image: '/assets/merch/page-13.jpg', price: 40, sizes: [], size_chart: '', designs: ['SCOPH', 'SCORA', 'Exchange', 'Support Divisions'], wide_designs: ['Exchange', 'Support Divisions'], available: true, sort_order: 1, updated_at: iso(3) },
+    { id: 'a-new-product-with-a-long-id-for-phones', name: 'A new product with a rather long name that wraps', tagline: '', description: '', image: '', price: 120, sizes: [], size_chart: '', designs: [], wide_designs: [], available: false, sort_order: 2, updated_at: iso(0.1) },
+  ],
   audit_log: [
     { id: 3, at: iso(0.1), actor: uid, table_name: 'content_blocks', row_id: 'join.faq', action: 'UPDATE', before: { key: 'join.faq', draft: null, updated_at: iso(1) }, after: { key: 'join.faq', draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the Faculty of Medicine.' }] }, updated_at: iso(0.1) } },
     { id: 2, at: iso(1), actor: other, table_name: 'tasks', row_id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', action: 'INSERT', before: null, after: { id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', title: 'Collect the incomings welcome booklet photos from every contact person', status: 'todo', priority: 'high' } },
@@ -98,6 +103,7 @@ const ROUTES = [
   '/portal/notifications', '/portal/directory', '/portal/committees', '/portal/committees/scope',
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
   '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
+  '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
   '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 

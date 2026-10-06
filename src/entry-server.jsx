@@ -12,19 +12,22 @@ import { setBakedMagazine } from './lib/magazine.js'
 import { setBakedStories } from './lib/exchangeStories.js'
 import { setBakedPeople } from './lib/people.js'
 import { setBakedContent } from './lib/content.js'
+import { setBakedMerch } from './lib/merch.js'
 
 // `albums`, `issues`, `stories` and `people` are the live gallery, magazine
 // shelf, published exchange stories and position holders the prerender fetched
 // once (src/lib/gallery.js, magazine.js, exchangeStories.js, people.js), so
 // /gallery, every album page, /magazine, the exchange pages and every page
 // that names an officer render with the real content. `content` is the
-// published documents of the portal's content editor (src/lib/content.js).
-export function render(url, albums, issues, stories = [], people = [], content = {}) {
+// published documents of the portal's content editor (src/lib/content.js), and
+// `merch` the shop's catalogue (src/lib/merch.js).
+export function render(url, albums, issues, stories = [], people = [], content = {}, merch = []) {
   setBakedGallery(albums)
   setBakedMagazine(issues)
   setBakedStories(stories)
   setBakedPeople(people)
   setBakedContent(content)
+  setBakedMerch(merch)
   return new Promise((resolve, reject) => {
     const chunks = []
     const sink = new Writable({

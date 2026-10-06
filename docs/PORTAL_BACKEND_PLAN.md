@@ -849,9 +849,12 @@ request is merged.
    **Reminder when it goes live:** change the LC's website link in the
    exchange portal so it points straight at
    `https://ausss-ainshams.org/exchange/incomings` and not at the home page.
-3. **The remaining editors, in order of value:** FAQ, the merch catalogue and
-   availability (the `merch_products` table exists; the shop page still
-   reads the file), events, home page sections, exchange and IFMSA copy,
+3. **The remaining editors, in order of value:** FAQ (done in step 1), the
+   merch catalogue and availability (**built 2026-10-06**: the EB's Merch page
+   edits `merch_products` whole, with pictures in the bucket `merch`; the shop,
+   cart and checkout read the table, the orders RPC no longer sells a hidden
+   product, and `ORDERS_OPEN` became the site setting `merchOrdersOpen`;
+   RUNBOOK section 26. The booklet and the payment methods stay files), events, home page sections, exchange and IFMSA copy,
    footer and contact details, and feature flags (the switches that live in
    config files today, `callsLiveEnabled`, `magazineCountersVisible` and
    `domainEmailsLive`, become site settings). Magazine issues, the first aim
@@ -936,6 +939,12 @@ Waiting on people:
   verification (RUNBOOK section 19).
 - **The exchange portal link:** changed by the exchange officers when the
   incomings page goes live (phase 6, step 2).
+
+Small fixes noted, to do with the next change to the same screen:
+
+- **Centre the "View public gallery" button** on the portal's gallery page
+  (`src/portal/pages/gallery/GalleryPage.jsx`, noted by the webmaster on
+  2026-10-06).
 
 Parked:
 

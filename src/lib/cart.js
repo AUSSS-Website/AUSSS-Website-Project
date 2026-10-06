@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { productById } from '../data/merchProducts.js'
+import { getCatalogue, subscribeCatalogue } from './merch.js'
 
 // ── Cart store ───────────────────────────────────────────────────────────
 // Lines are keyed by productId + size + design so the same shirt in two
@@ -14,31 +14,18 @@ const STORAGE_KEY = 'ausss-cart-v1'
 // stops typos/abuse from inflating the cart unbounded.
 const MAX_QTY = 20
 
-// Lines silently dropped at load because their product left the catalogue.
-// The checkout page reads this once to tell the user instead of letting the
-// cart shrink without explanation.
-let droppedLines = []
-export function takeDroppedLines() {
-  const d = droppedLines
-  droppedLines = []
-  return d
-}
+const sellable = (productId) => Boolean(getCatalogue().byId[productId]?.available)
 
 function readInitial() {
-  if (typeof window === 'undefined') return { items: [] }
+  if (typeof window === 'undefined') return { items: [], dropped: 0 }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { items: [] }
+    if (!raw) return { items: [], dropped: 0 }
     const parsed = JSON.parse(raw)
-    if (!parsed || !Array.isArray(parsed.items)) return { items: [] }
-    // Drop lines whose product no longer exists (catalogue edits) so a stale
-    // cart can never block checkout, but remember them for a user notice.
-    droppedLines = parsed.items.filter((it) => !productById[it.productId])
-    return {
-      items: parsed.items.filter((it) => productById[it.productId]),
-    }
+    if (!parsed || !Array.isArray(parsed.items)) return { items: [], dropped: 0 }
+    return { items: parsed.items.filter((it) => it && typeof it.productId === 'string'), dropped: 0 }
   } catch (_) {
-    return { items: [] }
+    return { items: [], dropped: 0 }
   }
 }
 
@@ -47,7 +34,7 @@ const listeners = new Set()
 
 function persist() {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }))
   } catch (_) {}
 }
 function emit() {
@@ -60,23 +47,40 @@ function subscribe(cb) {
   return () => listeners.delete(cb)
 }
 
+// Once the catalogue is known for sure (the database answered), lines whose
+// product was removed or hidden by the EB are dropped, so a stale cart never
+// blocks checkout. `dropped` counts them for the notice on the checkout page.
+function prune() {
+  if (!getCatalogue().settled) return
+  const keep = state.items.filter((it) => sellable(it.productId))
+  if (keep.length === state.items.length) return
+  state = { items: keep, dropped: state.dropped + (state.items.length - keep.length) }
+  emit()
+}
+if (typeof window !== 'undefined') {
+  prune()
+  subscribeCatalogue(prune)
+}
+
 const lineKey = (productId, size, design) =>
   `${productId}::${size || ''}::${design || ''}`
 
 export function addToCart({ productId, size = '', design = '', qty = 1 }) {
-  if (!productById[productId]) return
+  if (!sellable(productId)) return
   const key = lineKey(productId, size, design)
   const existing = state.items.find(
     (it) => lineKey(it.productId, it.size, it.design) === key,
   )
   if (existing) {
     state = {
+      ...state,
       items: state.items.map((it) =>
         it === existing ? { ...it, qty: Math.min(MAX_QTY, it.qty + qty) } : it,
       ),
     }
   } else {
     state = {
+      ...state,
       items: [
         ...state.items,
         { productId, size, design, qty: Math.min(MAX_QTY, qty) },
@@ -89,6 +93,7 @@ export function addToCart({ productId, size = '', design = '', qty = 1 }) {
 export function updateQty({ productId, size = '', design = '', qty }) {
   const key = lineKey(productId, size, design)
   state = {
+    ...state,
     items: state.items
       .map((it) =>
         lineKey(it.productId, it.size, it.design) === key
@@ -103,6 +108,7 @@ export function updateQty({ productId, size = '', design = '', qty }) {
 export function removeFromCart({ productId, size = '', design = '' }) {
   const key = lineKey(productId, size, design)
   state = {
+    ...state,
     items: state.items.filter(
       (it) => lineKey(it.productId, it.size, it.design) !== key,
     ),
@@ -111,7 +117,7 @@ export function removeFromCart({ productId, size = '', design = '' }) {
 }
 
 export function clearCart() {
-  state = { items: [] }
+  state = { items: [], dropped: 0 }
   emit()
 }
 
@@ -131,9 +137,14 @@ export function cartCount(s = state) {
 
 export function cartSubtotal(s = state) {
   return s.items.reduce((sum, it) => {
-    const p = productById[it.productId]
+    const p = getCatalogue().byId[it.productId]
     return sum + (p?.price || 0) * it.qty
   }, 0)
+}
+
+// How many lines were dropped because their product left the catalogue.
+export function cartDropped(s = state) {
+  return s.dropped
 }
 
 export function useCartCount() {

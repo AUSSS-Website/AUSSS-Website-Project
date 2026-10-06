@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { merchPages, merchPdf } from '../data/merch.js'
-import { availableProducts } from '../data/merchProducts.js'
+import { useMerchCatalogue } from '../lib/merch.js'
 import ProductCard from '../components/ProductCard.jsx'
 
 function BookletThumb({ page, idx, onOpen }) {
@@ -138,6 +138,7 @@ export default function MerchPage() {
     'Official AUSSS 55th-edition merch: tees, the varsity jacket, bucket hats and notebooks. Pre-order to support the society.',
   )
   useReveal()
+  const { available: availableProducts } = useMerchCatalogue()
   const [openPage, setOpenPage] = useState(null)
   const [chartFor, setChartFor] = useState(null)
 

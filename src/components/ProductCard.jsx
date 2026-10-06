@@ -31,12 +31,14 @@ export default function ProductCard({ product, onOpenSizeChart }) {
   return (
     <article className="reveal group flex h-full flex-col overflow-hidden rounded-2xl border border-line/10 bg-card transition-all duration-500 hover:-translate-y-1 hover:border-medical/40">
       <div className="relative aspect-[5/7] w-full overflow-hidden bg-sunk">
-        <img
-          src={product.image}
-          alt={product.name}
-          loading="lazy"
-          className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
-        />
+        {product.image && (
+          <img
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
+          />
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-4 sm:p-6">

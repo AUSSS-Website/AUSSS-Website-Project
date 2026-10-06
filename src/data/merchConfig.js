@@ -1,13 +1,11 @@
 // Switches, endpoint and payment handles for the merch shop, kept out of the
 // UI code so the team can change them without touching a component.
 
-// When false the checkout shows a "pre-orders are closed" message instead of
-// the form. Useful between drops.
-export const ORDERS_OPEN = true
-
-// Orders land in Supabase (`orders`, priced by the `merch_products` price
-// book, which must match src/data/merchProducts.js) and the EB handles them in
-// the portal under Submissions > Orders.
+// Opening and closing pre-orders is a switch on the portal's Merch page (the
+// site setting `merchOrdersOpen`), and the products are edited there too.
+// Orders land in Supabase (`orders`, priced by `merch_products`, the same rows
+// the shop shows) and the EB handles them in the portal under Submissions >
+// Orders.
 
 // ── Payment methods ─────────────────────────────────────────────────────
 // Each entry is a tile on the checkout page. Set `available: false` to hide

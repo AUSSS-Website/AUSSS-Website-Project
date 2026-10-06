@@ -26,6 +26,13 @@ const KNOWN = [
     type: 'boolean',
     fallback: true,
   },
+  {
+    key: 'merchOrdersOpen',
+    label: 'Take merch pre-orders',
+    hint: 'When off, the shop stays up and the checkout says pre-orders are closed. The same switch is on the Merch page.',
+    type: 'boolean',
+    fallback: true,
+  },
 ]
 
 function BooleanSetting({ def, value, onChange, busy }) {
