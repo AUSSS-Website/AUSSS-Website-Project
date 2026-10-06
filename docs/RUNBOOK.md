@@ -1651,7 +1651,7 @@ of `npm run walk:portal-sample`. A signed-in walk of the portal against the real
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
 Built 2026-10-05. Migrations `20261005210001_content_blocks` and
-`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_contact_block`), pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_site_blocks`), pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
 
 **What it is.** A part of a public page that is plain content (the questions on `/join`
 first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The
@@ -1693,6 +1693,8 @@ opens each in the same form, drawn from the block's field schema.
 | `exchange.incomings` | `/exchange/incomings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What we give you", the "Why choose us" reasons (heading, text, optional picture), "How you get to us", the "Before you land" tips, which gallery album to show, whether to show the contact cards, the link to the IFMSA-Egypt welcome booklet, the links at the foot |
 | `exchange.outgoings` | `/exchange/outgoings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What the exchange gives you", the "Why go" reasons (heading, text, optional picture), "How to apply", the "Before you fly" tips, which gallery album to show, whether to show the contact cards, the links at the foot |
 | `site.contact` | the footer of every page, and `/contact` | the EB | the motto and line under the footer logo, the address card and the map pin, the official social channels (network, handle, address, one line), the two introductions on `/contact` (section 27) |
+| `home.page` | `/` | the EB | the badge above the logo, the line under the motto, the figures after the live member count, the line under them, and the "About the Society" section: heading, the large text, the paragraphs, the quotation, the three cards (heading, text, optional link and its words) (section 27) |
+| `ifmsa.page` | `/ifmsa` | the EB | the introduction, the membership card's text, the figures for IFMSA worldwide and for IFMSA-Egypt, the cards, the links under "Learn more" (section 27) |
 
 **The incomings page is written for a student abroad** who is choosing which local
 committee to spend an exchange month with, and it speaks in our own voice: "we", "our",
@@ -1812,9 +1814,9 @@ checks, hidden products not sold, a closed shop refusing orders, the rebuild req
 with `MSYS_NO_PATHCONV=1`, or the route argument is turned into a Windows path and nothing
 is walked.
 
-## 27. Switches and contact details (Phase 6, step 3)
+## 27. Switches, contact details, the home page and the IFMSA page (Phase 6, step 3)
 
-Built 2026-10-07. Migration `20261007090001_contact_block`, pgTAP file
+Built 2026-10-07. Migration `20261007090001_site_blocks`, pgTAP file
 `310-site-switches.sql`, unit tests `src/data/emailConfig.test.js` and
 `src/content/siteContact.test.js`.
 
@@ -1846,7 +1848,23 @@ engine data, with the LinkedIn page always added. Not in the block: the inboxes 
 (they belong to the positions, `src/data/society.js`), the footer's links, and the IFMSA
 logos.
 
+**The home page and the IFMSA page** are the blocks `home.page` and `ifmsa.page`, both the EB's.
+On the home page the motto, the logo, the two buttons and the member count stay in the code (the
+count is live), and so do the Executive Board and the committees below, which follow the people
+who hold the positions. In the two markdown fields of "About the Society", words between
+`**double stars**` take the deep colour and words between `*single stars*` the accent colour; in
+the line under the figures, `**double stars**` take the accent colour. The three cards keep their
+pictures by place (people, globe, document), so there are always three. On `/ifmsa` the logo
+chain (IFMSA, IFMSA-Egypt, AUSSS, `ifmsaLineage` in `src/data/society.js`) and the link to the
+history timeline stay in the code. The IFMSA figures are approximate, as IFMSA and IFMSA-Egypt
+publish them: worth a look once a year, at rollover.
+
+The exchange hub (`/exchange`, three cards pointing at the two exchange pages and the team page)
+keeps its few lines in `src/data/society.js`; the two exchange pages themselves are blocks
+(section 25).
+
 **Checks.** `npm run walk:portal-sample -- light,dark 375,1440 /portal/content/site.contact`
-and `/portal/admin/settings` (with `MSYS_NO_PATHCONV=1` in Git Bash); `npm run walk -- --only
-/contact --public-only`.
+and the same for `/portal/content/home.page`, `/portal/content/ifmsa.page` and
+`/portal/admin/settings` (with `MSYS_NO_PATHCONV=1` in Git Bash); `npm run walk -- --only
+/contact --public-only` and the same for `/ifmsa`.
 

@@ -1,7 +1,11 @@
--- Phase 6, step 3: the footer and contact details become the block `site.contact` (address,
--- map pin, official social channels, motto and the short introductions), edited by the EB. No
--- published copy yet, so the footer and /contact keep showing the copy in
--- src/content/schemas/siteContact.js until someone publishes from the portal.
+-- Phase 6, step 3: three more parts of the site become blocks, all edited by the EB:
+--   site.contact   the footer and contact details (address, map pin, official social channels,
+--                  motto and the short introductions on /contact)
+--   home.page      the lines and figures in the home page's hero and the "About the Society"
+--                  section
+--   ifmsa.page     the words and figures on /ifmsa
+-- Nothing is published yet, so each page keeps showing the copy in its schema file under
+-- src/content/schemas until someone publishes from the portal.
 --
 -- In the same step the switches that lived in config files (Open Calls on the public site, the
 -- magazine's counter, the addresses on the domain) became site settings: site_settings takes
@@ -10,7 +14,7 @@
 -- engine data give), so a change to a setting asks for a rebuild like any other published change.
 
 insert into public.content_blocks (key, editors)
-values ('site.contact', '{}')
+values ('site.contact', '{}'), ('home.page', '{}'), ('ifmsa.page', '{}')
 on conflict (key) do nothing;
 
 drop trigger if exists touch_site on public.site_settings;

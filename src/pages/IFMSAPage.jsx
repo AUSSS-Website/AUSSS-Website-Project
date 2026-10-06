@@ -1,33 +1,10 @@
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { Link } from 'react-router-dom'
-import { ifmsa, ifmsaScale } from '../data/society.js'
-import CountUp from '../components/CountUp.jsx'
-
-function StatBand({ title, items }) {
-  return (
-    <div>
-      <p className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-accent">
-        {title}
-      </p>
-      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line/10 bg-veil/[0.06] sm:grid-cols-4">
-        {items.map((s) => (
-          <div
-            key={s.label}
-            className="bg-sunk/40 px-4 py-6 text-center backdrop-blur-sm"
-          >
-            <div className="heading-serif text-2xl text-ink sm:text-3xl">
-              <CountUp value={s.value} />
-            </div>
-            <div className="mt-1 text-[11px] uppercase tracking-widest text-soft/70">
-              {s.label}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+import { ifmsaLineage } from '../data/society.js'
+import { useContentBlock } from '../lib/content.js'
+import ifmsaPage from '../content/schemas/ifmsaPage.js'
+import { IfmsaLinks, IfmsaPoints, StatBand } from '../components/IfmsaSections.jsx'
 
 export default function IFMSAPage() {
   usePageTitle(
@@ -35,6 +12,8 @@ export default function IFMSAPage() {
     'IFMSA at Ain Shams University: AUSSS is the IFMSA-Egypt affiliate at the Faculty of Medicine, with the six standing committees, the SCOPE and SCORE exchanges, and a worldwide network of medical students.',
   )
   useReveal()
+  // The words and figures: the block `ifmsa.page`, edited by the EB in the portal.
+  const ifmsa = useContentBlock(ifmsaPage)
 
   return (
     <article className="bg-page">
@@ -97,8 +76,8 @@ export default function IFMSAPage() {
 
         {/* Scale */}
         <section className="reveal mx-auto max-w-5xl space-y-12">
-          <StatBand title="IFMSA worldwide" items={ifmsaScale.ifmsa} />
-          <StatBand title="IFMSA-Egypt" items={ifmsaScale.egypt} />
+          <StatBand title="IFMSA worldwide" items={ifmsa.worldwide} />
+          <StatBand title="IFMSA-Egypt" items={ifmsa.egypt} />
         </section>
 
         {/* Lineage */}
@@ -107,7 +86,7 @@ export default function IFMSAPage() {
             Where AUSSS sits
           </p>
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {ifmsaScale.lineage.map((node, idx) => (
+            {ifmsaLineage.map((node, idx) => (
               <div key={node.name} className="relative">
                 <a
                   href={node.href}
@@ -134,7 +113,7 @@ export default function IFMSAPage() {
                     {node.note}
                   </span>
                 </a>
-                {idx < ifmsaScale.lineage.length - 1 && (
+                {idx < ifmsaLineage.length - 1 && (
                   <svg
                     viewBox="0 0 24 24"
                     className="absolute left-full top-1/2 hidden h-6 w-6 -translate-y-1/2 text-accent sm:block"
@@ -157,19 +136,7 @@ export default function IFMSAPage() {
 
         {/* Points */}
         <section className="reveal mx-auto max-w-5xl">
-          <div className="grid gap-6 md:grid-cols-3">
-            {ifmsa.points.map((p) => (
-              <div
-                key={p.title}
-                className="rounded-2xl border border-line/10 bg-card p-7"
-              >
-                <h3 className="heading-serif text-xl text-ink">{p.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-soft/70">
-                  {p.body}
-                </p>
-              </div>
-            ))}
-          </div>
+          <IfmsaPoints points={ifmsa.points} />
         </section>
 
         {/* History subpage CTA */}
@@ -213,25 +180,7 @@ export default function IFMSAPage() {
 
         {/* Links */}
         <section className="reveal text-center">
-          <p className="text-sm uppercase tracking-[0.2em] text-soft/50">
-            Learn more
-          </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-4">
-            {ifmsa.links.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
-              >
-                {l.label}
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M7 17 17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
-            ))}
-          </div>
+          <IfmsaLinks links={ifmsa.links} />
           <div className="mt-12">
             <Link
               to="/"
