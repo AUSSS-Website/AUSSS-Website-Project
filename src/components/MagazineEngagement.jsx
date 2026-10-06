@@ -1,15 +1,17 @@
-import { magazineCountersVisible } from '../data/magazineConfig.js'
+import { useSiteSettings } from '../hooks/useSiteSettings.js'
 
 // Like button and live "reads" count for a magazine issue. `engagement` is the
 // page's useMagazineEngagement() result (one reading session, shared with the
 // reader's page tracking). The read is recorded even while the counter UI is
-// hidden (magazineCountersVisible === false), so the numbers keep accumulating
-// for the day the counter is switched on.
+// hidden (the site setting `magazineCountersVisible` is off, as it is by
+// default), so the numbers keep accumulating for the day the counter is
+// switched on in the portal's Site settings.
 export default function MagazineEngagement({ engagement, className = '' }) {
   const { counts, liked, like, enabled } = engagement
+  const visible = useSiteSettings().settings.magazineCountersVisible === true
   if (!enabled) return null
   // Tracking already fired in the hook above, just hide the visible counter.
-  if (!magazineCountersVisible) return null
+  if (!visible) return null
 
   return (
     <div className={`flex flex-wrap items-center gap-3 ${className}`}>

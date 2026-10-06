@@ -1,4 +1,4 @@
-// Monochrome brand glyphs (inherit `currentColor`). Keyed by `socials[].key`.
+// Monochrome brand glyphs (inherit `currentColor`). Keyed by a channel's `network`.
 const PATHS = {
   instagram: (
     <>
@@ -19,6 +19,24 @@ const PATHS = {
   ),
   tiktok: (
     <path d="M16 3c.4 2.6 2 4.2 4.5 4.4v3.1c-1.6.1-3.1-.4-4.5-1.3v6.3a6 6 0 1 1-6-6c.3 0 .7 0 1 .1v3.2a3 3 0 1 0 2 2.8V3h3z" />
+  ),
+  linkedin: (
+    <>
+      <rect x="2" y="2" width="20" height="20" rx="5.5" />
+      <path d="M7.5 10.5V17M7.5 7.2v.1M11.5 17v-6.5M11.5 13.2c0-1.6 1.1-2.7 2.5-2.7s2.5 1.1 2.5 2.7V17" />
+    </>
+  ),
+  youtube: (
+    <>
+      <rect x="2" y="5" width="20" height="14" rx="4.5" />
+      <path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor" />
+    </>
+  ),
+  x: (
+    <>
+      <path d="M4 4h4.2L20 20h-4.2z" />
+      <path d="M19.5 4l-6.6 7.2M11.1 12.8L4.5 20" />
+    </>
   ),
 }
 

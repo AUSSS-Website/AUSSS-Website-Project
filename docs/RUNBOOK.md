@@ -525,9 +525,9 @@ Where the data lives:
 The public site reads all of this over plain REST (`src/lib/supabaseRest.js`)
 with the publishable key, caches the last response in `localStorage`, and
 falls back to `src/data/society.js` when the env vars are absent. Open Calls
-cards are additionally gated by `callsLiveEnabled` in
-`src/data/officersConfig.js` (off while the joining flow is unsettled; officers
-can still prepare calls in the portal).
+cards are additionally gated by the site setting `openCallsLive` ("Show Open
+Calls on the public site" on Site settings; off while the joining flow is
+unsettled, and officers can still prepare calls in the portal). See section 27.
 
 Useful SQL (as `postgres`):
 
@@ -980,8 +980,8 @@ calls `rpc/magazine_track` with `view` (counts the read), then `page` as the fli
 closed), `like` and `download` once per session. No IP, user agent or account is stored. New
 sessions are capped at 60 a minute. The editor's page shows `rpc/magazine_insights`: totals,
 the share who read to the end, the median page and a bar per page (Readers panel). The
-on-page counter stays hidden (`magazineCountersVisible` in `src/data/magazineConfig.js`)
-until the EB wants it shown.
+on-page counter stays hidden until the EB switches it on (the site setting
+`magazineCountersVisible`, "Show reads and likes on the magazine" on Site settings; section 27).
 
 **Checks.** Signed in as an editor: `/portal/magazine` lists the editions; upload a small PDF to
 a draft, its pages appear and a click on one makes it the cover; set it to Published and it
@@ -1090,14 +1090,17 @@ nslookup -type=TXT resend._domainkey.ausss-ainshams.org 8.8.8.8
 ```
 
 **The site.** `src/data/society.js` gives each role an `email` (the Gmail inbox) and an
-`alias`; `publicEmail()` in `src/data/emailConfig.js` picks which one a page shows. The
-switch `domainEmailsLive` is false until forwarding is proven. To go live:
+`alias`; `publicEmail()` in `src/data/emailConfig.js` picks which one a page shows,
+following the site setting `domainEmailsLive` ("Show the @ausss-ainshams.org addresses" on
+the portal's Site settings, section 27). It stays off until forwarding is proven. To go live:
 
 1. The MX lookup above answers, and every rule shows as verified in Squarespace.
 2. Send a message to each address from an account outside the society and confirm it
    arrives in the right inbox.
-3. Set `domainEmailsLive = true`, bump `LAST_UPDATED` in `src/pages/PrivacyPage.jsx` (the
-   policy gains the line about forwarding), commit and deploy.
+3. Switch it on in Site settings. Visitors see the new addresses on their next page load;
+   the saved pages follow at the next rebuild, which the change asks for by itself. The
+   privacy policy gains its line about forwarding on its own; bump `LAST_UPDATED` in
+   `src/pages/PrivacyPage.jsx` with the next code change.
 
 A role whose inbox owner has not verified yet can be held back by removing its `alias`
 in `society.js`; it keeps showing the Gmail inbox.
@@ -1648,7 +1651,7 @@ of `npm run walk:portal-sample`. A signed-in walk of the portal against the real
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
 Built 2026-10-05. Migrations `20261005210001_content_blocks` and
-`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`), pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_contact_block`), pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
 
 **What it is.** A part of a public page that is plain content (the questions on `/join`
 first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The
@@ -1689,6 +1692,7 @@ opens each in the same form, drawn from the block's field schema.
 | `join.faq` | `/join` | the EB | the questions and answers |
 | `exchange.incomings` | `/exchange/incomings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What we give you", the "Why choose us" reasons (heading, text, optional picture), "How you get to us", the "Before you land" tips, which gallery album to show, whether to show the contact cards, the link to the IFMSA-Egypt welcome booklet, the links at the foot |
 | `exchange.outgoings` | `/exchange/outgoings` | the exchange officers (SCOPE, SCORE) and the EB | the introduction, the figures under it, "What the exchange gives you", the "Why go" reasons (heading, text, optional picture), "How to apply", the "Before you fly" tips, which gallery album to show, whether to show the contact cards, the links at the foot |
+| `site.contact` | the footer of every page, and `/contact` | the EB | the motto and line under the footer logo, the address card and the map pin, the official social channels (network, handle, address, one line), the two introductions on `/contact` (section 27) |
 
 **The incomings page is written for a student abroad** who is choosing which local
 committee to spend an exchange month with, and it speaks in our own voice: "we", "our",
@@ -1807,3 +1811,42 @@ checks, hidden products not sold, a closed shop refusing orders, the rebuild req
 `npm run walk:portal-sample -- dark,light 320,1440 /portal/merch`. In Git Bash, prefix that
 with `MSYS_NO_PATHCONV=1`, or the route argument is turned into a Windows path and nothing
 is walked.
+
+## 27. Switches and contact details (Phase 6, step 3)
+
+Built 2026-10-07. Migration `20261007090001_contact_block`, pgTAP file
+`310-site-switches.sql`, unit tests `src/data/emailConfig.test.js` and
+`src/content/siteContact.test.js`.
+
+**The switches.** Three switches that were constants in config files are site settings now,
+on the portal's **Site settings** page (EB only). A missing row means off.
+
+| Setting | Label on Site settings | When on |
+| --- | --- | --- |
+| `openCallsLive` | Show Open Calls on the public site | the calls officers publish show on their committee pages with an Apply button |
+| `magazineCountersVisible` | Show reads and likes on the magazine | the reads count and a Like button show under each edition (reads are recorded either way) |
+| `domainEmailsLive` | Show the @ausss-ainshams.org addresses | every page shows a role's address on the domain instead of its Gmail inbox (section 19 says when) |
+
+`src/hooks/useSiteSettings.js` is the one reader: one fetch serves the whole page and is
+repeated at most once a minute, the last answer is kept in the browser, and the build writes
+the settings into the saved pages (`scripts/prerender.mjs` fetches them, `src/entry-server.jsx`
+bakes them), so the addresses in the HTML, the search-engine data and `llms.txt` follow the
+switch. A change to any setting asks for a rebuild (trigger `touch_site` on `site_settings`).
+Pages get an address through `usePublicEmail()`, never `publicEmail()` alone, so they follow
+the switch.
+
+**The footer and contact details** are the block `site.contact` (section 25), edited by the
+EB on **Site content**: the motto and the line under the footer logo, the address card
+("Where we are", the address lines), the map pin (the text Google Maps searches for; the map's
+host is fixed and the text is encoded, so an edit can only move the pin), the official social
+channels and the two introductions on `/contact`. A channel is a network (Instagram, Facebook,
+TikTok, LinkedIn, YouTube or X, which picks the icon and the name), the handle, the profile's
+address and one line. The channels are also the society's `sameAs` profiles in the search
+engine data, with the LinkedIn page always added. Not in the block: the inboxes on `/contact`
+(they belong to the positions, `src/data/society.js`), the footer's links, and the IFMSA
+logos.
+
+**Checks.** `npm run walk:portal-sample -- light,dark 375,1440 /portal/content/site.contact`
+and `/portal/admin/settings` (with `MSYS_NO_PATHCONV=1` in Git Bash); `npm run walk -- --only
+/contact --public-only`.
+

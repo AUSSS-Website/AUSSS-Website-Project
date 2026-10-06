@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { society } from '../data/society.js'
-import { domainEmailsLive } from '../data/emailConfig.js'
+import { usePublicEmail, useSiteSettings } from '../hooks/useSiteSettings.js'
 
 // Plain-language privacy policy for ausss-ainshams.org and the members portal.
 // Written to be read by a medical student in two minutes, not by a lawyer.
@@ -10,11 +10,11 @@ import { domainEmailsLive } from '../data/emailConfig.js'
 // this repo. Update LAST_UPDATED whenever the substance changes.
 const LAST_UPDATED = '4 October 2026'
 // (newsletter sign-up removed the same day; only the waitlist form remains)
-const SECGEN_EMAIL = society.contactEmail
 const IFMSA_EXCHANGES_PRIVACY = 'https://ifmsa.org/exchanges-privacy/'
 const IFMSA_PRIVACY = 'https://ifmsa.org/privacy/'
 
-const SECTIONS = [
+// `domainEmails` is the site setting that shows the addresses on the domain.
+const privacySections = (domainEmails) => [
   {
     id: 'who',
     title: 'Who we are',
@@ -79,7 +79,7 @@ const SECTIONS = [
       'Vercel hosts the website and counts page views.',
       'Google provides sign-in, and Google Sheets and Drive hold form submissions and society documents.',
       'Resend delivers sign-in and notification emails.',
-      ...(domainEmailsLive
+      ...(domainEmails
         ? ['Squarespace, our domain registrar, forwards mail sent to an @ausss-ainshams.org address to the officer’s Google inbox.']
         : []),
     ],
@@ -128,6 +128,9 @@ export default function PrivacyPage() {
     'What AUSSS collects on this site and in the members portal, who can see it, and how IFMSA handles exchange data.',
   )
   useReveal()
+  const domainEmails = useSiteSettings().settings.domainEmailsLive === true
+  const sections = privacySections(domainEmails)
+  const secGenEmail = usePublicEmail()(society.contact)
 
   return (
     <article className="bg-page">
@@ -160,7 +163,7 @@ export default function PrivacyPage() {
 
       <div className="container-prose pb-20 sm:pb-28">
         <nav aria-label="Sections" className="mb-12 flex flex-wrap gap-2">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <a
               key={s.id}
               href={`#${s.id}`}
@@ -172,7 +175,7 @@ export default function PrivacyPage() {
         </nav>
 
         <div className="mx-auto max-w-3xl space-y-10">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <section
               key={s.id}
               id={s.id}
@@ -223,12 +226,12 @@ export default function PrivacyPage() {
               correspondence.
             </p>
             <a
-              href={`mailto:${SECGEN_EMAIL}`}
+              href={`mailto:${secGenEmail}`}
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
             >
               Email the Secretary General
             </a>
-            <p className="mt-3 text-xs text-soft/45">{SECGEN_EMAIL}</p>
+            <p className="mt-3 text-xs text-soft/45">{secGenEmail}</p>
             <p className="mt-6 text-xs text-soft/45">
               See also the{' '}
               <Link to="/constitution" className="underline decoration-line/30 underline-offset-2 hover:text-ink">

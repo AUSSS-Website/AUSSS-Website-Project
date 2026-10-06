@@ -5,8 +5,9 @@
 import joinFaq from './schemas/joinFaq.js'
 import exchangeIncomings from './schemas/exchangeIncomings.js'
 import exchangeOutgoings from './schemas/exchangeOutgoings.js'
+import siteContact from './schemas/siteContact.js'
 
-export const contentSchemas = [joinFaq, exchangeIncomings, exchangeOutgoings]
+export const contentSchemas = [joinFaq, exchangeIncomings, exchangeOutgoings, siteContact]
 
 export function contentSchema(key) {
   return contentSchemas.find((s) => s.key === key) || null

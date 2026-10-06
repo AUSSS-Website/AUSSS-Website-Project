@@ -1,10 +1,12 @@
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { Link } from 'react-router-dom'
-import { committees, society, socials, slugFor } from '../data/society.js'
+import { committees, society, slugFor } from '../data/society.js'
 import { committeeOfficers, resolveBoard, usePeople } from '../lib/people.js'
-import { publicEmail } from '../data/emailConfig.js'
-import SocialIcon from '../components/SocialIcon.jsx'
+import { usePublicEmail } from '../hooks/useSiteSettings.js'
+import { useContentBlock } from '../lib/content.js'
+import siteContact from '../content/schemas/siteContact.js'
+import { SocialCards } from '../components/ContactDetails.jsx'
 
 const isSupport = (g) => /support|division|psd|pnsd|cbsd/i.test(g || '')
 
@@ -61,6 +63,10 @@ export default function ContactPage() {
   // the inboxes are the roles' own and stay as society.js lists them.
   const holders = usePeople()
   const executiveBoard = resolveBoard(holders)
+  const publicEmail = usePublicEmail()
+  const contactEmail = publicEmail(society.contact)
+  // The introductions and the channels: edited by the EB in the portal.
+  const contact = useContentBlock(siteContact)
 
   const unitRows = (c) => {
     const people = committeeOfficers(c, holders)
@@ -89,16 +95,15 @@ export default function ContactPage() {
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Contact us
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
-            Reach the Executive Board, a standing committee or a support
-            division directly, or follow us on our official channels.
+          <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-lg font-light text-soft/75">
+            {contact.contactIntro}
           </p>
-          {society.contactEmail && (
+          {contactEmail && (
             <a
-              href={`mailto:${society.contactEmail}`}
+              href={`mailto:${contactEmail}`}
               className="mt-8 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
             >
-              {society.contactEmail}
+              {contactEmail}
             </a>
           )}
         </div>
@@ -110,34 +115,8 @@ export default function ContactPage() {
           <h2 className="heading-serif text-2xl text-ink sm:text-3xl">
             Follow AUSSS
           </h2>
-          <p className="mt-2 text-sm text-soft/65">
-            Events, announcements and campaigns. Keep up with the society on
-            our official channels.
-          </p>
-          <div className="mt-6 grid gap-6 sm:grid-cols-3">
-            {socials.map((s) => (
-              <a
-                key={s.key}
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col items-center rounded-3xl border border-line/10 bg-card p-8 text-center transition-all duration-500 hover:-translate-y-1.5 hover:border-medical/40 hover:shadow-2xl hover:shadow-forest-950/40"
-              >
-                <span className="grid h-16 w-16 place-items-center rounded-2xl bg-page text-accent transition-colors group-hover:bg-cta group-hover:text-on-cta">
-                  <SocialIcon name={s.key} className="h-8 w-8" />
-                </span>
-                <h3 className="heading-serif mt-6 text-2xl text-ink">
-                  {s.name}
-                </h3>
-                <p className="mt-2 break-words text-sm font-medium text-accent">
-                  {s.handle}
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-soft/65">
-                  {s.blurb}
-                </p>
-              </a>
-            ))}
-          </div>
+          <p className="mt-2 whitespace-pre-line text-sm text-soft/65">{contact.followIntro}</p>
+          <SocialCards socials={contact.socials} />
         </section>
 
         <Group title="Executive Board">

@@ -8,6 +8,7 @@ import ImageTrail from '../components/ImageTrail.jsx'
 import GalleryAurora from '../components/GalleryAurora.jsx'
 import { findAlbum, useGallery } from '../lib/gallery.js'
 import { society } from '../data/society.js'
+import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
 // The albums come from the database (the PNSD officers edit them in the portal);
 // src/lib/gallery.js decides what to show while the live document loads. A photo
@@ -330,15 +331,16 @@ function AlbumView({ album }) {
 // ───────────────────────── Disclaimer ─────────────────────────
 
 function GalleryDisclaimer() {
+  const email = usePublicEmail()(society.contact)
   return (
     <p className="mx-auto mt-12 max-w-2xl text-center text-xs leading-relaxed text-soft/45">
       These photos were taken at society events and shared by AUSSS members. If
       you&rsquo;d like a photo of you taken down, email{' '}
       <a
-        href={`mailto:${society.contactEmail}?subject=Photo%20removal%20request`}
+        href={`mailto:${email}?subject=Photo%20removal%20request`}
         className="text-accent underline-offset-2 transition-colors hover:text-ink hover:underline"
       >
-        {society.contactEmail}
+        {email}
       </a>{' '}
       and we&rsquo;ll remove it promptly.
     </p>

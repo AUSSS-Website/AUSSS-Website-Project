@@ -3,9 +3,9 @@ import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import PdfFrame from '../components/PdfFrame.jsx'
 import { society } from '../data/society.js'
+import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
 const CONSTITUTION_PDF = '/assets/docs/AUSSS-Constitution-and-Bylaws.pdf'
-const SECGEN_EMAIL = society.contactEmail
 
 // How the document is amended, summarised straight from the Constitution &
 // Bylaws (section references in parentheses), so members know the real process.
@@ -41,6 +41,7 @@ const AMENDMENT_STEPS = [
 export default function ConstitutionPage() {
   usePageTitle('Constitution')
   useReveal()
+  const secGenEmail = usePublicEmail()(society.contact)
 
   return (
     <article className="bg-page">
@@ -165,12 +166,12 @@ export default function ConstitutionPage() {
               correspondence.
             </p>
             <a
-              href={`mailto:${SECGEN_EMAIL}`}
+              href={`mailto:${secGenEmail}`}
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
             >
               Email the Secretary General
             </a>
-            <p className="mt-3 text-xs text-soft/45">{SECGEN_EMAIL}</p>
+            <p className="mt-3 text-xs text-soft/45">{secGenEmail}</p>
           </div>
         </section>
       </div>

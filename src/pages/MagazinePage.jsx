@@ -7,6 +7,7 @@ import CanvaFrame from '../components/CanvaFrame.jsx'
 import ShareBar from '../components/ShareBar.jsx'
 import MagazineEngagement from '../components/MagazineEngagement.jsx'
 import { useMagazineEngagement } from '../hooks/useMagazineEngagement.js'
+import { usePublicEmail } from '../hooks/useSiteSettings.js'
 import GalleryAurora from '../components/GalleryAurora.jsx'
 
 // The flipbook pulls in react-pageflip and preloads every page image, so it is
@@ -195,7 +196,8 @@ function MagazineReader({ issue, onPage }) {
 
 // Placeholder for a known back-issue we haven't tracked down a copy of yet.
 function MissingPanel({ issue }) {
-  const { team, email } = ARCHIVE_CONTACT
+  const team = ARCHIVE_CONTACT?.abbr || 'CBSD'
+  const email = usePublicEmail()(ARCHIVE_CONTACT)
   return (
     <div className="flex aspect-[1/1] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center sm:aspect-[4/3]">
       <span className="text-soft/45">

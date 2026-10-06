@@ -74,6 +74,7 @@ const tables = {
     { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
     // nothing saved yet: the editor opens on the copy that ships in the code
     { key: 'exchange.incomings', editors: ['scope', 'score'], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
+    { key: 'site.contact', editors: [], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
   ],
   orders: [
     { id: 'o-1', ref: 'AUSSS-7F3K2Q', status: 'new', name: 'Sample Buyer', email: 'buyer1@example.com', phone: '01000000001', is_member: true, lc: '', year: '3rd year', payment_method: 'instapay', items: [{ product_id: 'tshirt-55', name: 'AUSSS T-Shirt, 55th Limited Edition', size: 'L', design: '', qty: 2, unit_price: 300, line_total: 600 }, { product_id: 'notebook', name: 'AUSSS Notebook', size: '', design: 'Support Divisions', qty: 1, unit_price: 40, line_total: 40 }], subtotal: 640, client_subtotal: 640, price_flag: '', notes: '', officer_notes: '', receipt_path: 'o-1.jpg', created_at: iso(0.2), updated_at: iso(0.2) },
@@ -109,7 +110,7 @@ const ROUTES = [
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
   '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
-  '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/admin/audit',
+  '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 
 function measureOverflow() {

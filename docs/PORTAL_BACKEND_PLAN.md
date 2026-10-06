@@ -855,10 +855,17 @@ request is merged.
    cart and checkout read the table, the orders RPC no longer sells a hidden
    product, and `ORDERS_OPEN` became the site setting `merchOrdersOpen`;
    RUNBOOK section 26. The booklet and the payment methods stay files), events, home page sections, exchange and IFMSA copy,
-   footer and contact details, and feature flags (the switches that live in
-   config files today, `callsLiveEnabled`, `magazineCountersVisible` and
-   `domainEmailsLive`, become site settings). Magazine issues, the first aim
-   of this phase when the plan was written, have been editable since Phase 5.
+   footer and contact details, and feature flags (**both built 2026-10-07**,
+   RUNBOOK section 27: the footer, the address, the map pin and the official
+   social channels are the block `site.contact`, edited by the EB; the three
+   switches that were constants in config files became the site settings
+   `openCallsLive`, `magazineCountersVisible` and `domainEmailsLive`, written
+   into the saved pages by the build, with a rebuild on every change).
+   Magazine issues, the first aim of this phase when the plan was written,
+   have been editable since Phase 5. **Events wait on a decision:** the site
+   has no events page today (the old calendar embed was removed in the
+   clean-up of 2026-09-24), so where events appear and who publishes them is
+   the webmaster's call before anything is built.
 
 #### Phase 7. Sustain
 
@@ -934,7 +941,7 @@ Waiting on people:
 
 - **Backlinks** from IFMSA-Egypt's LC list (requested by the President or
   the VPE) and the faculty site (5a step 1).
-- **Role addresses on the domain:** built behind `domainEmailsLive`, waiting
+- **Role addresses on the domain:** built behind the site setting `domainEmailsLive`, waiting
   on the forwarding rules at the registrar and each inbox owner's
   verification (RUNBOOK section 19).
 - **The exchange portal link:** changed by the exchange officers when the
@@ -944,7 +951,7 @@ Parked:
 
 - **The portal inside the site:** staying signed in while browsing the public
   pages and applying to Open Calls as a member, together with turning the
-  public Open Calls cards on (`callsLiveEnabled`). Its earliest sensible
+  public Open Calls cards on (the site setting `openCallsLive`). Its earliest sensible
   place is after 5d, when members have accounts.
 - **The website guide:** one PDF with screenshots of every page and portal
   feature, parked until development ends (phase 7, step 4). The page-walk

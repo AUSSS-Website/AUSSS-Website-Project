@@ -1,4 +1,3 @@
-import { callsLiveEnabled } from '../data/officersConfig.js'
 import { restRpc, restSelect } from './supabaseRest.js'
 import { makeReference } from './reference.js'
 
@@ -12,14 +11,14 @@ import { makeReference } from './reference.js'
 // officer side lives in src/portal/officerQueries.js.
 //
 // Every function resolves to { ok: true, … } or { ok: false, error } so call
-// sites need one branch, not a try/catch each.
+// sites need one branch, not a try/catch each. Whether the public pages show
+// calls at all is the site setting `openCallsLive` (src/hooks/useCalls.js).
 
 const REFERENCE_PREFIX = 'CALL'
 
 // Public list, keyed by committee slug. Live calls only, soonest deadline
 // first, undated ones last (the view orders them).
 export async function fetchCalls() {
-  if (!callsLiveEnabled) return {}
   const rows = await restSelect('open_calls', {
     select: 'id,slug,title,kind,summary,description,commitment,deadline,positions,questions',
   })
@@ -32,7 +31,6 @@ export async function fetchCalls() {
 }
 
 export async function submitApplication({ callId, positions, answers, ...applicant }) {
-  if (!callsLiveEnabled) return { ok: false, error: 'Open Calls isn’t set up yet.' }
   const ref = makeReference(REFERENCE_PREFIX)
   try {
     const res = await restRpc('submit_application', {

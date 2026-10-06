@@ -16,17 +16,13 @@ import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
 import { readJson } from './localCache.js'
 import { pageUrls } from './pageImages.js'
 import { committees } from '../data/society.js'
-import { publicEmail } from '../data/emailConfig.js'
 
 const CACHE_KEY = 'ausss-magazine-snapshot'
 const GLOBAL_KEY = '__AUSSS_MAGAZINE__'
 
 // Who to reach about missing editions. CBSD produces the magazine, so its inbox
-// owns archive requests.
-export const ARCHIVE_CONTACT = {
-  team: 'CBSD',
-  email: publicEmail(committees.find((c) => c.abbr === 'CBSD')),
-}
+// owns archive requests. The page shows its address through usePublicEmail().
+export const ARCHIVE_CONTACT = committees.find((c) => c.abbr === 'CBSD')
 
 function normalizeIssue(m) {
   const count = Number(m.pages?.count) || 0

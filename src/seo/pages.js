@@ -12,8 +12,10 @@
 // Not listed on purpose: /portal/** (sign-in only), /login,
 // /account, /merch/checkout, /social, /quiz and the singular exchange aliases
 // (all redirects or private surfaces).
-import { committees, slugFor, society, socials, exchange } from '../data/society.js'
+import { committees, slugFor, society, exchange } from '../data/society.js'
 import joinFaqSchema from '../content/schemas/joinFaq.js'
+import siteContactSchema from '../content/schemas/siteContact.js'
+import { publicEmail } from '../data/emailConfig.js'
 import { resolveDoc } from '../content/schema.js'
 import { markdownToText } from '../lib/markdown.js'
 
@@ -31,7 +33,13 @@ const abs = (path) => (path.startsWith('http') ? path : `${SITE_URL}${path}`)
 // Google merges the facts instead of seeing ten unrelated organisations.
 export const ORG_ID = `${SITE_URL}/#organization`
 
-export function organizationJsonLd() {
+// The LinkedIn page is an official profile even while it is not one of the
+// channels the footer shows.
+const LINKEDIN = 'https://www.linkedin.com/company/ausss'
+
+// `contact` is the published block `site.contact` (address, motto, channels),
+// `email` the society's public address as the site shows it.
+export function organizationJsonLd(contact, email) {
   return {
     '@context': 'https://schema.org',
     '@type': 'EducationalOrganization',
@@ -49,14 +57,14 @@ export function organizationJsonLd() {
     url: `${SITE_URL}/`,
     logo: DEFAULT_IMAGE,
     image: DEFAULT_IMAGE,
-    slogan: 'Life Savers, Change Makers',
+    slogan: contact.motto,
     description:
       'The student-run scientific society of the Faculty of Medicine, Ain Shams University, Cairo: six IFMSA standing committees and four support divisions running medical research, public health campaigns, medical education and international student exchange since 1971.',
     foundingDate: '1971',
-    email: society.contactEmail,
+    email,
     // Every profile Google already ranks for "AUSSS": tells it they are all
     // the same organisation and this site is its home.
-    sameAs: [...socials.map((s) => s.href), 'https://www.linkedin.com/company/ausss'],
+    sameAs: [...new Set([...contact.socials.map((s) => s.href), LINKEDIN])],
     parentOrganization: {
       '@type': 'CollegeOrUniversity',
       name: 'Ain Shams University, Faculty of Medicine',
@@ -72,14 +80,14 @@ export function organizationJsonLd() {
     ],
     address: {
       '@type': 'PostalAddress',
-      streetAddress: '38 Abbassia, next to Al-Nour Mosque',
+      streetAddress: contact.address.split('\n')[0],
       addressLocality: 'Cairo',
       addressCountry: 'EG',
     },
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'Secretary General',
-      email: society.contactEmail,
+      email,
       availableLanguage: ['en', 'ar'],
     },
   }
@@ -179,8 +187,12 @@ function albumJsonLd(a, path) {
 // cover page becomes the /magazine share card.
 // `content` is the documents published from the portal's content editor
 // (src/lib/content.js shape), for the data that is built from them.
-export function publicPages(albums = [], issues = [], content = {}) {
+// `settings` are the site settings (src/hooks/useSiteSettings.js): the
+// domain-email switch decides which address the JSON-LD gives.
+export function publicPages(albums = [], issues = [], content = {}, settings = {}) {
   const joinFaqs = resolveDoc(joinFaqSchema, content[joinFaqSchema.key]).items
+  const contact = resolveDoc(siteContactSchema, content[siteContactSchema.key])
+  const email = publicEmail(society.contact, settings.domainEmailsLive === true)
   const latest = issues.find((i) => !i.missing && (i.pages?.count || i.canva)) || null
   const latestCover = latest && latest.pages?.count
     ? abs(latest.pages.base + '/' + String(latest.heroPage || 1).padStart(3, '0') + '.jpg')
@@ -192,7 +204,7 @@ export function publicPages(albums = [], issues = [], content = {}) {
       description: BASE_DESCRIPTION,
       changefreq: 'weekly',
       priority: 1.0,
-      jsonLd: [organizationJsonLd(), webSiteJsonLd()],
+      jsonLd: [organizationJsonLd(contact, email), webSiteJsonLd()],
     },
     {
       path: '/join',

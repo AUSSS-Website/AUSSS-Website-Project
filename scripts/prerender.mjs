@@ -103,7 +103,8 @@ function sitemapXml(pages) {
 
 // llms.txt (https://llmstxt.org): a plain-text map of the site for AI
 // assistants, generated from the same page list so it never goes stale.
-function llmsTxt(pages, contactEmail) {
+// `contact` is the block `site.contact` as published (motto and channels).
+function llmsTxt(pages, contactEmail, contact, networkName) {
   const line = (p) => `- [${p.title || 'Home'}](${p.url}): ${p.description}`
   const top = pages.filter((p) => !p.path.startsWith('/committees/') && !p.path.startsWith('/gallery/'))
   const committees = pages.filter((p) => p.path.startsWith('/committees/'))
@@ -111,9 +112,9 @@ function llmsTxt(pages, contactEmail) {
   return [
     "# AUSSS, Ain Shams University Students' Scientific Society",
     '',
-    "> The student-run scientific society of the Faculty of Medicine, Ain Shams University, Cairo, Egypt, founded in 1971. Motto: Life Savers, Change Makers. AUSSS is an autonomous affiliate of IFMSA-Egypt, the Egyptian member of the International Federation of Medical Students' Associations (IFMSA). It runs six IFMSA standing committees (SCOPE, SCORE, SCOME, SCORP, SCOPH, SCORA) and four support divisions (PSD, PNSD, CBSD, RSD): medical research, public health campaigns, medical education, human rights, sexual and reproductive health, and international clinical and research exchanges.",
+    `> The student-run scientific society of the Faculty of Medicine, Ain Shams University, Cairo, Egypt, founded in 1971. Motto: ${contact.motto}. AUSSS is an autonomous affiliate of IFMSA-Egypt, the Egyptian member of the International Federation of Medical Students' Associations (IFMSA). It runs six IFMSA standing committees (SCOPE, SCORE, SCOME, SCORP, SCOPH, SCORA) and four support divisions (PSD, PNSD, CBSD, RSD): medical research, public health campaigns, medical education, human rights, sexual and reproductive health, and international clinical and research exchanges.`,
     '',
-    `Also referred to as the Ain Shams University Student Scientific Society, AUSSS Ain Shams, or IFMSA Ain Shams (it is the IFMSA society of Ain Shams University). Official site: https://ausss-ainshams.org (every page below is served as full HTML). Contact: ${contactEmail} (Secretary General). Instagram, Facebook and TikTok: @ausss_ainshams.`,
+    `Also referred to as the Ain Shams University Student Scientific Society, AUSSS Ain Shams, or IFMSA Ain Shams (it is the IFMSA society of Ain Shams University). Official site: https://ausss-ainshams.org (every page below is served as full HTML). Contact: ${contactEmail} (Secretary General). Official channels: ${contact.socials.map((s) => `${networkName(s.network)} ${s.href}`).join(', ')}.`,
     '',
     '## Pages',
     '',
@@ -251,6 +252,21 @@ async function loadContent(vite) {
   }
 }
 
+// And the site settings (src/hooks/useSiteSettings.js): the switches the EB
+// flips in the portal, such as the domain addresses, so the pages are written
+// the way a visitor sees them. With none, the defaults.
+async function loadSettings(vite) {
+  const mod = await vite.ssrLoadModule('/src/hooks/useSiteSettings.js')
+  try {
+    const live = await mod.fetchSiteSettings()
+    console.log('prerender: site settings from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the site settings (' + err.message + '); the pages use the defaults this build')
+    return { ...mod.SETTING_DEFAULTS }
+  }
+}
+
 // And the merch catalogue (src/lib/merch.js), edited by the EB in the portal.
 // With none, the shop renders the copy that ships in src/data/merchProducts.js.
 async function loadMerch(vite) {
@@ -297,14 +313,15 @@ async function main() {
     const people = await loadPeople(vite)
     const content = await loadContent(vite)
     const merch = await loadMerch(vite)
-    const pages = publicPages(albums, issues, content)
+    const settings = await loadSettings(vite)
+    const pages = publicPages(albums, issues, content, settings)
 
     const seen = new Set()
     const hashes = {}
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues, stories, people, content, merch)
+      const appHtml = await render(page.path, albums, issues, stories, people, content, merch, settings)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }
@@ -318,7 +335,12 @@ async function main() {
       hashes[page.url] = contentHash(html)
     }
     await fs.writeFile(path.join(dist, 'sitemap.xml'), sitemapXml(pages))
-    await fs.writeFile(path.join(dist, 'llms.txt'), llmsTxt(pages, society.contactEmail))
+    const { resolveDoc } = await vite.ssrLoadModule('/src/content/schema.js')
+    const contactSchema = await vite.ssrLoadModule('/src/content/schemas/siteContact.js')
+    const { publicEmail } = await vite.ssrLoadModule('/src/data/emailConfig.js')
+    const contact = resolveDoc(contactSchema.default, content[contactSchema.default.key])
+    const contactEmail = publicEmail(society.contact, settings.domainEmailsLive === true)
+    await fs.writeFile(path.join(dist, 'llms.txt'), llmsTxt(pages, contactEmail, contact, contactSchema.networkName))
     const changed = await changedSinceLive(SITE_URL, hashes)
     await fs.writeFile(path.join(dist, 'page-hashes.json'), JSON.stringify(hashes))
     await fs.writeFile(path.join(dist, 'indexnow-urls.json'), JSON.stringify(changed))
