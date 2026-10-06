@@ -143,7 +143,7 @@ Each gets the columns its Sheet has today, plus proper types and foreign keys.
 | `content_blocks` | Editable page sections that are static today: home sections, executive board, FAQ, exchange copy, IFMSA pages. Columns `page`, `slot`, `data` (jsonb), `status` (`draft`, `published`), `version`. |
 | `magazine_issues` | Replaces `magazine.js`. |
 | `merch_products` | Replaces `merchProducts.js`. |
-| `events` | Replaces the unconfigured Google Calendar embed. |
+| `events` | Replaces the unconfigured Google Calendar embed (removed 2026-09-24). Title, committee (or none), start and end, place, text, picture, sign-up link, published. Built in phase 6, step 4. |
 | `audit_log` | Written by a trigger on every content and roster table: who, what, before, after. |
 
 ### Storage buckets
@@ -509,7 +509,7 @@ dropped; similar tasks were merged. Four rules decided the order:
 | **5b. Portal and people** | 3 | The portal header redone once (notifications bell and new order); tasks finished (date default, duplicate warning, file attachments); the invites screen; one source of truth for people (profile name and photo everywhere, the executive board, the directory) with a rebuild whenever something is published | An officer attaches a file to a new task and is warned about a repeat; the bell shows and clears unread notifications; an officer changes their photo in the portal and the public pages show it with no developer involved. |
 | **5c. One design pass** | 3 | Fluid sizing and light mode done together in one walk of every page, then the deeper magazine page-flip | The page-walk screenshots show every public and portal page reading well from a 320 px phone to a wide desktop, in both themes. |
 | **5d. Pilot and rollout** | 1 of work, across about 6 weeks | A pre-rollout gate (security checklist re-run, backups healthy, DuckDuckGo check); one committee piloting for a month; the member-facing rollout to the roster; the Pro plan decision | One committee has run a real month of work through the portal; 100 members have accounts and the verification backlog is under a day; the Pro plan decision is recorded in section 13. |
-| **6. Site management** | 5, then ongoing | The schema-driven editor; the incomings exchange page as the first page built on it; then FAQ, merch, events, home sections, exchange and IFMSA copy, footer and contact details, and feature flags editable | An officer publishes a change to the FAQ, an event and the incomings page with no developer involved; the LC's link in the exchange portal points at `/exchange/incomings`. |
+| **6. Site management** | 5, then ongoing | The schema-driven editor; the incomings exchange page as the first page built on it; then FAQ, merch, home sections, exchange and IFMSA copy, footer and contact details, and feature flags editable; then the events page (`/events`, committee pages, the home page), published by officers | An officer publishes a change to the FAQ, an event and the incomings page with no developer involved; the LC's link in the exchange portal points at `/exchange/incomings`. |
 | **7. Sustain** | 2, then ongoing | The term-rollover wizard with the gallery archive as one of its steps; the checks repeated every term (restore rehearsal, security checklist, handover review); documentation; the website guide | The first rollover to 2027-28 is done by the EB alone, and it leaves an empty gallery with last term's albums still reachable. |
 
 Roughly 14 weeks of part-time work remain to the end of phase 6. Phase 5d is
@@ -854,7 +854,7 @@ request is merged.
    edits `merch_products` whole, with pictures in the bucket `merch`; the shop,
    cart and checkout read the table, the orders RPC no longer sells a hidden
    product, and `ORDERS_OPEN` became the site setting `merchOrdersOpen`;
-   RUNBOOK section 26. The booklet and the payment methods stay files), events, home page sections, exchange and IFMSA copy,
+   RUNBOOK section 26. The booklet and the payment methods stay files), home page sections, exchange and IFMSA copy,
    footer and contact details, and feature flags (**both built 2026-10-07**,
    RUNBOOK section 27: the footer, the address, the map pin and the official
    social channels are the block `site.contact`, edited by the EB; the three
@@ -868,10 +868,40 @@ request is merged.
    exchange pages (step 2 and its outgoings twin); the short hub at
    `/exchange` stays in the code.
    Magazine issues, the first aim of this phase when the plan was written,
-   have been editable since Phase 5. **Events wait on a decision:** the site
-   has no events page today (the old calendar embed was removed in the
-   clean-up of 2026-09-24), so where events appear and who publishes them is
-   the webmaster's call before anything is built.
+   have been editable since Phase 5. Events were on this list too; they are
+   step 4, because they are a new page and not an editor for one that exists.
+   Step 3 is built on pull requests 11, 12 and 13 (not merged on 2026-10-07).
+4. **The events page (the webmaster, 2026-10-07).** The site has had no list
+   of events since the unconfigured Google Calendar embed was removed in the
+   clean-up of 2026-09-24. Events are many dated records that officers add
+   one at a time and the pages sort and split by date, so they get a table of
+   their own and not a content block.
+   - **Data:** `events` (section 5): title, the committee it belongs to (none
+     for a society-wide event), start and optional end (Cairo time), place, a
+     short text (markdown), a picture (public bucket `event-media`), a sign-up
+     link, and whether it is published. The committee's officers and the EB
+     add, edit and remove; visitors read the published ones through one RPC;
+     a change asks for a rebuild of the public pages (section 23, "rebuild on
+     publish").
+   - **Public pages:** `/events`, upcoming events first and past ones under
+     them; each committee page shows its own upcoming events; the home page
+     shows the next three. Read like the gallery (what the build baked in,
+     then the browser's last copy, then the live answer), listed in the
+     sitemap, and each event carries schema.org `Event` data so search
+     engines can show it.
+   - **Portal:** an Events tab on each committee's page in the portal, with
+     the same editor for the EB's society-wide events.
+   - **To settle with the webmaster when the step starts:** whether "Events"
+     gets its own place in the header; whether past events stay on `/events`
+     or move to a per-term archive at rollover (phase 7, step 1, beside the
+     gallery archive); and whether the first version should be smaller (the
+     home page list alone).
+   - **Why here:** it is the last piece of this phase's "done when" (an
+     officer publishes an event with no developer), it reuses what the phase
+     built (the editor patterns, the rebuild, the committee pages and the
+     home page just made editable), and building it before the 5d pilot
+     invites start lets the piloting committee publish its events through
+     the portal during its month.
 
 #### Phase 7. Sustain
 
@@ -927,7 +957,8 @@ sits now.
 | Sheets mirrors | Phase 5, deferred by decision 6 | 12.5, on request |
 | Schema-driven editor | Phase 6 | 6 step 1 |
 | Executive board editable | Phase 6 | 5b step 4 |
-| FAQ, merch, events and home sections editable | Phase 6 | 6 step 3 |
+| FAQ, merch, events and home sections editable | Phase 6 | 6 step 3 (events: 6 step 4) |
+| Events page (`/events`, committee pages, the home page) | New, 2026-10-07 | Phase 6, step 4 |
 | Magazine editable | Phase 6 | Shipped in Phase 5 |
 | Content snapshot pipeline | Phase 6 | 5b step 4 (the rebuild trigger; the build-time snapshot shipped with the pre-render) |
 | Backups and a restore rehearsal | Phase 7 | 5a step 2, rehearsal repeated in 7 step 2 |
