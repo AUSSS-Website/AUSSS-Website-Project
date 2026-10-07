@@ -97,9 +97,10 @@ create table if not exists public.events (
     starts_at >= '2000-01-01' and starts_at < '2100-01-01'
     and (ends_at is null or ends_at >= starts_at)
   ),
-  -- an uploaded file (an https address) or one that ships with the site (/assets/…)
+  -- an uploaded file (an https address) or one that ships with the site (/assets/…); never
+  -- '//host' or '/\host', which a browser reads as another site
   constraint events_image_url check (
-    image = '' or (length(image) <= 500 and image ~ '^(https://|/[^/])[^\s<>"'']*$')
+    image = '' or (length(image) <= 500 and image ~ '^(https://|/[^/\\])[^\s<>"'']*$')
   ),
   constraint events_signup_url check (
     signup_url = '' or (length(signup_url) <= 500 and signup_url ~ '^https://[^\s<>"'']+$')
@@ -193,7 +194,8 @@ begin
   end if;
 
   if new.signup_url <> '' then
-    if new.signup_url !~* '^[a-z][a-z0-9+.-]*:' then
+    -- 'forms.gle/x' and 'example.org:8080/x' have no scheme; 'mailto:x' has one, and is refused
+    if new.signup_url !~* '^[a-z][a-z0-9+.-]*:(?![0-9])' then
       new.signup_url := 'https://' || new.signup_url;
     end if;
     new.signup_url := regexp_replace(new.signup_url, '^https?://', 'https://', 'i');
@@ -204,7 +206,8 @@ begin
 
   if tg_op = 'INSERT' then
     new.created_by := auth.uid();
-    v_slug := app.slugify(coalesce(v_given, new.title));
+    -- slugify cuts at 60 characters, which can leave a hyphen at the end
+    v_slug := btrim(app.slugify(coalesce(v_given, new.title)), '-');
     if v_slug = '' then
       v_slug := 'event';
     end if;
@@ -220,7 +223,13 @@ begin
   else
     new.created_by := old.created_by;
     new.created_at := old.created_at;
-    v_slug := coalesce(nullif(app.slugify(v_given), ''), old.slug);
+    -- An untouched link stays as it is: it may be longer than slugify makes a new one
+    -- (a 60-character title plus its year), and re-making it would change a shared link.
+    if new.slug is not distinct from old.slug then
+      v_slug := old.slug;
+    else
+      v_slug := coalesce(nullif(btrim(app.slugify(v_given), '-'), ''), old.slug);
+    end if;
     if v_slug = 'archive' then
       raise exception 'The link /events/archive is the archive''s own. Choose another.' using errcode = '22023';
     end if;

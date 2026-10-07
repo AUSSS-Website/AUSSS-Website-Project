@@ -5,7 +5,7 @@
 -- web address; publishing asks for a rebuild and a draft does not; and the picture bucket
 -- follows the event's editors.
 begin;
-select plan(33);
+select plan(37);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -128,11 +128,42 @@ select throws_ok(
   '23514', null,
   'a picture must be an https address or a file of the site'
 );
+select lives_ok(
+  $$ update public.events set signup_url = 'example.org:8080/register' where slug = 'world-health-day-2027' $$,
+  'a sign-up link with a port and no scheme is taken'
+);
+select is(
+  (select signup_url from public.events where slug = 'world-health-day-2027'),
+  'https://example.org:8080/register',
+  'and given https://'
+);
+
+-- a link at full length (a 60-character title and its year) survives an edit untouched
+insert into public.events (committee_id, title, starts_at)
+values ((select id from public.committees where slug = 'scoph'),
+        'A very long workshop title that runs well past sixty characters in all', '2027-05-01 12:00+03');
+update public.events set place = 'Hall 3'
+where title = 'A very long workshop title that runs well past sixty characters in all';
+select is(
+  (select length(slug) || ' ' || right(slug, 5) from public.events
+   where title = 'A very long workshop title that runs well past sixty characters in all'),
+  (select length(app.slugify('A very long workshop title that runs well past sixty characters in all')) + 5 || ' -2027'),
+  'an edit keeps a long link as it was made'
+);
+insert into public.events (committee_id, title, starts_at)
+values ((select id from public.committees where slug = 'scoph'), repeat('x', 59) || ' tail', '2027-05-02 12:00+03');
+select is(
+  (select slug from public.events where title = repeat('x', 59) || ' tail'),
+  repeat('x', 59) || '-2027',
+  'a link cut at a hyphen loses the hyphen before the year'
+);
 
 -- ---- all day -----------------------------------------------------------------------------------
 insert into public.events (committee_id, title, starts_at, ends_at, all_day)
 values ((select id from public.committees where slug = 'scoph'), 'Summer camp',
         '2027-07-10 15:00+03', '2027-07-12 11:00+03', true);
+-- event_over_at is the database's own helper: checked as its owner
+select tests.clear_auth();
 select is(
   (select starts_at from public.events where title = 'Summer camp'),
   '2027-07-10 00:00'::timestamp at time zone 'Africa/Cairo',
@@ -150,7 +181,6 @@ select is(
 );
 
 -- ---- drafts, publishing and the rebuild --------------------------------------------------------
-select tests.clear_auth();
 select ok(
   (select requested_at is null from app.site_rebuild where id),
   'a draft does not ask for a rebuild'
