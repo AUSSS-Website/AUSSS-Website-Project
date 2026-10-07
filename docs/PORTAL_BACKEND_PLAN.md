@@ -909,13 +909,13 @@ request is merged.
      the same editor for the EB's society-wide events.
    - **Built 2026-10-07** on its own branch, stacked on pull request 13
      (not merged when written): migration `20261007120001_events`, the
-     public pages, the portal's Events page and committee tab; RUNBOOK
-     section 28 describes every part. Additions decided while building: an
-     event can be **all day** (one or more whole days, no times) or, at the
-     webmaster's request the same day, **multiple days** each with its own
-     start and end; the new-event form opens on today's date and time; and
-     the header between 1024 and 1279 px has narrower gaps and a shorter
-     magazine pill so the new link fits.
+     public pages, the portal's Events page and committee tab. RUNBOOK
+     section 28 describes every part. Four things were added while
+     building. An event can be all day (one or more whole days, no times),
+     or run over multiple days with hours of its own each day (the
+     webmaster asked for this the same day). The new-event form opens on
+     today's date and time. Between 1024 and 1279 px the header has
+     narrower gaps and a shorter magazine pill, so the new link fits.
    - **Why here:** it is the last piece of this phase's "done when" (an
      officer publishes an event with no developer), it reuses what the phase
      built (the editor patterns, the rebuild, the committee pages and the

@@ -58,8 +58,8 @@ function NewEventForm({ committee, choices }) {
   return (
     <Panel title="New event">
       <p className="mt-2 text-xs text-soft/55">
-        It starts as a draft that only editors see. Its own page takes the rest: the place, the
-        text, a picture and the sign-up link, and publishes it.
+        It starts as a draft that only editors can see. On its own page you add the place, the
+        text, a picture and the sign-up link, then publish it.
       </p>
       <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">

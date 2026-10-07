@@ -140,7 +140,7 @@ function ArchiveView() {
       <PageHead
         eyebrow="Archive"
         title="Past events"
-        lead="Everything AUSSS and its committees have run, term by term. An event comes here by itself once it is over."
+        lead="Everything AUSSS and its committees have run, term by term."
       />
       <div className="container-prose pb-24">
         {terms.length === 0 && loading ? (
