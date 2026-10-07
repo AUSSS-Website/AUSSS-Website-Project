@@ -1300,6 +1300,12 @@ broken image, and the pdf.js worker started. Uploads, exports and the receipt vi
 not exercised. The scripted walk of the portal (screenshots at every width) still needs
 the one-time `--login`; Google refuses that automated window, so use the email link.
 
+Both walks also name anything **cut off at the screen's edge inside a fixed bar** (the header,
+the cart pill): `scripts/walk-checks.mjs`, added 2026-10-07. The sideways-scroll measure cannot
+see it, because content that runs out of a fixed bar never makes the page scroll; that is how
+the Members button went missing at 1024 px when Events joined the header. A finding names the
+element and where it runs to, for example `"Members" (948 to 1053)` on a 1024 px screen.
+
 ## 22. Security checklist (Phase 5a)
 
 Repeat this once a term and before the member rollout. Each line says how to check it; a
@@ -1884,8 +1890,20 @@ own in the header, beside the Committees menu, and in the footer. Every date and
 time, whatever the visitor's own time zone (`src/lib/eventTime.js`; Egypt's summer time comes
 from the time zone data, never a fixed offset).
 
+**Three kinds of event.** In the portal an event is **One time** (a start, and an end when
+known), **All day** (one or more whole days without times) or **Multiple days** (two to
+fourteen days, each with its own start and end; "Add a day" copies the last day's hours onto the
+next date). The new-event form opens on One time, starting now. On the site a multiple-day event
+reads "12–14 Nov 2026 · 3 days" on its card, its page shows one card per day with that day's
+hours, and Add to calendar puts every day in the calendar as an entry of its own (the Google
+Calendar link, which holds one entry, is left out for it). In the database the days are the
+column `days`; the trigger puts them in order, refuses overlaps and a day that ends before it
+starts, and takes the event's start and end from the first and last day, so everything that
+sorts or archives by those two needs nothing more.
+
 **Over and archived.** An event is over at its end, or at its start when it has none; an
-all-day event at the end of its last day. Nothing changes in the database when that happens:
+all-day event at the end of its last day; a multiple-day event at the end of its last day's
+hours. Nothing changes in the database when that happens:
 the pages compare the time with the clock each time they render, and the nightly rebuild (section
 23) moves the saved pages along. So an event moves to the archive by itself, its page and link
 keep working, and the term rollover has nothing to do for events. The term an event belongs to
@@ -1918,6 +1936,7 @@ the app, which makes the same file in the browser and downloads it.
 
 **Checks.** `npm test`; `npm run walk:portal-sample -- light,dark 375,1440 /events` (with
 `MSYS_NO_PATHCONV=1` in Git Bash), the same for `/portal/events` and `/committees/scoph`; the
-sample walk has five sample events (two coming up, one all-day draft, two over). The header was
+sample walk has six sample events (three coming up, one of them over multiple days, an all-day
+draft, two over). The header was
 measured with Events in it at 1024, 1100, 1280, 1366, 1440 and 1920 px: between 1024 and 1279 px
 its gaps are narrower and the magazine pill says "Magazine".

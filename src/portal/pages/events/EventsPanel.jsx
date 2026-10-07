@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
-import { cairoLocalToIso, eventWhen } from '../../../lib/eventTime.js'
+import { eventWhen } from '../../../lib/eventTime.js'
 import { isUpcoming, normalizeEvent } from '../../../lib/events.js'
 import { useEventList, useEventMutations } from '../../eventQueries.js'
 import { useCommittees } from '../../officerQueries.js'
+import { defaultSchedule, scheduleProblem, schedulePatch } from '../../eventSchedule.js'
+import ScheduleFields from './ScheduleFields.jsx'
 import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
 // The list of events one person may edit, and the form that starts a new one.
@@ -25,8 +27,9 @@ function NewEventForm({ committee, choices }) {
   const navigate = useNavigate()
   const { create } = useEventMutations()
   const [title, setTitle] = useState('')
-  const [allDay, setAllDay] = useState(false)
-  const [start, setStart] = useState('')
+  // One time, today, at the time the form opens (Cairo clock), until the
+  // officer picks the real start.
+  const [schedule, setSchedule] = useState(() => defaultSchedule())
   // Until a choice is made, the first one (the list may arrive after the form).
   const [chosen, setOwner] = useState('')
   const owner = committee ? committee.id : chosen || choices[0]?.value || ''
@@ -35,17 +38,16 @@ function NewEventForm({ committee, choices }) {
   const submit = async (e) => {
     e.preventDefault()
     setError('')
-    const startsAt = cairoLocalToIso(start)
-    if (!title.trim() || !startsAt || !owner) {
-      setError('Give the event a title and a start.')
+    const issue = !title.trim() ? 'Give the event a title.' : scheduleProblem(schedule)
+    if (issue || !owner) {
+      setError(issue || 'Choose whose event it is.')
       return
     }
     try {
       const row = await create.mutateAsync({
         committeeId: owner === SOCIETY ? null : owner,
         title: title.trim(),
-        startsAt,
-        allDay,
+        schedule: schedulePatch(schedule),
       })
       navigate(`/portal/events/${row.id}`)
     } catch (err) {
@@ -56,8 +58,8 @@ function NewEventForm({ committee, choices }) {
   return (
     <Panel title="New event">
       <p className="mt-2 text-xs text-soft/55">
-        It starts as a draft that only editors see. Its own page takes the rest: the end, the place,
-        the text, a picture and the sign-up link, and publishes it.
+        It starts as a draft that only editors see. Its own page takes the rest: the place, the
+        text, a picture and the sign-up link, and publishes it.
       </p>
       <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -84,30 +86,11 @@ function NewEventForm({ committee, choices }) {
             </select>
           </Field>
         )}
-        <Field label={allDay ? 'First day' : 'Starts (Cairo time)'} htmlFor="ev-new-start">
-          <input
-            id="ev-new-start"
-            className={inputCls}
-            type={allDay ? 'date' : 'datetime-local'}
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            required
-          />
-          <label className="mt-2 inline-flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={allDay}
-              onChange={(e) => {
-                setAllDay(e.target.checked)
-                // keep the day when switching between a date and a time
-                setStart((s) => (e.target.checked ? s.slice(0, 10) : s && s.length === 10 ? `${s}T18:00` : s))
-              }}
-            />
-            All day (no times, one or more whole days)
-          </label>
-        </Field>
+        <div className="sm:col-span-2">
+          <ScheduleFields value={schedule} onChange={setSchedule} idPrefix="ev-new" />
+        </div>
         <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-          <button type="submit" className={primaryBtnCls} disabled={create.isPending || !title.trim() || !start}>
+          <button type="submit" className={primaryBtnCls} disabled={create.isPending || !title.trim()}>
             {create.isPending ? 'Adding…' : 'Add event'}
           </button>
           <ErrorText>{error}</ErrorText>

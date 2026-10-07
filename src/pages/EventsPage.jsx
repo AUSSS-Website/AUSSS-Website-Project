@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-import EventCard from '../components/EventCard.jsx'
+import EventCard, { DateTile, eventAccent } from '../components/EventCard.jsx'
 import Markdown from '../components/Markdown.jsx'
 import ShareBar from '../components/ShareBar.jsx'
 import { committeeBySlug } from '../data/society.js'
 import { readableAccent } from '../lib/color.js'
-import { eventIcs, eventWhen, googleCalendarUrl } from '../lib/eventTime.js'
+import { dayHours, eventDays, eventIcs, eventWhen, googleCalendarUrl } from '../lib/eventTime.js'
 import {
   ARCHIVE_DESCRIPTION,
   ARCHIVE_TITLE,
@@ -89,7 +89,7 @@ function UpcomingView() {
       <PageHead
         eyebrow="Events"
         title="What’s on"
-        lead="Campaigns, workshops, assemblies and socials run by AUSSS and its committees. Every event is in Cairo, and every time on this page is Cairo time."
+        lead="Campaigns, workshops, assemblies and socials run by AUSSS and its committees."
       />
       <div className="container-prose pb-24">
         {upcoming.length === 0 && loading ? (
@@ -276,6 +276,8 @@ function EventView({ ev, events }) {
             </div>
           </dl>
 
+          <DayByDay ev={ev} />
+
           {upcoming ? (
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               {ev.signupUrl && (
@@ -297,14 +299,18 @@ function EventView({ ev, events }) {
                 <CalendarIcon />
                 Add to calendar
               </a>
-              <a
-                href={googleCalendarUrl(ev, { url: pageUrl, details })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 text-sm font-semibold text-soft/65 transition-colors hover:text-ink"
-              >
-                Google Calendar ↗
-              </a>
+              {/* A Google link holds one entry; a multiple-day event's file
+                  holds them all, so it gets the file only. */}
+              {eventDays(ev).length === 0 && (
+                <a
+                  href={googleCalendarUrl(ev, { url: pageUrl, details })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 text-sm font-semibold text-soft/65 transition-colors hover:text-ink"
+                >
+                  Google Calendar ↗
+                </a>
+              )}
             </div>
           ) : (
             <p className="mx-auto mt-8 max-w-3xl rounded-2xl border border-line/10 bg-sunk/60 px-5 py-4 text-sm text-soft/70">
@@ -360,6 +366,35 @@ function EventView({ ev, events }) {
         </div>
       </div>
     </article>
+  )
+}
+
+// A multiple-day event's days, one card each: the day as a calendar leaf in the
+// organiser's colour (as on the event cards), its number and its hours.
+function DayByDay({ ev }) {
+  const days = eventDays(ev)
+  if (days.length === 0) return null
+  const { chip, tint } = eventAccent(ev)
+  return (
+    <section aria-labelledby="multiple-days" className="mx-auto mt-4 max-w-3xl text-left">
+      <h2 id="multiple-days" className="sr-only">
+        Multiple days
+      </h2>
+      <ol className={`grid gap-3 ${days.length === 2 || days.length === 4 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+        {days.map((d, i) => (
+          <li key={d.startsAt} className="flex items-center gap-3 rounded-2xl border border-line/10 bg-card p-3.5">
+            <DateTile ev={d} accent={chip} tint={tint} className="!self-center" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/50">
+                Day {i + 1} of {days.length}
+              </p>
+              {/* One line: three cards share the row on a wide screen. */}
+              <p className="mt-1 whitespace-nowrap text-[15px] font-medium text-ink">{dayHours(d)}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 

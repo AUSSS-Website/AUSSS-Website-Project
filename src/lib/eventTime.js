@@ -128,16 +128,28 @@ function dayRange(a, b, short) {
   return `${a.d}–${b.d} ${monthName(a, short)} ${a.y}`
 }
 
+// The days of a multiple-day event ([{ startsAt, endsAt }], in order), or []
+// for any other event.
+export function eventDays(ev) {
+  return Array.isArray(ev.days) && ev.days.length >= 2 ? ev.days : []
+}
+
 // When an event happens, in words. `short` abbreviates the month and weekday
 // for cards ('Sat 14 Nov 2026, 6:00–8:00 pm').
 //   timed, no end       Saturday 14 November 2026, 6:00 pm
 //   timed, one day      Saturday 14 November 2026, 6:00–8:00 pm
 //   timed, many days    14 November, 6:00 pm – 16 November 2026, 2:00 pm
 //   all day             Saturday 14 November 2026  /  14–16 November 2026
+//   multiple days       12–14 November 2026, 3 days  /  12–14 Nov 2026 · 3 days
 export function eventWhen(ev, { short = false } = {}) {
   const a = cairoParts(ev.startsAt)
   if (!a) return ''
   const b = ev.endsAt ? cairoParts(ev.endsAt) : null
+  const days = eventDays(ev)
+  if (days.length > 0) {
+    const last = cairoParts(days[days.length - 1].startsAt)
+    return `${dayRange(a, last, short)}${short ? ' · ' : ', '}${days.length} days`
+  }
   if (ev.allDay) {
     // An all-day event's end is the midnight its last day starts.
     if (!b || sameDay(a, b)) return `${weekdayName(a, short)} ${dayRange(a, null, short)}`
@@ -148,6 +160,15 @@ export function eventWhen(ev, { short = false } = {}) {
   if (sameDay(a, b)) return `${day}, ${clockRange(a, b)}`
   const startYear = a.y === b.y ? '' : ` ${a.y}`
   return `${a.d} ${monthName(a, short)}${startYear}, ${clock(a)} – ${b.d} ${monthName(b, short)} ${b.y}, ${clock(b)}`
+}
+
+// The hours of one day of a multiple-day event: '10:00 am – 4:00 pm', or with
+// the next day's weekday when it runs past midnight ('10:00 pm – Fri 2:00 am').
+export function dayHours(day) {
+  const a = cairoParts(day.startsAt)
+  const b = cairoParts(day.endsAt)
+  if (!a || !b) return ''
+  return sameDay(a, b) ? clockRange(a, b) : `${clock(a)} – ${weekdayName(b, true)} ${clock(b)}`
 }
 
 // The tile on an event card: { day: '14', month: 'Nov', weekday: 'Sat' }.
@@ -217,34 +238,46 @@ function fold(line) {
   return out.join('\r\n ')
 }
 
-// One event as an .ics file: what "Add to calendar" hands the phone.
+// One event as an .ics file: what "Add to calendar" hands the phone. A
+// multiple-day event is one calendar entry per day, each with its own hours.
 // `url` is the event's page, `details` its text as plain words, `now` the
 // stamp time (a parameter so tests are repeatable).
 export function eventIcs(ev, { url, details = '', now = Date.now() } = {}) {
-  const span = calendarSpan(ev)
+  const days = eventDays(ev)
+  const entries = days.length
+    ? days.map((d, i) => ({
+        uid: `${ev.id}-${i + 1}`,
+        title: `${ev.title} (day ${i + 1} of ${days.length})`,
+        span: { allDay: false, start: utcStamp(toMs(d.startsAt)), end: utcStamp(toMs(d.endsAt)) },
+      }))
+    : [{ uid: ev.id, title: ev.title, span: calendarSpan(ev) }]
+  const description = `DESCRIPTION:${icsText([details, url].filter(Boolean).join('\n\n'))}`
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//AUSSS//Events//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:${ev.id}@ausss-ainshams.org`,
-    `DTSTAMP:${utcStamp(now)}`,
-    span.allDay ? `DTSTART;VALUE=DATE:${span.start}` : `DTSTART:${span.start}`,
-    span.allDay ? `DTEND;VALUE=DATE:${span.end}` : `DTEND:${span.end}`,
-    `SUMMARY:${icsText(ev.title)}`,
-    ev.place ? `LOCATION:${icsText(ev.place)}` : null,
-    `DESCRIPTION:${icsText([details, url].filter(Boolean).join('\n\n'))}`,
-    url ? `URL:${url}` : null,
-    'END:VEVENT',
+    ...entries.flatMap(({ uid, title, span }) => [
+      'BEGIN:VEVENT',
+      `UID:${uid}@ausss-ainshams.org`,
+      `DTSTAMP:${utcStamp(now)}`,
+      span.allDay ? `DTSTART;VALUE=DATE:${span.start}` : `DTSTART:${span.start}`,
+      span.allDay ? `DTEND;VALUE=DATE:${span.end}` : `DTEND:${span.end}`,
+      `SUMMARY:${icsText(title)}`,
+      ev.place ? `LOCATION:${icsText(ev.place)}` : null,
+      description,
+      url ? `URL:${url}` : null,
+      'END:VEVENT',
+    ]),
     'END:VCALENDAR',
   ].filter(Boolean)
   return lines.map(fold).join('\r\n') + '\r\n'
 }
 
 // The same event as a Google Calendar "add" link (Android phones open it in
-// their calendar app).
+// their calendar app). A link holds one entry, so the pages offer it only for
+// an event that is not multiple days.
 export function googleCalendarUrl(ev, { url, details = '' } = {}) {
   const span = calendarSpan(ev)
   const params = new URLSearchParams({

@@ -3,10 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import EventCard from '../../../components/EventCard.jsx'
-import { cairoLocalToIso, eventWhen, isoToCairoDate, isoToCairoLocal } from '../../../lib/eventTime.js'
+import { eventWhen } from '../../../lib/eventTime.js'
 import { isUpcoming } from '../../../lib/events.js'
 import { removeEventImage, uploadEventImage, useEvent, useEventMutations } from '../../eventQueries.js'
 import { useCommittees } from '../../officerQueries.js'
+import { scheduleFromRow, scheduleProblem, schedulePatch } from '../../eventSchedule.js'
+import ScheduleFields from './ScheduleFields.jsx'
 import {
   Centered,
   ConfirmButton,
@@ -33,9 +35,7 @@ function formFrom(row) {
   return {
     title: row.title,
     owner: row.committee_id || SOCIETY,
-    allDay: row.all_day,
-    start: row.all_day ? isoToCairoDate(row.starts_at) : isoToCairoLocal(row.starts_at),
-    end: row.ends_at ? (row.all_day ? isoToCairoDate(row.ends_at) : isoToCairoLocal(row.ends_at)) : '',
+    schedule: scheduleFromRow(row),
     place: row.place || '',
     signupUrl: row.signup_url || '',
     slug: row.slug,
@@ -43,17 +43,12 @@ function formFrom(row) {
   }
 }
 
-// The form's times back into instants. An all-day event's end is its last
-// day; the database turns both into Cairo midnights.
+// The form back into columns; when it happens comes from eventSchedule.js.
 function patchFrom(form) {
-  const startsAt = cairoLocalToIso(form.start)
-  const endsAt = form.end ? cairoLocalToIso(form.end) : null
   return {
     title: form.title.trim(),
     committee_id: form.owner === SOCIETY ? null : form.owner,
-    all_day: form.allDay,
-    starts_at: startsAt,
-    ends_at: endsAt,
+    ...schedulePatch(form.schedule),
     place: form.place.trim(),
     signup_url: form.signupUrl.trim(),
     slug: form.slug.trim(),
@@ -64,14 +59,7 @@ function patchFrom(form) {
 // What is wrong with the form, in words, or ''.
 function problem(form) {
   if (!form.title.trim()) return 'Give the event a title.'
-  const start = cairoLocalToIso(form.start)
-  if (!start) return 'Give the event a start.'
-  if (form.end) {
-    const end = cairoLocalToIso(form.end)
-    if (!end) return 'The end is not a date the form understands.'
-    if (Date.parse(end) < Date.parse(start)) return 'The event cannot end before it starts.'
-  }
-  return ''
+  return scheduleProblem(form.schedule)
 }
 
 function DetailsForm({ row, choices: allowed }) {
@@ -101,15 +89,9 @@ function DetailsForm({ row, choices: allowed }) {
     lastBase.current = base
   }, [base, current, row])
 
-  const toggleAllDay = (on) => {
+  const setSchedule = (schedule) => {
     setSaved(false)
-    setForm((f) => {
-      const toDate = (v) => v.slice(0, 10)
-      const toTime = (v, at) => (v && v.length === 10 ? `${v}T${at}` : v)
-      return on
-        ? { ...f, allDay: true, start: toDate(f.start), end: f.end ? toDate(f.end) : '' }
-        : { ...f, allDay: false, start: toTime(f.start, '18:00'), end: f.end ? toTime(f.end, '20:00') : '' }
-    })
+    setForm((f) => ({ ...f, schedule }))
   }
 
   const issue = problem(form)
@@ -128,8 +110,6 @@ function DetailsForm({ row, choices: allowed }) {
     }
   }
 
-  const inputType = form.allDay ? 'date' : 'datetime-local'
-
   return (
     <Panel title="The event">
       <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -140,45 +120,22 @@ function DetailsForm({ row, choices: allowed }) {
         </div>
 
         {choices.length > 1 && (
-          <Field label="Whose event" htmlFor="ev-owner" hint="Moving it needs a right over both.">
-            <select id="ev-owner" className={inputCls} value={form.owner} onChange={set('owner')}>
-              {choices.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
-        <div className={choices.length > 1 ? '' : 'sm:col-span-2'}>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Kind</p>
-          <label className="mt-3 inline-flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" checked={form.allDay} onChange={(e) => toggleAllDay(e.target.checked)} />
-            All day (no times, one or more whole days)
-          </label>
-        </div>
-
-        <Field label={form.allDay ? 'First day' : 'Starts (Cairo time)'} htmlFor="ev-start">
-          <input id="ev-start" className={inputCls} type={inputType} value={form.start} onChange={set('start')} required />
-        </Field>
-        <Field
-          label={form.allDay ? 'Last day' : 'Ends (Cairo time)'}
-          htmlFor="ev-end"
-          hint={
-            form.allDay
-              ? 'Leave blank for a one-day event.'
-              : 'Optional. Without an end, the event moves to the archive when it starts.'
-          }
-        >
-          <div className="flex gap-2">
-            <input id="ev-end" className={`${inputCls} min-w-0`} type={inputType} value={form.end} onChange={set('end')} />
-            {form.end && (
-              <button type="button" className={outlineBtnCls} onClick={() => set('end')({ target: { value: '' } })}>
-                Clear
-              </button>
-            )}
+          <div className="sm:col-span-2 sm:max-w-md">
+            <Field label="Whose event" htmlFor="ev-owner" hint="Moving it needs a right over both.">
+              <select id="ev-owner" className={inputCls} value={form.owner} onChange={set('owner')}>
+                {choices.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
           </div>
-        </Field>
+        )}
+
+        <div className="sm:col-span-2">
+          <ScheduleFields value={form.schedule} onChange={setSchedule} idPrefix="ev" />
+        </div>
 
         <div className="sm:col-span-2">
           <Field label="Where" htmlFor="ev-place" hint="The room, the place or the address. Leave blank while it is not known yet.">

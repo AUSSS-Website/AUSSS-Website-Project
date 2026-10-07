@@ -26,7 +26,7 @@ function unwrap({ data, error }) {
 }
 
 const EVENT_SELECT =
-  'id, slug, committee_id, title, description, starts_at, ends_at, all_day, place, image, signup_url, published, created_at, updated_at, committee:committees(slug, abbr, name, color)'
+  'id, slug, committee_id, title, description, starts_at, ends_at, all_day, days, place, image, signup_url, published, created_at, updated_at, committee:committees(slug, abbr, name, color)'
 
 // `scope`: a committee id, 'society' for the society-wide events, or 'all'
 // (what this person may edit; the database narrows it). Newest start first.
@@ -58,11 +58,13 @@ export function useEvent(id) {
 }
 
 // A new event starts as a draft; the database makes its link from the title.
-async function createEvent({ committeeId, title, startsAt, allDay }) {
+// `schedule` is the columns of when it happens (schedulePatch in
+// eventSchedule.js).
+async function createEvent({ committeeId, title, schedule }) {
   return unwrap(
     await supabase
       .from('events')
-      .insert({ committee_id: committeeId || null, title, starts_at: startsAt, all_day: Boolean(allDay), published: false })
+      .insert({ committee_id: committeeId || null, title, ...schedule, published: false })
       .select(EVENT_SELECT)
       .single(),
   )

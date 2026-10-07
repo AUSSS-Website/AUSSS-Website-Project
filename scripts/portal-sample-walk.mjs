@@ -16,6 +16,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { chromium } from 'playwright'
+import { measureCutOff } from './walk-checks.mjs'
 
 const themes = (process.argv[2] || 'dark,light').split(',')
 const widths = (process.argv[3] || '320,375,768,1024,1440,1920').split(',').map(Number)
@@ -41,7 +42,8 @@ const session = { access_token: jwt, refresh_token: 'r', token_type: 'bearer', e
 const iso = (daysAgo) => new Date(Date.now() - daysAgo * 864e5).toISOString()
 const day = (ahead) => new Date(Date.now() + ahead * 864e5).toISOString().slice(0, 10)
 const scope = { id: 'c-scope', slug: 'scope', abbr: 'SCOPE', name: 'Professional Exchange', color: '#0181c1' }
-// Events around today: two coming up, a multi-day all-day one, two over.
+// Events around today: three coming up (one over multiple days with hours
+// of their own), a multi-day all-day draft, two over.
 const at = (daysAhead, hour) => {
   const d = new Date(Date.now() + daysAhead * 864e5)
   d.setUTCHours(hour - 2, 0, 0, 0)
@@ -49,7 +51,13 @@ const at = (daysAhead, hour) => {
 }
 const scoph = { slug: 'scoph', abbr: 'SCOPH', name: 'Public Health', color: '#1b9e4b' }
 const scora = { slug: 'scora', abbr: 'SCORA', name: 'Sexual & Reproductive Health and Rights incl. HIV & AIDS', color: '#d1477a' }
+const springDays = [
+  { starts_at: at(8, 10), ends_at: at(8, 16) },
+  { starts_at: at(9, 12), ends_at: at(9, 18) },
+  { starts_at: at(10, 9), ends_at: at(10, 13) },
+]
 const sampleEvents = [
+  { id: 'ev-6', slug: 'spring-school-on-research-methods-2026', committee_id: 'c-score', committee: { slug: 'score', abbr: 'SCORE', name: 'Research Exchange', color: '#e5b513' }, title: 'Spring school on research methods', description: 'Three days of workshops, from a research question to a poster.', starts_at: springDays[0].starts_at, ends_at: springDays[2].ends_at, all_day: false, days: springDays, place: 'Lecture hall 4, Faculty of Medicine', image: '', signup_url: 'https://forms.gle/example', published: true, created_at: iso(2), updated_at: iso(1) },
   { id: 'ev-1', slug: 'world-health-day-stand-2026', committee_id: 'c-scoph', committee: scoph, title: 'World Health Day stand', description: 'Blood pressure checks, a **quiz** and free leaflets.\n\n- Bring your student card\n- Volunteers meet at 10:30\n\nQuestions? Ask on [our page](/committees/scoph).', starts_at: at(5, 11), ends_at: at(5, 15), all_day: false, place: 'Faculty garden, Ain Shams Faculty of Medicine', image: '/assets/exchange/incomings/campus.jpg', signup_url: 'https://forms.gle/example', published: true, created_at: iso(3), updated_at: iso(1) },
   { id: 'ev-2', slug: 'first-general-assembly-2026', committee_id: null, committee: null, title: 'First general assembly', description: '', starts_at: at(12, 17), ends_at: null, all_day: false, place: '', image: '', signup_url: '', published: true, created_at: iso(3), updated_at: iso(1) },
   { id: 'ev-3', slug: 'summer-camp-on-sexual-and-reproductive-health-and-rights-2026', committee_id: 'c-scora', committee: scora, title: 'Summer camp on sexual and reproductive health and rights, with a title long enough to wrap', description: 'Three days of workshops.', starts_at: at(30, 0), ends_at: at(32, 0), all_day: true, place: 'Ain Sokhna', image: '/assets/exchange/sama-02.jpg', signup_url: '', published: false, created_at: iso(2), updated_at: iso(0.5) },
@@ -150,9 +158,10 @@ const ROUTES = [
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
   '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
-  '/portal/events', '/portal/events/ev-1', '/portal/events/ev-3',
+  '/portal/events', '/portal/events/ev-1', '/portal/events/ev-3', '/portal/events/ev-6',
   // the public pages that show events, from the same sample
-  '/events', '/events/archive', '/events/world-health-day-stand-2026', '/events/national-general-assembly-aswan-2025', '/', '/committees/scoph',
+  '/events', '/events/archive', '/events/world-health-day-stand-2026', '/events/spring-school-on-research-methods-2026',
+  '/events/national-general-assembly-aswan-2025', '/', '/committees/scoph',
   '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/content/home.page', '/portal/content/ifmsa.page', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 
@@ -182,7 +191,7 @@ function measureOverflow() {
 const require = createRequire(import.meta.url)
 const axe = await fs.readFile(require.resolve('axe-core/axe.min.js'), 'utf8')
 const browser = await chromium.launch()
-const findings = { overflow: [], contrast: new Map(), errors: new Map() }
+const findings = { overflow: [], cutoff: [], contrast: new Map(), errors: new Map() }
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
 for (const theme of themes) {
@@ -234,6 +243,8 @@ for (const theme of themes) {
         if (!landed.startsWith(r.split('?')[0])) errs.push(`landed on ${landed}`)
         const over = await page.evaluate(measureOverflow)
         if (over) findings.overflow.push({ theme, width, route: r, ...over })
+        const cut = await page.evaluate(measureCutOff)
+        if (cut) findings.cutoff.push({ theme, width, route: r, cut })
         await page.evaluate(`${axe}; null`)
         const low = await page.evaluate(async () => {
           const res = await window.axe.run(document, { runOnly: ['color-contrast'], resultTypes: ['violations'] })
@@ -264,6 +275,8 @@ await browser.close()
 
 console.log(`\nsideways scrolling: ${findings.overflow.length}`)
 for (const o of findings.overflow) console.log(`  ${o.theme} ${o.width}px ${o.route}: ${o.by}px, ${o.who.join(' | ')}`)
+console.log(`\ncut off at the screen's edge (fixed bars): ${findings.cutoff.length}`)
+for (const o of findings.cutoff) console.log(`  ${o.theme} ${o.width}px ${o.route}: ${o.cut.map((c) => `${c.el.slice(0, 60)} "${c.text}" (${c.left} to ${c.right})`).join(' | ').slice(0, 240)}`)
 console.log(`\nlow-contrast pairs: ${findings.contrast.size}`)
 for (const [k, v] of findings.contrast) console.log(`  ${k}  (${[...v.routes].slice(0, 3).join(', ')})  "${v.text}"`)
 console.log(`\npage errors: ${findings.errors.size}`)
