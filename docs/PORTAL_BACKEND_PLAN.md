@@ -791,7 +791,12 @@ webmaster's to tick.
    which limit it is and what is filling it, then bring it back under (or
    decide to pay), and write the figure and the fix into RUNBOOK. It sits
    beside the Pro plan decision because both are read off the same usage
-   figures.
+   figures. **2026-10-08:** it was deployment storage, and it was back under
+   the limit when the webmaster looked again. Each deployment stores the
+   whole build, about 150 MB, most of it the PDFs and magazine pages in
+   `public/assets`, and there were 49 deployments in the four days before.
+   If it fills up again: delete old preview deployments or set a retention
+   period for them, or move the large files to Supabase Storage.
 
 #### Phase 6. Site management
 
