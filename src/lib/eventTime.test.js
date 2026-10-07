@@ -3,6 +3,8 @@ import {
   cairoLocalToIso,
   calendarSpan,
   dateTile,
+  dayHours,
+  eventDays,
   eventIcs,
   eventOverAt,
   eventWhen,
@@ -181,5 +183,42 @@ describe('events from the database', () => {
     expect(out.endsWith('…')).toBe(true)
     expect(out.startsWith('Bring a friend.')).toBe(true)
     expect(out.length).toBeLessThanOrEqual(41)
+  })
+})
+
+describe('multiple days', () => {
+  const day = (d, from, to) => ({ startsAt: cairoLocalToIso(`${d}T${from}`), endsAt: cairoLocalToIso(`${d}T${to}`) })
+  const ev = {
+    id: 'e2',
+    title: 'Spring school',
+    days: [day('2026-11-12', '10:00', '16:00'), day('2026-11-13', '12:00', '18:00'), day('2026-11-14', '09:00', '13:00')],
+  }
+  ev.startsAt = ev.days[0].startsAt
+  ev.endsAt = ev.days[2].endsAt
+
+  it('words the span and counts the days', () => {
+    expect(eventWhen(ev)).toBe('12–14 November 2026, 3 days')
+    expect(eventWhen(ev, { short: true })).toBe('12–14 Nov 2026 · 3 days')
+  })
+
+  it('gives each day its own hours', () => {
+    expect(ev.days.map(dayHours)).toEqual(['10:00 am – 4:00 pm', '12:00–6:00 pm', '9:00 am – 1:00 pm'])
+    expect(dayHours({ startsAt: cairoLocalToIso('2026-11-12T22:00'), endsAt: cairoLocalToIso('2026-11-13T02:00') })).toBe(
+      '10:00 pm – Fri 2:00 am',
+    )
+  })
+
+  it('treats one day, or none, as an ordinary event', () => {
+    expect(eventDays({ days: [ev.days[0]] })).toEqual([])
+    expect(eventDays({})).toEqual([])
+  })
+
+  it('puts every day in the calendar file, each with its hours', () => {
+    const ics = eventIcs(ev, { now: Date.parse('2026-10-07T12:00:00Z') }).replace(/\r\n /g, '')
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(3)
+    expect(ics).toContain('UID:e2-2@ausss-ainshams.org')
+    expect(ics).toContain('SUMMARY:Spring school (day 2 of 3)')
+    expect(ics).toContain('DTSTART:20261113T100000Z')
+    expect(ics).toContain('DTEND:20261113T160000Z')
   })
 })

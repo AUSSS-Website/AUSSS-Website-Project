@@ -5,7 +5,7 @@
 -- web address; publishing asks for a rebuild and a draft does not; and the picture bucket
 -- follows the event's editors.
 begin;
-select plan(37);
+select plan(43);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -180,6 +180,49 @@ select is(
   'an event without an end is over at its start'
 );
 
+-- ---- multiple days --------------------------------------------------------------------------------
+-- days given out of order, with all_day set by mistake
+insert into public.events (committee_id, title, starts_at, all_day, days)
+values ((select id from public.committees where slug = 'scoph'), 'Spring school', '2027-03-12 09:00+02', true,
+        '[{"starts_at": "2027-03-12T09:00:00+02:00", "ends_at": "2027-03-12T13:00:00+02:00"},
+          {"starts_at": "2027-03-10T10:00:00+02:00", "ends_at": "2027-03-10T16:00:00+02:00"},
+          {"starts_at": "2027-03-11T12:00:00+02:00", "ends_at": "2027-03-11T18:00:00+02:00"}]'::jsonb);
+select is(
+  (select (days -> 0 ->> 'starts_at')::timestamptz || ' | ' || starts_at || ' | ' || ends_at || ' | ' || all_day
+          || ' | ' || jsonb_array_length(days)
+   from public.events where title = 'Spring school'),
+  '2027-03-10T10:00:00+02:00'::timestamptz || ' | ' || '2027-03-10T10:00:00+02:00'::timestamptz || ' | '
+    || '2027-03-12T13:00:00+02:00'::timestamptz || ' | false | 3',
+  'multiple days: the days in order, the event from the first start to the last end, never all day'
+);
+select throws_ok(
+  $$ update public.events set days = '[{"starts_at": "2027-03-10T10:00:00+02:00", "ends_at": "2027-03-10T16:00:00+02:00"},
+                                         {"starts_at": "2027-03-10T15:00:00+02:00", "ends_at": "2027-03-10T18:00:00+02:00"}]'::jsonb
+     where title = 'Spring school' $$,
+  '22023', 'Two of the days overlap.',
+  'two days cannot overlap'
+);
+select throws_ok(
+  $$ update public.events set days = '[{"starts_at": "2027-03-10T10:00:00+02:00", "ends_at": "2027-03-10T09:00:00+02:00"},
+                                         {"starts_at": "2027-03-11T10:00:00+02:00", "ends_at": "2027-03-11T16:00:00+02:00"}]'::jsonb
+     where title = 'Spring school' $$,
+  '22023', 'Each day needs a start and an end after it.',
+  'a day cannot end before it starts'
+);
+select throws_ok(
+  $$ update public.events set days = '[{"starts_at": "soon", "ends_at": "later"}, {}]'::jsonb where title = 'Spring school' $$,
+  '22023', 'Each day needs a start and an end.',
+  'a day must be times'
+);
+update public.events
+set days = '[{"starts_at": "2027-03-20T10:00:00+02:00", "ends_at": "2027-03-20T12:00:00+02:00"}]'::jsonb
+where title = 'Spring school';
+select is(
+  (select jsonb_array_length(days) || ' | ' || starts_at || ' | ' || ends_at from public.events where title = 'Spring school'),
+  '0 | ' || '2027-03-20T10:00:00+02:00'::timestamptz || ' | ' || '2027-03-20T12:00:00+02:00'::timestamptz,
+  'a single day is a one-time event'
+);
+
 -- ---- drafts, publishing and the rebuild --------------------------------------------------------
 select ok(
   (select requested_at is null from app.site_rebuild where id),
@@ -219,6 +262,10 @@ select is(
    where e ->> 'slug' = 'world-health-day-2027'),
   'scoph | pgtap',
   'each event names its committee and its term'
+);
+select ok(
+  (select bool_and(e ? 'days') from jsonb_array_elements(public.events_public() -> 'events') as e),
+  'each event carries its days'
 );
 select tests.clear_auth();
 select is(

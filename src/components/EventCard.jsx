@@ -9,7 +9,9 @@ import { SectionLabel } from './committeeUi.jsx'
 // the home page and the committee pages), and the two "coming up" sections.
 // A society-wide event wears the site's accent; a committee's wears its colour.
 
-function accentFor(ev) {
+// The organiser's colours for an event: its committee's, or none for a
+// society-wide one (the site's accent then).
+export function eventAccent(ev) {
   const c = ev.committee ? committeeBySlug(ev.committee) : null
   return c
     ? { committee: c, accent: readableAccent(c.color), chip: chipAccent(c.color), tint: rgba(c.color, 0.14) }
@@ -45,7 +47,7 @@ export function DateTile({ ev, accent, tint, className = '' }) {
 // keeps its full contrast); `headingLevel` keeps the outline right wherever
 // the card sits.
 export default function EventCard({ ev, past = false, headingLevel = 3 }) {
-  const { committee, accent, chip, tint } = accentFor(ev)
+  const { committee, accent, chip, tint } = eventAccent(ev)
   const Heading = `h${headingLevel}`
   return (
     <Link

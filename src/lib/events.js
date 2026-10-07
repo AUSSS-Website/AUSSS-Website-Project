@@ -15,7 +15,8 @@
 //
 // Event shape (what the pages read):
 //   { id, slug, title, committee (slug or null), startsAt, endsAt (ISO or
-//     null), allDay, overAt (ms), term ('2026-27'), place, description
+//     null), allDay, days ([{ startsAt, endsAt }] for a multiple-day event,
+//     else []), overAt (ms), term ('2026-27'), place, description
 //     (markdown), image, signupUrl, aliases, updatedAt }
 import { useEffect, useState } from 'react'
 import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
@@ -48,6 +49,9 @@ export function normalizeEvent(e) {
     startsAt: text(e.startsAt || e.starts_at),
     endsAt: text(e.endsAt || e.ends_at) || null,
     allDay: Boolean(e.allDay ?? e.all_day),
+    days: (Array.isArray(e.days) ? e.days : [])
+      .map((d) => ({ startsAt: text(d?.startsAt || d?.starts_at), endsAt: text(d?.endsAt || d?.ends_at) }))
+      .filter((d) => Number.isFinite(Date.parse(d.startsAt)) && Number.isFinite(Date.parse(d.endsAt))),
     term: text(e.term),
     place: text(e.place),
     description: text(e.description),

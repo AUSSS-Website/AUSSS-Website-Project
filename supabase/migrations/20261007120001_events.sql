@@ -5,9 +5,13 @@
 -- the pages sort and split by date, so they get a table of their own and not a content block.
 --
 --   events        one row per event: its title, the committee it belongs to (none for a
---                 society-wide one), when it starts and (optionally) ends in Cairo time or the
---                 days it covers, where it is, a short text (markdown), a picture, a sign-up
---                 link, and whether it is published. `slug` is its link, /events/<slug>.
+--                 society-wide one), when it happens, where it is, a short text (markdown), a
+--                 picture, a sign-up link, and whether it is published. `slug` is its link,
+--                 /events/<slug>. When it happens is one of three kinds:
+--                   one time        starts_at, and ends_at when known (Cairo time on the pages)
+--                   all day         all_day: whole Cairo days, from starts_at's to ends_at's
+--                   multiple days   `days`: two or more days, each with its own start and end;
+--                                   starts_at and ends_at are then the first start and last end
 --   event_slugs   every link an event has ever had, so a link shared before a rename still
 --                 opens it (the site redirects), as album_slugs does for the gallery.
 --   bucket        `event-media`, public: an event's picture, '<event id>/<file>.jpg'
@@ -82,6 +86,9 @@ create table if not exists public.events (
   starts_at timestamptz not null,
   ends_at timestamptz null,
   all_day boolean not null default false,
+  -- [{ starts_at, ends_at }], in order, for an event held over several days with times of
+  -- their own; [] otherwise. Normalised by app.normalize_event().
+  days jsonb not null default '[]'::jsonb,
   place text not null default '',
   image text not null default '',
   signup_url text not null default '',
@@ -102,6 +109,7 @@ create table if not exists public.events (
   constraint events_image_url check (
     image = '' or (length(image) <= 500 and image ~ '^(https://|/[^/\\])[^\s<>"'']*$')
   ),
+  constraint events_days check (jsonb_typeof(days) = 'array' and jsonb_array_length(days) <= 14),
   constraint events_signup_url check (
     signup_url = '' or (length(signup_url) <= 500 and signup_url ~ '^https://[^\s<>"'']+$')
   )
@@ -167,6 +175,12 @@ declare
   v_slug text;
   v_given text := nullif(btrim(coalesce(new.slug, '')), '');
   v_year text;
+  v_days jsonb;
+  v_count int;
+  v_first timestamptz;
+  v_last timestamptz;
+  v_bad boolean;
+  v_overlap boolean;
 begin
   new.title := left(btrim(coalesce(new.title, '')), 140);
   new.description := left(btrim(coalesce(new.description, '')), 4000);
@@ -178,6 +192,44 @@ begin
   end if;
   if new.starts_at is null then
     raise exception 'An event needs a start.' using errcode = '22023';
+  end if;
+
+  -- Multiple days: the days in order, none ending before it starts, none overlapping the one
+  -- before; the event runs from the first start to the last end. A single day is simply a
+  -- one-time event.
+  if new.days is null or jsonb_typeof(new.days) <> 'array' then
+    new.days := '[]'::jsonb;
+  end if;
+  if jsonb_array_length(new.days) > 0 then
+    if jsonb_array_length(new.days) > 14 then
+      raise exception 'An event can have at most 14 days.' using errcode = '22023';
+    end if;
+    begin
+      with d as (
+        select (x ->> 'starts_at')::timestamptz as s, (x ->> 'ends_at')::timestamptz as e
+        from jsonb_array_elements(new.days) as t(x)
+      ), o as (
+        select s, e, lag(e) over (order by s) as prev from d
+      )
+      select jsonb_agg(jsonb_build_object('starts_at', s, 'ends_at', e) order by s),
+             count(*), min(s), max(e),
+             coalesce(bool_or(s is null or e is null or e <= s), false),
+             coalesce(bool_or(prev is not null and s < prev), false)
+        into v_days, v_count, v_first, v_last, v_bad, v_overlap
+        from o;
+    exception when others then
+      raise exception 'Each day needs a start and an end.' using errcode = '22023';
+    end;
+    if v_bad then
+      raise exception 'Each day needs a start and an end after it.' using errcode = '22023';
+    end if;
+    if v_overlap then
+      raise exception 'Two of the days overlap.' using errcode = '22023';
+    end if;
+    new.all_day := false;
+    new.starts_at := v_first;
+    new.ends_at := v_last;
+    new.days := case when v_count > 1 then v_days else '[]'::jsonb end;
   end if;
 
   if new.all_day then
@@ -340,6 +392,7 @@ as $$
           'starts_at', e.starts_at,
           'ends_at', e.ends_at,
           'all_day', e.all_day,
+          'days', e.days,
           'over_at', app.event_over_at(e.starts_at, e.ends_at, e.all_day),
           'term', app.term_label_for(e.starts_at),
           'place', e.place,
@@ -451,11 +504,11 @@ grant execute on function public.events_public() to anon, authenticated;
 -- database's, and event_slugs only ever by the trigger.
 revoke all on public.events, public.event_slugs from anon, authenticated;
 grant select on public.events, public.event_slugs to authenticated;
-grant insert (committee_id, slug, title, description, starts_at, ends_at, all_day, place, image,
-              signup_url, published)
+grant insert (committee_id, slug, title, description, starts_at, ends_at, all_day, days, place,
+              image, signup_url, published)
   on public.events to authenticated;
-grant update (committee_id, slug, title, description, starts_at, ends_at, all_day, place, image,
-              signup_url, published)
+grant update (committee_id, slug, title, description, starts_at, ends_at, all_day, days, place,
+              image, signup_url, published)
   on public.events to authenticated;
 grant delete on public.events to authenticated;
 grant all on public.events, public.event_slugs to service_role;

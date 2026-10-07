@@ -26,7 +26,7 @@ import {
   eventMetaDescription,
   isUpcoming,
 } from '../lib/events.js'
-import { cairoIsoWithOffset, isoToCairoDate } from '../lib/eventTime.js'
+import { cairoIsoWithOffset, eventDays, isoToCairoDate } from '../lib/eventTime.js'
 
 export const SITE_URL = 'https://ausss-ainshams.org'
 export const SITE_NAME = 'AUSSS'
@@ -187,10 +187,17 @@ function albumJsonLd(a, path) {
 }
 
 // schema.org Event, so search engines can show the date and place. All-day
-// events give their days; timed ones the Cairo time with its offset.
+// events give their days; timed ones the Cairo time with its offset; a
+// multiple-day event lists each day as a sub-event with its own hours.
 function eventJsonLd(ev, path) {
   const c = ev.committee ? committees.find((x) => slugFor(x) === ev.committee) : null
   const lastDay = ev.allDay && ev.endsAt ? isoToCairoDate(ev.endsAt) : null
+  const location = {
+    '@type': 'Place',
+    name: ev.place || 'Faculty of Medicine, Ain Shams University',
+    address: { '@type': 'PostalAddress', addressLocality: 'Cairo', addressCountry: 'EG' },
+  }
+  const days = eventDays(ev)
   return {
     '@context': 'https://schema.org',
     '@type': 'Event',
@@ -202,12 +209,17 @@ function eventJsonLd(ev, path) {
     endDate: ev.allDay ? lastDay || undefined : ev.endsAt ? cairoIsoWithOffset(ev.endsAt) : undefined,
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-    location: {
-      '@type': 'Place',
-      name: ev.place || 'Faculty of Medicine, Ain Shams University',
-      address: { '@type': 'PostalAddress', addressLocality: 'Cairo', addressCountry: 'EG' },
-    },
+    location,
     image: ev.image ? [abs(ev.image)] : undefined,
+    subEvent: days.length
+      ? days.map((d, i) => ({
+          '@type': 'Event',
+          name: `${ev.title}, day ${i + 1}`,
+          startDate: cairoIsoWithOffset(d.startsAt),
+          endDate: cairoIsoWithOffset(d.endsAt),
+          location,
+        }))
+      : undefined,
     organizer: c
       ? { '@type': 'Organization', name: `${c.abbr}, ${c.name}`, url: abs(`/committees/${slugFor(c)}`) }
       : { '@type': 'Organization', '@id': ORG_ID, name: society.name, url: `${SITE_URL}/` },
