@@ -18,6 +18,15 @@ import siteContactSchema from '../content/schemas/siteContact.js'
 import { publicEmail } from '../data/emailConfig.js'
 import { resolveDoc } from '../content/schema.js'
 import { markdownToText } from '../lib/markdown.js'
+import {
+  ARCHIVE_DESCRIPTION,
+  ARCHIVE_TITLE,
+  EVENTS_DESCRIPTION,
+  EVENTS_TITLE,
+  eventMetaDescription,
+  isUpcoming,
+} from '../lib/events.js'
+import { cairoIsoWithOffset, isoToCairoDate } from '../lib/eventTime.js'
 
 export const SITE_URL = 'https://ausss-ainshams.org'
 export const SITE_NAME = 'AUSSS'
@@ -177,6 +186,34 @@ function albumJsonLd(a, path) {
   }
 }
 
+// schema.org Event, so search engines can show the date and place. All-day
+// events give their days; timed ones the Cairo time with its offset.
+function eventJsonLd(ev, path) {
+  const c = ev.committee ? committees.find((x) => slugFor(x) === ev.committee) : null
+  const lastDay = ev.allDay && ev.endsAt ? isoToCairoDate(ev.endsAt) : null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    '@id': `${abs(path)}#event`,
+    name: ev.title,
+    description: markdownToText(ev.description) || undefined,
+    url: abs(path),
+    startDate: ev.allDay ? isoToCairoDate(ev.startsAt) : cairoIsoWithOffset(ev.startsAt),
+    endDate: ev.allDay ? lastDay || undefined : ev.endsAt ? cairoIsoWithOffset(ev.endsAt) : undefined,
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    location: {
+      '@type': 'Place',
+      name: ev.place || 'Faculty of Medicine, Ain Shams University',
+      address: { '@type': 'PostalAddress', addressLocality: 'Cairo', addressCountry: 'EG' },
+    },
+    image: ev.image ? [abs(ev.image)] : undefined,
+    organizer: c
+      ? { '@type': 'Organization', name: `${c.abbr}, ${c.name}`, url: abs(`/committees/${slugFor(c)}`) }
+      : { '@type': 'Organization', '@id': ORG_ID, name: society.name, url: `${SITE_URL}/` },
+  }
+}
+
 // One entry per public URL. `title` is the part before " · AUSSS" (empty on
 // the home page, which uses BASE_TITLE), `image` an absolute URL for the
 // social preview card, `changefreq` and `priority` are the sitemap hints.
@@ -189,7 +226,9 @@ function albumJsonLd(a, path) {
 // (src/lib/content.js shape), for the data that is built from them.
 // `settings` are the site settings (src/hooks/useSiteSettings.js): the
 // domain-email switch decides which address the JSON-LD gives.
-export function publicPages(albums = [], issues = [], content = {}, settings = {}) {
+// `events` are the published events (src/lib/events.js shape): one page each,
+// upcoming or past by the build's clock.
+export function publicPages(albums = [], issues = [], content = {}, settings = {}, events = []) {
   const joinFaqs = resolveDoc(joinFaqSchema, content[joinFaqSchema.key]).items
   const contact = resolveDoc(siteContactSchema, content[siteContactSchema.key])
   const email = publicEmail(society.contact, settings.domainEmailsLive === true)
@@ -273,6 +312,21 @@ export function publicPages(albums = [], issues = [], content = {}, settings = {
       changefreq: 'yearly',
       priority: 0.5,
       crumbs: [['IFMSA', '/ifmsa']],
+    },
+    {
+      path: '/events',
+      title: EVENTS_TITLE,
+      description: EVENTS_DESCRIPTION,
+      changefreq: 'weekly',
+      priority: 0.8,
+    },
+    {
+      path: '/events/archive',
+      title: ARCHIVE_TITLE,
+      description: ARCHIVE_DESCRIPTION,
+      changefreq: 'monthly',
+      priority: 0.4,
+      crumbs: [['Events', '/events']],
     },
     {
       path: '/gallery',
@@ -374,6 +428,23 @@ export function publicPages(albums = [], issues = [], content = {}, settings = {
       priority: 0.5,
       crumbs: [['Gallery', '/gallery']],
       jsonLd: [albumJsonLd(a, path)],
+    })
+  }
+
+  const now = Date.now()
+  for (const ev of events) {
+    const path = `/events/${ev.slug}`
+    const upcoming = isUpcoming(ev, now)
+    pages.push({
+      path,
+      title: ev.title,
+      description: eventMetaDescription(ev),
+      image: ev.image ? abs(ev.image) : undefined,
+      imageAlt: ev.title,
+      changefreq: upcoming ? 'weekly' : 'yearly',
+      priority: upcoming ? 0.6 : 0.3,
+      crumbs: upcoming ? [['Events', '/events']] : [['Events', '/events'], ['Past events', '/events/archive']],
+      jsonLd: [eventJsonLd(ev, path)],
     })
   }
 

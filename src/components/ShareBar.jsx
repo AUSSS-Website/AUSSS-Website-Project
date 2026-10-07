@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 
-// A small social "share" row for the magazine page.
+// A small social "share" row for the magazine page and the event pages.
+// `label` follows the title in the shared text ("World Health Day, AUSSS
+// events"); `heading` names what is shared.
 //   - On mobile, the primary "Share" button opens the native Web Share sheet
 //     (the only path to Instagram, which has no web share-intent URL).
 //   - Explicit WhatsApp / Facebook / X / Telegram buttons always render as a
@@ -9,7 +11,7 @@ import { useEffect, useState } from 'react'
 //
 // The URL is resolved into state on mount (client-only SPA), so anchors carry
 // real hrefs and we never bake a stale window.location into render output.
-export default function ShareBar({ url, title, className = '' }) {
+export default function ShareBar({ url, title, label = 'AUSSS Magazine', heading = 'Share this issue', className = '' }) {
   const [resolvedUrl, setResolvedUrl] = useState(url || '')
   const [canNativeShare, setCanNativeShare] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -24,7 +26,7 @@ export default function ShareBar({ url, title, className = '' }) {
   }, [url])
 
   const shareUrl = resolvedUrl || (typeof window !== 'undefined' ? window.location.href : '')
-  const text = `${title}, AUSSS Magazine`
+  const text = `${title}, ${label}`
 
   const targets = {
     whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${shareUrl}`)}`,
@@ -97,7 +99,7 @@ export default function ShareBar({ url, title, className = '' }) {
   return (
     <div className={className}>
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-        Share this issue
+        {heading}
       </p>
       <div className="mt-3 flex flex-wrap gap-3">
         {canNativeShare && (

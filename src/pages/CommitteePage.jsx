@@ -11,6 +11,7 @@ import { committeeOfficers, usePeople } from '../lib/people.js'
 import { PersonCard, SectionLabel } from '../components/committeeUi.jsx'
 import CallCard from '../components/CallCard.jsx'
 import ApplyModal from '../components/ApplyModal.jsx'
+import { CommitteeEvents } from '../components/EventCard.jsx'
 
 export default function CommitteePage() {
   const { slug } = useParams()
@@ -172,6 +173,10 @@ export default function CommitteePage() {
             </ul>
           </section>
         )}
+
+        {/* The committee's upcoming events (src/lib/events.js), soonest
+            first; the section is absent when there are none. */}
+        <CommitteeEvents slug={slugFor(c)} abbr={c.abbr} accent={accent} />
 
         {/* IFMSA mission & pillars, read-only, straight from the official
             standing-committee page on ifmsa.org. Deliberately NOT merged with

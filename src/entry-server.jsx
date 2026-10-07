@@ -14,6 +14,7 @@ import { setBakedPeople } from './lib/people.js'
 import { setBakedContent } from './lib/content.js'
 import { setBakedMerch } from './lib/merch.js'
 import { setBakedSettings } from './hooks/useSiteSettings.js'
+import { setBakedEvents } from './lib/events.js'
 
 // `albums`, `issues`, `stories` and `people` are the live gallery, magazine
 // shelf, published exchange stories and position holders the prerender fetched
@@ -22,8 +23,9 @@ import { setBakedSettings } from './hooks/useSiteSettings.js'
 // that names an officer render with the real content. `content` is the
 // published documents of the portal's content editor (src/lib/content.js), and
 // `merch` the shop's catalogue (src/lib/merch.js), and `settings` the site
-// settings (src/hooks/useSiteSettings.js).
-export function render(url, albums, issues, stories = [], people = [], content = {}, merch = [], settings = {}) {
+// settings (src/hooks/useSiteSettings.js), and `events` the published events
+// (src/lib/events.js).
+export function render(url, albums, issues, stories = [], people = [], content = {}, merch = [], settings = {}, events = []) {
   setBakedGallery(albums)
   setBakedMagazine(issues)
   setBakedStories(stories)
@@ -31,6 +33,7 @@ export function render(url, albums, issues, stories = [], people = [], content =
   setBakedContent(content)
   setBakedMerch(merch)
   setBakedSettings(settings)
+  setBakedEvents(events)
   return new Promise((resolve, reject) => {
     const chunks = []
     const sink = new Writable({

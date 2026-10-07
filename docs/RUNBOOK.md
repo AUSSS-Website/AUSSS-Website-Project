@@ -1868,3 +1868,56 @@ and the same for `/portal/content/home.page`, `/portal/content/ifmsa.page` and
 `/portal/admin/settings` (with `MSYS_NO_PATHCONV=1` in Git Bash); `npm run walk -- --only
 /contact --public-only` and the same for `/ifmsa`.
 
+
+## 28. Events (Phase 6, step 4)
+
+Built 2026-10-07. Migration `20261007120001_events`, pgTAP file `320-events.sql`, unit tests
+`src/lib/eventTime.test.js`.
+
+**What visitors see.** `/events` lists what is coming up, soonest first; `/events/archive`
+lists what is over, newest first, under one heading per term; `/events/<link>` is one event,
+with its picture, its text, a **Sign up** button when it has a sign-up link, **Add to calendar**
+(an `.ics` file) and a Google Calendar link, and the share row. Each committee page shows its
+own upcoming events (the section is absent when there are none), and the home page shows the
+next three under "Coming up" (also absent when nothing is coming up). "Events" is a link of its
+own in the header, beside the Committees menu, and in the footer. Every date and time is Cairo
+time, whatever the visitor's own time zone (`src/lib/eventTime.js`; Egypt's summer time comes
+from the time zone data, never a fixed offset).
+
+**Over and archived.** An event is over at its end, or at its start when it has none; an
+all-day event at the end of its last day. Nothing changes in the database when that happens:
+the pages compare the time with the clock each time they render, and the nightly rebuild (section
+23) moves the saved pages along. So an event moves to the archive by itself, its page and link
+keep working, and the term rollover has nothing to do for events. The term an event belongs to
+is the `terms` row its start falls in, else the society's year (1 September to 31 August).
+
+**Who edits.** A committee's officers add, edit, publish and remove that committee's events; the
+EB does so for every committee and alone adds the society-wide ones. In the portal: **Events**
+(`/portal/events`, every event the person may edit, a filter by committee, and the new-event
+form with "Whose event") and the **Events** tab on each committee's page (the same list for that
+committee alone). A new event is a draft; its page (`/portal/events/<id>`) fills in the end,
+the place, the text (markdown: bold, italic, links and lists), the sign-up link, the link on
+the site and the picture, and the **Published** switch shows it to visitors. The side panel shows
+the event's card as the site will show it.
+
+**The data.** Table `events` (row-level security: `app.is_officer_of(committee_id)`, which is
+the EB alone for a society-wide event), `event_slugs` (every link an event has had; an old link
+redirects to the current one), public bucket `event-media` (`<event id>/<random>.jpg`, written by
+the event's editors; the picture is shrunk to 1600 px in the browser). Visitors read
+`rpc/events_public()` only: published events with their committee, when each is over and its
+term. The link is made from the title and the start's year (`world-health-day-2027`), never
+`archive`, never one any event has had. A change to a published event, or publishing or
+withdrawing one, asks for a rebuild; a draft does not.
+
+**The build.** `scripts/prerender.mjs` fetches the events once: it pre-renders `/events`,
+`/events/archive` and one page per event (with its picture as the share card and schema.org
+`Event` data), lists them in `sitemap.xml` and `llms.txt`, and writes each event's calendar
+file to `/events/<link>.ics`, which the Add to calendar button opens (a phone then offers to
+add it). An event published after the last build has no file yet; its link falls through to
+the app, which makes the same file in the browser and downloads it.
+
+**Checks.** `npm test`; `npm run walk:portal-sample -- light,dark 375,1440 /events` (with
+`MSYS_NO_PATHCONV=1` in Git Bash), the same for `/portal/events` and `/committees/scoph`; the
+sample walk has five sample events (two coming up, one all-day draft, two over). The header was
+measured with Events in it at 1024, 1100, 1280, 1366, 1440 and 1920 px: between 1024 and 1279 px
+its gaps are narrower and the magazine pill says "Magazine".

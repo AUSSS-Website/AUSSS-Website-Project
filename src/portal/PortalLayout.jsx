@@ -74,6 +74,7 @@ export default function PortalLayout() {
     ],
     [
       canEditCommittees && { to: '/portal/committees', label: 'Committees' },
+      canEditCommittees && { to: '/portal/events', label: 'Events' },
       canEditGallery && { to: '/portal/gallery', label: 'Gallery' },
       canEditMagazine && { to: '/portal/magazine', label: 'Magazine' },
       canEditContent && { to: '/portal/content', label: 'Site content' },

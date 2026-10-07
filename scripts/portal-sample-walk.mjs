@@ -41,6 +41,30 @@ const session = { access_token: jwt, refresh_token: 'r', token_type: 'bearer', e
 const iso = (daysAgo) => new Date(Date.now() - daysAgo * 864e5).toISOString()
 const day = (ahead) => new Date(Date.now() + ahead * 864e5).toISOString().slice(0, 10)
 const scope = { id: 'c-scope', slug: 'scope', abbr: 'SCOPE', name: 'Professional Exchange', color: '#0181c1' }
+// Events around today: two coming up, a multi-day all-day one, two over.
+const at = (daysAhead, hour) => {
+  const d = new Date(Date.now() + daysAhead * 864e5)
+  d.setUTCHours(hour - 2, 0, 0, 0)
+  return d.toISOString()
+}
+const scoph = { slug: 'scoph', abbr: 'SCOPH', name: 'Public Health', color: '#1b9e4b' }
+const scora = { slug: 'scora', abbr: 'SCORA', name: 'Sexual & Reproductive Health and Rights incl. HIV & AIDS', color: '#d1477a' }
+const sampleEvents = [
+  { id: 'ev-1', slug: 'world-health-day-stand-2026', committee_id: 'c-scoph', committee: scoph, title: 'World Health Day stand', description: 'Blood pressure checks, a **quiz** and free leaflets.\n\n- Bring your student card\n- Volunteers meet at 10:30\n\nQuestions? Ask on [our page](/committees/scoph).', starts_at: at(5, 11), ends_at: at(5, 15), all_day: false, place: 'Faculty garden, Ain Shams Faculty of Medicine', image: '/assets/exchange/incomings/campus.jpg', signup_url: 'https://forms.gle/example', published: true, created_at: iso(3), updated_at: iso(1) },
+  { id: 'ev-2', slug: 'first-general-assembly-2026', committee_id: null, committee: null, title: 'First general assembly', description: '', starts_at: at(12, 17), ends_at: null, all_day: false, place: '', image: '', signup_url: '', published: true, created_at: iso(3), updated_at: iso(1) },
+  { id: 'ev-3', slug: 'summer-camp-on-sexual-and-reproductive-health-and-rights-2026', committee_id: 'c-scora', committee: scora, title: 'Summer camp on sexual and reproductive health and rights, with a title long enough to wrap', description: 'Three days of workshops.', starts_at: at(30, 0), ends_at: at(32, 0), all_day: true, place: 'Ain Sokhna', image: '/assets/exchange/sama-02.jpg', signup_url: '', published: false, created_at: iso(2), updated_at: iso(0.5) },
+  { id: 'ev-4', slug: 'incomings-welcome-night-2026', committee_id: 'c-scope', committee: { slug: 'scope', abbr: 'SCOPE', name: 'Professional Exchange', color: '#0181c1' }, title: 'Incomings welcome night', description: 'Dinner on the Nile with the August incomings.', starts_at: at(-40, 19), ends_at: at(-40, 23), all_day: false, place: 'Zamalek', image: '/assets/exchange/incomings/together.jpg', signup_url: '', published: true, created_at: iso(60), updated_at: iso(40) },
+  { id: 'ev-5', slug: 'national-general-assembly-aswan-2025', committee_id: null, committee: null, title: 'National General Assembly, Aswan', description: '', starts_at: at(-400, 0), ends_at: at(-397, 0), all_day: true, place: 'Aswan', image: '', signup_url: '', published: true, created_at: iso(420), updated_at: iso(400) },
+]
+const termOf = (iso) => {
+  const d = new Date(iso)
+  const y = d.getUTCFullYear()
+  return d.getUTCMonth() >= 8 ? `${y}-${String(y + 1).slice(2)}` : `${y - 1}-${String(y).slice(2)}`
+}
+const overOf = (e) => {
+  const last = Date.parse(e.ends_at || e.starts_at)
+  return new Date(e.all_day ? last + 864e5 : last).toISOString()
+}
 const tables = {
   profiles: [
     { id: uid, full_name: 'Sample Webmaster', email: 'webmaster@example.com', membership_status: 'active', avatar_url: null, photo_path: null, email_digest: true, directory_opt_in: true, phone: '', created_at: iso(30), updated_at: iso(1) },
@@ -88,6 +112,7 @@ const tables = {
     { id: 'notebook', name: 'AUSSS Notebook', tagline: 'Like it? Note it down.', description: 'Spiral-bound notebook with a committee-themed cover.', image: '/assets/merch/page-13.jpg', price: 40, sizes: [], size_chart: '', designs: ['SCOPH', 'SCORA', 'Exchange', 'Support Divisions'], wide_designs: ['Exchange', 'Support Divisions'], available: true, sort_order: 1, updated_at: iso(3) },
     { id: 'a-new-product-with-a-long-id-for-phones', name: 'A new product with a rather long name that wraps', tagline: '', description: '', image: '', price: 120, sizes: [], size_chart: '', designs: [], wide_designs: [], available: false, sort_order: 2, updated_at: iso(0.1) },
   ],
+  events: sampleEvents,
   audit_log: [
     { id: 3, at: iso(0.1), actor: uid, table_name: 'content_blocks', row_id: 'join.faq', action: 'UPDATE', before: { key: 'join.faq', draft: null, updated_at: iso(1) }, after: { key: 'join.faq', draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the Faculty of Medicine.' }] }, updated_at: iso(0.1) } },
     { id: 2, at: iso(1), actor: other, table_name: 'tasks', row_id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', action: 'INSERT', before: null, after: { id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', title: 'Collect the incomings welcome booklet photos from every contact person', status: 'todo', priority: 'high' } },
@@ -95,6 +120,19 @@ const tables = {
   ],
 }
 const rpcs = {
+  events_public: {
+    events: sampleEvents
+      .filter((e) => e.published)
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+      .map(({ committee, committee_id, published, created_at, ...e }) => ({
+        ...e,
+        committee: committee?.slug ?? null,
+        over_at: overOf(e),
+        term: termOf(e.starts_at),
+        aliases: e.id === 'ev-1' ? ['world-health-day-2026'] : [],
+      })),
+    generated_at: new Date().toISOString(),
+  },
   directory: [
     { id: uid, full_name: 'Sample Webmaster', avatar_url: null, membership_status: 'active', positions: [{ title: 'Webmaster', committee: null, level: 'webmaster' }] },
     { id: other, full_name: 'Sample Officer With A Long Name', avatar_url: null, membership_status: 'active', positions: [{ title: 'Local Exchange Officer for Incomings', committee: 'SCOPE', level: 'officer' }] },
@@ -112,6 +150,9 @@ const ROUTES = [
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
   '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
+  '/portal/events', '/portal/events/ev-1', '/portal/events/ev-3',
+  // the public pages that show events, from the same sample
+  '/events', '/events/archive', '/events/world-health-day-stand-2026', '/events/national-general-assembly-aswan-2025', '/', '/committees/scoph',
   '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/content/home.page', '/portal/content/ifmsa.page', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 

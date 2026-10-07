@@ -50,6 +50,7 @@ export default function Footer() {
             <Link to="/" className="transition-colors hover:text-ink">Home</Link>
             <Link to="/merch" className="transition-colors hover:text-ink">Merch</Link>
             <Link to="/ifmsa" className="transition-colors hover:text-ink">IFMSA</Link>
+            <Link to="/events" className="transition-colors hover:text-ink">Events</Link>
             <Link to="/magazine" className="transition-colors hover:text-ink">Magazine</Link>
             <Link to="/contact" className="transition-colors hover:text-ink">Contact</Link>
             <Link to="/members" className="transition-colors hover:text-ink">Members</Link>
