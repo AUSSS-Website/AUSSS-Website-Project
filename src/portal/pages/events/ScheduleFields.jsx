@@ -56,7 +56,7 @@ function KindPicker({ value, onChange }) {
           )
         })}
       </div>
-      <p className="mt-2 text-xs text-soft/55">{current?.hint} Times are Cairo time.</p>
+      <p className="mt-2 text-xs text-soft/55">{current?.hint}</p>
     </div>
   )
 }
@@ -247,7 +247,7 @@ function DayByDay({ value, onChange, idPrefix }) {
           )
         })}
       </ol>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-3">
         <button
           type="button"
           className={outlineBtnCls}
@@ -259,9 +259,6 @@ function DayByDay({ value, onChange, idPrefix }) {
           </svg>
           Add a day
         </button>
-        <span className="text-xs text-soft/50">
-          The next day, with the same hours. Up to {MAX_DAYS} days.
-        </span>
       </div>
     </div>
   )
