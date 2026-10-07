@@ -36,16 +36,19 @@ const LINKS = [
       { label: 'Support divisions', links: committeeLinks('Support Division') },
     ],
   },
+  { to: '/events', label: 'Events' },
   { to: '/gallery', label: 'Gallery' },
   { to: '/merch', label: 'Merch' },
   { to: '/contact', label: 'Contact' },
 ]
 
 // Catchy CTA for the magazine, shown as a highlighted pill. The bar only has
-// room for the long wording from 1440px; below that the pill says the short
-// one, or the links would push the logo out of the bar.
+// room for the long wording from 1440px; below that the pill says a shorter
+// one, and below 1280px the shortest, or the links would push the Members
+// button out of the bar (measured with Events in the bar, 2026-10-07).
 const MAGAZINE_CTA = 'Read the latest issue of the AUSSS Magazine'
 const MAGAZINE_CTA_SHORT = 'AUSSS Magazine'
+const MAGAZINE_CTA_SHORTEST = 'Magazine'
 
 // The pill is the site's blue button (the cta tokens) with a soft glow of its
 // own colour under it.
@@ -262,7 +265,9 @@ export default function Navbar() {
           />
         </Link>
 
-        <ul className="ml-8 hidden items-center gap-5 lg:flex xl:gap-8 2xl:gap-10">
+        {/* Between 1024 and 1279px the bar is at its fullest: the gaps are
+            narrower there and widen from 1280px. */}
+        <ul className="ml-4 hidden items-center gap-3.5 lg:flex xl:ml-8 xl:gap-8 2xl:gap-10">
           {LINKS.map((l) =>
             l.groups ? (
               <NavMenu key={l.to} item={l} solid={solid} />
@@ -301,7 +306,8 @@ export default function Navbar() {
                   MAGAZINE_PILL
                 }`}
               >
-                <span className="min-[1440px]:hidden">{MAGAZINE_CTA_SHORT}</span>
+                <span className="xl:hidden">{MAGAZINE_CTA_SHORTEST}</span>
+                <span className="hidden xl:inline min-[1440px]:hidden">{MAGAZINE_CTA_SHORT}</span>
                 <span className="hidden min-[1440px]:inline">{MAGAZINE_CTA}</span>
               </Link>
             </li>

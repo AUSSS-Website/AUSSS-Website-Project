@@ -106,9 +106,11 @@ function sitemapXml(pages) {
 // `contact` is the block `site.contact` as published (motto and channels).
 function llmsTxt(pages, contactEmail, contact, networkName) {
   const line = (p) => `- [${p.title || 'Home'}](${p.url}): ${p.description}`
-  const top = pages.filter((p) => !p.path.startsWith('/committees/') && !p.path.startsWith('/gallery/'))
+  const isEvent = (p) => p.path.startsWith('/events/') && p.path !== '/events/archive'
+  const top = pages.filter((p) => !p.path.startsWith('/committees/') && !p.path.startsWith('/gallery/') && !isEvent(p))
   const committees = pages.filter((p) => p.path.startsWith('/committees/'))
   const albums = pages.filter((p) => p.path.startsWith('/gallery/'))
+  const events = pages.filter(isEvent)
   return [
     "# AUSSS, Ain Shams University Students' Scientific Society",
     '',
@@ -128,6 +130,7 @@ function llmsTxt(pages, contactEmail, contact, networkName) {
     '',
     ...albums.map(line),
     '',
+    ...(events.length ? ['## Events', '', ...events.map(line), ''] : []),
     '## Notes',
     '',
     '- The members portal at /portal is sign-in only and not for indexing.',
@@ -281,6 +284,21 @@ async function loadMerch(vite) {
   }
 }
 
+// And the published events (src/lib/events.js): /events, the archive, the
+// next three on the home page, each committee's upcoming ones and one page per
+// event, each with its calendar file.
+async function loadEvents(vite) {
+  const mod = await vite.ssrLoadModule('/src/lib/events.js')
+  try {
+    const live = await mod.fetchEvents()
+    console.log('prerender: ' + live.length + ' published events from the database')
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the events (' + err.message + '); no event pages this build')
+    return []
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -314,14 +332,15 @@ async function main() {
     const content = await loadContent(vite)
     const merch = await loadMerch(vite)
     const settings = await loadSettings(vite)
-    const pages = publicPages(albums, issues, content, settings)
+    const events = await loadEvents(vite)
+    const pages = publicPages(albums, issues, content, settings, events)
 
     const seen = new Set()
     const hashes = {}
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues, stories, people, content, merch, settings)
+      const appHtml = await render(page.path, albums, issues, stories, people, content, merch, settings, events)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }
@@ -335,6 +354,15 @@ async function main() {
       hashes[page.url] = contentHash(html)
     }
     await fs.writeFile(path.join(dist, 'sitemap.xml'), sitemapXml(pages))
+    // Each event's calendar file, /events/<slug>.ics: the "Add to calendar"
+    // button links here, so a phone opens its calendar's "add" sheet.
+    const eventTime = await vite.ssrLoadModule('/src/lib/eventTime.js')
+    const { markdownToText } = await vite.ssrLoadModule('/src/lib/markdown.js')
+    await fs.mkdir(path.join(dist, 'events'), { recursive: true })
+    for (const ev of events) {
+      const ics = eventTime.eventIcs(ev, { url: `${SITE_URL}/events/${ev.slug}`, details: markdownToText(ev.description) })
+      await fs.writeFile(path.join(dist, 'events', `${ev.slug}.ics`), ics)
+    }
     const { resolveDoc } = await vite.ssrLoadModule('/src/content/schema.js')
     const contactSchema = await vite.ssrLoadModule('/src/content/schemas/siteContact.js')
     const { publicEmail } = await vite.ssrLoadModule('/src/data/emailConfig.js')
@@ -346,7 +374,7 @@ async function main() {
     await fs.writeFile(path.join(dist, 'indexnow-urls.json'), JSON.stringify(changed))
     await fs.mkdir(path.join(dist, '.well-known'), { recursive: true })
     await fs.writeFile(path.join(dist, '.well-known', 'security.txt'), securityTxt(SITE_URL))
-    console.log(`prerender: ${pages.length} pages written; sitemap.xml and llms.txt list ${pages.length} URLs; ${changed.length} changed since the live build`)
+    console.log(`prerender: ${pages.length} pages and ${events.length} calendar files written; sitemap.xml and llms.txt list ${pages.length} URLs; ${changed.length} changed since the live build`)
   } finally {
     await vite.close()
   }

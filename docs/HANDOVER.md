@@ -69,7 +69,7 @@ plan's decision 4 (section 13) chose to keep it as is.
 | Organisation owner | `aussswebsite@gmail.com` |
 | Additional owners | President and webmaster, invited to the organisation as **Owner**. Never fewer than two owners in the members list |
 | Plan | Free tier (plan decision 2). Projects pause after a week without traffic; the `keepalive` workflow pings it daily. See RUNBOOK section 6 |
-| Holds | Schema `public` (terms, committees, positions, profiles, roster_entries, invites, assignments, verification_requests, audit_log), private schema `app` (helpers), Auth users, the auth config pushed from `supabase/config.toml` |
+| Holds | Schema `public` (terms, committees, positions, profiles, roster_entries, invites, assignments, verification_requests, audit_log, and the site's content: events, albums, magazine issues, merch, content blocks, among others), private schema `app` (helpers), Auth users, the auth config pushed from `supabase/config.toml` |
 | Keys | Publishable key `sb_publishable_...` (safe in the browser, RLS gatekeeps); secret key `sb_secret_...` (bypasses RLS; scripts only, never in the browser or the repo); database password; personal access tokens for the CLI |
 
 Transfer at rollover: invite the new President and webmaster as organisation
@@ -305,6 +305,8 @@ Exact SQL is in RUNBOOK section 9. In order:
       the public site still renders it as the static fallback under the
       officer-edited `committees.page` overrides, and `npm run db:gen-reference`
       derives positions and invites from it (RUNBOOK section 3).
+- [ ] Nothing for events: an event moves to the archive by itself once it is
+      over, filed under the term it happened in (RUNBOOK section 28).
 
 ### 6.4 Confirm the machines are still alive
 

@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(96);
+select plan(105);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -133,6 +133,17 @@ select ok(not has_table_privilege('authenticated', 'public.content_blocks', 'ins
 select ok(has_function_privilege('anon', 'public.content_public()', 'execute'), 'anon can read the published content');
 select ok(not has_function_privilege('anon', 'public.publish_content(text, jsonb, timestamptz)', 'execute'), 'anon cannot publish content');
 select ok(not has_function_privilege('anon', 'app.can_edit_content(text)', 'execute'), 'anon cannot ask who may edit content');
+
+-- events: visitors read the RPC only; editors write the content columns, never the link history
+select ok(not has_table_privilege('anon', 'public.events', 'select'), 'anon cannot read events');
+select ok(not has_table_privilege('anon', 'public.event_slugs', 'select'), 'anon cannot read event_slugs');
+select ok(has_table_privilege('authenticated', 'public.events', 'select'), 'authenticated reads events (RLS narrows it to editors)');
+select ok(has_column_privilege('authenticated', 'public.events', 'title', 'update'), 'authenticated updates events.title');
+select ok(not has_column_privilege('authenticated', 'public.events', 'created_by', 'update'), 'authenticated cannot update events.created_by');
+select ok(not has_column_privilege('authenticated', 'public.events', 'id', 'insert'), 'authenticated cannot choose an event id');
+select ok(not has_table_privilege('authenticated', 'public.event_slugs', 'insert'), 'authenticated cannot write event_slugs');
+select ok(has_function_privilege('anon', 'public.events_public()', 'execute'), 'anon can read the published events');
+select ok(not has_function_privilege('anon', 'app.can_edit_event(uuid)', 'execute'), 'anon cannot ask who may edit an event');
 
 select * from finish();
 rollback;

@@ -24,6 +24,7 @@ const ExchangeIncomingsPage = lazy(
 const ExchangeJoinPage = lazy(() => import('./pages/ExchangeJoinPage.jsx'))
 const ShareStoryPage = lazy(() => import('./pages/ShareStoryPage.jsx'))
 const GalleryPage = lazy(() => import('./pages/GalleryPage.jsx'))
+const EventsPage = lazy(() => import('./pages/EventsPage.jsx'))
 const JoinPage = lazy(() => import('./pages/JoinPage.jsx'))
 const SortingPage = lazy(() => import('./pages/SortingPage.jsx'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'))
@@ -88,6 +89,11 @@ export default function App() {
                     from the portal gallery editor now. */}
                 <Route path="/gallery/admin" element={<Navigate to="/portal/gallery" replace />} />
                 <Route path="/gallery/:slug" element={<GalleryPage />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/events/archive" element={<EventsPage archive />} />
+                {/* An event's page, and its calendar file (<slug>.ics) when the
+                    build has not written one yet. */}
+                <Route path="/events/:slug" element={<EventsPage />} />
                 <Route path="/join" element={<JoinPage />} />
                 <Route path="/sorting" element={<SortingPage />} />
                 {/* Friendly alias people will guess/type. */}
