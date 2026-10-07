@@ -21,7 +21,8 @@
 // the public pages and says so.
 //
 // Every visit also measures the page for sideways scrolling and names the
-// elements that stick out of the viewport. With `--contrast` it runs axe-core's
+// elements that stick out of the viewport, and names anything cut off at the
+// screen's edge inside a fixed bar such as the header (scripts/walk-checks.mjs). With `--contrast` it runs axe-core's
 // colour-contrast rule as well, which is how the design pass checks both themes
 // against WCAG AA.
 //
@@ -30,6 +31,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { chromium } from 'playwright'
+import { measureCutOff } from './walk-checks.mjs'
 
 const PRODUCTION = 'https://ausss-ainshams.org'
 const OUT_ROOT = '.page-walk'
@@ -330,6 +332,7 @@ async function visit(context, opts, route, shotDir, report) {
 
   let finalPath = route
   let overflow = null
+  let cutoff = null
   let contrast = []
   try {
     await page.goto(`${opts.base}${route}`, { waitUntil: 'networkidle', timeout: 45000 })
@@ -347,6 +350,7 @@ async function visit(context, opts, route, shotDir, report) {
     await page.waitForTimeout(400)
     finalPath = new URL(page.url()).pathname
     overflow = await page.evaluate(measureOverflow)
+    cutoff = await page.evaluate(measureCutOff)
     if (opts.contrast) contrast = await measureContrast(page)
     if (opts.shots) {
       await fs.mkdir(shotDir, { recursive: true })
@@ -355,7 +359,7 @@ async function visit(context, opts, route, shotDir, report) {
   } catch (err) {
     record('pageerror', `walk: ${err.message.split('\n')[0]}`)
   }
-  report.push({ route, finalPath, messages, overflow, contrast })
+  report.push({ route, finalPath, messages, overflow, cutoff, contrast })
   return page
 }
 
@@ -426,10 +430,11 @@ async function walk(opts) {
         report.runs.push({ theme, width, pages })
         const noisy = pages.filter((p) => p.messages.length > 0).length
         const wide = pages.filter((p) => p.overflow).length
+        const cut = pages.filter((p) => p.cutoff).length
         const faint = pages.reduce((n, p) => n + p.contrast.length, 0)
         console.log(
           `page walk: ${theme} ${width}px: ${pages.length} pages, ${noisy} with console output, ` +
-            `${wide} scrolling sideways${opts.contrast ? `, ${faint} low-contrast texts` : ''}`,
+            `${wide} scrolling sideways, ${cut} with a bar cut off${opts.contrast ? `, ${faint} low-contrast texts` : ''}`,
         )
         await context.close()
       }
@@ -462,6 +467,11 @@ async function walk(opts) {
     run.pages
       .filter((p) => p.overflow)
       .map((p) => ({ theme: run.theme, width: run.width, route: p.route, ...p.overflow })),
+  )
+  report.cutoff = report.runs.flatMap((run) =>
+    run.pages
+      .filter((p) => p.cutoff)
+      .map((p) => ({ theme: run.theme, width: run.width, route: p.route, culprits: p.cutoff })),
   )
   const pairs = new Map()
   for (const run of report.runs) {
@@ -508,6 +518,17 @@ async function walk(opts) {
       listed.add(key)
       const who = o.culprits.map((c) => c.el).join(' | ').slice(0, 200)
       console.log(`  ${o.width}px ${o.route}: ${o.by}px over, ${who}`)
+    }
+  }
+  if (report.cutoff.length > 0) {
+    console.log(`\npage walk: ${report.cutoff.length} page views with something cut off at the screen's edge`)
+    const listed = new Set()
+    for (const o of report.cutoff) {
+      const key = `${o.width}|${o.culprits.map((c) => c.el).join()}`
+      if (listed.has(key)) continue
+      listed.add(key)
+      const who = o.culprits.map((c) => `${c.el.slice(0, 60)} "${c.text}" (${c.left} to ${c.right})`).join(' | ')
+      console.log(`  ${o.width}px ${o.route}: ${who.slice(0, 240)}`)
     }
   }
   if (opts.contrast) {

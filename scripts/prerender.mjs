@@ -309,6 +309,11 @@ async function main() {
     logLevel: 'error',
     server: { middlewareMode: true, hmr: false },
     appType: 'custom',
+    // A cache of its own: in production mode this server judges the dev
+    // server's prebundled dependencies (node_modules/.vite) stale and clears
+    // them, which left `npm run dev` answering 504 for gsap until it was
+    // restarted (2026-10-07).
+    cacheDir: path.join(root, 'node_modules', '.vite-prerender'),
     // React Router's Node entry is CommonJS, which Vite's SSR loader cannot
     // evaluate; point both packages at their ESM files and let Vite bundle
     // them so the app's router and StaticRouter are one instance.
