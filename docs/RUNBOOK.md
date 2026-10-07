@@ -1300,11 +1300,11 @@ broken image, and the pdf.js worker started. Uploads, exports and the receipt vi
 not exercised. The scripted walk of the portal (screenshots at every width) still needs
 the one-time `--login`; Google refuses that automated window, so use the email link.
 
-Both walks also name anything **cut off at the screen's edge inside a fixed bar** (the header,
-the cart pill): `scripts/walk-checks.mjs`, added 2026-10-07. The sideways-scroll measure cannot
-see it, because content that runs out of a fixed bar never makes the page scroll; that is how
-the Members button went missing at 1024 px when Events joined the header. A finding names the
-element and where it runs to, for example `"Members" (948 to 1053)` on a 1024 px screen.
+Since 2026-10-07 both walks also report anything cut off at the screen's edge inside a fixed
+bar, such as the header or the cart pill (`scripts/walk-checks.mjs`). The sideways-scroll measure
+cannot see this, because content that runs out of a fixed bar never makes the page scroll. That
+is how the Members button went missing at 1024 px when Events joined the header. A finding names
+the element and where it runs to, for example `"Members" (948 to 1053)` on a 1024 px screen.
 
 ## 22. Security checklist (Phase 5a)
 
@@ -1878,7 +1878,7 @@ and the same for `/portal/content/home.page`, `/portal/content/ifmsa.page` and
 ## 28. Events (Phase 6, step 4)
 
 Built 2026-10-07. Migration `20261007120001_events`, pgTAP file `320-events.sql`, unit tests
-`src/lib/eventTime.test.js`.
+`src/lib/eventTime.test.js` and `src/portal/eventSchedule.test.js`.
 
 **What visitors see.** `/events` lists what is coming up, soonest first; `/events/archive`
 lists what is over, newest first, under one heading per term; `/events/<link>` is one event,
@@ -1903,10 +1903,10 @@ sorts or archives by those two needs nothing more.
 
 **Over and archived.** An event is over at its end, or at its start when it has none; an
 all-day event at the end of its last day; a multiple-day event at the end of its last day's
-hours. Nothing changes in the database when that happens:
-the pages compare the time with the clock each time they render, and the nightly rebuild (section
-23) moves the saved pages along. So an event moves to the archive by itself, its page and link
-keep working, and the term rollover has nothing to do for events. The term an event belongs to
+hours. Nothing changes in the database when that happens: the pages compare the time with the
+clock each time they render, and the nightly rebuild (section 23) moves the saved pages along. An
+event therefore reaches the archive without anyone moving it, its page and link keep working, and
+the term rollover has nothing to do for events. The term an event belongs to
 is the `terms` row its start falls in, else the society's year (1 September to 31 August).
 
 **Who edits.** A committee's officers add, edit, publish and remove that committee's events; the
@@ -1937,6 +1937,5 @@ the app, which makes the same file in the browser and downloads it.
 **Checks.** `npm test`; `npm run walk:portal-sample -- light,dark 375,1440 /events` (with
 `MSYS_NO_PATHCONV=1` in Git Bash), the same for `/portal/events` and `/committees/scoph`; the
 sample walk has six sample events (three coming up, one of them over multiple days, an all-day
-draft, two over). The header was
-measured with Events in it at 1024, 1100, 1280, 1366, 1440 and 1920 px: between 1024 and 1279 px
-its gaps are narrower and the magazine pill says "Magazine".
+draft, two over). The header was measured with Events in it at 1024, 1100, 1280, 1366, 1440 and
+1920 px. Between 1024 and 1279 px its gaps are narrower and the magazine pill says "Magazine".

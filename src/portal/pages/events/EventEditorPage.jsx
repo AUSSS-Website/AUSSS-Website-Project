@@ -121,7 +121,7 @@ function DetailsForm({ row, choices: allowed }) {
 
         {choices.length > 1 && (
           <div className="sm:col-span-2 sm:max-w-md">
-            <Field label="Whose event" htmlFor="ev-owner" hint="Moving it needs a right over both.">
+            <Field label="Whose event" htmlFor="ev-owner" hint="You can move it to any committee you are an officer of.">
               <select id="ev-owner" className={inputCls} value={form.owner} onChange={set('owner')}>
                 {choices.map((c) => (
                   <option key={c.value} value={c.value}>

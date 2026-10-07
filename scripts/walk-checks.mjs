@@ -5,9 +5,9 @@
 
 // Does anything in a fixed or sticky bar run past the edge of the screen? The
 // sideways-scroll check cannot see it: content that sticks out of a fixed
-// header never makes the page scroll, it is simply cut off. That is how the
-// Members button went missing at 1024px when Events joined the header
-// (2026-10-07) without either walk noticing.
+// header never makes the page scroll, so it is cut off unnoticed. That is
+// how the Members button went missing at 1024px when Events joined the
+// header (2026-10-07) without either walk noticing.
 //
 // Counted: a visible element inside a fixed or sticky element whose box ends
 // past either edge of the viewport. Not counted: anything hidden

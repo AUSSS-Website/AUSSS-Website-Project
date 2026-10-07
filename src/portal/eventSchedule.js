@@ -18,7 +18,7 @@ const DEFAULT_TO = '16:00'
 
 export const SCHEDULE_KINDS = [
   { value: 'single', label: 'One time', hint: 'A start, and an end when you know it. Times are Cairo time.' },
-  { value: 'allday', label: 'All day', hint: 'One or more whole days, without times. Times are Cairo time.' },
+  { value: 'allday', label: 'All day', hint: 'One or more whole days, without times.' },
   // the webmaster's wording, 2026-10-08
   { value: 'days', label: 'Multiple days', hint: 'Two or more days, timezone to use is CLT (Cairo Local Time)' },
 ]
