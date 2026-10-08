@@ -407,51 +407,46 @@ status without a request, for example to mark alumni.
 
 ## 10. Term rollover (database part)
 
-Full checklist including seats and secrets is HANDOVER section 6. The SQL, run
-as `postgres` in the SQL editor or via MCP `execute_sql`, in this order:
+Since 2026-10-08 the Executive Board does this in the portal, at **New term**
+(`/portal/admin/rollover`); section 29 says what the page does and why. The full
+checklist, seats and secrets included, is HANDOVER section 6.
+
+Do not switch the term by hand (`set_current_term`, or an `update` of `terms`). Every access
+check reads the current term, so a bare switch leaves everyone holding nothing, the person who
+ran it included, and then nobody can hand positions out again. The page prepares the new term
+first and switches last, in one call.
+
+If the portal cannot be used, the same call runs in the SQL editor on behalf of a board work
+account (the function checks that the caller is on the board, so it has to be told who that is
+for the length of the transaction):
 
 ```sql
--- 1. Create the next term (skip if the reference-data migration already did).
-insert into public.terms (label, starts_on, ends_on, is_current)
-values ('2027-28', '2027-09-01', '2028-08-31', false)
-on conflict (label) do nothing;
+begin;
+-- The profile id of a board or webmaster work account (Authentication > Users, or
+-- select id from public.profiles where email = 'aussswebsite@gmail.com').
+select set_config('request.jwt.claims',
+  json_build_object('sub', '<profile id>', 'role', 'authenticated')::text, true);
 
--- 2. Switch the current term. Two-step inside the function, so the partial
---    unique index terms_one_current is never violated.
-select public.set_current_term((select id from public.terms where label = '2027-28'));
--- As postgres this bypasses the EB check; if it raises because auth.uid() is
--- null, do the two steps by hand:
---   update public.terms set is_current = false where is_current;
---   update public.terms set is_current = true where label = '2027-28';
+-- 1. Read what it would do (positions, work emails, tasks, albums).
+select jsonb_pretty(public.rollover_preview());
 
--- 3. End every active assignment from the old term.
-update public.assignments
-set status = 'ended', ended_on = current_date
-where term_id = (select id from public.terms where label = '2026-27')
-  and status = 'active';
+-- 2. Switch. The last argument lists the albums to archive (ids from the preview's
+--    "albums"); '{}' archives none.
+select public.roll_over_term('2027-28', '2027-09-01', '2028-08-31',
+  array['<album id>', '<album id>']::uuid[]);
+commit;
 
--- 4. Invite the incoming officers and EB for the new term (section 8), one
---    row per person and position. app.current_term_id() now returns the new term.
-insert into public.invites (email, position_id, term_id)
-select v.email, p.id, app.current_term_id()
-from (values
-  ('president@example.com',  'eb.president'),
-  ('webmaster@example.com',  'society.webmaster'),
-  ('lore@example.com',       'score.lore')
-) as v(email, key)
-join public.positions p on p.key = v.key
-on conflict (email_normalized, position_id, term_id) do nothing;
-
--- 5. Verify.
+-- 3. Check.
 select label, is_current from public.terms order by starts_on;
-select count(*) from public.assignments a join public.terms t on t.id = a.term_id
-where t.is_current and a.status = 'active';
+select p.level, count(*) from public.assignments a
+join public.positions p on p.id = a.position_id
+join public.terms t on t.id = a.term_id
+where t.is_current and a.status = 'active' group by p.level;
 ```
 
 The portal, the assignment queries and every `app.*` helper read
 `app.current_term_id()`, so the switch is immediate for signed-in users on their
-next request. Until Phase 2, also update `src/data/society.js` and the
-`officers.gs` `Accounts` sheet for the public site.
+next request.
 
 ## 11. Debugging
 
@@ -1939,3 +1934,70 @@ the app, which makes the same file in the browser and downloads it.
 sample walk has six sample events (three coming up, one of them over multiple days, an all-day
 draft, two over). The header was measured with Events in it at 1024, 1100, 1280, 1366, 1440 and
 1920 px. Between 1024 and 1279 px its gaps are narrower and the magazine pill says "Magazine".
+
+## 29. The term rollover and the gallery archive (Phase 7, step 1)
+
+Built 2026-10-08. Migration `20261008120001_term_rollover`, pgTAP file `330-term-rollover.sql`
+(and five lines in `090-grants.sql`), unit tests `src/lib/gallery.test.js` and
+`src/portal/rollover.test.js`.
+
+**The page.** **New term** in the portal (`/portal/admin/rollover`, the Executive Board only)
+shows, in order, what the switch will do, then does all of it at once with one button:
+
+1. **The new term**: its name and its first and last days, filled in as the year after the
+   current term (`2027-28`, 1 September 2027 to 31 August 2028). Any day can be chosen, so an
+   early handover in the summer is fine; the switch happens when the button is pressed.
+2. **Officers and the board**: every officer's, board and webmaster position stays with its
+   work account (section 14, "Access belongs to the work emails"). Nobody is invited on a
+   personal email: the incoming officer is handed the work account. The page marks each position
+   "Keeps it" (the work account exists), "From its first sign-in" (the address has no account
+   yet) or "No work email" (nobody holds it until one is set on the Roster page and the address
+   is invited). Change a work email before the switch and the new address is the one carried.
+3. **Members and assistants**: the positions the roster lists below officer are given again for
+   the new term (the roster says who holds them), to the account the roster row is linked to, or
+   to the row's email when it is not linked. Retired positions are skipped. A position given by an invite that the roster
+   does not list ends with the old term; the page names each one, and the committee hands it out
+   again on its Invites tab if it should continue.
+4. **Tasks**: every open task (to do, doing, blocked) moves into the new term as it is; done
+   tasks stay with the term they were done in. This is the only time a task's term changes.
+5. **Gallery**: the albums still in the gallery, all ticked. Ticked albums move to the gallery
+   archive under the term that is ending. The storage used is shown against the free plan's 1 GB.
+6. **Switch**: the term changes, the old term's assignments end (dated today, in Cairo), the old
+   term's offers of positions that nobody took up are withdrawn (a first sign-in would otherwise
+   still turn them into positions of a term that is over), and the public pages are asked to
+   rebuild.
+
+It refuses to start when nobody would keep the board's access: no board or webmaster position
+whose work account exists. Without that check a rollover could leave a society that only the
+service key could put right. The page says so and keeps the button off; the fix is to set the
+board's work emails and sign in once with one of those accounts.
+
+It leaves alone: membership statuses (the board grants those on the Upgrades panel, never
+automatically), posts (expired ones are already hidden), and the seats and secrets of HANDOVER
+section 6. Everything happens in one transaction: if any part fails, nothing changes.
+
+**The gallery archive.** An archived album leaves `/gallery` and appears in `/gallery/archive`,
+under a heading per term, newest first. Its own page, `/gallery/<link>`, keeps working: it shows
+its term above the title and links back to the archive. `/gallery` links to the archive when
+there is one, and says so when the new term has no albums yet. In the portal's gallery editor,
+archived albums are listed below the shelf by term; **Archive** moves one album there by hand
+(filed under the current term) and **Back to the gallery** returns one. No photo is shrunk or
+moved: archiving is one column, `albums.archived_term_id` (and `archived_at`, set by the
+database). `rpc/gallery_public()` returns every published album with its `term` (null while it is
+in the gallery). The link `archive` is the archive's own: a new album titled "Archive" gets
+`archive-2`, and renaming one to it is refused.
+
+**Storage.** On 2026-10-08 the gallery held 258 photos in 8 albums, 56 MB (each photo is two
+files: about 190 KB at 1600 px and 40 KB at 600 px). At that pace the free plan's 1 GB lasts
+about nine terms, so the archive keeps the photos as they are. The page turns its storage line
+amber past 600 MB; that is the time to build what the roadmap first planned (re-saving archived
+photos in a smaller format, and a copy of each term's photos on the society Drive). The nightly
+backup already copies the whole bucket (section 20).
+
+**Also in this migration.** `app.slugify` now trims hyphens after cutting a link at 60
+characters, so a title cut just after a hyphen no longer makes a link the albums table refuses.
+
+**Checks.** `npm test`; `npm run walk:portal-sample -- light,dark 375,1440 /portal/admin/rollover`
+(with `MSYS_NO_PATHCONV=1` in Git Bash), the same for `/gallery` (the index, the archive and an
+archived album) and `/portal/gallery`. The sample walk has five gallery albums, three of them
+archived over two terms, and a rollover preview with each kind of position.

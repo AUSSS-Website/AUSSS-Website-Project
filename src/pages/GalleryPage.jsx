@@ -6,35 +6,47 @@ import usePageTitle from '../hooks/usePageTitle.js'
 import useFocusTrap from '../hooks/useFocusTrap.js'
 import ImageTrail from '../components/ImageTrail.jsx'
 import GalleryAurora from '../components/GalleryAurora.jsx'
-import { findAlbum, useGallery } from '../lib/gallery.js'
+import {
+  GALLERY_ARCHIVE_DESCRIPTION,
+  GALLERY_ARCHIVE_TITLE,
+  archivedByTerm,
+  currentAlbums,
+  findAlbum,
+  useGallery,
+} from '../lib/gallery.js'
 import { society } from '../data/society.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
 // The albums come from the database (the PNSD officers edit them in the portal);
 // src/lib/gallery.js decides what to show while the live document loads. A photo
-// hidden or removed in the editor is simply absent here.
+// hidden or removed in the editor is simply absent here. /gallery shows this term's
+// albums, /gallery/archive the earlier terms' (archived at the rollover), and an
+// album's own page works either way.
 
-export default function GalleryPage() {
+export default function GalleryPage({ archive = false }) {
   const { slug } = useParams()
   const { albums, trail, loading } = useGallery()
 
   const { album, redirectTo } = findAlbum(albums, slug)
-  usePageTitle(album ? album.title : 'Gallery')
+  usePageTitle(
+    album ? album.title : archive ? GALLERY_ARCHIVE_TITLE : 'Gallery',
+    archive && !album ? GALLERY_ARCHIVE_DESCRIPTION : undefined,
+  )
   // A link shared before the album was renamed still opens it.
   if (redirectTo) return <Navigate to={`/gallery/${redirectTo}`} replace />
   if (slug && !album) return loading ? <LoadingAlbum /> : <NotFoundAlbum slug={slug} />
 
-  return album ? (
-    <AlbumView album={album} />
-  ) : (
-    <GalleryIndex albums={albums} trail={trail} loading={loading} />
-  )
+  if (album) return <AlbumView album={album} />
+  if (archive) return <GalleryArchive albums={albums} loading={loading} />
+  return <GalleryIndex albums={albums} trail={trail} loading={loading} />
 }
 
 // ───────────────────────── Index view ─────────────────────────
 
-function GalleryIndex({ albums, trail, loading }) {
+function GalleryIndex({ albums: all, trail, loading }) {
   useReveal()
+  const albums = currentAlbums(all)
+  const hasArchive = albums.length < all.length
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const hasTrail = trail.length > 0
@@ -110,7 +122,17 @@ function GalleryIndex({ albums, trail, loading }) {
           </div>
         ) : albums.length === 0 ? (
           <p className="mx-auto max-w-xl rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center text-sm text-soft/60">
-            No albums to show yet. Check back soon.
+            {hasArchive ? (
+              <>
+                This term&rsquo;s albums are on their way. Earlier terms are in the{' '}
+                <Link to="/gallery/archive" className="font-semibold text-accent hover:text-ink">
+                  archive
+                </Link>
+                .
+              </>
+            ) : (
+              'No albums to show yet. Check back soon.'
+            )}
           </p>
         ) : (
           <>
@@ -135,10 +157,20 @@ function GalleryIndex({ albums, trail, loading }) {
           </>
         )}
 
-        <div className="reveal mt-16 text-center">
+        <div className="reveal mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
+          {hasArchive && albums.length > 0 && (
+            <Link
+              to="/gallery/archive"
+              className="font-semibold text-accent transition-colors hover:text-ink"
+            >
+              Earlier terms →
+            </Link>
+          )}
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+            className={`font-semibold transition-colors hover:text-ink ${
+              hasArchive && albums.length > 0 ? 'text-soft/60' : 'text-accent'
+            }`}
           >
             ← Back to AUSSS home
           </Link>
@@ -150,7 +182,87 @@ function GalleryIndex({ albums, trail, loading }) {
   )
 }
 
-const AlbumCard = memo(function AlbumCard({ a }) {
+// ───────────────────────── Archive ─────────────────────────
+
+function GalleryArchive({ albums, loading }) {
+  useReveal()
+  const terms = archivedByTerm(albums)
+
+  return (
+    <article className="bg-page">
+      <header className="relative isolate overflow-hidden pb-12 pt-32 text-center sm:pt-40">
+        <GalleryAurora />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-gradient-to-t from-page to-transparent"
+          aria-hidden="true"
+        />
+        <div className="container-prose relative z-10">
+          <span className="eyebrow justify-center">
+            <span className="h-px w-8 bg-medical" />
+            Archive
+            <span className="h-px w-8 bg-medical" />
+          </span>
+          <h1 className="heading-serif mt-6 text-4xl text-ink sm:text-5xl">
+            {GALLERY_ARCHIVE_TITLE}
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-base font-light leading-relaxed text-soft/75">
+            Every term&rsquo;s albums, kept once the term is over.
+          </p>
+        </div>
+      </header>
+
+      <div className="container-prose pb-20">
+        {terms.length === 0 && loading ? (
+          <div className="flex justify-center py-10">
+            <span
+              className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent"
+              role="status"
+              aria-label="Loading the archive"
+            />
+          </div>
+        ) : terms.length === 0 ? (
+          <p className="mx-auto max-w-xl rounded-2xl border border-dashed border-line/15 bg-veil/[0.03] p-8 text-center text-sm text-soft/60">
+            Nothing in the archive yet. A term&rsquo;s albums move here when it ends.
+          </p>
+        ) : (
+          <div className="space-y-16">
+            {terms.map((g) => (
+              <section key={g.term} aria-labelledby={`term-${g.term}`}>
+                <h2 id={`term-${g.term}`} className="heading-serif text-2xl text-ink sm:text-3xl">
+                  Term {g.term}
+                </h2>
+                <p className="mt-1 text-sm text-soft/55">
+                  {g.albums.length} {g.albums.length === 1 ? 'album' : 'albums'}
+                </p>
+                <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
+                  {g.albums.map((a) => (
+                    <li key={a.slug}>
+                      <AlbumCard a={a} headingLevel={3} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
+          <Link to="/gallery" className="font-semibold text-accent transition-colors hover:text-ink">
+            ← This term&rsquo;s albums
+          </Link>
+          <Link to="/" className="font-semibold text-soft/60 transition-colors hover:text-ink">
+            AUSSS home
+          </Link>
+        </div>
+
+        <GalleryDisclaimer />
+      </div>
+    </article>
+  )
+}
+
+const AlbumCard = memo(function AlbumCard({ a, headingLevel = 2 }) {
+  const Heading = `h${headingLevel}`
   return (
     <Link
       to={`/gallery/${a.slug}`}
@@ -172,9 +284,9 @@ const AlbumCard = memo(function AlbumCard({ a }) {
           <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-accent sm:text-[10px]">
             {a.count} {a.count === 1 ? 'photo' : 'photos'}
           </p>
-          <h2 className="heading-serif mt-1 text-base text-ink sm:text-xl">
+          <Heading className="heading-serif mt-1 line-clamp-2 text-base text-ink sm:text-xl">
             {a.title}
-          </h2>
+          </Heading>
         </div>
       </div>
       {a.blurb && (
@@ -225,6 +337,7 @@ function AlbumView({ album }) {
         <div className="container-prose relative z-10">
           <span className="eyebrow justify-center">
             <span className="h-px w-8 bg-medical" />
+            {album.term && `Term ${album.term} · `}
             {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
             <span className="h-px w-8 bg-medical" />
           </span>
@@ -299,10 +412,10 @@ function AlbumView({ album }) {
 
         <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
           <Link
-            to="/gallery"
+            to={album.term ? '/gallery/archive' : '/gallery'}
             className="font-semibold text-accent transition-colors hover:text-ink"
           >
-            ← All albums
+            {album.term ? '← Gallery archive' : '← All albums'}
           </Link>
           <Link
             to="/"

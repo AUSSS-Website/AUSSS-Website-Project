@@ -27,6 +27,7 @@ import {
   isUpcoming,
 } from '../lib/events.js'
 import { cairoIsoWithOffset, eventDays, isoToCairoDate } from '../lib/eventTime.js'
+import { GALLERY_ARCHIVE_DESCRIPTION, GALLERY_ARCHIVE_TITLE } from '../lib/gallery.js'
 
 export const SITE_URL = 'https://ausss-ainshams.org'
 export const SITE_NAME = 'AUSSS'
@@ -349,6 +350,14 @@ export function publicPages(albums = [], issues = [], content = {}, settings = {
       priority: 0.7,
     },
     {
+      path: '/gallery/archive',
+      title: GALLERY_ARCHIVE_TITLE,
+      description: GALLERY_ARCHIVE_DESCRIPTION,
+      changefreq: 'yearly',
+      priority: 0.4,
+      crumbs: [['Gallery', '/gallery']],
+    },
+    {
       path: '/magazine',
       title: 'Magazine',
       description:
@@ -438,7 +447,9 @@ export function publicPages(albums = [], issues = [], content = {}, settings = {
       imageAlt: a.title,
       changefreq: 'yearly',
       priority: 0.5,
-      crumbs: [['Gallery', '/gallery']],
+      crumbs: a.term
+        ? [['Gallery', '/gallery'], ['Archive', '/gallery/archive']]
+        : [['Gallery', '/gallery']],
       jsonLd: [albumJsonLd(a, path)],
     })
   }

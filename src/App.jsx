@@ -88,6 +88,7 @@ export default function App() {
                 {/* The admin-key takedown page retired in Phase 5; photos are hidden
                     from the portal gallery editor now. */}
                 <Route path="/gallery/admin" element={<Navigate to="/portal/gallery" replace />} />
+                <Route path="/gallery/archive" element={<GalleryPage archive />} />
                 <Route path="/gallery/:slug" element={<GalleryPage />} />
                 <Route path="/events" element={<EventsPage />} />
                 <Route path="/events/archive" element={<EventsPage archive />} />

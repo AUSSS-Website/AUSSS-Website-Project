@@ -33,7 +33,11 @@ export { photoUrl }
 
 // ---- albums ----------------------------------------------------------------
 
-const ALBUM_SELECT = 'id, slug, title, blurb, cover_photo_id, sort_order, published, created_at, updated_at'
+// `archived_term` is the term an album is archived under (null while it is in
+// the gallery); the board archives a term's albums at the rollover, and an
+// editor can move one album either way.
+const ALBUM_SELECT =
+  'id, slug, title, blurb, cover_photo_id, sort_order, published, created_at, updated_at, archived_term_id, archived_term:terms(label)'
 
 // Every album plus, for the list page, its visible photo count and a cover thumb.
 async function fetchAlbums() {
@@ -69,6 +73,15 @@ async function fetchAlbums() {
 
 export function useAlbums(enabled = true) {
   return useQuery({ queryKey: galleryKeys.albums(), queryFn: fetchAlbums, enabled })
+}
+
+// The current term: an album moved to the archive by hand is filed under it.
+export function useCurrentTerm() {
+  return useQuery({
+    queryKey: ['terms', 'current'],
+    queryFn: async () =>
+      unwrap(await supabase.from('terms').select('id, label').eq('is_current', true).maybeSingle()),
+  })
 }
 
 async function createAlbum(fields) {
@@ -118,9 +131,13 @@ export function useAlbumMutations() {
       await qc.cancelQueries({ queryKey: galleryKeys.albums() })
       const before = qc.getQueryData(galleryKeys.albums())
       if (before) {
+        // `ids` is the gallery's shelf; archived albums are not on it and keep their place.
         const byId = new Map(before.map((a) => [a.id, a]))
+        const moved = new Set(ids)
         const next = ids.map((id, i) => byId.get(id) && { ...byId.get(id), sort_order: i }).filter(Boolean)
-        if (next.length === before.length) qc.setQueryData(galleryKeys.albums(), next)
+        if (next.length === moved.size) {
+          qc.setQueryData(galleryKeys.albums(), [...next, ...before.filter((a) => !moved.has(a.id))])
+        }
       }
       return { before }
     },
