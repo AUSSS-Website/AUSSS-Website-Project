@@ -3,7 +3,7 @@
 -- product is not sold; closing orders (site setting merchOrdersOpen) refuses an order; and
 -- a change asks for a rebuild of the public pages.
 begin;
-select plan(18);
+select plan(21);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -88,6 +88,20 @@ select throws_ok(
   $$ update public.merch_products set image = 'javascript:alert(1)' where id = 'pgtap-mug' $$,
   '23514', null,
   'a picture must be an https address or a file of the site'
+);
+select throws_ok(
+  $$ update public.merch_products set image = '/\evil.example/a.jpg' where id = 'pgtap-mug' $$,
+  '23514', null,
+  'a picture written /\host, which a browser reads as another site, is refused'
+);
+select throws_ok(
+  $$ update public.merch_products set size_chart = '//evil.example/chart.jpg' where id = 'pgtap-mug' $$,
+  '23514', null,
+  'so is a size chart on another site'
+);
+select lives_ok(
+  $$ update public.merch_products set size_chart = '/assets/merch/size-chart-tshirt.jpg' where id = 'pgtap-mug' $$,
+  'a size chart that ships with the site is kept'
 );
 select throws_ok(
   $$ update public.merch_products set wide_designs = array['Blue'] where id = 'pgtap-mug' $$,

@@ -20,6 +20,7 @@ describe('safeHref', () => {
       'data:text/html,<script>alert(1)</script>',
       'vbscript:x',
       '//evil.example/path',
+      '/\\evil.example/path',
       'https://x.org/"onmouseover="x',
       'ftp://x.org',
       'exchange',

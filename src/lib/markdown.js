@@ -21,7 +21,8 @@ export function safeHref(raw) {
   if (/^https?:\/\/[^\s<>"']+$/i.test(href)) return href
   if (/^mailto:[^\s<>"'@]+@[^\s<>"'@]+$/i.test(href)) return href
   if (/^tel:\+?[0-9][0-9 ()-]*$/i.test(href)) return href
-  if (/^\/(?!\/)[^\s<>"']*$/.test(href)) return href
+  // A page of this site. Never '//host' or '/\host', which a browser reads as another site.
+  if (/^\/(?![/\\])[^\s<>"']*$/.test(href)) return href
   if (/^#[\w-]+$/.test(href)) return href
   return ''
 }
