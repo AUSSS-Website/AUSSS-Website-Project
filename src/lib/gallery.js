@@ -10,6 +10,10 @@
 //   2. else the last snapshot this browser saw (localStorage), for an instant paint,
 //
 // then the live document replaces both as soon as it arrives.
+//
+// An album the board archived (at the term rollover, or one at a time in the editor)
+// carries its term ('2026-27'): it leaves /gallery for /gallery/archive, and its own
+// page stays where it was.
 import { useEffect, useState } from 'react'
 import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
 import { readJson } from './localCache.js'
@@ -17,6 +21,10 @@ import { readJson } from './localCache.js'
 const CACHE_KEY = 'ausss-gallery-snapshot'
 const TRAIL_COUNT = 24
 const GLOBAL_KEY = '__AUSSS_GALLERY__'
+
+export const GALLERY_ARCHIVE_TITLE = 'Gallery archive'
+export const GALLERY_ARCHIVE_DESCRIPTION =
+  'Albums from earlier AUSSS terms, term by term: camps, campaigns, assemblies and exchanges in pictures.'
 
 const STORAGE_BASE = `${(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')}/storage/v1/object/public/gallery/`
 
@@ -27,7 +35,8 @@ export function photoUrl(path, size = 'thumb') {
 
 // One album in the shape GalleryPage and seo/pages.js read. `cover` is the thumb URL
 // (album cards), `coverFull` the 1600 px file (share cards), `aliases` the old slugs
-// that should redirect here.
+// that should redirect here, `term` the term it is archived under (null while it is
+// in the gallery).
 function normalizeAlbum(a) {
   const photos = (Array.isArray(a.photos) ? a.photos : []).map((p) => ({
     id: p.id,
@@ -47,6 +56,7 @@ function normalizeAlbum(a) {
     coverFull: a.cover ? photoUrl(a.cover, 'full') : photos[0]?.full,
     count: photos.length,
     aliases: Array.isArray(a.aliases) ? a.aliases : [],
+    term: a.term || null,
     photos,
   }
 }
@@ -55,6 +65,27 @@ function normalizeAlbum(a) {
 export function albumsFromSnapshot(doc) {
   const list = doc && Array.isArray(doc.albums) ? doc.albums : []
   return list.map(normalizeAlbum).filter((a) => a.count > 0)
+}
+
+// The albums in the gallery itself, in shelf order.
+export function currentAlbums(albums) {
+  return albums.filter((a) => !a.term)
+}
+
+// The archive: [{ term: '2026-27', albums: [...] }], the latest term first, each
+// term's albums in shelf order.
+export function archivedByTerm(albums) {
+  const groups = []
+  for (const a of albums) {
+    if (!a.term) continue
+    let g = groups.find((x) => x.term === a.term)
+    if (!g) {
+      g = { term: a.term, albums: [] }
+      groups.push(g)
+    }
+    g.albums.push(a)
+  }
+  return groups.sort((x, y) => y.term.localeCompare(x.term))
 }
 
 // Square thumbs for the cursor trail on the gallery index: round-robin across the
@@ -137,7 +168,9 @@ export function useGallery() {
     }
   }, [])
 
-  const trail = trailFrom(albums)
+  // Just after a rollover the gallery can be empty; the archive's photos fill the trail.
+  const current = currentAlbums(albums)
+  const trail = trailFrom(current.length > 0 ? current : albums)
 
   return { albums, trail, loading }
 }

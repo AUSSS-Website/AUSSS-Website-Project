@@ -930,6 +930,23 @@ request is merged.
 
 #### Phase 7. Sustain
 
+**Status, 2026-10-08: step 1 built (branch `phase7-rollover`, stacked on the events branch;
+migration `20261008120001_term_rollover`, RUNBOOK section 29).** The wizard is **New term** in
+the portal. Built differently from the text below in three ways, each settled while building:
+
+- **Officers are not invited.** Since access belongs to the work emails (2026-10-05), every
+  officer's, board and webmaster position is carried into the new term on its work account, and
+  the incoming officer is handed the account. The roster's positions below officer are given
+  again; a position given by invite and not on the roster ends with the term. Membership
+  statuses are not changed (the board grants them, never automatically).
+- **Open tasks move into the new term as they are** (the webmaster's choice, 2026-10-08, over
+  archiving them). Posts need nothing: expired ones were already hidden.
+- **The gallery archive keeps the photos as they are** (the webmaster's choice, 2026-10-08). On
+  that day the gallery was 258 photos, 56 MB of the free plan's 1 GB, about nine terms at that
+  pace, and no originals are stored (the browser shrinks each photo before upload; the nightly
+  backup already copies the bucket). The page warns past 600 MB, which is when re-saving the
+  archived photos smaller and copying a term to the Drive should be built.
+
 1. **The term-rollover wizard, with the gallery archive as one of its steps
    (request 12).** The wizard of section 10: create the next term, end the
    current assignments, invite the incoming officers, archive open tasks and

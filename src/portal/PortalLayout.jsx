@@ -85,6 +85,7 @@ export default function PortalLayout() {
       isEB && { to: '/portal/admin/roster', label: 'Roster' },
       isEB && { to: '/portal/admin/verification', label: 'Verification' },
       isEB && { to: '/portal/admin/settings', label: 'Site settings' },
+      isEB && { to: '/portal/admin/rollover', label: 'New term' },
       isWebmaster && { to: '/portal/admin/audit', label: 'Audit log' },
     ],
   ]

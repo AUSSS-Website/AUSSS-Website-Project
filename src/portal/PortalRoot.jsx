@@ -17,6 +17,7 @@ import TaskPage from './pages/tasks/TaskPage.jsx'
 import UpdatesPage from './pages/updates/UpdatesPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
 import VerificationQueuePage from './pages/admin/VerificationQueuePage.jsx'
+import RolloverPage from './pages/admin/RolloverPage.jsx'
 import SiteSettingsPage from './pages/admin/SiteSettingsPage.jsx'
 import RosterPage from './pages/admin/RosterPage.jsx'
 import CommitteesPage from './pages/committee/CommitteesPage.jsx'
@@ -124,6 +125,14 @@ export default function PortalRoot() {
               element={
                 <RequireEB>
                   <VerificationQueuePage />
+                </RequireEB>
+              }
+            />
+            <Route
+              path="admin/rollover"
+              element={
+                <RequireEB>
+                  <RolloverPage />
                 </RequireEB>
               }
             />

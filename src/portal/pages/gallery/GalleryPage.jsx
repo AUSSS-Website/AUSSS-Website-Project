@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
-import { useAlbumMutations, useAlbums } from '../../galleryQueries.js'
+import { useAlbumMutations, useAlbums, useCurrentTerm } from '../../galleryQueries.js'
 import {
   Centered,
   ErrorText,
@@ -21,6 +21,8 @@ import { ShareLinkButton, siteAlbumUrl } from './galleryUi.jsx'
 // its cover, photo count and shareable link. PNSD officers and the EB add
 // albums here and drag them into order (the handle at the left of each row;
 // the arrow keys work on it too); the album itself is edited on its own page.
+// Below the shelf, the archive: last terms' albums, filed by term at the
+// rollover (or one at a time with "Archive"), still reachable at their links.
 
 export function GalleryGate({ children }) {
   const { officerOf } = useAuth()
@@ -91,7 +93,7 @@ function NewAlbumForm({ onDone }) {
   )
 }
 
-function AlbumRow({ a, handle }) {
+function AlbumRow({ a, handle, onMove, moving }) {
   return (
     <div className="flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap sm:gap-4">
       {handle}
@@ -117,20 +119,41 @@ function AlbumRow({ a, handle }) {
           <span className="text-soft/40">{siteAlbumUrl(a.slug).replace(/^https?:\/\//, '')}</span>
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <ShareLinkButton slug={a.slug} />
         <Link to={`/portal/gallery/${a.slug}`} className={outlineBtnCls}>
           Edit
         </Link>
+        {onMove && (
+          <button type="button" className={outlineBtnCls} onClick={onMove} disabled={moving}>
+            {a.archived_term_id ? 'Back to the gallery' : 'Archive'}
+          </button>
+        )}
       </div>
     </div>
   )
 }
 
+// The archive's albums by term, latest term first.
+function archiveGroups(albums) {
+  const groups = new Map()
+  for (const a of albums) {
+    const term = a.archived_term?.label || 'Archive'
+    if (!groups.has(term)) groups.set(term, [])
+    groups.get(term).push(a)
+  }
+  return [...groups.entries()].sort(([x], [y]) => y.localeCompare(x))
+}
+
 export default function GalleryPage() {
   usePageTitle('Gallery editor')
   const albums = useAlbums()
-  const { reorder } = useAlbumMutations()
+  const term = useCurrentTerm()
+  const { reorder, update } = useAlbumMutations()
+  const shelf = (albums.data || []).filter((a) => !a.archived_term_id)
+  const archived = (albums.data || []).filter((a) => a.archived_term_id)
+  const move = (a) =>
+    update.mutate({ id: a.id, patch: { archived_term_id: a.archived_term_id ? null : term.data?.id } })
   const [adding, setAdding] = useState(false)
   const [created, setCreated] = useState(null)
 
@@ -194,15 +217,60 @@ export default function GalleryPage() {
       ) : (
         <>
           {reorder.error && <ErrorText>{reorder.error.message}</ErrorText>}
-          <SortableList
-            items={albums.data}
-            getId={(a) => a.id}
-            getLabel={(a) => a.title}
-            onReorder={(ids) => reorder.mutate(ids)}
-            className="grid gap-3"
-            itemClassName="min-w-0 rounded-2xl border border-line/10 bg-card"
-            renderItem={(a, handle) => <AlbumRow a={a} handle={handle} />}
-          />
+          {update.error && <ErrorText>{update.error.message}</ErrorText>}
+          {shelf.length === 0 ? (
+            <Panel>
+              <p className="text-sm text-soft/70">
+                The gallery is empty: every album is in the archive. Create one for this term.
+              </p>
+            </Panel>
+          ) : (
+            <SortableList
+              items={shelf}
+              getId={(a) => a.id}
+              getLabel={(a) => a.title}
+              onReorder={(ids) => reorder.mutate(ids)}
+              className="grid gap-3"
+              itemClassName="min-w-0 rounded-2xl border border-line/10 bg-card"
+              renderItem={(a, handle) => (
+                <AlbumRow
+                  a={a}
+                  handle={handle}
+                  onMove={term.data ? () => move(a) : null}
+                  moving={update.isPending}
+                />
+              )}
+            />
+          )}
+
+          {archived.length > 0 && (
+            <section className="mt-12" aria-labelledby="gallery-archive">
+              <h2 id="gallery-archive" className="heading-serif text-2xl text-ink">
+                Archive
+              </h2>
+              <p className="mt-1 text-sm text-soft/60">
+                Earlier terms’ albums. Visitors find them under{' '}
+                <a href="/gallery/archive" target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:text-ink">
+                  Gallery archive ↗
+                </a>
+                , and their links still work.
+              </p>
+              {archiveGroups(archived).map(([label, list]) => (
+                <div key={label} className="mt-6">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+                    {/^\d{4}-\d{2}$/.test(label) ? `Term ${label}` : label}
+                  </h3>
+                  <ul className="mt-3 grid gap-3">
+                    {list.map((a) => (
+                      <li key={a.id} className="min-w-0 rounded-2xl border border-line/10 bg-card">
+                        <AlbumRow a={a} onMove={() => move(a)} moving={update.isPending} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          )}
         </>
       )}
     </GalleryGate>

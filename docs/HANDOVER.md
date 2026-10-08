@@ -283,20 +283,21 @@ step-by-step for the Supabase keys.
 
 ### 6.3 Run the database rollover
 
-Exact SQL is in RUNBOOK section 9. In order:
+A board member does this in the portal, at **New term** (`/portal/admin/rollover`). RUNBOOK
+section 29 explains each part; section 10 has the SQL fallback for when the portal is down.
 
-- [ ] Insert the next term row (`terms`) if the reference-data migration has
-      not already created it.
-- [ ] `select public.set_current_term('<new term id>')` as an EB user (or as
-      `postgres` in the SQL editor).
-- [ ] End the old term's assignments: `update public.assignments set status =
-      'ended', ended_on = current_date where term_id = '<old term id>' and
-      status = 'active'`.
-- [ ] Insert `invites` for every incoming officer and EB member (personal
-      email, position key, new term id). Anyone who has already signed in is
-      assigned immediately by the trigger; the rest are assigned on first sign-in.
-- [ ] Insert the `society.webmaster` invite for the incoming webmaster.
-- [ ] Verify: each incoming officer signs in at `/portal` and sees their
+- [ ] Before the switch, check the **Officers and the board** list: every position should say
+      "Keeps it". For one with no work email, or a role moving to a different inbox, set the
+      address under "Work emails" on the Roster page first.
+- [ ] Untick any album that should stay in the gallery for the new term; the rest move to the
+      gallery archive under the old term (their links keep working).
+- [ ] Press **Start** (twice: the button asks again). The page then lists what it did.
+- [ ] Hand each incoming officer and board member their position's work account, after changing
+      its password and recovery details so the outgoing holder no longer has them. Nobody is
+      invited on a personal email: officer and board access belongs to the work accounts alone.
+- [ ] Positions the page listed as ending (given by invite, not on the roster): the committee
+      hands them out again on its Invites tab if they continue.
+- [ ] Verify: each incoming officer signs in at `/portal` with the work account and sees their
       position chip; the public committee pages show the right names.
 - [ ] If a role moves to a different Gmail inbox, change the destination of its
       forwarding rule in Squarespace (RUNBOOK section 19); the address on the

@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(105);
+select plan(110);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -91,6 +91,13 @@ select ok(not has_table_privilege('anon', 'public.gallery_photos', 'select'), 'a
 select ok(has_function_privilege('anon', 'public.gallery_public()', 'execute'), 'anon can read the public gallery');
 select ok(not has_column_privilege('authenticated', 'public.gallery_photos', 'path', 'update'), 'a photo cannot be re-pathed');
 select ok(not has_column_privilege('authenticated', 'public.gallery_photos', 'created_by', 'insert'), 'authenticated cannot choose a photo''s author');
+select ok(has_column_privilege('authenticated', 'public.albums', 'archived_term_id', 'update'), 'an editor moves an album in or out of the archive');
+select ok(not has_column_privilege('authenticated', 'public.albums', 'archived_at', 'update'), 'the archive stamp is the database''s');
+select ok(not has_column_privilege('authenticated', 'public.albums', 'archived_term_id', 'insert'), 'a new album cannot start in the archive');
+
+-- the term rollover: the functions decide who (the Executive Board); visitors cannot call them
+select ok(not has_function_privilege('anon', 'public.roll_over_term(text, date, date, uuid[])', 'execute'), 'anon cannot run the rollover');
+select ok(not has_function_privilege('anon', 'public.rollover_preview()', 'execute'), 'anon cannot preview the rollover');
 select ok(not has_column_privilege('authenticated', 'public.albums', 'created_by', 'update'), 'authenticated cannot change an album''s author');
 select ok(not has_table_privilege('authenticated', 'public.album_slugs', 'insert'), 'aliases are written by the rename trigger only');
 

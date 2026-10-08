@@ -107,9 +107,10 @@ function sitemapXml(pages) {
 function llmsTxt(pages, contactEmail, contact, networkName) {
   const line = (p) => `- [${p.title || 'Home'}](${p.url}): ${p.description}`
   const isEvent = (p) => p.path.startsWith('/events/') && p.path !== '/events/archive'
-  const top = pages.filter((p) => !p.path.startsWith('/committees/') && !p.path.startsWith('/gallery/') && !isEvent(p))
+  const isAlbum = (p) => p.path.startsWith('/gallery/') && p.path !== '/gallery/archive'
+  const top = pages.filter((p) => !p.path.startsWith('/committees/') && !isAlbum(p) && !isEvent(p))
   const committees = pages.filter((p) => p.path.startsWith('/committees/'))
-  const albums = pages.filter((p) => p.path.startsWith('/gallery/'))
+  const albums = pages.filter(isAlbum)
   const events = pages.filter(isEvent)
   return [
     "# AUSSS, Ain Shams University Students' Scientific Society",

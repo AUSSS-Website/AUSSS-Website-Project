@@ -98,10 +98,14 @@ const tables = {
     { id: 'r-3', full_name: 'Third Sample', email: 'member3@example.com', status: 'Associate Member', joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: 'Local Member', origin: 'portal', portal_edited_at: iso(2), profile_id: null, import_batch: null, updated_at: iso(2), committee_id: 'c-scope', is_contact_person: false, position_id: null },
   ],
   albums: [
-    { id: 'al-1', slug: 'national-general-assembly-aswan-2026', title: 'National General Assembly, Aswan 2026', blurb: 'Three days in Aswan.', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(20), updated_at: iso(2) },
-    { id: 'al-2', slug: 'orientation-day', title: 'Orientation day', blurb: '', cover_photo_id: null, sort_order: 1, published: true, created_at: iso(15), updated_at: iso(3) },
-    { id: 'al-3', slug: 'world-diabetes-day-campaign', title: 'World Diabetes Day campaign', blurb: '', cover_photo_id: null, sort_order: 2, published: false, created_at: iso(5), updated_at: iso(1) },
+    { id: 'al-1', slug: 'national-general-assembly-aswan-2026', title: 'National General Assembly, Aswan 2026', blurb: 'Three days in Aswan.', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(20), updated_at: iso(2), archived_term_id: null, archived_term: null },
+    { id: 'al-2', slug: 'orientation-day', title: 'Orientation day', blurb: '', cover_photo_id: null, sort_order: 1, published: true, created_at: iso(15), updated_at: iso(3), archived_term_id: null, archived_term: null },
+    { id: 'al-3', slug: 'world-diabetes-day-campaign', title: 'World Diabetes Day campaign', blurb: '', cover_photo_id: null, sort_order: 2, published: false, created_at: iso(5), updated_at: iso(1), archived_term_id: null, archived_term: null },
+    // archived at last term's rollover
+    { id: 'al-4', slug: 'winter-camp-2026', title: 'Winter camp 2026, with a title long enough to wrap on a phone', blurb: '', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(300), updated_at: iso(40), archived_term_id: 't0', archived_term: { label: '2025-26' } },
+    { id: 'al-5', slug: 'orientation-25-26', title: 'Orientation 25-26', blurb: '', cover_photo_id: null, sort_order: 1, published: true, created_at: iso(380), updated_at: iso(40), archived_term_id: 't0', archived_term: { label: '2025-26' } },
   ],
+  terms: [{ id: 't1', label: '2026-27' }],
   content_blocks: [
     { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
     // nothing saved yet: the editor opens on the copy that ships in the code
@@ -127,7 +131,41 @@ const tables = {
     { id: 1, at: iso(2), actor: null, table_name: 'roster_entries', row_id: 'a-row-id-long-enough-to-need-breaking-on-a-phone-0123456789', action: 'DELETE', before: { full_name: 'Sample Member With A Rather Long Four Part Name', email: 'member1@example.com', status: 'Full Member' }, after: null },
   ],
 }
+// The public gallery: two albums in it, three archived over two terms.
+const galleryPhotos = (album, n) =>
+  Array.from({ length: n }, (_, i) => ({ id: `${album}-p${i}`, path: `${album}/p${i}`, w: 1600, h: 1067, featured: i === 0, label: i === 0 ? 'Day one' : '' }))
+const galleryAlbum = (id, slug, title, blurb, term, n) => ({ id, slug, title, blurb, count: n, cover: `${id}/p0`, aliases: [], term, photos: galleryPhotos(id, n) })
 const rpcs = {
+  gallery_public: {
+    albums: [
+      galleryAlbum('al-1', 'national-general-assembly-aswan-2026', 'National General Assembly, Aswan 2026', 'Three days in Aswan.', null, 6),
+      galleryAlbum('al-2', 'orientation-day', 'Orientation day', '', null, 3),
+      galleryAlbum('al-4', 'winter-camp-2026', 'Winter camp 2026, with a title long enough to wrap on a phone', 'Snow, almost.', '2025-26', 5),
+      galleryAlbum('al-5', 'orientation-25-26', 'Orientation 25-26', '', '2025-26', 2),
+      galleryAlbum('al-6', 'first-nga-2024', 'First NGA 2024', '', '2024-25', 4),
+    ],
+    generated_at: new Date().toISOString(),
+  },
+  rollover_preview: {
+    current: { id: 't1', label: '2026-27', starts_on: '2026-09-01', ends_on: '2027-08-31' },
+    next: { id: null, label: '2027-28', starts_on: '2027-09-01', ends_on: '2028-08-31' },
+    work_accounts: [
+      { position_id: 'p1', title: 'Webmaster', level: 'webmaster', committee: null, email: 'webmaster@example.com', has_account: true, holds_now: true },
+      { position_id: 'p2', title: 'President', level: 'eb', committee: null, email: 'president@example.com', has_account: true, holds_now: true },
+      { position_id: 'p3', title: 'Vice President for External Affairs', level: 'eb', committee: null, email: 'a-rather-long-work-address-for-a-phone@example.com', has_account: false, holds_now: false },
+      { position_id: 'p4', title: 'Local Exchange Officer for Incomings', level: 'officer', committee: 'SCOPE', email: 'leoin@example.com', has_account: true, holds_now: true },
+      { position_id: 'p5', title: 'Local Officer on SRHR & HIV/AIDS', level: 'officer', committee: 'SCORA', email: null, has_account: false, holds_now: false },
+    ],
+    roster_positions: 42,
+    ending: [{ title: 'Assistant', committee: 'SCOPE', name: 'Sample Member With A Rather Long Four Part Name' }],
+    open_tasks: 2,
+    albums: [
+      { id: 'al-1', title: 'National General Assembly, Aswan 2026', slug: 'national-general-assembly-aswan-2026', published: true, photos: 6 },
+      { id: 'al-2', title: 'Orientation day', slug: 'orientation-day', published: true, photos: 3 },
+      { id: 'al-3', title: 'World Diabetes Day campaign', slug: 'world-diabetes-day-campaign', published: false, photos: 0 },
+    ],
+    storage_bytes: 58931200,
+  },
   events_public: {
     events: sampleEvents
       .filter((e) => e.published)
@@ -156,12 +194,14 @@ const ROUTES = [
   '/portal', '/portal/profile', '/portal/verify', '/portal/tasks', '/portal/tasks/t-1', '/portal/updates',
   '/portal/notifications', '/portal/directory', '/portal/committees', '/portal/committees/scope',
   '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
-  '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification',
+  '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification', '/portal/admin/rollover',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
   '/portal/events', '/portal/events/ev-1', '/portal/events/ev-3', '/portal/events/ev-6',
   // the public pages that show events, from the same sample
   '/events', '/events/archive', '/events/world-health-day-stand-2026', '/events/spring-school-on-research-methods-2026',
   '/events/national-general-assembly-aswan-2025', '/', '/committees/scoph',
+  // the gallery and its archive
+  '/gallery', '/gallery/archive', '/gallery/winter-camp-2026',
   '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/content/home.page', '/portal/content/ifmsa.page', '/portal/admin/audit',
 ].filter((r) => !only || r.startsWith(only))
 
@@ -210,6 +250,10 @@ for (const theme of themes) {
       const json = (body, headers = {}) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range', ...headers }, body: JSON.stringify(body) })
       if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } })
       if (url.pathname.startsWith('/auth/v1/')) return json(url.pathname.endsWith('/user') ? user : session)
+      // Gallery photos: a picture from the repo stands in for each file.
+      if (url.pathname.startsWith('/storage/v1/object/public/gallery/')) {
+        return route.fulfill({ status: 200, contentType: 'image/jpeg', path: 'public/assets/exchange/incomings/campus.jpg' })
+      }
       if (url.pathname.startsWith('/storage/v1/')) return json([])
       const rpc = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/)?.[1]
       if (rpc) return json(rpcs[rpc] ?? [])
