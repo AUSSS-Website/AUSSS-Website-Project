@@ -1796,6 +1796,11 @@ database answers; it is only the fallback.
 - *Order:* drag a product by its handle (the arrow keys work on the handle too).
 - *Remove:* at the foot of the product's page, with a second click to confirm. Its uploaded
   pictures go too; past orders keep their lines.
+- *Pictures and size charts* are an uploaded file (an `https://` address) or a file that ships
+  with the site (`/assets/...`). The database refuses anything else, including an address that
+  starts `//` or `/\`, which a browser reads as another site (migration
+  `20261008150001_merch_picture_paths`). Links typed in markdown and in the site content
+  editor follow the same rule (`safeHref` in `src/lib/markdown.js`).
 
 - *Payment methods:* the "Payment methods" panel on the Merch page. Each method has a name,
   a type (payment link, handle or phone number), the link, handle or number itself, a short
