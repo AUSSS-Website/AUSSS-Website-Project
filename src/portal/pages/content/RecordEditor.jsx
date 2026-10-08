@@ -12,6 +12,10 @@ import { ErrorText, Toggle, inputCls, outlineBtnCls } from '../../portalUi.jsx'
 //   <RecordEditor schema={schema} doc={doc} onChange={setDoc} errors={errors} />
 //
 // `errors` is validateDoc's answer: { 'items.2.q': 'message' }.
+//
+// Every field and list row carries data-anchor (its path, 'items.2.q'), which
+// the editor page uses to keep the preview level with the form
+// (usePreviewFollow.js).
 
 const labelCls = 'block text-xs font-semibold uppercase tracking-[0.18em] text-accent'
 const helpCls = 'mt-1 text-xs leading-relaxed text-soft/55'
@@ -182,7 +186,7 @@ function ListControl({ field, value, onChange, path, errors, blockKey, disabled 
         // A choice shows its label, not the stored value.
         const title = titleField?.type === 'select' ? titleField.options.find((o) => o.value === raw)?.label || raw : raw
         return (
-          <fieldset key={i} className="min-w-0 rounded-2xl border border-line/10 bg-sunk/60 p-4 sm:p-5">
+          <fieldset key={i} data-anchor={`${path}.${i}`} className="min-w-0 rounded-2xl border border-line/10 bg-sunk/60 p-4 sm:p-5">
             <legend className="sr-only">
               {noun} {i + 1}
             </legend>
@@ -244,7 +248,7 @@ function FieldRow({ field, value, onChange, path, errors, blockKey, disabled }) 
 
   if (field.type === 'toggle') {
     return (
-      <div className="flex items-start justify-between gap-6">
+      <div data-anchor={path} className="flex items-start justify-between gap-6">
         <div>
           <p className="text-sm font-semibold text-ink">{field.label}</p>
           {field.help && <p className={helpCls}>{field.help}</p>}
@@ -255,7 +259,7 @@ function FieldRow({ field, value, onChange, path, errors, blockKey, disabled }) 
   }
 
   return (
-    <div>
+    <div data-anchor={path}>
       <div className="flex items-end justify-between gap-3">
         {field.type === 'list' ? (
           <p className={labelCls}>{field.label}</p>
