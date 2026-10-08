@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import useMediaQuery from '../../../hooks/useMediaQuery.js'
 import { contentSchema } from '../../../content/index.js'
 import { defaultDoc, normalizeDoc, sameDoc, validateDoc } from '../../../content/schema.js'
 import { useContentBlock, useWriteContentBlock } from '../../contentQueries.js'
@@ -10,6 +11,7 @@ import { ErrorText, PageHeader, Panel, Spinner, outlineBtnCls, primaryBtnCls } f
 import RecordEditor from './RecordEditor.jsx'
 import { BlockStatus } from './ContentPage.jsx'
 import { previews } from './previews.jsx'
+import usePreviewFollow from './usePreviewFollow.js'
 
 // /portal/content/:key. One part of the public site, edited through its field
 // schema. Three copies are in play:
@@ -18,6 +20,10 @@ import { previews } from './previews.jsx'
 //   the published document   what visitors see
 // "Save draft" keeps your work for later or for a colleague to look at;
 // "Publish" puts what is on screen on the site.
+//
+// On a wide screen the preview sits beside the form, scrolls on its own and
+// follows the part of the form being worked on (usePreviewFollow.js) until it
+// is scrolled by hand.
 
 function BackToList() {
   return (
@@ -90,6 +96,10 @@ function Editor({ schema, block }) {
 
   const Preview = previews[schema.key]
   const busy = write.isPending
+  const formRef = useRef(null)
+  const boxRef = useRef(null)
+  const sideBySide = useMediaQuery('(min-width: 1280px)')
+  const { following, follow } = usePreviewFollow({ formRef, boxRef, enabled: Boolean(Preview) && sideBySide, version: clean })
 
   return (
     <div className="grid items-start gap-6 xl:grid-cols-2">
@@ -116,7 +126,9 @@ function Editor({ schema, block }) {
         </Panel>
 
         <Panel>
-          <RecordEditor schema={schema} doc={doc} onChange={setDoc} errors={showErrors ? errors : {}} disabled={busy} />
+          <div ref={formRef}>
+            <RecordEditor schema={schema} doc={doc} onChange={setDoc} errors={showErrors ? errors : {}} disabled={busy} />
+          </div>
         </Panel>
 
         <Panel className="z-10 md:sticky md:bottom-4 md:shadow-lg md:shadow-black/10">
@@ -165,12 +177,30 @@ function Editor({ schema, block }) {
 
       {Preview && (
         <section aria-label="Preview" className="min-w-0 xl:sticky xl:top-6">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            Preview: how it will look on the site
-          </p>
-          {/* no-reveal: the public pages fade their sections in on scroll; here they just show. */}
-          <div className="no-reveal rounded-2xl border border-line/10 bg-page p-5 sm:p-8">
-            <Preview doc={clean} />
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+              Preview: how it will look on the site
+            </p>
+            {sideBySide &&
+              (following ? (
+                <p className="text-xs text-soft/55">Follows the form. Scroll it yourself to stop that.</p>
+              ) : (
+                <button type="button" onClick={follow} className="text-xs font-semibold text-accent hover:text-ink">
+                  Follow the form again
+                </button>
+              ))}
+          </div>
+          {/* no-reveal: the public pages fade their sections in on scroll; here they just show.
+              Beside the form it is a box of its own, as tall as the window, that scrolls. */}
+          <div
+            ref={boxRef}
+            tabIndex={sideBySide ? 0 : undefined}
+            aria-label={sideBySide ? 'Preview, scrolls on its own' : undefined}
+            className="no-reveal rounded-2xl border border-line/10 bg-page xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto xl:overscroll-contain"
+          >
+            <div className="p-5 sm:p-8">
+              <Preview doc={clean} />
+            </div>
           </div>
         </section>
       )}

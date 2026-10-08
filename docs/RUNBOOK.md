@@ -1672,6 +1672,16 @@ opens each in the same form, drawn from the block's field schema.
   (section 23, "rebuild on publish").
 - Two people editing the same block: the second to save is refused with "Someone else
   saved this while you were editing" and reloads to see the other version.
+- **The preview** (from 1280 px wide, beside the form) is a box of its own, as tall as the
+  window, that scrolls on its own. It follows the form: the part of the preview made from
+  the field with the cursor, or from what is a third of the way down the window, is kept
+  level with it, and the end of the form brings the end of the preview. Each field and list
+  row of the form carries `data-anchor` and is matched with the first preview text after
+  the previous match that starts with the same words (`previewFollow.js`,
+  `usePreviewFollow.js` in `src/portal/pages/content/`), so a new block needs nothing extra.
+  Scrolling the preview by hand (wheel, touch, its scrollbar, the keyboard) stops the
+  following until the editor is opened again; "Follow the form again" turns it back on.
+  On narrower screens the preview sits under the form and scrolls with the page.
 - **Who may edit.** The EB edits every block. `content_blocks.editors` lists committee
   slugs whose officers may edit and publish that one block too (`{scope,score}` for an
   exchange page). The three write functions and the row-level security check it; the
