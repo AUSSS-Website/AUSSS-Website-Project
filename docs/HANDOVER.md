@@ -86,9 +86,8 @@ exam's address. The token refresh rate limit under Authentication > Rate limits
 is raised before the day of an exam and put back after, because 400 phones on
 one hall Wi-Fi pass the default. **Confirm email**, under the Email sign-in
 provider, is switched on, so that nobody gets a session for an address that
-does not exist and holds student IDs with it. On 2026-10-10 the exam was built on the branch
-`phase8-exam` and not yet merged; RUNBOOK section 30 has its state and the
-whole checklist.
+does not exist and holds student IDs with it. The exam was merged on 2026-10-11 (pull
+request 20); RUNBOOK section 30 has the whole checklist.
 
 ### 2.4 Google Cloud: the OAuth client for "Sign in with Google"
 
