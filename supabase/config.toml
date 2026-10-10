@@ -173,6 +173,10 @@ additional_redirect_urls = [
   "https://www.ausss-ainshams.org/portal/callback",
   "https://ausss-ainshams.vercel.app/portal/callback",
   "https://*-ausss-website.vercel.app/portal/callback",
+  # The exchange exam's own sign-in (/exam/<word>, src/exam) returns here, not to the portal.
+  "http://localhost:5173/exam/callback",
+  "http://localhost:4173/exam/callback",
+  "https://ausss-ainshams.org/exam/callback",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -236,7 +240,13 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# On since the exchange exam (2026-10-10). The site never signs anyone up with a password, but the
+# API still takes such a sign-up from anyone; with this off it handed a session at once to a
+# made-up address, and any signed-in account may claim a student ID on an exam's list. With it on,
+# an address has to receive an email first. Google sign-in is not touched. A member's first sign-in
+# by email link then gets the "Confirm signup" email, whose link signs them in all the same.
+# The hosted switch is Authentication > Sign In / Providers > Email > Confirm email (RUNBOOK 30).
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
