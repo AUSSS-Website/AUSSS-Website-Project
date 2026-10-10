@@ -1003,8 +1003,8 @@ the portal. Built differently from the text below in three ways, each settled wh
 
 #### Phase 8. Exchange exam
 
-**Status, 2026-10-10: built on branch `phase8-exam`; not merged, and the two migrations are not
-applied to the hosted database (RUNBOOK section 30).** What exists: the tables and functions
+**Status, 2026-10-11: built and merged (pull request 20); db-deploy applied the two migrations to
+the hosted database at the merge (RUNBOOK section 30).** What exists: the tables and functions
 (migrations `20261010120001_exchange_exam` and `20261010120002_exam_rollover`, pgTAP file
 `340-exchange-exam.sql`); the students' pages at the hidden address `/exam/<word>` (`src/exam/`);
 the portal's **Exam** page with its five tabs (`src/portal/pages/exam/`); the Exam part of New
@@ -1031,8 +1031,7 @@ while building:
 - **New term also clears an exam of an earlier term** when it holds a list or papers again. An
   exam kept and set for the next year's students still names the term it was made in.
 
-Still to do: merge the branch and apply the two migrations to the hosted database (RUNBOOK
-section 1); the webmaster's
+Still to do: the webmaster's
 steps in section 12.5 (the callback addresses, "Confirm email", the token refresh limit, the
 sitting in the hall);
 and the real questions from the exchange officers. Done on 2026-10-11, on pull request 20: db-ci
@@ -1282,10 +1281,11 @@ Waiting on people:
   Phase 8 is built and rehearsed on mock questions and does not wait for
   them; the date the officers set themselves in the portal.
 - **The exchange exam, the webmaster's steps** (RUNBOOK section 30 has them
-  as a checklist). Merge the branch `phase8-exam` and apply its two
-  migrations. Add the three exact `/exam/callback` addresses to the
-  redirect list on Supabase, at the same visit that removes the wildcard
-  lines (5d step 1), and before students get the address. Switch "Confirm
+  as a checklist). The branch was merged with its two migrations on
+  2026-10-11, and the webmaster added the exam's callback address to the
+  redirect list the same day. Before students get the address, that list
+  should hold the three exact `/exam/callback` addresses and none of the
+  wildcard lines (5d step 1). Switch "Confirm
   email" on for the Email sign-in provider, so that a made-up address gets
   no session to hold student IDs with. Read the token refresh rate limit on
   Supabase, raise it before the day of an exam and put it back after. Hold

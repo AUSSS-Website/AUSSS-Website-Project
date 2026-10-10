@@ -2051,8 +2051,8 @@ archived over two terms, and a rollover preview with each kind of position.
 
 ## 30. The exchange exam (Phase 8)
 
-Built 2026-10-10 on the branch `phase8-exam`; not merged, and the two migrations are not applied to
-the hosted database. Migrations `20261010120001_exchange_exam` and `20261010120002_exam_rollover`,
+Built 2026-10-10 and merged on 2026-10-11 (pull request 20); db-deploy applied the two migrations
+to the hosted database at the merge. Migrations `20261010120001_exchange_exam` and `20261010120002_exam_rollover`,
 pgTAP file `340-exchange-exam.sql` (and new lines in `330-term-rollover.sql` and `090-grants.sql`),
 unit tests in `src/exam/` and in `src/portal/examFile.test.js` and `src/portal/examStats.test.js`,
 and the scripted rehearsal `scripts/exam-rehearsal.mjs` with its workflow `exam-rehearsal.yml`.
