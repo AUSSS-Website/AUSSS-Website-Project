@@ -1,0 +1,109 @@
+# The exam rehearsal: scripts/exam-rehearsal.mjs plays 400 made-up students
+# through a mock exchange exam, over HTTP as their phones would, and compares
+# the database's marking with its own (docs/PORTAL_BACKEND_PLAN.md, phase 8).
+# It needs a whole local Supabase stack, and Docker is only available here,
+# never on the maintainers' machines, so this is where the rehearsal runs: on
+# every pull request that changes the database or the script, and by hand
+# before an exam (Actions > exam-rehearsal > Run workflow), where the numbers
+# can be changed. The run's summary page shows what happened and how long the
+# calls took.
+#
+# Nothing here reaches the hosted project. The stack is the runner's own and
+# is thrown away when the job ends, the script refuses any API address that
+# is not 127.0.0.1 or localhost, and the job is given no secret.
+name: exam-rehearsal
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'scripts/exam-rehearsal.mjs'
+      - '.github/workflows/exam-rehearsal.yml'
+  workflow_dispatch:
+    inputs:
+      takers:
+        description: Takers (blank = 400)
+        type: string
+        default: ''
+      questions:
+        description: Questions (blank = 100)
+        type: string
+        default: ''
+      concurrency:
+        description: Takers playing at the same time (blank = 50)
+        type: string
+        default: ''
+      seed:
+        description: Seed of an earlier run, to play the same parts again (blank = a new one)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # The same throwaway values as db-ci: config.toml reads these with env(), and the CLI
+      # refuses to load it when they are empty. Nothing here reaches the hosted project.
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+      RESEND_API_KEY: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # Keep in sync with the "supabase" devDependency in package.json.
+          version: 2.117.0
+
+      # As db-ci: `start` on a fresh runner applies the migrations and seed.sql. The API
+      # gateway, PostgREST and Auth, which the script calls, are not among the exclusions.
+      - name: Start local stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+      # The script uses Node's own fetch and crypto and nothing from package.json, so
+      # there is no install step.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # `status -o env` prints the stack's address and keys on stdout as NAME="value" lines
+      # (API_URL, JWT_SECRET, SERVICE_ROLE_KEY, ANON_KEY and the newer SECRET_KEY and
+      # PUBLISHABLE_KEY among them; its notices go to stderr), which Node reads with
+      # --env-file. The names it printed are shown, never the values, so a run the script
+      # refuses for a missing value says what the CLI gave. The inputs reach the script as
+      # environment, never as shell text; a blank one means its default.
+      - name: Rehearse the exam
+        env:
+          TAKERS: ${{ inputs.takers }}
+          QUESTIONS: ${{ inputs.questions }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          supabase status -o env > "$RUNNER_TEMP/stack.env"
+          echo "The stack printed: $(cut -d= -f1 "$RUNNER_TEMP/stack.env" | tr '\n' ' ')"
+          node --env-file="$RUNNER_TEMP/stack.env" scripts/exam-rehearsal.mjs
+          # A pass is only a pass when the script said so: it writes its lines to the summary.
+          grep -q '^Result: everything matched' "$GITHUB_STEP_SUMMARY" || {
+            echo "The script ended with 0 without saying that everything matched."
+            exit 1
+          }
+
+      # The script says which taker and what was expected. When the stack itself was at
+      # fault (a 500, a call that never came back), the reason is in these logs, which
+      # are gone once the stack is stopped.
+      - name: Show the stack's logs after a failure
+        if: failure()
+        run: |
+          for name in $(docker ps -a --format '{{.Names}}' | grep -E '^supabase_(rest|auth|kong|db)_' || true); do
+            echo "::group::$name"
+            docker logs --tail 200 "$name" 2>&1 || true
+            echo "::endgroup::"
+          done
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop
