@@ -127,6 +127,13 @@ function ProfileForm({ user, profile }) {
   const [fullName, setFullName] = useState(profile.full_name || '')
   const [phone, setPhone] = useState(profile.phone || '')
   const [facultyYear, setFacultyYear] = useState(profile.faculty_year || '')
+  // A year saved elsewhere that this list does not hold (the exchange exam's
+  // form has the two intern years) shows as it is, not as "Not set".
+  const [years] = useState(() =>
+    profile.faculty_year && !FACULTY_YEARS.includes(profile.faculty_year)
+      ? [profile.faculty_year, ...FACULTY_YEARS]
+      : FACULTY_YEARS,
+  )
   const [digest, setDigest] = useState(profile.email_digest !== false)
   const [msg, setMsg] = useState('')
 
@@ -200,7 +207,7 @@ function ProfileForm({ user, profile }) {
               className={inputCls}
             >
               <option value="">Not set</option>
-              {FACULTY_YEARS.map((y) => (
+              {years.map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>

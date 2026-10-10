@@ -219,7 +219,7 @@ const chance = (n) => {
 const pick = (list, n) => list[Math.floor(chance(n) * list.length)]
 const GIVEN = ['Amal', 'Basil', 'Dalia', 'Emad', 'Farah', 'Gamal', 'Hana', 'Idris', 'Jana', 'Kamal', 'Laila', 'Mona', 'Nabil', 'Omar', 'Rana', 'Sami', 'Tala', 'Wael', 'Yara', 'Zein']
 const FAMILY = ['Sample', 'Example', 'Specimen', 'Placeholder', 'Template', 'Stand-In', 'Mockup']
-const YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Intern']
+const YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', '1st year intern', '2nd year intern']
 // `paper` is { score, answered, state, started (minutes ago), took (minutes) }.
 const written = {
   0: { full_name: 'Yara Sample', paper: { score: 12, answered: 12, state: 'handed_in', started: 172, took: 96 } },

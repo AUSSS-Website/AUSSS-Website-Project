@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { FACULTY_YEARS } from '../../portal/constants.js'
 import { Field, authInputCls } from '../../portal/portalUi.jsx'
 import { examSaveDetails } from '../examApi.js'
-import { detailField, detailsProblem, missingDetail } from '../examFlow.js'
+import { EXAM_YEARS, detailField, detailsProblem, missingDetail, startingYear } from '../examFlow.js'
 import { ExamCard, Problem, tapLinkCls, tapPrimaryCls } from '../examUi.jsx'
 
 // The taker's name, year, phone and student ID. Saving checks the ID against
@@ -19,7 +18,8 @@ const PROBLEM_ID = 'exam-details-problem'
 
 export default function DetailsScreen({ word, me, email, held = false, notice = '', onSaved, onCancel, onSignOut }) {
   const [fullName, setFullName] = useState(me?.full_name || '')
-  const [facultyYear, setFacultyYear] = useState(me?.faculty_year || '')
+  // Only a year the exam offers: a profile that says anything else starts empty.
+  const [facultyYear, setFacultyYear] = useState(() => startingYear(me))
   const [phone, setPhone] = useState(me?.phone || '')
   const [studentId, setStudentId] = useState(me?.student_id || '')
   const [busy, setBusy] = useState(false)
@@ -27,11 +27,6 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
   // The field that problem is about, when it is about one: a screen reader is
   // told which, and hears the sentence on that field only.
   const [fault, setFault] = useState(null)
-  // A year the profile holds that is not on the list stays choosable, so
-  // saving another detail does not change it.
-  const [years] = useState(() =>
-    me?.faculty_year && !FACULTY_YEARS.includes(me.faculty_year) ? [me.faculty_year, ...FACULTY_YEARS] : FACULTY_YEARS,
-  )
 
   const submit = async (e) => {
     e.preventDefault()
@@ -65,11 +60,9 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
   return (
     <ExamCard
       title="Your details"
-      subtitle={
-        held
-          ? 'Change your name, year or phone.'
-          : 'We check your student ID against the list for this exam.'
-      }
+      // The webmaster's words (2026-10-11), with the grammar checked at their
+      // request: what a student gives here is what their contract is assigned by.
+      subtitle="Please make sure the information you enter is accurate. It will be used to assign your contract."
     >
       <form onSubmit={submit} noValidate className="mt-6 space-y-5">
         <Field label="Full name" htmlFor={inputId.full_name}>
@@ -96,7 +89,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
             className={authInputCls}
           >
             <option value="">Choose your year</option>
-            {years.map((year) => (
+            {EXAM_YEARS.map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>

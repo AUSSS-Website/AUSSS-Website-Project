@@ -78,8 +78,8 @@ const TIMEOUT_MS = 30_000
 const WARM_UP_MS = 30_000
 // A phone sends a failed save again; so does a taker here, after these waits.
 const RETRY_WAITS = [500, 1000, 2000]
-// As FACULTY_YEARS in src/portal/constants.js.
-const FACULTY_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Intern', 'Graduate', 'Other']
+// The years the exam's form offers (EXAM_YEARS in src/exam/examFlow.js).
+const FACULTY_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', '1st year intern', '2nd year intern']
 // .test is reserved for testing and can never be a real mailbox.
 const EMAIL_DOMAIN = 'exam-rehearsal.test'
 const HOW =
