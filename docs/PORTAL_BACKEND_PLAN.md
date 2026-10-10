@@ -1032,11 +1032,12 @@ while building:
   exam kept and set for the next year's students still names the term it was made in.
 
 Still to do: merge the branch and apply the two migrations to the hosted database (RUNBOOK
-section 1); the first run of the scripted rehearsal on a real stack, which the pull request starts
-(so far it has met only a stand-in, because the build machine has no Docker); the webmaster's
+section 1); the webmaster's
 steps in section 12.5 (the callback addresses, "Confirm email", the token refresh limit, the
 sitting in the hall);
-and the real questions from the exchange officers.
+and the real questions from the exchange officers. Done on 2026-10-11, on pull request 20: db-ci
+passed on PostgreSQL 17, and the scripted rehearsal passed its first run on a real stack (400
+takers, everything matched).
 
 **Added by the webmaster, 2026-10-10.** The exchange team's
 exam moves onto the site: registered students sit it signed in on their own
