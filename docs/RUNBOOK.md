@@ -408,7 +408,7 @@ status without a request, for example to mark alumni.
 ## 10. Term rollover (database part)
 
 Since 2026-10-08 the Executive Board does this in the portal, at **New term**
-(`/portal/admin/rollover`); section 29 says what the page does and why. The full
+(the button at the foot of **Site settings**, `/portal/admin/rollover`); section 29 says what the page does and why. The full
 checklist, seats and secrets included, is HANDOVER section 6.
 
 Do not switch the term by hand (`set_current_term`, or an `update` of `terms`). Every access
@@ -1982,8 +1982,9 @@ Built 2026-10-08. Migration `20261008120001_term_rollover`, pgTAP file `330-term
 (and five lines in `090-grants.sql`), unit tests `src/lib/gallery.test.js` and
 `src/portal/rollover.test.js`.
 
-**The page.** **New term** in the portal (`/portal/admin/rollover`, the Executive Board only)
-shows, in order, what the switch will do, then does all of it at once with one button:
+**The page.** **New term** in the portal (`/portal/admin/rollover`, the Executive Board only;
+it has no link in the header, since it is used once a year: the way in is the **New term**
+button at the foot of **Site settings**) shows, in order, what the switch will do, then does all of it at once with one button:
 
 1. **The new term**: its name and its first and last days, filled in as the year after the
    current term (`2027-28`, 1 September 2027 to 31 August 2028). Any day can be chosen, so an

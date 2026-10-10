@@ -283,7 +283,7 @@ step-by-step for the Supabase keys.
 
 ### 6.3 Run the database rollover
 
-A board member does this in the portal, at **New term** (`/portal/admin/rollover`). RUNBOOK
+A board member does this in the portal, at **New term** (the button at the foot of **Site settings**; `/portal/admin/rollover`). RUNBOOK
 section 29 explains each part; section 10 has the SQL fallback for when the portal is down.
 
 - [ ] Before the switch, check the **Officers and the board** list: every position should say
