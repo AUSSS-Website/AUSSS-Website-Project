@@ -1258,7 +1258,9 @@ npm run walk -- --contrast --no-shots  # text contrast (WCAG AA) on every page
   the quick check for a design change on the portal; long names and titles are in the
   sample on purpose. Arguments are themes, widths and an optional path:
   `npm run walk:portal-sample -- light 320,375 /portal/tasks`. When a portal page gains a
-  query, give it a sample row in the script.
+  query, give it a sample row in the script. Since Phase 8 it also walks the exchange exam's
+  pages for students (`/exam/…`, with nobody signed in to the portal), and it can tap a button
+  on a route before it measures; section 30 lists those screens.
 - **Pages.** The public list is the sitemap (the base's own, else the one in `dist/`, else
   production's) plus the checkout, the quiz and the sign-in page. The portal list is in the
   script (`PORTAL_FIXED`, `PORTAL_DETAIL`); add a route there when the portal gains one.
@@ -1374,9 +1376,12 @@ Phase 5b added (the gate of Phase 5d). The one line that failed that day is mark
       member's session to a stranger's page. Delete those four lines and
       `https://ausss-ainshams.vercel.app/portal/callback` (that address only redirects to
       the domain now). Keep `https://ausss-ainshams.org/portal/callback`, the `www` one,
-      and the two `localhost` lines (5173 for `npm run dev`, 4173 for `vite preview`). The
-      cost is that sign-in stops working on Vercel preview addresses; test the portal on
-      localhost, as now.
+      and the two `localhost` lines (5173 for `npm run dev`, 4173 for `vite preview`). At
+      the same visit add the exchange exam's three exact lines,
+      `https://ausss-ainshams.org/exam/callback`, `http://localhost:5173/exam/callback` and
+      `http://localhost:4173/exam/callback`, because its sign-in returns there and not to the
+      portal (section 30). The cost is that sign-in stops working on Vercel preview
+      addresses; test the portal on localhost, as now.
 - [x] Supabase > Authentication > Providers: only Google and email are on.
 - [x] Google Cloud > Google Auth Platform > Audience: publishing status "In production"
       (HANDOVER 2.4). The "100 user cap" shown there applies only to sensitive scopes; the
@@ -2043,3 +2048,464 @@ characters, so a title cut just after a hyphen no longer makes a link the albums
 (with `MSYS_NO_PATHCONV=1` in Git Bash), the same for `/gallery` (the index, the archive and an
 archived album) and `/portal/gallery`. The sample walk has five gallery albums, three of them
 archived over two terms, and a rollover preview with each kind of position.
+
+## 30. The exchange exam (Phase 8)
+
+Built 2026-10-10 on the branch `phase8-exam`; not merged, and the two migrations are not applied to
+the hosted database. Migrations `20261010120001_exchange_exam` and `20261010120002_exam_rollover`,
+pgTAP file `340-exchange-exam.sql` (and new lines in `330-term-rollover.sql` and `090-grants.sql`),
+unit tests in `src/exam/` and in `src/portal/examFile.test.js` and `src/portal/examStats.test.js`,
+and the scripted rehearsal `scripts/exam-rehearsal.mjs` with its workflow `exam-rehearsal.yml`.
+
+**What it is.** The exchange team's exam, sat on the site. About 400 registered students sit it on
+their own phones in a hall. A student opens a hidden address, `/exam/<word>`, signs in with Google
+and gives a name, year, phone and student ID. They can start only when that ID is on the list the
+officers uploaded and they type the start code that is read out in the hall. The paper is ten
+questions a page. Each student gets the questions, and each question's options, in an order of
+their own. Each question has a flag, and a review screen lists what is unanswered or flagged before
+the hand-in. Every answer is saved the moment it is chosen and is also kept on the phone. The
+database marks the papers. A student never sees a grade or which answers were right: after the
+hand-in the page says "Your exam was received." and nothing more. The SCOPE and SCORE officers and
+the Executive Board (below, "the exam officers") set the exam up and read the results on the
+portal's **Exam** page.
+
+**Each student has a clock of their own.** A student has the exam's full length from the moment
+they start, on a clock the database keeps. The exam is not sat in step. **Opens** and **Closes**
+only say when a student may start: a paper started one minute before closing still runs its full
+length, and its answers are saved after the closing time until its own time is up. The plan's first
+text said otherwise; the status paragraph of Phase 8 in `docs/PORTAL_BACKEND_PLAN.md` lists where
+the build differs from it.
+
+**Where the code lives.**
+
+- `src/exam/`: the students' pages, a tree of their own with no `AuthProvider`, no portal layout
+  and no react-query. `ExamRoot.jsx` holds the routes, `ExamDoor.jsx` the whole flow at one
+  address, `ExamCallback.jsx` the page that sign-in returns to, and `screens/` one file for each
+  screen. `examApi.js` is the only file that calls the database. `examFlow.js` decides which screen
+  shows and holds every sentence. `sitting.js` holds the rules of a sitting (pages, answers waiting
+  to be sent, the clock, the retry times), `useSitting.js` gives them the network, the phone's
+  storage and timers, and `tabLock.js` keeps a sitting to one tab.
+- `src/portal/pages/exam/`: the portal's Exam page. `ExamsPage.jsx` is the list of exams,
+  `ExamPage.jsx` one exam, and each tab is a panel (`SetupPanel`, `QuestionsPanel`,
+  `RegisteredPanel`, `ResultsPanel` with `AttemptSheet`, `OverviewPanel`). Beside them in
+  `src/portal/`: `examQueries.js` and `examResultQueries.js` (the reads and writes), `examFile.js`
+  (reading a spreadsheet or a pasted list) and `examStats.js` (the arithmetic).
+- `src/portal/pages/admin/RolloverPage.jsx`: the Exam part of New term.
+- `src/App.jsx` (the route `/exam/*`), `src/main.jsx` (no analytics for `/exam/…`),
+  `vercel.json` (the headers for `/exam/(.*)`) and `supabase/config.toml` (the three callback
+  addresses, and `enable_confirmations`).
+
+**The data.** Six new tables in `public`, one in `app` and one new column. Row-level security is on
+for all of them. On the six exam tables the policies name the exam officers only
+(`app.is_exam_officer()`: the EB, which includes the webmaster, and the officers of the committees
+`scope` and `score`), so a student's account matches no policy on any of them.
+
+- `profiles.student_id`: the ID as the student typed it. Only `rpc/exam_save_details` writes it;
+  the owner of a profile cannot update it directly.
+- `exams`: one exam. Its title, `address_word` (the hidden last part of the address), `status`
+  (`draft` or `ready`), `opens_at` and `closes_at` (the window in which a student may start),
+  `minutes` (the length, 5 to 600, 120 until changed), `start_code`, and the term it was made in.
+- `exam_questions`: the questions in the officers' order, each with 2 to 6 options and
+  `keep_option_order`.
+- `exam_key`: the right option of each question, in a table of its own, so that nothing that reads
+  a question can carry the answer along.
+- `exam_registrations`: the student IDs that may sit, and the account that holds each
+  (`profile_id`, `claimed_at`). `student_key` is the ID tidied, which is what is compared.
+- `exam_attempts`: one paper for each student in an exam: when it started, when it was handed in,
+  and that student's order of the questions and of each question's options.
+- `exam_answers`: one row for each question a student answered or flagged.
+- `app.exam_tries`: wrong student IDs and wrong start codes, kept only to limit them. No API role
+  reads it.
+
+No grade is stored. A grade is the count of a paper's answers that match the key, counted each time
+the officers read it, and a paper is over when it was handed in or its time has passed. So a
+corrected right answer or a longer exam needs no re-marking: the next read is different.
+
+A student's account reaches its own rows through five functions and nothing else: `exam_door` (what
+to show), `exam_save_details` (the four details, and the check against the list), `exam_start` (the
+start code), `exam_paper` (the questions in this student's order, without the key) and `exam_save`
+(the answers, the hand-in, and an empty call that only asks how much time is left). The officers
+have nine, each refused with "Only the exchange officers and the Executive Board can do this." for
+anyone else: `save_exam_question`, `import_exam_questions`, `exam_add_registrations`,
+`exam_release_registration`, `exam_registration_list`, `exam_results`, `exam_sheet`,
+`exam_question_stats` and `exam_delete_attempt`. A visitor who is not signed in can call none of
+the fourteen. The helpers are in the schema `app`: `tidy_student_id`, `is_exam_officer`,
+`exam_deadline` (the start plus the length), `exam_by_word` and `clear_exam_rows` (the
+rollover's).
+
+**Who may do what.**
+
+- The exam officers read the six exam tables. They write an exam's own row directly (title, word,
+  status, times, length, start code), put the questions in order, and remove a question, an ID or
+  the whole exam. The wording of a question, its right answer and new IDs go through the
+  functions, which check them.
+- A student reads and saves their own details, learns whether their own ID is on the list, starts,
+  reads their own paper and saves their own answers. Nothing else, and never the key, a grade, the
+  list or anyone else's paper.
+- Anyone else in the portal who types `/portal/exam` gets a polite refusal, and the database
+  returns them no row.
+- The audit log records changes to exams, questions and the key. The list, the papers and the
+  answers are left out of it on purpose: they are deleted when the term ends, and the log would
+  keep the student IDs and the answers after that. Two actions on them still write one slim row
+  each, with no student ID and no answer in it: releasing an ID (`RELEASE` on
+  `exam_registrations`) and deleting a paper (`DELETE` on `exam_attempts`). The webmaster's
+  Audit log page lists them as "Released" under Exam registered IDs and "Removed" under Exam
+  papers, each with the exam and the account it was about.
+
+**Setting an exam up.** In the portal, **Exam** in the header (`/portal/exam`), which the exam
+officers see.
+
+1. Under **New exam**, type a title and press **Add exam**. The exam starts as a draft, which
+   students cannot reach, with a random word of twelve characters in its address. Its page has five
+   tabs: Set-up, Questions, Registered list, Results and Overview.
+2. **Questions.** Add them one at a time (the text, 2 to 6 options, which one is right) or press
+   **Import from a spreadsheet**. The file is `.xlsx` or `.csv` with the columns Question, Option A
+   to Option F, Answer and Keep order; **Download a template** gives the header and two examples.
+   Answer is the right option's letter, its number or its exact text. One file holds at most 500
+   questions. Nothing is imported unless every row is good, and a bad row is named with its number
+   and the reason. Tick "Keep the options in this order" (in a file, "yes" under Keep order) for a
+   question whose last option is "All of the above": its options are then not shuffled. Drag a
+   question by its handle to move it.
+3. **Registered list.** Add the student IDs (the next part).
+4. **Set-up**, under **The exam**: set **Opens** and **Closes** (Cairo time) and **Length in
+   minutes**, then **Save**. The note beside them says when the last paper can end.
+5. **Start code.** Type one, or press **Make a code** for six letters and digits with no 0, O, 1 or
+   I, then **Save**. Capitals and spaces make no difference. It can wait until the day; without a
+   code nobody can start.
+6. Switch **Open to students** on. The database refuses this until both times are set. From then on
+   the address works: a student can sign in, fill in their details and check their ID. Starting
+   still needs the opening time to have come, and the start code.
+7. Copy the address from **The address** and send it to the registered students.
+
+The panel **Before students can start** lists what is still missing: questions, IDs on the list,
+the two times, the start code, and being open to students. The chip beside the exam's title reads
+"Draft", "Open to students", "Closed to new starts" (the closing time has passed and a paper may
+still be running) or "Closed".
+
+**The list of student IDs.** Registration happens outside the site. On the **Registered list** tab
+the officers paste the IDs (one on each line; commas, semicolons and tabs also separate them) or
+press **Add from a file**, which reads the first column of an `.xlsx` or `.csv` (a first cell with
+no digit is taken as a heading). One go takes at most 5000 IDs. The page then says what happened,
+for example "Added 396. 3 were already on the list. 1 was not an ID." When part of a list does not
+look like student IDs (a heading or a column of names pasted along), nothing is added until the
+officer chooses **Add the other N** or **Add all N as they are**.
+
+IDs are compared after tidying (`app.tidy_student_id`). Arabic-Indic, Persian and full-width digits
+are read as Western ones; spaces, hyphens and dashes, dots, underscores, slashes and characters
+that cannot be seen are dropped; letters go to upper case. So `2023-1234`, `2023 1234` and
+`٢٠٢٣١٢٣٤` are one ID, and a typing habit locks nobody out.
+
+One account holds each ID. A student holds their ID from the moment they save their details and it
+matches, not from the start, so a clash shows before the day. A second account that gives the same
+ID is told it is in use, and an account cannot change its ID once it holds one. The list shows who
+holds each ID (the name and the Google address) and who has started, with the counts **On the
+list**, **Held** and **Started**, a search by ID, name or email, and PDF and CSV exports.
+**Remove** takes an ID off the list and **Release** frees it from the account that holds it. Both
+ask for a second click, and both are refused once that student has started. No student can read
+the list: each learns only whether their own ID is on it.
+
+**The hidden address, and why hiding is not the lock.** The address is
+`https://ausss-ainshams.org/exam/<word>`. The word is 6 to 60 lower-case letters, digits or
+hyphens, never `callback`, and no two exams share one. It is kept in the database
+(`exams.address_word`), because the site's code is public and a word written in the code would not
+stay hidden. The officers can change it on the Set-up tab until the first student starts (**Make a
+new word**); the old address then stops working. Hidden means: nothing on the site or in the portal
+links to it (the Set-up tab shows it as text to copy), it is in no sitemap, `llms.txt` or
+pre-rendered page, `ExamRoot.jsx` adds `<meta name="robots" content="noindex, nofollow">` while an
+exam page is on screen, `vercel.json` sends `X-Robots-Tag: noindex, nofollow` and
+`Cache-Control: no-store` for `/exam/(.*)`, and `src/main.jsx` keeps views of `/exam/…` out of
+Vercel Web Analytics, where the word would otherwise be listed as a page. It is left out of
+`public/robots.txt` on purpose: a crawler that may not fetch a page cannot read its noindex. A draft, a deleted exam and a mistyped
+word all look the same from outside: "There is no exam at this address."
+
+Hiding only keeps passers-by away, and an address sent to 400 students gets passed on. The locks
+are the list of student IDs and the start code. The database checks both, no student's account can
+read either, and wrong tries are limited. Someone with the address and no listed ID gets as far as
+the details form. Someone with a listed ID who is not in the hall has no start code.
+
+**Before the day.** Send the address a few days ahead and ask every student to do three things
+then, not in the hall: open it in Chrome or Safari, sign in with the Google account they will use
+on the day, and fill in the form (full name, year, phone, student ID) and press **Save and check
+my ID**. A student whose ID matches sees "You are on the list." and when the exam opens. There are
+two reasons. A mistyped ID shows early, as "That student ID is not on the list for this exam.", and
+the hall does not begin with 400 first sign-ins at once.
+
+- A link opened inside Facebook, Messenger or Instagram cannot sign in, because Google refuses
+  those built-in browsers. The sign-in card then says "If Google will not open, open this page in
+  Chrome or Safari."
+- Watch **Held** climb towards **On the list** on the Registered list tab, and read the names and
+  addresses of the holders. Any account that has the address and gives a listed ID holds it, so an
+  ID held by a name the officers do not know is a student on the wrong account or somebody who
+  should not have it. **Release** it.
+- "That student ID is already in use by another account." on a student's phone: search the list
+  for the ID and see who holds it.
+- The webmaster's checklist below comes first. Until the callback address is on the hosted
+  redirect list, signing in from the exam's page lands on the home page.
+
+**On the day.**
+
+- **The start code.** Read it out when the hall is ready. A student on the list types it and
+  presses **Start the exam**; the line under the field says how many questions and minutes there
+  are. The code can be changed at any moment on the Set-up tab, and a student who has already
+  started is never asked for it again. Before the opening time the page says when the exam opens
+  and looks again by itself every 30 seconds and at the opening time, so the field appears without
+  a refresh.
+- **A late hall.** Nothing needs changing. The opening time only lets the start code field appear;
+  nobody starts until the code is read out, and each student's time runs from their own start. If
+  the closing time would pass before everyone has started, move **Closes** later. It can move
+  either way at any time, also while papers are running, and it never cuts a paper short.
+- **What to tell the hall.** If the connection drops, keep answering and do not refresh. Use one
+  tab. The bar at the top of the paper says where things stand: "All answers saved", "Saving…" or
+  "No connection: 3 answers waiting. Keep going, they are kept on this phone." Waiting answers go
+  out when the connection is back: the page tries again after 2, 5 and 10 seconds, then every 15,
+  and at once when the phone says it is online. A refresh loses no answer, but with no connection
+  the page itself cannot load again, because it is never served from the phone's cache.
+- **A second tab.** A sitting is kept to one tab of a browser. A second tab says "This exam is
+  open in another tab" and offers **Use this tab**; the first tab then stops.
+- **A student on the wrong account.** Their ID is held by the account they signed in with first,
+  and the right account is told the ID is in use. On the Registered list tab find the ID and press
+  **Release**, twice. The student presses "Not you? Sign out", signs in with the right account and
+  saves their details again. Once the wrong account has started, Release is refused with "This
+  student has already started the exam."; delete its paper first (below).
+- **A phone that died.** The student opens the address on another phone, or on the same one once
+  it is charged, and signs in with the same Google account. The paper opens where it stood, with
+  every answer that had reached the database, and no start code is asked. The clock did not stop
+  meanwhile. Answers that were still waiting on the dead phone go out if that phone opens the page
+  again before the student's time is up. The student should then carry on with one phone only: two
+  phones on one account both save, and the later save wins.
+- **Deleting a paper.** On the Results tab open the student's row and press **Delete this paper**,
+  twice. The paper and its answers are gone for good, and the student can start again with the
+  start code, with a fresh order and the full length. Their phone goes back to the start code
+  screen by itself within a minute. Starting again needs the closing time not to have passed; move
+  **Closes** later if it has.
+- **Making the exam longer.** On the Set-up tab raise **Length in minutes** and save. Every paper
+  gets the extra time. The phones learn the new end within a minute, since each asks the database
+  every 60 seconds, and a phone that already showed "Time is up." gets its paper back, because it
+  goes on asking once a minute for half an hour and whenever the student returns to the page.
+  After the first start the length can go up and never down.
+- **The try limits.** Ten student IDs from one account within an hour that are not on the list or
+  are held by someone else, and that account is told "Too many tries. Wait an hour, or tell the
+  exchange team."; it is locked until its oldest miss is an hour old. Eight wrong start codes from
+  one account within ten minutes, and it is told "Too many wrong tries. Wait ten minutes, or ask
+  an invigilator."; it can try again when the oldest of the eight is ten minutes old. Nothing in
+  the portal lifts a lock early, and changing the start code does not lift one either.
+- **Watching it.** While students can start, the Registered list, the Results and the Overview
+  read the database again every 30 seconds, and the last two go on doing so while anyone is still
+  sitting. Each has a **Refresh** button.
+
+After the first start the database refuses a change to the opening time, a shorter length, a
+return to draft, a new word in the address, and any question added, removed or reworded. The
+Set-up tab lists these under **Once the first student starts**.
+
+**After it.**
+
+- **The ranking** is the Results tab: highest grade first, students on the same grade sharing a
+  rank ("=3") and listed by name. Each row has the name, student ID, year, grade out of the number
+  of questions, how many were answered, the time taken and the state: "Handed in", "Time ran out"
+  or "Still sitting". The search takes a name, an ID, an email or a phone number.
+- **One person's paper** opens from their row: their details, grade, time and rank, then every
+  question in the officers' order with the right option and the one they chose. A filter shows the
+  right, the wrong, the unanswered or the flagged ones only.
+- **The Overview** has how many started, handed in, ran out of time and are still sitting, the
+  average grade and the average time of the finished papers, the spread of grades in ten bands,
+  and the questions most people got wrong, each with how often every option was chosen.
+- **Downloads.** **Export PDF** and **Export CSV** on the ranking (with each student's email,
+  phone and start and finish times), on the question figures, on the Registered list and on the
+  questions (that file holds the right answers); **Export PDF** on one person's paper. A file holds
+  what the screen shows, a search included. Download the ranking before New term: the papers do
+  not survive it. In the ranking's and the list's files a name, year, address or phone number
+  that starts with `=`, `+`, `-` or `@` has a single quote put in front of it (`typedCell` in
+  `src/portal/examStats.js`), because a spreadsheet program would otherwise run what a student
+  typed as a formula. A phone number such as `+20 100 123 4567` is left as it is.
+- **Correcting a right answer.** On the Questions tab press **Correct the answer** on the
+  question, choose the right option and press **Save the right answer**. It counts at once for
+  every paper, handed in or not: the next read of the results is marked against it.
+
+**What New term deletes and what it keeps.** An exam's list, papers and answers are kept for one
+term. New term (section 29) gains a part, **Exam**, shown only when there is something to say: it
+names each exam with how many registered IDs and papers will be deleted and links to its results.
+The switch then deletes the papers with their answers, the registered list and the wrong tries
+(`app.clear_exam_rows`), for every exam of the ending term and for any exam of an earlier term that
+holds such rows again, and the page says how many went. Download the results first: nothing in the
+portal brings them back.
+
+It keeps the exam itself, its questions and its key, so the officers can set the same exam for the
+next year's students. A cleared exam has no paper, so its times, its word and its questions can
+change again. It still names the term it was made in (`exams.term_id` never changes), and its new
+list and papers go at the next rollover all the same. It also keeps the students' accounts and
+their profiles, the student ID included, and the rows the audit log already holds for those
+profiles (the webmaster reads them at `/portal/admin/audit`). The nightly backups keep their
+copies of the deleted rows for 90 days more (section 20).
+
+**What only the webmaster can do.** Three jobs in dashboards and one in the hall. None of them is
+in the repository, so merging the branch does none of them.
+
+- [ ] **The callback addresses.** Supabase > Authentication > URL configuration: add
+      `https://ausss-ainshams.org/exam/callback`, `http://localhost:5173/exam/callback` and
+      `http://localhost:4173/exam/callback` to the redirect list, exactly as written, at the same
+      visit that removes the wildcard lines of section 22. Do it before students get the address:
+      until then Google sign-in from the exam's page lands on the home page.
+      `supabase/config.toml` already holds the three, but do not send them with
+      `npm run db:config-push` (section 5) while that file still names the lines section 22
+      removes, because the push would put those back. The exam needs no line for
+      `www.ausss-ainshams.org` or `ausss-ainshams.vercel.app`: Vercel sends both on to
+      `ausss-ainshams.org` before a page loads (a 308, checked on 2026-10-10), so the address an
+      officer copies from the Set-up tab is always the domain's own. If either ever serves the
+      site itself, it needs its own `/exam/callback` line.
+- [ ] **Confirm email.** Supabase > Authentication > Sign In / Providers > Email: switch
+      **Confirm email** on (`enable_confirmations = true` in `supabase/config.toml`, changed on
+      2026-10-10; the dashboard is what counts until a config push). The site signs nobody up
+      with a password, but the API takes such a sign-up from anyone, and with the switch off it
+      hands a session at once to an address that does not exist. Any signed-in account that has
+      the exam's address can give a student ID and hold it, so a script could take the list's IDs
+      with made-up accounts, and each real student would be told the ID is in use until an
+      officer released it. With the switch on an address must receive an email before it gets a
+      session, and that email is rate-limited. Google sign-in does not change. One thing does: a
+      member's first sign-in by email link gets the "Confirm signup" email and not the "Magic
+      Link" one; its link signs them in all the same, so read that template once. It does not
+      stop somebody with real mailboxes, which is why the officers still read the holders' names
+      before the day.
+- [ ] **The token refresh limit.** Supabase > Authentication > Rate limits: read the figure for
+      token refreshes and write it down. The default is 150 in five minutes from one network
+      address (`token_refresh` in `supabase/config.toml`). A sign-in is renewed every hour, so 400
+      phones on one hall Wi-Fi that open the exam in the same few minutes would pass it, and some
+      would be shown as signed out. Phones on mobile data each have an address of their own and do
+      not meet it. Before the day, raise it above the number of students on the list with room to
+      spare; after the exam, put the old figure back. A student who is signed out mid-exam sees
+      "You were signed out. Sign in again with the same Google account. Your answers are kept on
+      this phone." and carries on after signing in.
+- [ ] **A sitting in the hall with a test group.** The hall's own network is the part no script
+      can show. Make a mock exam of a few questions, put the testers' IDs on its list, and have
+      them sit it in the hall on the hall's Wi-Fi, on iPhones and on Android phones. Have some of
+      them switch the Wi-Fi off for a minute while answering, refresh the page, close the tab and
+      open the address again, and move to a second phone. Watch the Results tab fill, check that
+      nobody was signed out, and delete the mock exam after.
+
+**The scripted rehearsal.** `scripts/exam-rehearsal.mjs` plays 400 made-up students through a mock
+exam of 100 questions over HTTP, as phones would, and compares the database's marking with its
+own. It needs a whole local Supabase stack, so it runs on GitHub: on every pull request that
+touches `supabase/**`, the script or its workflow, and by hand before an exam at Actions >
+exam-rehearsal > Run workflow, where the number of takers, of questions and of takers playing at
+a time can be changed, and a seed plays an earlier run's parts again. It refuses any API address
+that is not `127.0.0.1` or `localhost`, the job is given no secret, and it deletes what it made.
+On a machine with Docker and Node 22 or newer: `supabase start`, then
+`supabase status -o env > stack.env`, then `node --env-file=stack.env scripts/exam-rehearsal.mjs`.
+
+What it does: makes the exam, its questions, key and list as the service role; makes the accounts
+and one SCOPE officer; plays every taker through the door, the details, the start code, the paper
+and the hand-in, some of them with a wrong ID or a wrong code first, a double tap on Start or a
+refresh in the middle; leaves a few sitting and moves a few past their deadline; moves the closing
+time into the past while papers are still being sat (a running paper must keep its own deadline
+and go on saving, and an account that has not started must be told the exam has closed); tries, as
+a taker and as a visitor, every read and call that must be refused; then reads the ranking, the
+question figures and some papers as the officer and compares every score, rank, state and count
+with its own; and last makes, as the officer, the requests the portal's Exam page makes on its
+own account (the exam with its three counts, the questions with their key, a question moved and
+moved back, and a second exam made from a title alone, filled through the officers' functions,
+emptied and deleted), since the set-up as the service role passes row-level security and the
+column grants and so proves nothing about them.
+
+Reading its output, which is also the run's summary page:
+
+- The first lines name the stack, the numbers and `SEED=`, then what was set up and made.
+- "Played 400 takers. Started: … Handed in: … Left sitting: …" and "On the way in. …" say what the
+  takers did. They are the script's own plan, not a finding.
+- "Tried N reads, writes and calls that must be refused" and "Compared N papers with the ranking
+  …" are the two checks, the second with how long the officer's reads took. "Read and wrote as
+  the portal does, as the officer" says the page's own requests went through.
+- The table of timings has a row for each of the five functions: calls, median, 95th percentile
+  and slowest, in milliseconds as a phone would see them, then calls a second and how many had to
+  be sent again. Timings never fail the run. They are a runner's and not the hosted project's, so
+  compare one run with another and not with the hall.
+- The last line decides: "Result: everything matched." or "Result: N things did not match.",
+  followed by a line for each kind of mismatch that names the taker and what was expected. The
+  script ends with 0, with 1, or with 2 when it refused to run. The workflow also fails a run that
+  ended with 0 without that line, and after a failure it prints the last 200 log lines of the
+  stack's API, sign-in, gateway and database containers.
+
+On 2026-10-10 it had run only against a stand-in for the stack, because the build machine has no
+Docker. Its first run on a real stack is the pull request's.
+
+**The sample walk.** `npm run walk:portal-sample` (section 21) knows the exam from both sides,
+with every database call answered by the script. On the portal it has three sample exams: this
+term's, being sat as the walk runs (`ex-1`: 412 IDs on the list, 395 of them held, 387 papers), a
+draft (`ex-2`), and last term's, whose list and papers went with its term (`ex-0`). It walks
+`/portal/exam`, the five tabs of `ex-1`, a right answer being corrected, one student's paper, the
+draft's forms, New term with its Exam part, and the audit log with the entry of a released ID
+open. For the students' pages the word in the address
+chooses the screen:
+
+| Address | What it shows |
+| --- | --- |
+| `/exam/sample-sign-in` | The sign-in card, with nobody signed in |
+| `/exam/callback?error=access_denied` | A sign-in that was cancelled |
+| `/exam/sample-none` | No exam at this address |
+| `/exam/sample-unreached` | The database does not answer |
+| `/exam/sample-details`, and with `#not-listed` | The details form; an ID that is not on the list |
+| `/exam/sample-waiting` | On the list, before the exam opens |
+| `/exam/sample-open`, and with `#wrong-code` | The start code; a wrong one |
+| `/exam/sample-closed` | On the list, after the closing time |
+| `/exam/sample-sitting`, and with `#review` | A paper of 100 questions, 34 of them reached; the review |
+| `/exam/sample-hand-in#review` | A hand-in that got no answer |
+| `/exam/sample-elsewhere` | The exam open in another tab |
+| `/exam/sample-time-up` | The clock has just run out, and the last save gets no answer |
+| `/exam/sample-received`, `/exam/sample-timed-out` | Over: handed in, and out of time |
+
+`npm run walk:portal-sample -- light,dark 320,375 /exam` walks the students' pages alone, and the
+same with `/portal/exam` walks the portal's (with `MSYS_NO_PATHCONV=1` in Git Bash). A new screen
+needs a word in `doors` in the script, and an entry in `acts` when it only shows after a tap.
+
+**The students' pages with no database.** The sample walk is the way to look at them; its
+screenshots are in `.page-walk/portal-sample-<time>/<theme>-<width>/`. The sample words work only
+inside the walk's own browser, where the script answers for the database. Typed into an ordinary
+browser they reach the real database, which has no such exam. For what a screenshot cannot show
+(the order answers are sent in, a connection that drops, a hand-in whose answer is lost, the end
+of the time), `src/exam/useSitting.test.js` runs a whole sitting against a scripted database
+inside `npm test`, with no browser. A sitting against a real database needs the local Supabase
+stack, and so Docker, as the scripted rehearsal does.
+
+**What the tests prove.** `supabase/tests/340-exchange-exam.sql` (170 assertions) proves, as real
+accounts: an EB member, a SCOPE officer and a SCORE officer can set an exam up, and a SCOPH
+officer, a plain member, a student and a visitor cannot; every guard of an exam and each "has
+started" refusal, and that the closing time still moves both ways after a start; that an ID is one
+ID however it is typed, belongs to the first account that gives it, cannot change once held, and
+locks after ten misses; that starting is refused without a held ID, before opening, after closing,
+with a wrong code (which makes no paper) and after eight wrong codes; that a paper holds every
+question once and a shown position maps back to the officers' option; that a save more than 30
+seconds past the deadline saves nothing, and a hand-in ends the paper; each student's own clock (a
+paper started a minute before closing has its full length and still saves after closing); the
+marking, the ranks, the states and a corrected key; and that a student's account reads no exam
+table, cannot call the officers' functions, and gets from `exam_paper` and `exam_save` no key, no
+score and nothing that says which answers were right. `330-term-rollover.sql` gains 11 assertions:
+the preview lists the exams with their counts, the rollover deletes the papers, the answers, the
+list and the wrong tries and says how many went, the exam, its questions, its key and the
+student's `student_id` stay, and an exam set again the year after is cleared again.
+`090-grants.sql` gains 39: `anon` holds nothing on the six tables and can execute none of the
+fourteen functions, and a signed-in account cannot write the key, the list, a paper, an answer, a
+question's wording or a profile's student ID directly. All three passed on the build machine,
+which runs Postgres 18; `db-ci` proves them on Postgres 17 when the branch is pushed.
+
+`npm test` runs the unit tests: `src/exam/sitting.test.js` and `examFlow.test.js` (paging, the
+answers that wait, the clock, every sentence a student can be shown), `useSitting.test.js` (the
+whole queue against a scripted database: dropped connections, a lost hand-in, the end of time, a
+longer exam), `tabLock.test.js`, `src/portal/examFile.test.js` (reading questions and IDs from
+files), `src/portal/examStats.test.js` (the figures, the ranks, when the pages refresh, what a
+student typed made safe for a spreadsheet) and `scripts/exam-rehearsal.test.mjs` (the rule that
+keeps the rehearsal on `127.0.0.1` or `localhost`, and the tokens it signs).
+
+**Known gaps on 2026-10-10.**
+
+- An exam officer's account can read the key and every paper, and nothing stops such an account
+  from sitting the exam too. A student who holds a SCOPE, SCORE or board position must not sit it
+  on that account.
+- Any signed-in account that has the address can hold a listed ID, and an account costs nothing
+  to make. The functions do not ask that the account came from Google: the try limits, "Confirm
+  email" (the webmaster's checklist above) and the officers reading the holders' names are what
+  stand against somebody taking IDs that are not theirs. Requiring a Google account inside the
+  five functions was considered and left out: it needs a new screen for an account without
+  Google and changes to the test helpers and the rehearsal's tokens.
+- One officer deleting a whole exam while another removes or rewords one of its questions can get
+  "deadlock detected" from the database. Nothing is left half done, and trying again works.
+- The students' pages were checked in Chromium at 320 px with touch. They have not met a real
+  phone, Safari, Firefox or a screen reader. The sitting in the hall is where real phones, and
+  Safari on iPhones, are tried.

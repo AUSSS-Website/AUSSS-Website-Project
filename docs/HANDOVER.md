@@ -41,7 +41,7 @@ before; `apps-script/MIGRATION.md` records the recovery.
 | Repository | `github.com/AUSSS-Website/AUSSS-Website-Project` |
 | Login and recovery codes | Society vault |
 | Second person | Webmaster, added as a collaborator with admin rights |
-| Holds | All source, `supabase/migrations`, GitHub Actions (`db-ci`, `db-deploy`, `keepalive`, `backup`, `backup-restore-test`, `after-deploy`, `notify`), the nightly backups as encrypted run artifacts (RUNBOOK section 20), the repository secrets in section 5 |
+| Holds | All source, `supabase/migrations`, GitHub Actions (`db-ci`, `db-deploy`, `keepalive`, `backup`, `backup-restore-test`, `after-deploy`, `notify`, and `exam-rehearsal`, which plays a mock exchange exam on a throwaway local stack and is given no secret), the nightly backups as encrypted run artifacts (RUNBOOK section 20), the repository secrets in section 5 |
 | Transfer at rollover | Add the new webmaster as admin collaborator, remove the old one; rotate the vault entry |
 
 Because it is a user account it cannot have two owners. Do not convert it to an
@@ -69,12 +69,26 @@ plan's decision 4 (section 13) chose to keep it as is.
 | Organisation owner | `aussswebsite@gmail.com` |
 | Additional owners | President and webmaster, invited to the organisation as **Owner**. Never fewer than two owners in the members list |
 | Plan | Free tier (plan decision 2). Projects pause after a week without traffic; the `keepalive` workflow pings it daily. See RUNBOOK section 6 |
-| Holds | Schema `public` (terms, committees, positions, profiles, roster_entries, invites, assignments, verification_requests, audit_log, and the site's content: events, albums, magazine issues, merch, content blocks, among others), private schema `app` (helpers), Auth users, the auth config pushed from `supabase/config.toml` |
+| Holds | Schema `public` (terms, committees, positions, profiles, roster_entries, invites, assignments, verification_requests, audit_log, the site's content: events, albums, magazine issues, merch, content blocks, and the exchange exam's questions, registered student IDs, papers and answers, among others), private schema `app` (helpers), Auth users, the auth config pushed from `supabase/config.toml` |
 | Keys | Publishable key `sb_publishable_...` (safe in the browser, RLS gatekeeps); secret key `sb_secret_...` (bypasses RLS; scripts only, never in the browser or the repo); database password; personal access tokens for the CLI |
 
 Transfer at rollover: invite the new President and webmaster as organisation
 owners before removing the old ones. Rotate the secret key and the database
 password (section 6).
+
+The exchange exam (RUNBOOK section 30) needs the webmaster in this dashboard.
+Students sit it at a hidden address, `/exam/<word>`, outside the portal; the
+SCOPE and SCORE officers and the EB set it up and read the results at
+`/portal/exam`. Three settings here are in no migration. The redirect list under
+Authentication > URL configuration must hold the exam's own callback address,
+`https://ausss-ainshams.org/exam/callback`, before students are sent the
+exam's address. The token refresh rate limit under Authentication > Rate limits
+is raised before the day of an exam and put back after, because 400 phones on
+one hall Wi-Fi pass the default. **Confirm email**, under the Email sign-in
+provider, is switched on, so that nobody gets a session for an address that
+does not exist and holds student IDs with it. On 2026-10-10 the exam was built on the branch
+`phase8-exam` and not yet merged; RUNBOOK section 30 has its state and the
+whole checklist.
 
 ### 2.4 Google Cloud: the OAuth client for "Sign in with Google"
 
@@ -291,6 +305,10 @@ section 29 explains each part; section 10 has the SQL fallback for when the port
       address under "Work emails" on the Roster page first.
 - [ ] Untick any album that should stay in the gallery for the new term; the rest move to the
       gallery archive under the old term (their links keep working).
+- [ ] If an exchange exam was sat this term, the exchange officers download its results first
+      (**Exam**, the exam, **Results**, **Export PDF** or **Export CSV**). The switch deletes the
+      exam's registered student IDs, papers and answers for good; the exam and its questions
+      stay (RUNBOOK section 30).
 - [ ] Press **Start** (twice: the button asks again). The page then lists what it did.
 - [ ] Hand each incoming officer and board member their position's work account, after changing
       its password and recovery details so the outgoing holder no longer has them. Nobody is
