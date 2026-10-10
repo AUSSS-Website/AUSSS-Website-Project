@@ -485,7 +485,7 @@ select tests.clear_auth();
 
 select tests.authenticate_as('dina@pgtap.test');
 select is(
-  public.exam_save_details('pgtap-exam', 'Dina Taker', 'Intern', '01000000004', 'ab 77') ->> 'registration',
+  public.exam_save_details('pgtap-exam', 'Dina Taker', '1st year intern', '01000000004', 'ab 77') ->> 'registration',
   'held',
   'letters match whatever their case'
 );
@@ -556,7 +556,7 @@ select is(
   'details',
   'a student whose details are not complete is sent back to give them'
 );
-select public.exam_save_details('pgtap-exam', 'Dina Taker', 'Intern', '01000000004', 'AB-77');
+select public.exam_save_details('pgtap-exam', 'Dina Taker', '1st year intern', '01000000004', 'AB-77');
 select tests.clear_auth();
 
 select tests.authenticate_as('amal@pgtap.test');
