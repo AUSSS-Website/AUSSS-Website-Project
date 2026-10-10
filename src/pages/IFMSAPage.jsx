@@ -176,6 +176,43 @@ export default function IFMSAPage() {
               </svg>
             </span>
           </Link>
+
+          {/* The national federation's own rules, read on the Constitution page. */}
+          <Link
+            to="/constitution#ifmsa-egypt"
+            className="group mt-6 flex flex-col items-start gap-4 rounded-3xl border border-line/10 bg-card p-7 transition-colors hover:border-medical/40 sm:flex-row sm:items-center sm:justify-between sm:p-8"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">
+                The national rules
+              </p>
+              <h3 className="heading-serif mt-2 text-2xl text-ink">
+                IFMSA-Egypt Constitution &amp; Bylaws
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-soft/70">
+                How the federation is run, from its members’ rights to its
+                General Assembly, as issued in October 2026. Read it beside
+                the society’s own.
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-accent transition-colors group-hover:text-ink">
+              Read the document
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path
+                  d="M5 12h14M13 6l6 6-6 6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          </Link>
         </section>
 
         {/* Links */}
