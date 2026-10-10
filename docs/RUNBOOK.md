@@ -1727,6 +1727,32 @@ take the name and photo from whoever holds the position (section 23) and the ema
 browser tab must agree (section 15). The welcome booklet itself is
 `src/data/incomingsBooklet.js`.
 
+**The national team's two booklets** (added 2026-10-10) sit under ours in "From the national
+team": the IFMSA-Egypt exchange booklet and the IFMSA-Egypt welcome booklet. They are files of
+the site, not part of the block: `public/assets/exchange/booklets`, listed with their words in
+`src/data/nationalBooklets.js` (a booklet's `jump` is the page "Open at our pages" starts on).
+Each opens in place in the site's own reader, as the two documents on `/constitution` do.
+
+**The reader** is `src/components/PdfReader.jsx`, with `DocumentCard.jsx` as the card a document
+opens from. It draws the pages with pdf.js, which loads only when a reader is near the screen,
+and has a search bar above the pages: a word or a phrase, the count, previous and next, a list of
+every place, and the matches marked on the page. The search itself is
+`src/lib/pdfSearch.js`, with tests. If pdf.js cannot open a file the browser's own viewer takes
+its place in a frame.
+
+To replace a document, put the new PDF over the old one under the same name, and correct its
+line of facts (date, pages, size) where it is listed: `src/data/nationalBooklets.js`, or
+`src/pages/ConstitutionPage.jsx` for the two on `/constitution`. Two things to know:
+
+- **Every megabyte is in every deployment.** A file in `public/` is copied into each build, and
+  Vercel counts every build it keeps. The national exchange booklet is 75 MB as exported, so the site
+  carries a 19 MB copy made for the web: each page as a picture, with the words kept invisibly
+  on top (so search and selecting still work) and the links kept. A new edition needs the same
+  treatment before it goes in; a PDF of a few megabytes goes in as it is.
+- **A long file is fetched in pieces.** A card marked `large` makes the reader ask for only the
+  pages being read (about 1.4 MB to open the exchange booklet at our pages, the whole file only
+  for "Download PDF"). That works on the live site; the dev server sends whole files.
+
 **The outgoings page has the same shape, for our own students** thinking of going abroad
 (added 2026-10-06, migration `20261006183133_outgoings_block`). Its file is
 `src/pages/ExchangeOutgoingsPage.jsx`; it draws the same section components
