@@ -21,6 +21,18 @@ const DETAIL_SENTENCES = {
   student_id: 'Enter your student ID.',
 }
 
+// The years a student can be in when they sit the exam: the five years of
+// study, then the two intern years (the webmaster, 2026-10-11). The portal's
+// profile keeps a longer list of its own (graduates, others); the exam's form
+// offers these and nothing else.
+export const EXAM_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', '1st year intern', '2nd year intern']
+
+// The year the form starts on: the profile's when it is one of those, else
+// none, so a member whose profile says something else chooses again.
+export function startingYear(me) {
+  return EXAM_YEARS.includes(me?.faculty_year) ? me.faculty_year : ''
+}
+
 export function missingDetail(me) {
   for (const [field, message] of Object.entries(DETAIL_SENTENCES)) {
     if (blank(me?.[field])) return { field, message }

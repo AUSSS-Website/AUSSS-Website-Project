@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EXAM_YEARS,
   HAND_IN_CHECKING,
   callbackProblem,
   clockNotice,
@@ -21,6 +22,7 @@ import {
   signedOutWords,
   startLine,
   startProblem,
+  startingYear,
   timeUpWords,
 } from './examFlow.js'
 
@@ -29,6 +31,22 @@ const me = { full_name: 'Sample Student', faculty_year: 'Year 4', phone: '010000
 const exam = { title: 'Exchange exam', opens_at: '2026-11-14T16:00:00+00:00', closes_at: '2026-11-14T16:30:00+00:00', minutes: 120, questions: 100, phase: 'open' }
 const answered = (data) => ({ status: 'answered', data: { exam, me, registration: 'held', attempt: null, now: exam.opens_at, ...data } })
 const failed = (kind) => ({ status: 'failed', error: { kind, message: 'x' } })
+
+describe('the years a student can choose', () => {
+  it('offers the five years of study, then the two intern years, and nothing else', () => {
+    expect(EXAM_YEARS).toEqual(['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', '1st year intern', '2nd year intern'])
+  })
+
+  it('starts the form on the year the profile holds only when the exam offers it', () => {
+    expect(startingYear({ faculty_year: 'Year 4' })).toBe('Year 4')
+    expect(startingYear({ faculty_year: '2nd year intern' })).toBe('2nd year intern')
+    // what the portal's own list may hold: the student chooses again
+    for (const other of ['Year 6', 'Intern', 'Graduate', 'Other', '', null, undefined]) {
+      expect(startingYear({ faculty_year: other })).toBe('')
+    }
+    expect(startingYear(null)).toBe('')
+  })
+})
 
 describe('which screen', () => {
   it('waits while the session or the door is being read', () => {
