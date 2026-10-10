@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boardKept, formatBytes, formatDay, termProblem, workAccountState } from './rollover.js'
+import { boardKept, examLoss, formatBytes, formatDay, termProblem, workAccountState } from './rollover.js'
 
 const current = { label: '2026-27', starts_on: '2026-09-01', ends_on: '2027-08-31' }
 
@@ -48,6 +48,19 @@ describe('boardKept', () => {
     expect(boardKept([officer, president])).toBe(true)
     expect(boardKept([officer, webmasterWaiting])).toBe(false)
     expect(boardKept([])).toBe(false)
+  })
+})
+
+describe('examLoss', () => {
+  it('counts the registered IDs and the papers an exam would lose', () => {
+    expect(examLoss({ registrations: 396, attempts: 388 })).toBe('396 registered IDs and 388 papers')
+    expect(examLoss({ registrations: 1, attempts: 1 })).toBe('1 registered ID and 1 paper')
+    expect(examLoss({ registrations: 12, attempts: 0 })).toBe('12 registered IDs and 0 papers')
+  })
+
+  it('is empty for an exam that holds neither', () => {
+    expect(examLoss({ registrations: 0, attempts: 0 })).toBe('')
+    expect(examLoss({})).toBe('')
   })
 })
 

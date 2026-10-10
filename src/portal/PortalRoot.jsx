@@ -34,6 +34,8 @@ import ContentEditorPage from './pages/content/ContentEditorPage.jsx'
 import AuditLogPage from './pages/admin/AuditLogPage.jsx'
 import PortalEventsPage from './pages/events/EventsPage.jsx'
 import EventEditorPage from './pages/events/EventEditorPage.jsx'
+import ExamsPage from './pages/exam/ExamsPage.jsx'
+import ExamPage from './pages/exam/ExamPage.jsx'
 
 // Lazy boundary for everything under /portal/*. This is the ONLY place the
 // public app touches the portal, so supabase-js and react-query stay out of
@@ -86,6 +88,11 @@ export default function PortalRoot() {
                 only the events a person may edit). */}
             <Route path="events" element={<PortalEventsPage />} />
             <Route path="events/:id" element={<EventEditorPage />} />
+            {/* The exchange exam: the SCOPE and SCORE officers and the EB set it
+                up and read its results (the page checks; the database decides).
+                Students sit it at /exam/<word>, outside the portal. */}
+            <Route path="exam" element={<ExamsPage />} />
+            <Route path="exam/:id" element={<ExamPage />} />
             {/* Gallery editor: PNSD officers and the EB (the page checks officerOf('pnsd')). */}
             <Route path="gallery" element={<GalleryEditorPage />} />
             <Route path="gallery/:slug" element={<AlbumEditorPage />} />

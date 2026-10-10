@@ -6,6 +6,7 @@ import {
   STORAGE_LIMIT_BYTES,
   STORAGE_WARN_BYTES,
   boardKept,
+  examLoss,
   formatBytes,
   formatDay,
   termProblem,
@@ -26,7 +27,8 @@ import {
 // /portal/admin/rollover (EB only, gated by RequireEB). Moves the society into
 // the next term in one step: the work accounts keep their positions, the
 // roster's positions are offered again, open tasks move across, the ticked
-// albums go to the gallery archive, and the term switches. Each panel says
+// albums go to the gallery archive, the exam's registered IDs and papers are
+// deleted (they are kept for one term), and the term switches. Each panel says
 // what will happen before the button at the end does it. The seats and
 // secrets of HANDOVER section 6 are people's work and stay a checklist.
 
@@ -95,6 +97,9 @@ function Wizard({ preview, busy, error, onStart }) {
   // Every album starts ticked. Only the first answer seeds the ticks, so a refetch
   // (the tab regaining focus) never undoes what the board unticked.
   const [archive, setArchive] = useState(() => new Set(albums.map((a) => a.id)))
+  // The exams whose registered IDs and papers go with the term. None, and the
+  // page has no exam panel (nor has it on a database from before the exam).
+  const exams = preview.exams ?? []
 
   const problem = termProblem({ label, startsOn, endsOn }, current)
   const name = label.trim() || 'the new term'
@@ -288,7 +293,41 @@ function Wizard({ preview, busy, error, onStart }) {
         </p>
       </Panel>
 
-      <Panel title="6. Switch">
+      {exams.length > 0 && (
+        <Panel title="6. Exam">
+          <p className="mt-4 text-sm text-soft/75">
+            An exam’s registered IDs, papers and answers are kept for one term. They are deleted with{' '}
+            {current.label} and cannot be brought back, so download the results you need first. The exam
+            itself, its questions and their right answers stay, and so do the students’ accounts.
+          </p>
+          <ul className="mt-4 divide-y divide-line/10 rounded-xl border border-line/10 bg-sunk">
+            {exams.map((exam) => {
+              const loss = examLoss(exam)
+              return (
+                <li
+                  key={exam.id}
+                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm text-ink">{exam.title}</span>
+                    <span className="block text-xs text-soft/55">
+                      {loss ? `${loss} will be deleted` : 'Nothing to delete'}
+                    </span>
+                  </span>
+                  <Link
+                    to={loss ? `/portal/exam/${exam.id}?tab=results` : `/portal/exam/${exam.id}`}
+                    className="text-xs font-semibold text-accent hover:text-ink"
+                  >
+                    {loss ? 'Open its results' : 'Open the exam'}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </Panel>
+      )}
+
+      <Panel title={`${exams.length > 0 ? 7 : 6}. Switch`}>
         <p className="mt-4 text-sm text-soft/75">
           Everything above happens at once, and {name} becomes the current term. Offers of positions in{' '}
           {current.label} that nobody took up are withdrawn. The public pages are rebuilt within a few
@@ -315,6 +354,8 @@ function Wizard({ preview, busy, error, onStart }) {
 }
 
 function Done({ result }) {
+  const examIds = result.exam_registrations_deleted ?? 0
+  const examPapers = result.exam_attempts_deleted ?? 0
   const rows = [
     [`${result.work_accounts} work ${result.work_accounts === 1 ? 'account keeps its' : 'accounts keep their'} position`],
     result.work_accounts_waiting > 0 && [
@@ -323,6 +364,9 @@ function Done({ result }) {
     [`${result.roster_offers_made} ${result.roster_offers_made === 1 ? 'position' : 'positions'} from the roster given again`],
     [`${result.tasks_moved} open ${result.tasks_moved === 1 ? 'task' : 'tasks'} moved across`],
     [`${result.albums_archived} ${result.albums_archived === 1 ? 'album' : 'albums'} moved to the gallery archive`],
+    (examIds > 0 || examPapers > 0) && [
+      `${examIds} registered ${examIds === 1 ? 'ID' : 'IDs'} and ${examPapers} exam ${examPapers === 1 ? 'paper' : 'papers'} deleted`,
+    ],
     [`${result.assignments_ended} ${result.assignments_ended === 1 ? 'position' : 'positions'} of ${result.from} ended`],
   ].filter(Boolean)
 
