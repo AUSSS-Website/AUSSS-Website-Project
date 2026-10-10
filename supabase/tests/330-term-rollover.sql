@@ -6,8 +6,14 @@
 -- go, and the site is rebuilt. A rollover that would leave nobody on the board is refused. Also:
 -- a task's term moves with the rollover only, 'archive' is the gallery archive's own link, and
 -- a link cut at a hyphen loses the hyphen.
+--
+-- The exchange exam is kept for one term: the preview names each exam with the registered IDs and
+-- papers it would lose, the rollover deletes the papers, their answers, the registered list and
+-- the wrong tries, and says how many went; the exam, its questions, its key and the takers'
+-- student IDs stay. An exam set again the year after is cleared again, though its row still
+-- names the term it was made in.
 begin;
-select plan(45);
+select plan(56);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -62,6 +68,33 @@ insert into public.gallery_photos (id, album_id, path, width, height) values
    'aaaaaaaa-0000-0000-0000-000000000001/bbbbbbbb-0000-0000-0000-000000000001', 1600, 1200),
   ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000002',
    'aaaaaaaa-0000-0000-0000-000000000002/bbbbbbbb-0000-0000-0000-000000000002', 1600, 1200);
+
+-- This term's exchange exam: two IDs on its list, one of them held by a member who sat it (a
+-- paper with two answers, after one wrong start code). And an exam nobody was put down for.
+insert into public.exams (id, title, address_word) values
+  ('cccccccc-0000-0000-0000-000000000001', 'Exchange exam', 'pgtap-exchange-exam'),
+  ('cccccccc-0000-0000-0000-000000000002', 'Mock exam', 'pgtap-mock-exam');
+insert into public.exam_questions (id, exam_id, sort, body, options) values
+  ('dddddddd-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001', 1,
+   'Which committee runs the research exchange?', '["SCOPE", "SCORE"]'),
+  ('dddddddd-0000-0000-0000-000000000002', 'cccccccc-0000-0000-0000-000000000001', 2,
+   'How long is a research exchange?', '["Four weeks", "Eight weeks"]');
+insert into public.exam_key (question_id, correct_option) values
+  ('dddddddd-0000-0000-0000-000000000001', 1),
+  ('dddddddd-0000-0000-0000-000000000002', 0);
+update public.profiles set student_id = '2023-1234' where id = tests.user_id('member@pgtap.test');
+insert into public.exam_registrations (exam_id, student_id, profile_id, claimed_at) values
+  ('cccccccc-0000-0000-0000-000000000001', '2023-1234', tests.user_id('member@pgtap.test'), now()),
+  ('cccccccc-0000-0000-0000-000000000001', '2023-5678', null, null);
+insert into public.exam_attempts (id, exam_id, profile_id, student_id, question_order) values
+  ('eeeeeeee-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001',
+   tests.user_id('member@pgtap.test'), '2023-1234',
+   array['dddddddd-0000-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001']::uuid[]);
+insert into public.exam_answers (attempt_id, question_id, chosen_option) values
+  ('eeeeeeee-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001', 1),
+  ('eeeeeeee-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000002', 1);
+insert into app.exam_tries (exam_id, profile_id, kind) values
+  ('cccccccc-0000-0000-0000-000000000001', tests.user_id('member@pgtap.test'), 'code');
 
 update app.site_rebuild set requested_at = null, reason = null where id;
 
@@ -139,6 +172,12 @@ select cmp_ok(
 select ok(
   (select doc -> 'albums' @> '[{"title": "Spring camp", "photos": 1}, {"title": "Health week", "photos": 1}]' from (select public.rollover_preview() as doc) p),
   'the albums still in the gallery are listed with their photos'
+);
+select is(
+  (select doc -> 'exams' from (select public.rollover_preview() as doc) p),
+  '[{"id": "cccccccc-0000-0000-0000-000000000001", "title": "Exchange exam", "registrations": 2, "attempts": 1},
+    {"id": "cccccccc-0000-0000-0000-000000000002", "title": "Mock exam", "registrations": 0, "attempts": 0}]'::jsonb,
+  'the term''s exams are listed with the registered IDs and papers each would lose'
 );
 select ok(
   (select (doc ->> 'storage_bytes')::bigint >= 0 from (select public.rollover_preview() as doc) p),
@@ -286,6 +325,51 @@ select is(
   'an unticked album stays in the gallery'
 );
 
+-- The exam is kept for one term. The ID of the student who sat it goes too: the papers are
+-- deleted first, and only an ID whose holder still has a paper must stay on the list.
+select is(
+  (select count(*)::int from public.exam_attempts
+   where exam_id = 'cccccccc-0000-0000-0000-000000000001'),
+  0,
+  'the exam''s papers are deleted with the term'
+);
+select is(
+  (select count(*)::int from public.exam_answers
+   where attempt_id = 'eeeeeeee-0000-0000-0000-000000000001'),
+  0,
+  'and their answers with them'
+);
+select is(
+  (select count(*)::int from public.exam_registrations
+   where exam_id = 'cccccccc-0000-0000-0000-000000000001'),
+  0,
+  'the registered list is deleted, the ID of a student who sat the exam included'
+);
+select is(
+  (select count(*)::int from app.exam_tries
+   where exam_id = 'cccccccc-0000-0000-0000-000000000001'),
+  0,
+  'the wrong tries are deleted'
+);
+select is(
+  (select count(*)::int from public.exams
+   where id in ('cccccccc-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000002')),
+  2,
+  'the exams themselves stay'
+);
+select is(
+  (select count(*)::int from public.exam_questions q
+   join public.exam_key k on k.question_id = q.id
+   where q.exam_id = 'cccccccc-0000-0000-0000-000000000001'),
+  2,
+  'and so do the questions and their key'
+);
+select is(
+  (select student_id from public.profiles where id = tests.user_id('member@pgtap.test')),
+  '2023-1234',
+  'a taker''s profile keeps its student ID'
+);
+
 select tests.authenticate_as_anon();
 select is(
   (select a ->> 'term' from jsonb_array_elements(public.gallery_public() -> 'albums') a
@@ -343,6 +427,35 @@ select is(
   app.slugify(repeat('a', 59) || ' tail'),
   repeat('a', 59),
   'a link cut at a hyphen loses the hyphen'
+);
+
+-- ---- an exam set again the year after ----------------------------------------------------------------
+-- The officers set last term's exam for this term's students. Its row still names the term it
+-- was made in; its new list and paper go with the term they were collected in all the same.
+insert into public.exam_registrations (exam_id, student_id, profile_id, claimed_at) values
+  ('cccccccc-0000-0000-0000-000000000001', '2024-0001', tests.user_id('member@pgtap.test'), now()),
+  ('cccccccc-0000-0000-0000-000000000001', '2024-0002', null, null);
+insert into public.exam_attempts (exam_id, profile_id, student_id, question_order) values
+  ('cccccccc-0000-0000-0000-000000000001', tests.user_id('member@pgtap.test'), '2024-0001',
+   array['dddddddd-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000002']::uuid[]);
+
+select tests.authenticate_as('president@pgtap.test');
+select is(
+  (select doc -> 'exams' from (select public.rollover_preview() as doc) p),
+  '[{"id": "cccccccc-0000-0000-0000-000000000001", "title": "Exchange exam", "registrations": 2, "attempts": 1}]'::jsonb,
+  'an earlier term''s exam is listed when it holds a list or papers again, and not when it holds none'
+);
+select is(
+  (select jsonb_build_object('papers', doc -> 'exam_attempts_deleted', 'ids', doc -> 'exam_registrations_deleted')
+   from (select public.roll_over_term('2028-29', '2028-09-01', '2029-08-31') as doc) p),
+  '{"papers": 1, "ids": 2}'::jsonb,
+  'the rollover says how many papers and registered IDs it deleted'
+);
+select tests.clear_auth();
+select is(
+  (select count(*)::int from public.exam_attempts) + (select count(*)::int from public.exam_registrations),
+  0,
+  'and they are gone, whichever term the exam''s row names'
 );
 
 select * from finish();

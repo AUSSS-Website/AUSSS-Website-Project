@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(110);
+select plan(149);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -151,6 +151,49 @@ select ok(not has_column_privilege('authenticated', 'public.events', 'id', 'inse
 select ok(not has_table_privilege('authenticated', 'public.event_slugs', 'insert'), 'authenticated cannot write event_slugs');
 select ok(has_function_privilege('anon', 'public.events_public()', 'execute'), 'anon can read the published events');
 select ok(not has_function_privilege('anon', 'app.can_edit_event(uuid)', 'execute'), 'anon cannot ask who may edit an event');
+
+-- the exchange exam: anon holds nothing; the exam officers write an exam's own columns, put the
+-- questions in order and take questions and IDs away; the key, the list, the papers and the
+-- answers are written by the functions only, and so is a profile's student ID
+select ok(not has_any_column_privilege('anon', 'public.exams', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exams', 'delete, truncate, trigger'), 'anon holds nothing on exams');
+select ok(not has_any_column_privilege('anon', 'public.exam_questions', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_questions', 'delete, truncate, trigger'), 'anon holds nothing on exam_questions');
+select ok(not has_any_column_privilege('anon', 'public.exam_key', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_key', 'delete, truncate, trigger'), 'anon holds nothing on exam_key');
+select ok(not has_any_column_privilege('anon', 'public.exam_registrations', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_registrations', 'delete, truncate, trigger'), 'anon holds nothing on exam_registrations');
+select ok(not has_any_column_privilege('anon', 'public.exam_attempts', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_attempts', 'delete, truncate, trigger'), 'anon holds nothing on exam_attempts');
+select ok(not has_any_column_privilege('anon', 'public.exam_answers', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_answers', 'delete, truncate, trigger'), 'anon holds nothing on exam_answers');
+select ok(has_table_privilege('authenticated', 'public.exams', 'select'), 'authenticated reads exams (RLS narrows it to the exam officers)');
+select ok(has_column_privilege('authenticated', 'public.exams', 'start_code', 'update'), 'authenticated updates exams.start_code');
+select ok(not has_column_privilege('authenticated', 'public.exams', 'term_id', 'insert'), 'authenticated cannot choose an exam''s term');
+select ok(not has_column_privilege('authenticated', 'public.exams', 'created_by', 'update'), 'authenticated cannot change an exam''s author');
+select ok(has_column_privilege('authenticated', 'public.exam_questions', 'sort', 'update'), 'authenticated puts the questions in order');
+select ok(not has_column_privilege('authenticated', 'public.exam_questions', 'body', 'update'), 'authenticated cannot reword a question directly');
+select ok(not has_column_privilege('authenticated', 'public.exam_questions', 'options', 'update'), 'authenticated cannot change a question''s options directly');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_questions', 'insert'), 'a question is added through the function only');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_key', 'insert, update') and not has_table_privilege('authenticated', 'public.exam_key', 'delete'), 'authenticated cannot write the key directly');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_registrations', 'insert, update'), 'authenticated cannot add or change an ID on the list directly');
+select ok(has_table_privilege('authenticated', 'public.exam_registrations', 'delete'), 'authenticated takes an ID off the list (the exam officers, by policy)');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_attempts', 'insert, update') and not has_table_privilege('authenticated', 'public.exam_attempts', 'delete'), 'authenticated cannot write a paper directly');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_answers', 'insert, update') and not has_table_privilege('authenticated', 'public.exam_answers', 'delete'), 'authenticated cannot write an answer directly');
+select ok(not has_column_privilege('authenticated', 'public.profiles', 'student_id', 'update'), 'authenticated cannot update a profile''s student ID');
+select ok(not has_table_privilege('anon', 'app.exam_tries', 'select') and not has_table_privilege('authenticated', 'app.exam_tries', 'select'), 'no API role reads the wrong tries');
+select ok(not has_function_privilege('anon', 'public.exam_door(text)', 'execute'), 'anon cannot come to an exam''s door');
+select ok(not has_function_privilege('anon', 'public.exam_save_details(text, text, text, text, text)', 'execute'), 'anon cannot check a student ID against the list');
+select ok(not has_function_privilege('anon', 'public.exam_start(text, text)', 'execute'), 'anon cannot start an exam');
+select ok(not has_function_privilege('anon', 'public.exam_paper(text)', 'execute'), 'anon cannot read a paper');
+select ok(not has_function_privilege('anon', 'public.exam_save(text, jsonb, boolean)', 'execute'), 'anon cannot save an answer');
+select ok(not has_function_privilege('anon', 'public.save_exam_question(uuid, uuid, text, jsonb, int, boolean)', 'execute'), 'anon cannot write a question');
+select ok(not has_function_privilege('anon', 'public.import_exam_questions(uuid, jsonb)', 'execute'), 'anon cannot import questions');
+select ok(not has_function_privilege('anon', 'public.exam_add_registrations(uuid, text[])', 'execute'), 'anon cannot put IDs on the list');
+select ok(not has_function_privilege('anon', 'public.exam_release_registration(uuid)', 'execute'), 'anon cannot free an ID');
+select ok(not has_function_privilege('anon', 'public.exam_registration_list(uuid)', 'execute'), 'anon cannot read the list of IDs');
+select ok(not has_function_privilege('anon', 'public.exam_results(uuid)', 'execute'), 'anon cannot read the results');
+select ok(not has_function_privilege('anon', 'public.exam_sheet(uuid)', 'execute'), 'anon cannot read a marked paper');
+select ok(not has_function_privilege('anon', 'public.exam_question_stats(uuid)', 'execute'), 'anon cannot read the question figures');
+select ok(not has_function_privilege('anon', 'public.exam_delete_attempt(uuid)', 'execute'), 'anon cannot delete a paper');
+select ok(has_function_privilege('authenticated', 'public.exam_door(text)', 'execute'), 'a signed-in student can come to the door');
+select ok(not has_function_privilege('anon', 'app.is_exam_officer()', 'execute'), 'anon cannot ask who is an exam officer');
+select ok(not has_function_privilege('authenticated', 'app.exam_by_word(text)', 'execute'), 'only the exam''s own functions look an exam up by its word');
+select ok(not has_function_privilege('authenticated', 'app.clear_exam_rows(uuid)', 'execute'), 'only the rollover clears a term''s list, papers and answers');
 
 select * from finish();
 rollback;
