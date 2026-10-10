@@ -14,12 +14,17 @@ import { contentSchemas } from '../content/index.js'
 // and the portal does not feel like changing product.
 
 // One portal link, in the navbar's type, with its underline: full under the
-// page you are on, growing on hover elsewhere.
-function PortalLink({ to, end, children }) {
+// page you are on, growing on hover elsewhere. `within` names pages that have
+// no link of their own and are reached from this one (New term, from Site
+// settings), so the underline stays while someone is on them.
+function PortalLink({ to, end, within = [], children }) {
+  const { pathname } = useLocation()
+  const inside = within.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   return (
     <NavLink
       to={to}
       end={end}
+      data-within={inside || undefined}
       className="group relative shrink-0 py-1 text-sm font-medium text-ink transition-colors 2xl:text-base"
     >
       {({ isActive }) => (
@@ -27,7 +32,7 @@ function PortalLink({ to, end, children }) {
           {children}
           <span
             className={`absolute -bottom-0.5 left-0 h-px bg-medical transition-all duration-300 ${
-              isActive ? 'w-full' : 'w-0 group-hover:w-full'
+              isActive || inside ? 'w-full' : 'w-0 group-hover:w-full'
             }`}
           />
         </>
@@ -84,8 +89,8 @@ export default function PortalLayout() {
     [
       isEB && { to: '/portal/admin/roster', label: 'Roster' },
       isEB && { to: '/portal/admin/verification', label: 'Verification' },
-      isEB && { to: '/portal/admin/settings', label: 'Site settings' },
-      isEB && { to: '/portal/admin/rollover', label: 'New term' },
+      // New term has no link here: it is a button on the Site settings page.
+      isEB && { to: '/portal/admin/settings', label: 'Site settings', within: ['/portal/admin/rollover'] },
       isWebmaster && { to: '/portal/admin/audit', label: 'Audit log' },
     ],
   ]
@@ -97,7 +102,7 @@ export default function PortalLayout() {
   const linksRef = useRef(null)
   useEffect(() => {
     const row = linksRef.current
-    const current = row?.querySelector('[aria-current="page"]')
+    const current = row?.querySelector('[aria-current="page"], [data-within]')
     if (!row || !current) return
     const target = current.offsetLeft - (row.clientWidth - current.offsetWidth) / 2
     row.scrollLeft = Math.max(0, target)
@@ -200,7 +205,7 @@ export default function PortalLayout() {
                 }`}
               >
                 {group.map((item) => (
-                  <PortalLink key={item.to} to={item.to} end={item.end}>
+                  <PortalLink key={item.to} to={item.to} end={item.end} within={item.within}>
                     {item.label}
                   </PortalLink>
                 ))}

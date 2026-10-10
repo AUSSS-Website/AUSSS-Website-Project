@@ -49,7 +49,11 @@ export default function RolloverPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Executive Board"
+        eyebrow={
+          <Link to="/portal/admin/settings" className="hover:text-ink">
+            &larr; Site settings
+          </Link>
+        }
         title="New term"
         subtitle="Move the society into the next term. Read each part, then press the button at the end."
       />

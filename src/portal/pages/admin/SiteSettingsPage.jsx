@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useSiteRebuildStatus, useSiteSettingsAdmin, useUpsertSiteSetting } from '../../officerQueries.js'
 import { when } from '../../workUi.jsx'
@@ -16,7 +17,9 @@ import {
 // /portal/admin/settings (EB only, gated by RequireEB). Site-wide switches
 // read by every visitor from public.site_settings. Known keys get a proper
 // control; anything else is shown as raw JSON so a new setting can be added
-// from the Supabase dashboard before the site has a control for it.
+// from the Supabase dashboard before the site has a control for it. The way
+// to the New term page is here too (it is used once a year, so it has no
+// link in the header).
 
 const KNOWN = [
   {
@@ -135,6 +138,27 @@ function RebuildPanel() {
   )
 }
 
+// The way to /portal/admin/rollover. Opening that page changes nothing: it
+// shows what the switch would do, and has its own button at the end.
+function NewTermPanel() {
+  return (
+    <Panel title="New term">
+      <p className="mt-4 text-sm text-soft/75">
+        At the end of the academic year, move the society into the next term: the work accounts keep their
+        positions, open tasks move across, and the gallery&rsquo;s albums can go to the archive.
+      </p>
+      <p className="mt-2 text-xs text-soft/55">
+        Opening the page changes nothing. It shows what the switch will do, and nothing happens until you press the
+        button at its end.
+      </p>
+      <Link to="/portal/admin/rollover" className={`${primaryBtnCls} mt-5`}>
+        New term
+        <span aria-hidden="true">&rarr;</span>
+      </Link>
+    </Panel>
+  )
+}
+
 export default function SiteSettingsPage() {
   usePageTitle('Site settings')
   const settings = useSiteSettingsAdmin(true)
@@ -202,6 +226,11 @@ export default function SiteSettingsPage() {
           {msg && <p className="text-xs font-semibold text-accent">{msg}</p>}
         </div>
       )}
+
+      {/* Outside the settings themselves, so it is there even if they fail to load. */}
+      <div className="mt-5 max-w-2xl">
+        <NewTermPanel />
+      </div>
     </>
   )
 }
