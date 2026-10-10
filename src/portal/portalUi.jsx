@@ -198,9 +198,11 @@ const confirmIdle = {
   button: outlineBtnCls,
   text: 'text-xs font-semibold text-soft/60 transition-colors hover:text-ink disabled:opacity-40',
 }
+// red-600, not red-500: white text on it is 4.8 to 1, and on red-500 only 3.8,
+// under the 4.5 that text of this size needs.
 const confirmArmed = {
-  button: '!border-red-500 !bg-red-500 !text-white hover:!bg-red-600',
-  text: `${btnCentreCls} rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-40`,
+  button: '!border-red-600 !bg-red-600 !text-white hover:!bg-red-700',
+  text: `${btnCentreCls} rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-40`,
 }
 
 export function ConfirmButton({

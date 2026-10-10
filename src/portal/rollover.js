@@ -32,6 +32,15 @@ export function boardKept(accounts) {
   return accounts.some((row) => (row.level === 'eb' || row.level === 'webmaster') && workAccountState(row) === 'keeps')
 }
 
+// What the switch deletes of one exam: '396 registered IDs and 388 papers'.
+// '' when the exam holds neither, so there is nothing to lose.
+export function examLoss(exam) {
+  const ids = exam.registrations || 0
+  const papers = exam.attempts || 0
+  if (ids === 0 && papers === 0) return ''
+  return `${ids} registered ${ids === 1 ? 'ID' : 'IDs'} and ${papers} ${papers === 1 ? 'paper' : 'papers'}`
+}
+
 // '56 MB', '1.2 GB'.
 export function formatBytes(bytes) {
   const mb = bytes / 1024 ** 2

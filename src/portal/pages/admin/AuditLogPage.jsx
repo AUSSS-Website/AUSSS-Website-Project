@@ -38,6 +38,14 @@ const TABLES = [
   ['invites', 'Invites'],
   ['verification_requests', 'Verification requests'],
   ['terms', 'Terms'],
+  // The exchange exam. The registered IDs and the papers are not audited row
+  // by row (they are deleted when the term ends): the log holds one slim entry
+  // for an ID released from its account and one for a paper deleted.
+  ['exams', 'Exams'],
+  ['exam_questions', 'Exam questions'],
+  ['exam_key', 'Exam right answers'],
+  ['exam_registrations', 'Exam registered IDs'],
+  ['exam_attempts', 'Exam papers'],
 ]
 const TABLE_LABEL = Object.fromEntries(TABLES)
 
@@ -45,12 +53,15 @@ const ACTIONS = [
   ['INSERT', 'Added'],
   ['UPDATE', 'Changed'],
   ['DELETE', 'Removed'],
+  // Written by rpc/exam_release_registration: an ID freed from its account.
+  ['RELEASE', 'Released'],
 ]
 const ACTION_LABEL = Object.fromEntries(ACTIONS)
 const ACTION_CLS = {
   INSERT: 'bg-emerald-400/15 text-ok',
   UPDATE: 'bg-medical/20 text-accent',
   DELETE: 'bg-red-400/15 text-danger',
+  RELEASE: 'bg-amber-400/15 text-warn',
 }
 
 // Bookkeeping columns that change with every write and say nothing.
@@ -63,7 +74,8 @@ function show(v) {
 }
 
 // The fields a row of the log is about: the ones that differ for a change,
-// every filled one for an addition or a removal.
+// every filled one for an addition or a removal. An entry that is neither (an
+// exam ID released) holds only what the row was before, and shows that.
 function changedFields(entry) {
   const before = entry.before || {}
   const after = entry.after || {}
@@ -72,10 +84,11 @@ function changedFields(entry) {
       .filter((k) => !QUIET.has(k) && JSON.stringify(before[k]) !== JSON.stringify(after[k]))
       .map((k) => ({ name: k, before: before[k], after: after[k] }))
   }
-  const row = entry.action === 'DELETE' ? before : after
+  const old = entry.action === 'DELETE' || !entry.after
+  const row = old ? before : after
   return Object.keys(row)
     .filter((k) => !QUIET.has(k) && row[k] !== null && row[k] !== '')
-    .map((k) => (entry.action === 'DELETE' ? { name: k, before: row[k] } : { name: k, after: row[k] }))
+    .map((k) => (old ? { name: k, before: row[k] } : { name: k, after: row[k] }))
 }
 
 const valueCls =
