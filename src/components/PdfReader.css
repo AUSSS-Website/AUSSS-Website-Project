@@ -1,0 +1,114 @@
+/* The document reader (PdfReader.jsx): the pages pdf.js draws, the invisible
+   words laid over each one so they can be selected and searched, and the marks
+   a search leaves on them. A page of a PDF is white paper whatever the site's
+   theme, so the colours on the page itself are fixed. */
+
+.pdf-page {
+  position: relative;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18), 0 6px 18px rgb(0 0 0 / 0.1);
+}
+
+.pdf-page canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* pdf.js's own rules for its text layer (web/pdf_viewer.css in pdfjs-dist),
+   written flat. --total-scale-factor is set on each page by the reader. */
+.pdf-page .textLayer {
+  color-scheme: only light;
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.pdf-page .textLayer span,
+.pdf-page .textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.pdf-page .textLayer > :not(.markedContent),
+.pdf-page .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.pdf-page .textLayer .markedContent {
+  display: contents;
+}
+
+.pdf-page .textLayer ::selection {
+  background: rgb(42 97 140 / 0.3);
+  color: transparent;
+}
+
+.pdf-page .textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* What a search found: every match in amber, the one you are on outlined. The
+   mark sits inside a word's own span, so it takes that span's place and size. */
+.pdf-page .textLayer .pdf-hit {
+  position: static;
+  margin: -1px;
+  padding: 1px;
+  border-radius: 3px;
+  background: rgb(250 204 21 / 0.45);
+}
+
+.pdf-page .textLayer .pdf-hit-current {
+  background: rgb(249 115 22 / 0.5);
+  box-shadow: 0 0 0 2px rgb(194 65 12 / 0.9);
+  scroll-margin: 96px;
+}
+
+@media (forced-colors: active) {
+  .pdf-page .textLayer .pdf-hit {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* The links of a page, laid over where the PDF has them. */
+.pdf-page .pdf-link {
+  position: absolute;
+  z-index: 2;
+  border-radius: 2px;
+}
+
+.pdf-page .pdf-link:hover,
+.pdf-page .pdf-link:focus-visible {
+  background: rgb(42 97 140 / 0.14);
+  outline: 2px solid rgb(42 97 140 / 0.7);
+}

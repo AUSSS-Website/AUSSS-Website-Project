@@ -5,6 +5,7 @@ import { exchange } from '../data/society.js'
 import { useContentBlock } from '../lib/content.js'
 import incomingsSchema from '../content/schemas/exchangeIncomings.js'
 import IncomingsBooklet from '../components/IncomingsBooklet.jsx'
+import NationalBooklets from '../components/NationalBooklets.jsx'
 import ExchangeTracks from '../components/ExchangeTracks.jsx'
 import ExchangeStories from '../components/ExchangeStories.jsx'
 import {
@@ -15,7 +16,6 @@ import {
   IncomingsSteps,
   IncomingsTips,
   IncomingsWhy,
-  NationalBookletLink,
 } from '../components/IncomingsSections.jsx'
 
 // /exchange/incomings. The reader is a medical student somewhere else in the
@@ -89,7 +89,8 @@ export default function ExchangeIncomingsPage() {
         {/* The welcome booklet we send every student before they land. */}
         <IncomingsBooklet />
 
-        <NationalBookletLink href={doc.nationalBooklet} />
+        {/* And the two the national exchange team writes for every student coming to Egypt. */}
+        <NationalBooklets />
 
         <IncomingsTips tips={doc.tips} />
 

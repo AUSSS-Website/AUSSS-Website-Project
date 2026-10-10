@@ -4,8 +4,9 @@
 //
 // Not in this document: the page's title and search description
 // (src/data/society.js, src/seo/pages.js), the officers' contact cards (their
-// portal profiles), the welcome booklet (src/data/incomingsBooklet.js) and the
-// two track cards (src/data/society.js).
+// portal profiles), the welcome booklet (src/data/incomingsBooklet.js), the
+// national team's two booklets (src/data/nationalBooklets.js) and the two
+// track cards (src/data/society.js).
 //
 // The copy below is what the page shows until an officer publishes. Its facts
 // come from our own incomings booklet (the dorms, the hospital, the social
@@ -97,12 +98,6 @@ export default {
       label: 'Show who to write to',
       help: 'The LEO-In and the LORE, with the name and photo from their portal profiles and their work email.',
       default: true,
-    },
-    {
-      name: 'nationalBooklet',
-      type: 'url',
-      label: 'Our page in the IFMSA-Egypt welcome booklet',
-      help: 'The address of the national exchange welcome booklet, or of our page in it. Leave empty to show no link.',
     },
     {
       name: 'links',
@@ -207,7 +202,6 @@ export default {
     ],
     album: '',
     showContacts: true,
-    nationalBooklet: '',
     links: [
       { label: 'Egypt on the IFMSA exchange platform', href: 'https://exchange.ifmsa.org/explore-pages/national/view/6' },
       { label: 'Our exchange team on Instagram', href: 'https://www.instagram.com/ausssexchanges_/' },

@@ -12,7 +12,6 @@ import {
   IncomingsSteps,
   IncomingsTips,
   IncomingsWhy,
-  NationalBookletLink,
   OUTGOING_CONTACTS,
   OUTGOINGS_COPY,
 } from '../../../components/IncomingsSections.jsx'
@@ -40,7 +39,6 @@ export const previews = {
       <IncomingsWhy sections={doc.sections.filter((s) => s.title || s.body)} />
       <IncomingsSteps steps={doc.steps.filter((s) => s.title || s.body)} />
       <IncomingsAlbum slug={doc.album} />
-      <NationalBookletLink href={doc.nationalBooklet} />
       <IncomingsTips tips={doc.tips.filter((t) => t.title || t.body)} />
       {doc.showContacts && <IncomingsContacts />}
       {doc.links.some((l) => l.label) && (
