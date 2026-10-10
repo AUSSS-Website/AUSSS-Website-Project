@@ -2424,7 +2424,11 @@ Reading its output, which is also the run's summary page:
   stack's API, sign-in, gateway and database containers.
 
 On 2026-10-10 it had run only against a stand-in for the stack, because the build machine has no
-Docker. Its first run on a real stack is the pull request's.
+Docker. Its first run on a real stack was pull request 20's, on 2026-10-11, and everything
+matched: 400 takers and 100 questions, 7,942 requests in 26 seconds. The takers' calls took 35 to
+42 ms at the median and 562 ms at the slowest, with 50 takers at a time, and none had to be sent
+again. Those figures are a runner's, with the database beside the script; a hall of phones on one
+Wi-Fi is slower, which is what the sitting in the hall is for.
 
 **The sample walk.** `npm run walk:portal-sample` (section 21) knows the exam from both sides,
 with every database call answered by the script. On the portal it has three sample exams: this
