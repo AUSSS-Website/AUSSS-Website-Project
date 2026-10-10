@@ -1,17 +1,23 @@
 // Small shared constants for the member portal. Labels match the contract so
 // the badge text is identical everywhere it appears.
 
-export const FACULTY_YEARS = [
+// The years of study at the faculty: five, then the two intern years (the
+// webmaster, 2026-10-11). The exchange exam's form offers exactly these
+// (EXAM_YEARS in src/exam/examFlow.js), and the merch checkout has the same
+// years in its own words (src/pages/CheckoutPage.jsx).
+export const STUDY_YEARS = [
   'Year 1',
   'Year 2',
   'Year 3',
   'Year 4',
   'Year 5',
-  'Year 6',
-  'Intern',
-  'Graduate',
-  'Other',
+  '1st year intern',
+  '2nd year intern',
 ]
+
+// A member's profile: those years, and two more for members who are not
+// students.
+export const FACULTY_YEARS = [...STUDY_YEARS, 'Graduate', 'Other']
 
 export const MEMBERSHIP_LABELS = {
   unverified: 'Unverified',

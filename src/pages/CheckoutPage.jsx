@@ -15,14 +15,17 @@ import { useSiteSettings } from '../hooks/useSiteSettings.js'
 import { submitOrder } from '../lib/orders.js'
 import { paymentMethodsFrom } from '../data/merchConfig.js'
 
+// The faculty's years of study (five, then the two intern years; STUDY_YEARS
+// in src/portal/constants.js has the same in the portal's words), and two more
+// for buyers who are not students here.
 const YEAR_OPTIONS = [
   '1st year',
   '2nd year',
   '3rd year',
   '4th year',
   '5th year',
-  '6th year',
-  'Intern',
+  '1st year intern',
+  '2nd year intern',
   'Resident / Graduate',
   'Other / External',
 ]

@@ -127,8 +127,8 @@ function ProfileForm({ user, profile }) {
   const [fullName, setFullName] = useState(profile.full_name || '')
   const [phone, setPhone] = useState(profile.phone || '')
   const [facultyYear, setFacultyYear] = useState(profile.faculty_year || '')
-  // A year saved elsewhere that this list does not hold (the exchange exam's
-  // form has the two intern years) shows as it is, not as "Not set".
+  // A year saved before the list changed on 2026-10-11 ("Year 6", "Intern")
+  // shows as it is, not as "Not set", until the member chooses again.
   const [years] = useState(() =>
     profile.faculty_year && !FACULTY_YEARS.includes(profile.faculty_year)
       ? [profile.faculty_year, ...FACULTY_YEARS]

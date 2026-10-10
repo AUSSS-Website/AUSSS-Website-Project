@@ -1,4 +1,5 @@
 import { eventWhen } from '../lib/eventTime.js'
+import { STUDY_YEARS } from '../portal/constants.js'
 import { clampPage, pageCount, pageOf, toMs } from './sitting.js'
 
 // What a taker's pages show and say, worked out from what the database
@@ -23,9 +24,9 @@ const DETAIL_SENTENCES = {
 
 // The years a student can be in when they sit the exam: the five years of
 // study, then the two intern years (the webmaster, 2026-10-11). The portal's
-// profile keeps a longer list of its own (graduates, others); the exam's form
-// offers these and nothing else.
-export const EXAM_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', '1st year intern', '2nd year intern']
+// profile adds two for members who are not students (graduates, others); the
+// exam's form offers the years of study and nothing else.
+export const EXAM_YEARS = STUDY_YEARS
 
 // The year the form starts on: the profile's when it is one of those, else
 // none, so a member whose profile says something else chooses again.
