@@ -1,7 +1,8 @@
 # Site CI: the unit tests of the site's own logic (Vitest; `npm test`). They
 # cover the code where a mistake would be invisible on a screenshot: the
 # markdown reader that decides what a typed link may point at, and the content
-# schemas that decide which documents the public pages accept.
+# schemas that decide which documents the public pages accept. Tests beside a
+# script in scripts/ run here as well (the exam rehearsal's own rules).
 #
 # The build itself is proven by Vercel on every push, and the database by
 # db-ci, so neither is repeated here.
@@ -11,6 +12,7 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.js'
@@ -19,6 +21,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.js'

@@ -11,7 +11,22 @@
 //   npm run walk:portal-sample -- dark 1440 /portal/tasks
 //
 // The sample rows below follow the columns the portal selects. When a page
-// gains a query, give it a row here or the page shows its empty state.
+// gains a query, give it a row here or the page shows its empty state. An
+// entry of `rpcs` is the function's answer, or a function of what the page
+// sent when the answer depends on it (which exam, which paper, which word).
+//
+// The exchange exam is walked from both sides: the portal's Exam pages
+// (/portal/exam), and the pages students sit it on (/exam/<word>), which are no
+// part of the portal. There the word in the address chooses what the student
+// meets, from the sign-in card to "Your exam was received." (see `doors`).
+//
+//   npm run walk:portal-sample -- light,dark 320,375 /exam
+//
+// A few screens only show after a tap (a question's form, a wrong start code,
+// a hand-in that got no answer): `acts` holds what the walk does on those
+// routes before it measures. The part after # in a route names such a screen
+// and means nothing to the page, except on the paper, where #review is its
+// last step.
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -73,6 +88,56 @@ const overOf = (e) => {
   const last = Date.parse(e.ends_at || e.starts_at)
   return new Date(e.all_day ? last + 864e5 : last).toISOString()
 }
+
+// ---- the exchange exam --------------------------------------------------------
+// Three exams. This term's (ex-1) is being sat as the walk runs: it opened
+// three hours ago, a student can start for one more hour, and every paper runs
+// two hours from its own start. Beside it a draft (ex-2), and last term's
+// (ex-0), whose list and papers went with its term. A real exam has about a
+// hundred questions; a dozen keep the portal's pages short enough to look at.
+const minutesAgo = (m) => new Date(Date.now() - m * 6e4).toISOString()
+// `correct` is the right option's place from 0; `keep` keeps the options as
+// written. Among them: a long question with six options, questions with two,
+// three and five, one in Arabic, and one with an address that has no space
+// to wrap at.
+const examQuestions = [
+  { body: 'Which chamber of the heart pumps blood into the aorta?', options: ['The right atrium', 'The right ventricle', 'The left atrium', 'The left ventricle'], correct: 3 },
+  { body: 'How many weeks does a SCORE research exchange last?', options: ['Two', 'Four', 'Six', 'Eight'], correct: 1 },
+  {
+    body: 'A 24-year-old exchange student comes to the emergency department on the third day of a clerkship abroad with a fever of 39.2 °C, a headache that began the evening before, a stiff neck and a new rash on both legs that does not fade when a glass is pressed on it. Nobody on the ward speaks the student’s first language, and the resident asks you, the contact person, to stay.\n\nWhich of these should happen first?',
+    options: [
+      'Give the first dose of intravenous antibiotics without waiting for the lumbar puncture, and call the senior on duty',
+      'Book a CT scan of the head and wait for its report before any treatment',
+      'Send the student back to the dormitory with paracetamol and see them again in the morning',
+      'Wait for an interpreter, so that a full history can be taken first',
+      'Start antibiotics by mouth and book a clinic visit for the next working day',
+      'Ask the student to come back with a friend who can translate',
+    ],
+    correct: 0,
+  },
+  { body: 'Which of these are signs of dehydration in an adult?', options: ['A dry mouth', 'Passing little urine', 'Dizziness on standing up', 'All of the above'], correct: 3, keep: true },
+  { body: 'Insulin lowers the level of glucose in the blood.', options: ['True', 'False'], correct: 0 },
+  { body: 'أي من هذه المدن هي عاصمة مصر؟', options: ['القاهرة', 'الإسكندرية', 'أسوان', 'الأقصر'], correct: 0 },
+  { body: 'Which vitamin does the skin make in sunlight?', options: ['Vitamin A', 'Vitamin B12', 'Vitamin C', 'Vitamin D'], correct: 3 },
+  { body: 'What is the resting heart rate of a healthy adult?', options: ['40 to 50 beats a minute', '60 to 100 beats a minute', '110 to 130 beats a minute'], correct: 1 },
+  { body: 'Which organ makes bile?', options: ['The pancreas', 'The liver', 'The gallbladder', 'The spleen', 'The stomach'], correct: 1 },
+  { body: 'The exchange conditions of a faculty are published at https://example.org/exchange/conditions/egypt/ain-shams-university/2026-27/professional-exchange. Which part of that address names the country?', options: ['exchange', 'conditions', 'egypt', 'professional-exchange'], correct: 2 },
+  { body: 'Which blood group can give red cells to anyone?', options: ['A positive', 'B negative', 'AB positive', 'O negative'], correct: 3 },
+  { body: 'Which of these is measured in millimetres of mercury?', options: ['Blood pressure', 'Body temperature', 'Heart rate', 'Blood glucose'], correct: 0 },
+]
+// Rows of exam_questions with the key embedded, as the Questions tab selects them.
+const questionsOf = (examId, list) =>
+  list.map((q, i) => ({ id: `${examId}-q${i + 1}`, exam_id: examId, sort: i, body: q.body, options: q.options, keep_option_order: Boolean(q.keep), updated_at: iso(2), exam_key: { correct_option: q.correct } }))
+const sampleQuestions = [...questionsOf('ex-1', examQuestions), ...questionsOf('ex-2', examQuestions.slice(1, 4)), ...questionsOf('ex-0', examQuestions)]
+// How many IDs are on ex-1's list, how many of them an account holds, and how
+// many of those have started. The lists below are made to these numbers.
+const HALL = { ids: 412, held: 395, papers: 387 }
+const examCounts = (questions, ids, papers) => ({ exam_questions: [{ count: questions }], exam_registrations: [{ count: ids }], exam_attempts: [{ count: papers }] })
+const sampleExams = [
+  { id: 'ex-2', term_id: 't1', title: 'Research exchange exam, a second sitting for the students who missed the first', address_word: '5f0c2a9b71de', status: 'draft', opens_at: null, closes_at: null, minutes: 120, start_code: '', created_by: uid, created_at: iso(1), updated_at: iso(0.5), term: { label: '2026-27', is_current: true }, ...examCounts(3, 0, 0) },
+  { id: 'ex-1', term_id: 't1', title: 'Exchange exam 2026-27', address_word: 'autumn-exchange-2026', status: 'ready', opens_at: minutesAgo(180), closes_at: minutesAgo(-60), minutes: 120, start_code: 'K7QM4X', created_by: other, created_at: iso(20), updated_at: iso(0.2), term: { label: '2026-27', is_current: true }, ...examCounts(examQuestions.length, HALL.ids, HALL.papers) },
+  { id: 'ex-0', term_id: 't0', title: 'Exchange exam 2025-26', address_word: 'exchange-exam-2025', status: 'ready', opens_at: at(-330, 18), closes_at: at(-330, 19), minutes: 120, start_code: 'R4TB9N', created_by: other, created_at: iso(350), updated_at: iso(330), term: { label: '2025-26', is_current: false }, ...examCounts(examQuestions.length, 0, 0) },
+]
 const tables = {
   profiles: [
     { id: uid, full_name: 'Sample Webmaster', email: 'webmaster@example.com', membership_status: 'active', avatar_url: null, photo_path: null, email_digest: true, directory_opt_in: true, phone: '', created_at: iso(30), updated_at: iso(1) },
@@ -125,7 +190,12 @@ const tables = {
     { id: 'a-new-product-with-a-long-id-for-phones', name: 'A new product with a rather long name that wraps', tagline: '', description: '', image: '', price: 120, sizes: [], size_chart: '', designs: [], wide_designs: [], available: false, sort_order: 2, updated_at: iso(0.1) },
   ],
   events: sampleEvents,
+  exams: sampleExams,
+  exam_questions: sampleQuestions,
   audit_log: [
+    // The exam's two slim entries: an ID released from its account, and a paper deleted.
+    { id: 5, at: iso(0.02), actor: uid, table_name: 'exam_registrations', row_id: '5d0c2f0e-8c1b-4b7e-9d0a-2f6f1f3b7a10', action: 'RELEASE', before: { exam_id: 'ex-1', profile_id: other }, after: null },
+    { id: 4, at: iso(0.05), actor: other, table_name: 'exam_attempts', row_id: 'at-005', action: 'DELETE', before: { exam_id: 'ex-1', profile_id: other, started_at: iso(0.2), submitted_at: null }, after: null },
     { id: 3, at: iso(0.1), actor: uid, table_name: 'content_blocks', row_id: 'join.faq', action: 'UPDATE', before: { key: 'join.faq', draft: null, updated_at: iso(1) }, after: { key: 'join.faq', draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the Faculty of Medicine.' }] }, updated_at: iso(0.1) } },
     { id: 2, at: iso(1), actor: other, table_name: 'tasks', row_id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', action: 'INSERT', before: null, after: { id: '7a1f0c1e-5b1d-4c58-9a57-3f2f3a6f0c11', title: 'Collect the incomings welcome booklet photos from every contact person', status: 'todo', priority: 'high' } },
     { id: 1, at: iso(2), actor: null, table_name: 'roster_entries', row_id: 'a-row-id-long-enough-to-need-breaking-on-a-phone-0123456789', action: 'DELETE', before: { full_name: 'Sample Member With A Rather Long Four Part Name', email: 'member1@example.com', status: 'Full Member' }, after: null },
@@ -135,6 +205,189 @@ const tables = {
 const galleryPhotos = (album, n) =>
   Array.from({ length: n }, (_, i) => ({ id: `${album}-p${i}`, path: `${album}/p${i}`, w: 1600, h: 1067, featured: i === 0, label: i === 0 ? 'Day one' : '' }))
 const galleryAlbum = (id, slug, title, blurb, term, n) => ({ id, slug, title, blurb, count: n, cover: `${id}/p0`, aliases: [], term, photos: galleryPhotos(id, n) })
+
+// ---- the hall of exam ex-1 ----------------------------------------------------
+// The people who hold an ID on its list. A few are written out, by their place
+// (the top of the ranking, a long name with a long address, a name and an ID in
+// Arabic, each state of a paper, one who has not started); the rest are made
+// from the lists below. chance(n) is the same number for the same n, so two
+// runs show the same hall.
+const chance = (n) => {
+  const x = Math.sin(n * 12.9898) * 43758.5453
+  return x - Math.floor(x)
+}
+const pick = (list, n) => list[Math.floor(chance(n) * list.length)]
+const GIVEN = ['Amal', 'Basil', 'Dalia', 'Emad', 'Farah', 'Gamal', 'Hana', 'Idris', 'Jana', 'Kamal', 'Laila', 'Mona', 'Nabil', 'Omar', 'Rana', 'Sami', 'Tala', 'Wael', 'Yara', 'Zein']
+const FAMILY = ['Sample', 'Example', 'Specimen', 'Placeholder', 'Template', 'Stand-In', 'Mockup']
+const YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Intern']
+// `paper` is { score, answered, state, started (minutes ago), took (minutes) }.
+const written = {
+  0: { full_name: 'Yara Sample', paper: { score: 12, answered: 12, state: 'handed_in', started: 172, took: 96 } },
+  1: { full_name: 'Sample Student With A Rather Long Six Part Name', email: 'an.address.as.long.as.a.mailbox.allows.2026@example.com', student_id: '2019 0017', paper: { score: 11, answered: 12, state: 'handed_in', started: 168, took: 118 } },
+  2: { full_name: 'طالب تجريبي للاختبار', student_id: '٢٠١٩٠٠٤٢', paper: { score: 11, answered: 11, state: 'timed_out', started: 150, took: 120 } },
+  3: { full_name: 'Omar Example', paper: { score: 11, answered: 11, state: 'sitting', started: 74 } },
+  4: { full_name: 'Amal Placeholder', phone: '+20 100 000 0005', paper: { score: 10, answered: 11, state: 'timed_out', started: 165, took: 120 } },
+  [HALL.papers]: { full_name: 'Farah Specimen', student_id: '2019-0020' },
+}
+const people = Array.from({ length: HALL.held }, (_, i) => ({
+  profile_id: `st-${i}`,
+  full_name: `${pick(GIVEN, i)} ${pick(GIVEN, i + 500)} ${pick(FAMILY, i + 900)}`,
+  email: `student${String(i).padStart(3, '0')}@example.com`,
+  phone: `010${10000000 + Math.floor(chance(i + 1300) * 89999999)}`,
+  faculty_year: pick(YEARS, i + 1700),
+  student_id: `${2020 + (i % 5)}${1000 + i * 3}`,
+  ...written[i],
+}))
+// A made-up paper. How long ago it was started decides whether it can be over:
+// one started more than two hours ago was handed in or ran out of time.
+const madePaper = (i) => {
+  const all = examQuestions.length
+  const started = 6 + Math.floor(chance(i + 2100) * 170)
+  const grade = Math.min(all - 1, Math.max(1, Math.round(7 + (chance(i + 3300) + chance(i + 3700) + chance(i + 4100) - 1.5) * 3.6)))
+  if (started >= 120) {
+    const timedOut = chance(i + 2500) < 0.06
+    const answered = timedOut ? 9 + Math.floor(chance(i + 4500) * 3) : chance(i + 4500) < 0.8 ? all : all - 1
+    return { score: grade, answered: Math.max(grade, answered), state: timedOut ? 'timed_out' : 'handed_in', started, took: timedOut ? 120 : 55 + Math.floor(chance(i + 2900) * 64) }
+  }
+  if (started > 60 && chance(i + 2500) < 0.35) {
+    return { score: grade, answered: all, state: 'handed_in', started, took: 45 + Math.floor(chance(i + 2900) * (started - 45)) }
+  }
+  const answered = Math.min(all, Math.round(started / 9))
+  return { score: Math.round((answered * grade) / all), answered, state: 'sitting', started }
+}
+// The papers as rpc/exam_results orders and ranks them: the highest grade
+// first, equal grades by name and sharing a rank.
+const examPapers = people
+  .slice(0, HALL.papers)
+  .map(({ paper, ...who }, i) => {
+    const p = paper || madePaper(i)
+    const finished = p.state === 'sitting' ? null : minutesAgo(p.started - p.took)
+    return {
+      attempt_id: `at-${String(i + 1).padStart(3, '0')}`,
+      ...who,
+      started_at: minutesAgo(p.started),
+      submitted_at: p.state === 'handed_in' ? finished : null,
+      finished_at: finished,
+      state: p.state,
+      answered: p.answered,
+      score: p.score,
+      seconds: finished ? p.took * 60 + (p.state === 'handed_in' ? Math.floor(chance(i + 4900) * 60) : 0) : null,
+    }
+  })
+  .sort((a, b) => b.score - a.score || a.full_name.toLowerCase().localeCompare(b.full_name.toLowerCase()) || a.attempt_id.localeCompare(b.attempt_id))
+  .map((row, _i, all) => ({ ...row, rank: all.findIndex((o) => o.score === row.score) + 1 }))
+// The list as rpc/exam_registration_list returns it, in the order of the IDs as
+// the database tidies them (digits of either script, no spaces or hyphens):
+// the 395 held ones, and 17 that no account holds yet.
+const idKey = (id) => id.replace(/[٠-٩]/g, (d) => d.charCodeAt(0) - 0x660).replace(/[\s._/\\-]/g, '').toUpperCase()
+const freeIds = ['2019-0003', '2019-000123-MEDICINE-EXCHANGE-OUTGOING', ...Array.from({ length: HALL.ids - HALL.held - 2 }, (_, i) => `2025${3001 + i * 11}`)]
+const examList = [
+  ...people.map((p, i) => ({ id: `reg-${i}`, student_id: p.student_id, created_at: iso(6), claimed_at: iso(1 + chance(i + 5300) * 4), holder: { profile_id: p.profile_id, full_name: p.full_name, email: p.email }, started: i < HALL.papers })),
+  ...freeIds.map((student_id, i) => ({ id: `reg-free-${i}`, student_id, created_at: iso(6), claimed_at: null, holder: null, started: false })),
+].sort((a, b) => (idKey(a.student_id) < idKey(b.student_id) ? -1 : 1))
+// How an exam's questions were answered over `papers` papers, as
+// rpc/exam_question_stats counts it. The share that got each right is written
+// out; the wrong answers are spread over the other options, the first the most.
+const RIGHT_SHARE = [0.91, 0.47, 0.22, 0.63, 0.84, 0.97, 0.71, 0.58, 0.35, 0.12, 0.66, 0.79]
+const statsOf = (examId, papers) => ({
+  attempts: papers,
+  questions: sampleQuestions
+    .filter((q) => q.exam_id === examId)
+    .map((q, i) => {
+      const correct = q.exam_key.correct_option
+      const answered = papers - Math.round(papers * (0.02 + 0.08 * chance(i + 5700)))
+      const right = Math.min(answered, Math.round(papers * RIGHT_SHARE[i % RIGHT_SHARE.length]))
+      const weights = q.options.map((_, o) => (o === correct ? 0 : q.options.length - o))
+      const sum = weights.reduce((a, b) => a + b, 0)
+      const counts = weights.map((w) => Math.floor(((answered - right) * w) / sum))
+      counts[weights.findIndex((w) => w > 0)] += answered - right - counts.reduce((a, b) => a + b, 0)
+      counts[correct] = right
+      return { question_id: q.id, n: i + 1, body: q.body, options: q.options, correct, answered, right, counts }
+    }),
+})
+// One paper as rpc/exam_sheet returns it, every question in the officers'
+// order. Where a paper's right answers begin is its own, so no two look alike.
+const sheetOf = (attemptId) => {
+  const found = examPapers.find((row) => row.attempt_id === attemptId)
+  if (!found) return null
+  const { rank, ...attempt } = found
+  const questions = sampleQuestions.filter((q) => q.exam_id === 'ex-1')
+  const turn = Number(attemptId.slice(3))
+  return {
+    attempt,
+    rows: questions.map((q, i) => {
+      const place = (i + turn) % questions.length
+      const correct = q.exam_key.correct_option
+      const chosen = place < attempt.score ? correct : place < attempt.answered ? (correct + 1) % q.options.length : null
+      const answeredAt = chosen === null ? null : new Date(Date.parse(attempt.started_at) + (place + 1) * 4 * 6e4).toISOString()
+      return { n: i + 1, question_id: q.id, body: q.body, options: q.options, correct, chosen, flagged: place % 5 === 3 || place === questions.length - 1, answered_at: answeredAt }
+    }),
+  }
+}
+
+// ---- the exam as a student meets it -------------------------------------------
+// /exam/<word>. The word chooses the screen: `doors` is what rpc/exam_door
+// answers for each, and a word that is not there has no exam. Three more words
+// are made elsewhere: at sample-sign-in nobody is signed in and at
+// sample-elsewhere another tab holds the exam (both in the page's first
+// script, below), and at sample-unreached the database does not answer.
+const DROPPED = Symbol('no answer: the request fails, as with no connection')
+const takersTitle = 'Exchange exam 2026-27, professional and research exchanges'
+const student = { full_name: 'Sample Student With A Rather Long Four Part Name', faculty_year: 'Year 4', phone: '01000000017', student_id: '2023-0417', email: 'a-rather-long-address-for-a-phone@example.com' }
+// When a student can start, by where the exam stands.
+const startWindow = { before: [at(3, 18), at(3, 20)], open: [minutesAgo(40), minutesAgo(-80)], closed: [minutesAgo(300), minutesAgo(60)] }
+const door = (phase, more = {}) => ({
+  exam: { title: takersTitle, opens_at: startWindow[phase][0], closes_at: startWindow[phase][1], minutes: 120, questions: 100, phase },
+  me: student,
+  registration: 'held',
+  attempt: null,
+  now: new Date().toISOString(),
+  ...more,
+})
+// A paper started twenty minutes before the walk began, with its two hours.
+const paperStarted = minutesAgo(20)
+const paperDeadline = minutesAgo(-100)
+const attemptOf = (word, more = {}) => ({ id: `paper-${word}`, started_at: paperStarted, deadline_at: paperDeadline, submitted_at: null, over: false, ...more })
+const doors = {
+  // signed in for the first time: Google gave a name, the rest is to fill in
+  'sample-details': () => door('open', { me: { ...student, full_name: 'Sample Student', faculty_year: '', phone: '', student_id: '' }, registration: 'none' }),
+  // on the list: before the exam opens, while a student can start, after closing
+  'sample-waiting': () => door('before'),
+  'sample-open': () => door('open'),
+  'sample-closed': () => door('closed'),
+  // a paper that is running: the paper itself, a hand-in that got no answer,
+  // the exam open in another tab, and the moment the clock runs out
+  'sample-sitting': () => door('open', { attempt: attemptOf('sample-sitting') }),
+  'sample-hand-in': () => door('open', { attempt: attemptOf('sample-hand-in') }),
+  'sample-elsewhere': () => door('open', { attempt: attemptOf('sample-elsewhere') }),
+  'sample-time-up': () => door('closed', { attempt: attemptOf('sample-time-up') }),
+  // a paper that is over: handed in, or out of time
+  'sample-received': () => door('closed', { attempt: attemptOf('sample-received', { submitted_at: minutesAgo(4), over: true }) }),
+  'sample-timed-out': () => door('closed', { attempt: attemptOf('sample-timed-out', { started_at: minutesAgo(125), deadline_at: minutesAgo(5), over: true }) }),
+}
+// rpc/exam_paper. A hundred questions in "this student's order" (the dozen
+// above, round and round), 34 of them reached: most answered, a few skipped, a
+// few flagged. At sample-time-up the clock has just run out.
+const paperOf = (word) => {
+  if (word === 'sample-received') return { state: 'over', submitted: true }
+  if (word === 'sample-timed-out') return { state: 'over', submitted: false }
+  const questions = Array.from({ length: 100 }, (_, i) => {
+    const q = examQuestions[i % examQuestions.length]
+    return { id: `pq-${i + 1}`, body: q.body, options: q.options }
+  })
+  const now = new Date().toISOString()
+  return {
+    state: 'sitting',
+    exam: { title: takersTitle, minutes: 120 },
+    attempt: { id: `paper-${word}`, started_at: paperStarted, deadline_at: word === 'sample-time-up' ? now : paperDeadline },
+    now,
+    questions,
+    answers: questions
+      .slice(0, 34)
+      .map((q, i) => ({ q: q.id, c: i % 9 === 4 ? null : i % q.options.length, f: i % 7 === 2 || i === 4 }))
+      .filter((a) => a.c !== null || a.f),
+  }
+}
 const rpcs = {
   gallery_public: {
     albums: [
@@ -165,6 +418,8 @@ const rpcs = {
       { id: 'al-3', title: 'World Diabetes Day campaign', slug: 'world-diabetes-day-campaign', published: false, photos: 0 },
     ],
     storage_bytes: 58931200,
+    // this term's exams, with what the rollover deletes of each
+    exams: sampleExams.filter((e) => e.term_id === 't1').map((e) => ({ id: e.id, title: e.title, registrations: e.exam_registrations[0].count, attempts: e.exam_attempts[0].count })),
   },
   events_public: {
     events: sampleEvents
@@ -188,6 +443,26 @@ const rpcs = {
     { id: uid, full_name: 'Sample Webmaster', avatar_url: null },
     { id: other, full_name: 'Sample Officer', avatar_url: null },
   ],
+  // The exam for its officers. Only ex-1 has a list and papers.
+  exam_registration_list: ({ p_exam }) => (p_exam === 'ex-1' ? examList : []),
+  exam_results: ({ p_exam }) => ({
+    questions: sampleQuestions.filter((q) => q.exam_id === p_exam).length,
+    now: new Date().toISOString(),
+    attempts: p_exam === 'ex-1' ? examPapers : [],
+  }),
+  exam_question_stats: ({ p_exam }) => statsOf(p_exam, p_exam === 'ex-1' ? HALL.papers : 0),
+  exam_sheet: ({ p_attempt }) => sheetOf(p_attempt),
+  // The exam for a student, by the word in the address.
+  exam_door: ({ p_word }) => (p_word === 'sample-unreached' ? DROPPED : doors[p_word]?.() ?? { exam: null }),
+  exam_paper: ({ p_word }) => paperOf(p_word),
+  // Every save lands, except where the walk shows what a lost one looks like.
+  exam_save: ({ p_word, p_answers }) =>
+    p_word === 'sample-hand-in' || p_word === 'sample-time-up'
+      ? DROPPED
+      : { state: 'sitting', submitted: false, saved: Array.isArray(p_answers) ? p_answers.length : 0, deadline_at: paperDeadline, now: new Date().toISOString() },
+  // The ID typed is never on the list, and the code typed is never the code.
+  exam_save_details: (sent) => ({ registration: 'not_listed', me: { full_name: sent.p_full_name, faculty_year: sent.p_faculty_year, phone: sent.p_phone, student_id: sent.p_student_id, email: student.email } }),
+  exam_start: () => ({ ok: false, reason: 'code', tries_left: 7 }),
 }
 
 const ROUTES = [
@@ -203,7 +478,48 @@ const ROUTES = [
   // the gallery and its archive
   '/gallery', '/gallery/archive', '/gallery/winter-camp-2026',
   '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/content/home.page', '/portal/content/ifmsa.page', '/portal/admin/audit',
+  // the audit log with its first entry open: an exam ID released from its account
+  '/portal/admin/audit#released',
+  // the exchange exam on the portal: the list, the exam being sat in its five
+  // parts, a question's right answer being corrected, and one student's paper
+  '/portal/exam', '/portal/exam/ex-1?tab=setup', '/portal/exam/ex-1?tab=questions', '/portal/exam/ex-1?tab=questions#correct',
+  '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=overview',
+  // the draft, where every form is open, and last term's, with nothing left to read
+  '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
+  '/portal/exam/ex-0?tab=results', '/portal/exam/ex-0?tab=overview',
+  // the exam as a student meets it, in the order of a sitting
+  '/exam/sample-sign-in', '/exam/callback?error=access_denied', '/exam/sample-none', '/exam/sample-unreached',
+  '/exam/sample-details', '/exam/sample-details#not-listed', '/exam/sample-waiting', '/exam/sample-open', '/exam/sample-open#wrong-code', '/exam/sample-closed',
+  '/exam/sample-sitting', '/exam/sample-sitting#review', '/exam/sample-hand-in#review', '/exam/sample-elsewhere',
+  '/exam/sample-time-up', '/exam/sample-received', '/exam/sample-timed-out',
 ].filter((r) => !only || r.startsWith(only))
+
+// What the walk does on a route before it measures, for the screens that only
+// show after a tap.
+const acts = {
+  '/portal/admin/audit#released': (page) => page.locator('details > summary').first().click(),
+  '/portal/exam/ex-1?tab=questions#correct': (page) => page.getByRole('button', { name: 'Correct the answer to question 3', exact: true }).click(),
+  '/portal/exam/ex-2?tab=questions#edit': (page) => page.getByRole('button', { name: 'Edit question 2', exact: true }).click(),
+  '/exam/sample-details#not-listed': async (page) => {
+    await page.selectOption('#exam-year', 'Year 4')
+    await page.fill('#exam-phone', '01000000017')
+    await page.fill('#exam-student-id', '2023-0471')
+    await page.getByRole('button', { name: 'Save and check my ID' }).click()
+  },
+  '/exam/sample-open#wrong-code': async (page) => {
+    await page.fill('#exam-start-code', 'k7qm4y')
+    await page.getByRole('button', { name: 'Start the exam' }).click()
+  },
+  // "Hand in" asks twice, and two taps too close together count as one slip.
+  // Back at the top afterwards, where the bar that stays in view belongs in
+  // a picture of the whole page.
+  '/exam/sample-hand-in#review': async (page) => {
+    await page.getByRole('button', { name: 'Hand in', exact: true }).click()
+    await page.waitForTimeout(600)
+    await page.getByRole('button', { name: 'Hand in for good', exact: true }).click()
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+  },
+}
 
 function measureOverflow() {
   const doc = document.documentElement
@@ -238,11 +554,16 @@ for (const theme of themes) {
   for (const width of widths) {
     const context = await browser.newContext({ viewport: { width, height: width < 700 ? 800 : 900 }, colorScheme: theme, reducedMotion: 'reduce' })
     await context.addInitScript(
-      ([t, key, s]) => {
+      ([t, key, s, lock]) => {
         localStorage.setItem('theme', t)
-        localStorage.setItem(key, s)
+        // Signed in everywhere but on the exam's sign-in card.
+        if (location.pathname === '/exam/sample-sign-in') localStorage.removeItem(key)
+        else localStorage.setItem(key, s)
+        // "Another tab" has the exam open: the page takes the sitting's lock
+        // (LOCK_NAME in src/exam/useSitting.js) before the exam asks for it.
+        if (location.pathname === '/exam/sample-elsewhere') navigator.locks?.request(lock, () => new Promise(() => {}))
       },
-      [theme, `sb-${REF}-auth-token`, JSON.stringify(session)],
+      [theme, `sb-${REF}-auth-token`, JSON.stringify(session), `ausss-exam-tab:sample-elsewhere:${uid}`],
     )
     await context.route(/^https:\/\/[a-z0-9]+\.supabase\.co\//, async (route) => {
       const req = route.request()
@@ -256,7 +577,16 @@ for (const theme of themes) {
       }
       if (url.pathname.startsWith('/storage/v1/')) return json([])
       const rpc = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/)?.[1]
-      if (rpc) return json(rpcs[rpc] ?? [])
+      if (rpc) {
+        let sent = {}
+        try {
+          sent = req.postDataJSON() || {}
+        } catch {
+          // No body, or not JSON: the function is asked with nothing.
+        }
+        const answer = typeof rpcs[rpc] === 'function' ? rpcs[rpc](sent) : rpcs[rpc]
+        return answer === DROPPED ? route.abort('connectionfailed') : json(answer ?? [])
+      }
       const table = url.pathname.match(/^\/rest\/v1\/([a-z0-9_]+)$/)?.[1]
       if (req.method() !== 'GET' && req.method() !== 'HEAD') return json(null)
       // Public tables are read for real, as an anonymous visitor.
@@ -269,6 +599,8 @@ for (const theme of themes) {
       if (idEq) rows = rows.filter((r) => r.id === idEq)
       const keyEq = url.searchParams.get('key')?.match(/^eq\.(.+)$/)?.[1]
       if (keyEq) rows = rows.filter((r) => r.key === keyEq)
+      const examEq = url.searchParams.get('exam_id')?.match(/^eq\.(.+)$/)?.[1]
+      if (examEq) rows = rows.filter((r) => r.exam_id === examEq)
       if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${table === 'notifications' ? 1 : rows.length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' } })
       if ((req.headers().accept || '').includes('vnd.pgrst.object')) return json(rows[0] ?? {})
       return json(rows, { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}` })
@@ -284,7 +616,11 @@ for (const theme of themes) {
         await page.goto(base + r, { waitUntil: 'networkidle', timeout: 30000 })
         await page.waitForTimeout(500)
         const landed = new URL(page.url()).pathname
-        if (!landed.startsWith(r.split('?')[0])) errs.push(`landed on ${landed}`)
+        if (!landed.startsWith(r.split(/[?#]/)[0])) errs.push(`landed on ${landed}`)
+        if (acts[r]) {
+          await acts[r](page)
+          await page.waitForTimeout(700)
+        }
         const over = await page.evaluate(measureOverflow)
         if (over) findings.overflow.push({ theme, width, route: r, ...over })
         const cut = await page.evaluate(measureCutOff)
