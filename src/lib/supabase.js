@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Single browser client for the member portal. Import this ONLY from
-// src/auth/** and src/portal/** so the public site bundle never pulls
-// supabase-js in (the portal is its own lazy route in App.jsx).
+// Single browser client for the member portal and for the exchange exam's
+// pages. Import this ONLY from src/auth/**, src/portal/** and src/exam/** so
+// the public site bundle never pulls supabase-js in (the portal and the exam
+// are each their own lazy route in App.jsx). The exam reaches it through
+// src/exam/examApi.js alone, and shares the portal's session: one Google
+// sign-in on a phone serves both.
 //
 // Implicit flow rather than PKCE on purpose: a magic link opened in a phone
 // mail app or a different browser has no PKCE verifier to pair with, and the

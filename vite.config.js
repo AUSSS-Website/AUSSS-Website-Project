@@ -32,12 +32,11 @@ export default defineConfig({
           }
           // Portal-only vendors. Split so the public site never downloads
           // them and the portal chunk stays small when only app code changes.
-          if (
-            id.includes('node_modules/@supabase/') ||
-            id.includes('node_modules/@tanstack/')
-          ) {
-            return 'vendor-supabase'
-          }
+          // Two chunks, not one: the exchange exam's pages (src/exam) use the
+          // database client and nothing of react-query, so a student's phone
+          // downloads the first and never the second.
+          if (id.includes('node_modules/@supabase/')) return 'vendor-supabase'
+          if (id.includes('node_modules/@tanstack/')) return 'vendor-query'
         },
       },
     },

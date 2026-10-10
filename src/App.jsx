@@ -31,13 +31,17 @@ const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'))
 // The members portal (Supabase auth + react-query) is its own tree with its
 // own chrome. Lazy so supabase-js never lands in the public bundle.
 const PortalRoot = lazy(() => import('./portal/PortalRoot.jsx'))
+// The exchange exam as students sit it, at /exam/<a hidden word>. A tree of
+// its own as well: its own sign-in, no portal chrome, and nothing on the site
+// links to it.
+const ExamRoot = lazy(() => import('./exam/ExamRoot.jsx'))
 
 // Brand-coloured placeholder shown while a lazy chunk is in flight. Matches
 // the dark hero so there's no white flash on inner-page navigation.
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-page">
-      <span className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent" />
+      <span className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent motion-reduce:animate-none" />
     </div>
   )
 }
@@ -52,6 +56,16 @@ export default function App() {
         element={
           <Suspense fallback={<RouteFallback />}>
             <PortalRoot />
+          </Suspense>
+        }
+      />
+      {/* The same for the exam: its pages have a plain frame of their own, with
+          no way into the site or the portal. */}
+      <Route
+        path="/exam/*"
+        element={
+          <Suspense fallback={<RouteFallback />}>
+            <ExamRoot />
           </Suspense>
         }
       />
