@@ -1,6 +1,6 @@
 # AUSSS Member Portal: long-term backend plan
 
-Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phase 5 completed 2026-09-25: gallery and magazine editors, magazine counters, and the last three public forms (sign-ups, stories, orders) on Supabase; no Apps Script web app is called by production (RUNBOOK sections 16 to 18). The remaining work was reordered on 2026-10-04, when fifteen requests from the webmaster joined it: phases 5a to 5d, then 6 and 7, in build order in section 12.2, with section 12.4 showing where each task moved. Companion documents: `apps-script/MIGRATION.md`
+Status: approved 2026-09-04, decisions recorded in section 13. Phase 0 and Phase 1 implemented 2026-09-13 (schema in `supabase/migrations`, portal at `/portal`; operations in `docs/RUNBOOK.md`, ownership in `docs/HANDOVER.md`). Phase 2 implemented 2026-09-19: site settings, committee page editor and Open Calls run on Supabase, `officers.gs` is no longer called by production (RUNBOOK section 12). Phase 5 completed 2026-09-25: gallery and magazine editors, magazine counters, and the last three public forms (sign-ups, stories, orders) on Supabase; no Apps Script web app is called by production (RUNBOOK sections 16 to 18). The remaining work was reordered on 2026-10-04, when fifteen requests from the webmaster joined it: phases 5a to 5d, then 6 and 7, in build order in section 12.2, with section 12.4 showing where each task moved. Phase 8, the exchange exam, was added on 2026-10-10 (section 12.3). Companion documents: `apps-script/MIGRATION.md`
 (the current backend and its account move) and `apps-script/officers.README.md`
 (the officer editor as it exists today).
 
@@ -145,6 +145,23 @@ Each gets the columns its Sheet has today, plus proper types and foreign keys.
 | `merch_products` | Replaces `merchProducts.js`. |
 | `events` | Replaces the unconfigured Google Calendar embed (removed 2026-09-24). Title, committee (or none), start and end, place, text, picture, sign-up link, published. Built in phase 6, step 4. |
 | `audit_log` | Written by a trigger on every content and roster table: who, what, before, after. |
+
+### Exchange exam
+
+Planned, phase 8 (section 12.3). The exact tables are settled when it is
+built; this is the shape.
+
+| Table | Purpose | Key columns |
+| --- | --- | --- |
+| `exams` | One exam per season; its dates and the hidden word in its address are set and changed by the officers | `term_id`, `title`, `address_word`, `opens_at`, `closes_at`, `minutes`, `status` |
+| `exam_registrations` | The student IDs that may sit an exam, uploaded by the officers and readable by them only; each ID is held by one account at most | `exam_id`, `student_id`, `profile_id` (the account holding it, once one starts), `added_by` |
+| `exam_questions` | The questions as a taker sees them | `exam_id`, `sort`, `body`, `options` (jsonb), `keep_option_order` |
+| `exam_key` | The right answer to each question, kept apart from the questions so that no taker's policy ever touches it; the exam's start code is kept out of reach the same way | `question_id`, `correct_option` |
+| `exam_attempts` | One per taker per exam, tied to their profile | `exam_id`, `profile_id`, `started_at`, `submitted_at`, the order this taker was shown the questions and options in |
+| `exam_answers` | One row per question a taker answered | `attempt_id`, `question_id`, `chosen_option`, `flagged`, `answered_at` |
+| `exam_results` | Written by the marking when an attempt is handed in; readable by the exam's officers only | `attempt_id`, `score`, which answers were right |
+
+`profiles` gains `student_id`.
 
 ### Storage buckets
 
@@ -511,10 +528,17 @@ dropped; similar tasks were merged. Four rules decided the order:
 | **5d. Pilot and rollout** | 1 of work, across about 6 weeks | A pre-rollout gate (security checklist re-run, backups healthy, DuckDuckGo check); one committee piloting for a month; the member-facing rollout to the roster; the Pro plan decision | One committee has run a real month of work through the portal; 100 members have accounts and the verification backlog is under a day; the Pro plan decision is recorded in section 13. |
 | **6. Site management** | 5, then ongoing | The schema-driven editor; the incomings exchange page as the first page built on it; then FAQ, merch, home sections, exchange and IFMSA copy, footer and contact details, and feature flags editable; then the events page (`/events`, committee pages, the home page), published by officers | An officer publishes a change to the FAQ, an event and the incomings page with no developer involved; the LC's link in the exchange portal points at `/exchange/incomings`. |
 | **7. Sustain** | 2, then ongoing | The term-rollover wizard with the gallery archive as one of its steps; the checks repeated every term (restore rehearsal, security checklist, handover review); documentation; the website guide | The first rollover to 2027-28 is done by the EB alone, and it leaves an empty gallery with last term's albums still reachable. |
+| **8. Exchange exam** | 3 | A hidden sign-in page for the exam, separate from the portal, with Google sign-in and a details form (name, year, phone, student ID), and only students whose ID is on the list the officers upload may sit; a 100-question multiple-choice exam for about 400 students in a hall, shown ten questions a page in a different order for each person, with flags, one clock for the whole exam and a start code read out in the hall; marking by the database, with the grade hidden from the taker; the portal's Exam page (dates that can be moved, the uploaded list of student IDs, ranking by grade, each person's answers, the overview figures); answers deleted when the term ends; a rehearsal by script and in the hall | A scripted run of 400 takers and a sitting in the hall have both passed and been ranked in the portal; a database test proves that a taker's account cannot read the answer key, its own grade, or which of its answers were right, and that an account whose student ID is not on the list, or that gives the wrong start code, cannot start. |
 
 Roughly 14 weeks of part-time work remain to the end of phase 6. Phase 5d is
 mostly waiting on people, so it overlaps phase 6. Phase 7 has one fixed
 deadline: the wizard must exist before the 2026-27 term ends.
+
+Phase 8 was added on 2026-10-10. It is numbered after 7 so that 6 and 7 keep
+their meaning. The plan carries no date for the exam: the officers set it in
+the portal and can move it. What is left of phase 7 repeats every term or
+waits for development to end, so nothing on this list stands in the exam's
+way except the one failed line of the gate in 5d step 1.
 
 ### 12.3 The phases in detail
 
@@ -968,6 +992,186 @@ the portal. Built differently from the text below in three ways, each settled wh
    (each phase above adds its own RUNBOOK section as it ships).
 4. **The website guide**, once development has ended (section 12.5).
 
+#### Phase 8. Exchange exam
+
+**Added by the webmaster, 2026-10-10. Not started.** The exchange team's
+exam moves onto the site: registered students sit it signed in on their own
+phones in a hall, the site marks it, and the exchange officers read the
+results in the portal. About 400 students sit it.
+
+What was asked for:
+
+- Takers sign in with their Gmail. The first time, they are asked for at
+  least their name, year, phone number and student ID, and their email is
+  recorded.
+- The exam is 100 questions, all multiple choice, shown ten at a time, with
+  a flag on each question for coming back to it.
+- The site marks the exam on its own. A taker never sees their grade, or
+  which questions they got right or wrong.
+- Every answer is kept under the taker's profile, so each person's answers
+  can be read on their own.
+- The portal has an exam dashboard: the questions most people got wrong, the
+  average time for the whole exam, and a ranking of the takers by grade.
+
+The first request also had the average time for each section. The webmaster
+dropped it the same day: the real questions will not arrive for some time,
+and nobody knows yet how many each section will hold. So questions carry no
+section, and a section can be added to them later if it is wanted. For the
+same reason the build does not wait for the questions and does not fix
+their number at 100: it is made and rehearsed on mock questions, and the
+officers enter the real ones when they have them.
+
+How it is built, in order:
+
+1. **Registration and sign-in.** Only students who registered beforehand
+   may sit the exam (the webmaster, 2026-10-10). The exam has a sign-in page
+   of its own, which offers Google sign-in only. An email link would count
+   against the daily email allowance (decision 3 in section 13), and 400
+   students could use it up.
+   After the first sign-in a form asks for full name, year, phone and
+   student ID. `profiles` already holds the name, the email, the phone and
+   the year; the student ID is a new column. A taker who is not on the
+   roster stays `unverified`, which already opens nothing in the portal, and
+   is sent to the exam and not to the "Request verification" screen.
+   - **A hidden sign-in page, separate from the portal** (the webmaster,
+     2026-10-10). Takers never pass through `/portal`. The exam's page has
+     its own sign-in screen and its own plain layout, with no portal header
+     and no menus, and signing in returns the taker to the exam and nowhere
+     else. It is the same account system as the portal, so the answers
+     still sit under the taker's profile, and a member already signed in to
+     the portal on that phone is recognised.
+   - **What hidden means here.** No link to the page anywhere on the site or
+     in the portal's menus, no line in the sitemap or `llms.txt`, no
+     pre-rendered copy, and a mark that tells search engines to leave it
+     out. The officers send the address to the registered students. The
+     site's code is public on GitHub, so an address written in the code
+     would not stay hidden: the last part of the address is a word the
+     officers set in the portal for each exam, kept in the database, and
+     they can change it (not asked for; it follows from the code being
+     public). Hiding is not the lock. The list of student IDs and the start
+     code are.
+   - **One more line on the sign-in redirect list.** Sign-in comes back
+     through a fixed address of the exam's own, so a taker never sees the
+     portal's. That address is added to the redirect list on Supabase as an
+     exact line, at the same visit that removes the wildcard lines (5d step
+     1).
+   - **The registered list is a list of student IDs that the officers
+     upload** (the webmaster, 2026-10-10). Registration itself happens
+     outside the site. The officers paste the IDs or bring them in from a
+     spreadsheet, and can add or remove one afterwards, up to the start.
+   - **The check.** A taker may start only if the student ID on their
+     account is on the exam's list. The database makes the check. No taker
+     can read the list, so nobody can look up an ID that would pass: a taker
+     learns only whether their own is on it, and wrong tries are limited.
+     IDs are compared after tidying (spaces dropped, Arabic numerals read as
+     Western ones), so a typing habit does not lock a student out.
+   - **One account for each ID** (not asked for, but a list of IDs needs
+     it). The first account to start with an ID holds it, and a second
+     account giving the same ID is refused. The officers see in the portal
+     which name and Gmail hold which ID, and can release one for a student
+     who signed in with the wrong account. A taker cannot change their
+     student ID once it has matched.
+   - **Before the day.** Students are asked to sign in and fill in their
+     details ahead of the exam. A mistyped ID then shows up early, as "not
+     on the list", and the hall does not begin with 400 first sign-ins at
+     once.
+2. **Sitting the exam.** On the exam's own pages, behind its sign-in
+   screen. Ten questions a page, a flag on each,
+   free movement between the pages, and a last screen that lists what is
+   unanswered or flagged before the exam is handed in. Each answer is saved
+   the moment it is chosen and is also held on the phone, so a refresh, a
+   flat battery or a hall connection that drops loses nothing: the phone
+   sends what it holds when the connection returns, and the taker carries on
+   where they stopped. One attempt per person. After handing in, a taker is
+   told the exam was received and nothing more.
+   - **The date can be moved** (the webmaster, 2026-10-10). The officers set
+     the opening and closing times in the portal and can change them until
+     the first taker starts; the closing time can be moved later while the
+     exam runs, for a hall that starts late.
+   - **One clock for the whole exam** (the webmaster, 2026-10-10). A taker's
+     time runs from the moment they start, for the exam's length, and stops
+     at the closing time at the latest. The exam is handed in on its own
+     when the time is up. The clock is the database's, not the phone's.
+   - **A start code** (the webmaster, 2026-10-10). The officers set a code
+     in the portal and read it out in the hall. A registered student types
+     it to start, so the exam cannot be sat from somewhere else. The
+     database checks it, no taker's account can read it, wrong tries are
+     limited, and the officers can change it at any moment.
+   - **A different order for each person** (the webmaster, 2026-10-10). Each
+     taker gets the questions in an order of their own across the whole
+     exam, and each question's options in an order of their own, so a
+     neighbour's screen is no help. The order is fixed when the taker starts
+     and kept with their attempt, so a refresh shows the same pages. The
+     portal always shows the questions in the officers' order. One switch
+     per question keeps its options as written, for a question whose last
+     option is "all of the above" (not asked for; shuffled options break
+     such a question).
+3. **Marking, and keeping the key secret.** The database marks an attempt
+   when it is handed in. The right answers never leave the database: the
+   questions reach a taker without them, and a taker's account can read
+   neither the key, nor its grade, nor which of its answers were right. That
+   is a rule in the database (row-level security, with pgTAP tests that try
+   all three as a taker), not something the page merely hides.
+4. **The portal's Exam page,** for the SCOPE and SCORE officers and the EB
+   (confirmed by the webmaster, 2026-10-10).
+   - **Setting up:** the questions with their options and right answer,
+     typed in or brought in from a spreadsheet; the registered list of
+     student IDs, with who holds each; the exam's opening time, closing
+     time and length; and the start code.
+   - **Results:** the ranking by grade, with takers on the same grade listed
+     in alphabetical order of their names (the webmaster, 2026-10-10), and
+     one sheet per person with their details, every answer beside the right
+     one, and the time they took.
+   - **Overview:** the questions most people got wrong and the average time
+     for the whole exam, and beside them how often each option was chosen,
+     how many people started and how many handed in, and the spread of
+     grades.
+   - **Downloads:** PDF and spreadsheet for every list, as on the portal's
+     other lists.
+5. **Kept for one term** (the webmaster, 2026-10-10). An exam's registered
+   list, answers and results are deleted when the term it was sat in ends
+   (that reading confirmed by the webmaster the same day),
+   as a step of New term (phase 7): the preview says how many rows go, and
+   the officers download what they need first. The nightly backups hold
+   their copies for 90 days more. The takers' accounts and details are not
+   touched, only the exam's own rows. The privacy page gains a paragraph,
+   because the student ID is a new kind of personal data on the site.
+6. **A rehearsal, in two parts.** About 400 people sit the exam at once.
+   - **A scripted run** plays 400 takers through a mock exam of 100
+     questions, so the database's side and the marking are measured without
+     gathering 400 people. The mock exam and its rows are deleted after.
+   - **A sitting in the hall itself** with a test group, because the hall's
+     own network is the part no script can show.
+   - **Sign-in from one address.** Supabase limits how often sessions may be
+     renewed from one network address: 150 times in five minutes by default
+     (`token_refresh` in `supabase/config.toml`; the hosted figure is read
+     off the dashboard when the phase starts). A sign-in is renewed every
+     hour, so 400 phones on one hall Wi-Fi that all open the exam in the same few
+     minutes would pass that limit and some would be shown as signed out.
+     Phones on mobile data each have their own address and do not meet it.
+     The fix is to raise the limit in the dashboard before the day, and the
+     hall rehearsal proves it.
+
+The spreadsheet import, the review screen before handing in and the extra
+overview figures were not in the request. They are small, and they are
+listed so they can be struck out.
+
+Sat in a hall with invigilators (the webmaster, 2026-10-10), so nothing is
+built to record a taker leaving the page.
+
+Every question put to the webmaster on 2026-10-10 is answered, and the
+answers are in the steps above. One thing is still unknown: the date of the
+first sitting. None is fixed, since the officers set it in the portal. The
+phase is finished, with both rehearsals done, some weeks before it.
+
+Why it is a phase of its own, and what it waits for: it is a new system and
+changes no page that exists, so it fits neither site management (6) nor
+upkeep (7). It is the first time people from outside the roster sign in in
+numbers, so the sign-in redirect list (the failed line of 5d step 1) is put
+right first. It is also the first signed-in page outside `/portal`, which is
+the ground the parked "portal inside the site" idea (section 12.5) builds
+on. The website guide (7 step 4) waits until it is built.
+
 ### 12.4 Where everything went
 
 Every open task, where it sat before the reorder of 2026-10-04 and where it
@@ -1001,6 +1205,7 @@ sits now.
 | Executive board editable | Phase 6 | 5b step 4 |
 | FAQ, merch, events and home sections editable | Phase 6 | 6 step 3 (events: 6 step 4) |
 | Events page (`/events`, committee pages, the home page) | New, 2026-10-07 | Phase 6, step 4 |
+| Exchange exam (registration, 100 questions, automatic marking, results in the portal) | New, 2026-10-10 | Phase 8 |
 | Magazine editable | Phase 6 | Shipped in Phase 5 |
 | Content snapshot pipeline | Phase 6 | 5b step 4 (the rebuild trigger; the build-time snapshot shipped with the pre-render) |
 | Backups and a restore rehearsal | Phase 7 | 5a step 2, rehearsal repeated in 7 step 2 |
@@ -1025,6 +1230,9 @@ Waiting on people:
   verification (RUNBOOK section 19).
 - **The exchange portal link:** changed by the exchange officers when the
   incomings page goes live (phase 6, step 2).
+- **The exchange exam:** its real questions, from the exchange officers.
+  Phase 8 is built and rehearsed on mock questions and does not wait for
+  them; the date the officers set themselves in the portal.
 
 Parked:
 
