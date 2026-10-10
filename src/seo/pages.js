@@ -403,7 +403,7 @@ export function publicPages(albums = [], issues = [], content = {}, settings = {
       path: '/constitution',
       title: 'Constitution',
       description:
-        'The constitution of the Ain Shams University Students’ Scientific Society: structure, executive board, committees, membership and elections.',
+        'The Constitution and Bylaws of the Ain Shams University Students’ Scientific Society, and the IFMSA-Egypt Constitution and Bylaws it works within.',
       changefreq: 'yearly',
       priority: 0.4,
     },

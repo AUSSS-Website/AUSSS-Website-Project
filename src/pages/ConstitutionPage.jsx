@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
@@ -6,6 +7,9 @@ import { society } from '../data/society.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
 const CONSTITUTION_PDF = '/assets/docs/AUSSS-Constitution-and-Bylaws.pdf'
+// The national federation's own document, as issued after its end-of-term
+// General Assembly of 2025-26 (the cover reads "Issued in October 2026").
+const NATIONAL_PDF = '/assets/docs/IFMSA-Egypt-Constitution-and-Bylaws.pdf'
 
 // How the document is amended, summarised straight from the Constitution &
 // Bylaws (section references in parentheses), so members know the real process.
@@ -99,6 +103,17 @@ export default function ConstitutionPage() {
               Download PDF
             </a>
           </div>
+
+          <p className="mt-6 text-sm text-soft/70">
+            Looking for the national rules?{' '}
+            <Link
+              to="#ifmsa-egypt"
+              className="font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
+            >
+              The IFMSA-Egypt Constitution &amp; Bylaws
+            </Link>{' '}
+            is further down this page.
+          </p>
         </div>
       </header>
 
@@ -174,8 +189,108 @@ export default function ConstitutionPage() {
             <p className="mt-3 text-xs text-soft/45">{secGenEmail}</p>
           </div>
         </section>
+
+        <NationalRules />
       </div>
     </article>
+  )
+}
+
+// The Constitution & Bylaws of IFMSA-Egypt, the federation AUSSS belongs to.
+// It opens in place when asked for, so the page does not load a second
+// 49-page document for everyone who came for the society's own. The IFMSA
+// page links straight here (/constitution#ifmsa-egypt).
+function NationalRules() {
+  const [open, setOpen] = useState(false)
+  const readerRef = useRef(null)
+
+  // The reader opens below the card: bring it into view once it is there.
+  useEffect(() => {
+    if (!open) return
+    readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [open])
+
+  return (
+    <section id="ifmsa-egypt" className="mt-20 scroll-mt-28">
+      <div className="reveal mx-auto max-w-3xl">
+        <span className="eyebrow">
+          <span className="h-px w-8 bg-medical" />
+          The national rules
+        </span>
+        <h2 className="heading-serif mt-4 text-3xl text-ink sm:text-4xl">
+          IFMSA-Egypt Constitution &amp; Bylaws
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-soft/75">
+          AUSSS is an autonomous affiliate member of IFMSA-Egypt, the national
+          federation of medical students’ associations, and works within its
+          rules as well as its own. This is the federation’s Constitution
+          &amp; Bylaws as issued in October 2026: who its members are and the
+          rights they hold, how its General Assembly meets and votes, the
+          Executive Board, the Team of Officials and the Supervising Council,
+          the standing committees and support divisions, its finances, and how
+          Egypt is represented in IFMSA.
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-line/10 bg-card/60 p-6">
+          {/* Stacked on a phone: side by side, the wide logo leaves the line
+              beside it a few characters across. */}
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <img
+              src="/assets/ifmsa/ifmsa-egypt-horizontal-white.png"
+              alt="IFMSA-Egypt"
+              loading="lazy"
+              decoding="async"
+              className="logo-ink h-9 w-auto max-w-full shrink-0 sm:h-10"
+            />
+            <p className="min-w-0 text-xs font-medium uppercase tracking-[0.16em] text-soft/60">
+              Issued October 2026 · 49 pages · PDF, 1.8 MB
+            </p>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls="ifmsa-egypt-reader"
+              className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+            >
+              <PdfIcon />
+              {open ? 'Close the document' : 'Read it here'}
+            </button>
+            <a
+              href={NATIONAL_PDF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+            >
+              Open in a new tab
+            </a>
+            <a
+              href={NATIONAL_PDF}
+              download
+              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+            >
+              Download PDF
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="ifmsa-egypt-reader"
+        ref={readerRef}
+        className="mx-auto mt-8 w-full max-w-6xl scroll-mt-28"
+      >
+        {open && (
+          <PdfFrame
+            src={NATIONAL_PDF}
+            title="IFMSA-Egypt Constitution & Bylaws"
+            fit="width"
+            heightClass="h-[92vh]"
+          />
+        )}
+      </div>
+    </section>
   )
 }
 

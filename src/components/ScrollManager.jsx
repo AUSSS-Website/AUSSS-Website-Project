@@ -29,11 +29,21 @@ export default function ScrollManager() {
   useEffect(() => {
     if (location.hash) {
       const id = location.hash.replace('#', '')
-      const t = setTimeout(() => {
-        document
-          .getElementById(id)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 60)
+      // The section may not be there yet: every page but the home page is its
+      // own chunk and mounts a moment after the address changes (a link such
+      // as /constitution#ifmsa-egypt from another page). Look again for a few
+      // seconds before giving up.
+      let tries = 0
+      let t
+      const go = () => {
+        const el = document.getElementById(id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        } else if (++tries < 40) {
+          t = setTimeout(go, 75)
+        }
+      }
+      t = setTimeout(go, 60)
       return () => clearTimeout(t)
     }
 
