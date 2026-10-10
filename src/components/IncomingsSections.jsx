@@ -239,31 +239,3 @@ function AlbumStrip({ slug, heading }) {
     </section>
   )
 }
-
-// The link to our page in the national welcome booklet.
-export function NationalBookletLink({ href }) {
-  if (!href) return null
-  return (
-    <section className="reveal mx-auto max-w-4xl">
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-line/10 bg-card p-7 text-center sm:flex-row sm:text-left">
-        <div className="min-w-0 flex-1">
-          <h2 className="heading-serif text-xl text-ink">The IFMSA-Egypt welcome booklet</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-soft/70">
-            The national exchange team’s guide to every local committee in Egypt, with our page in it.
-          </p>
-        </div>
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
-        >
-          Open the booklet
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M7 17 17 7M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </a>
-      </div>
-    </section>
-  )
-}

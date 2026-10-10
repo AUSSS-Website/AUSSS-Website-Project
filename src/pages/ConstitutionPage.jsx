@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-import PdfFrame from '../components/PdfFrame.jsx'
+import PdfReader from '../components/PdfReader.jsx'
+import DocumentCard from '../components/DocumentCard.jsx'
 import { society } from '../data/society.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
@@ -40,8 +40,9 @@ const AMENDMENT_STEPS = [
   },
 ]
 
-// The AUSSS Constitution & Bylaws, embedded in-page so "View document" reads
-// it here rather than bouncing the user out to a new browser tab.
+// The AUSSS Constitution & Bylaws, read in-page (and searched: PdfReader), so
+// "View document" reads it here rather than bouncing the user out to a new
+// browser tab.
 export default function ConstitutionPage() {
   usePageTitle('Constitution')
   useReveal()
@@ -82,7 +83,8 @@ export default function ConstitutionPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
             The document that governs AUSSS: membership, the Executive Board,
-            committees and how the society is run. Read it in full below.
+            committees and how the society is run. Read it in full below, or
+            search it for a word.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -119,13 +121,11 @@ export default function ConstitutionPage() {
 
       <div className="container-prose pb-20 sm:pb-28">
         {/* Wide and fitted to width, so the text is comfortably readable and
-            you scroll through the pages. (It used to fit one whole page to the
-            screen height, which left it under 500px wide on a laptop.) */}
+            you scroll through the pages, with a search bar above them. */}
         <div className="mx-auto w-full max-w-6xl">
-          <PdfFrame
+          <PdfReader
             src={CONSTITUTION_PDF}
             title="AUSSS Constitution & Bylaws"
-            fit="width"
             heightClass="h-[92vh]"
           />
         </div>
@@ -197,19 +197,10 @@ export default function ConstitutionPage() {
 }
 
 // The Constitution & Bylaws of IFMSA-Egypt, the federation AUSSS belongs to.
-// It opens in place when asked for, so the page does not load a second
-// 49-page document for everyone who came for the society's own. The IFMSA
-// page links straight here (/constitution#ifmsa-egypt).
+// It opens in place when asked for (DocumentCard), so the page does not load a
+// second 49-page document for everyone who came for the society's own. The
+// IFMSA page links straight here (/constitution#ifmsa-egypt).
 function NationalRules() {
-  const [open, setOpen] = useState(false)
-  const readerRef = useRef(null)
-
-  // The reader opens below the card: bring it into view once it is there.
-  useEffect(() => {
-    if (!open) return
-    readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [open])
-
   return (
     <section id="ifmsa-egypt" className="mt-20 scroll-mt-28">
       <div className="reveal mx-auto max-w-3xl">
@@ -230,65 +221,18 @@ function NationalRules() {
           the standing committees and support divisions, its finances, and how
           Egypt is represented in IFMSA.
         </p>
-
-        <div className="mt-6 rounded-2xl border border-line/10 bg-card/60 p-6">
-          {/* Stacked on a phone: side by side, the wide logo leaves the line
-              beside it a few characters across. */}
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <img
-              src="/assets/ifmsa/ifmsa-egypt-horizontal-white.png"
-              alt="IFMSA-Egypt"
-              loading="lazy"
-              decoding="async"
-              className="logo-ink h-9 w-auto max-w-full shrink-0 sm:h-10"
-            />
-            <p className="min-w-0 text-xs font-medium uppercase tracking-[0.16em] text-soft/60">
-              Issued October 2026 · 49 pages · PDF, 1.8 MB
-            </p>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-              aria-controls="ifmsa-egypt-reader"
-              className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
-            >
-              <PdfIcon />
-              {open ? 'Close the document' : 'Read it here'}
-            </button>
-            <a
-              href={NATIONAL_PDF}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
-            >
-              Open in a new tab
-            </a>
-            <a
-              href={NATIONAL_PDF}
-              download
-              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
-            >
-              Download PDF
-            </a>
-          </div>
-        </div>
       </div>
 
-      <div
-        id="ifmsa-egypt-reader"
-        ref={readerRef}
-        className="mx-auto mt-8 w-full max-w-6xl scroll-mt-28"
-      >
-        {open && (
-          <PdfFrame
-            src={NATIONAL_PDF}
-            title="IFMSA-Egypt Constitution & Bylaws"
-            fit="width"
-            heightClass="h-[92vh]"
-          />
-        )}
+      <div className="mt-6">
+        <DocumentCard
+          id="ifmsa-egypt-document"
+          src={NATIONAL_PDF}
+          title="IFMSA-Egypt Constitution & Bylaws"
+          meta="Issued October 2026 · 49 pages · PDF, 1.8 MB"
+          logo={{ src: '/assets/ifmsa/ifmsa-egypt-horizontal-white.png', alt: 'IFMSA-Egypt' }}
+          heading={false}
+          cardWidth="max-w-3xl"
+        />
       </div>
     </section>
   )
