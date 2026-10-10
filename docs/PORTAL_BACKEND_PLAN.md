@@ -846,9 +846,12 @@ we are, what we give you, why choose us (six reasons with pictures), two
 ways to come to us, how you get to us, the welcome booklet, before you
 land, write to us (the LEO-In's and the LORE's cards, name and photo from
 their profiles), and stories from students we hosted. Its facts and its
-pictures come from our incomings booklet. Two things are left for the
+pictures come from our incomings booklet. One thing is left for the
 exchange officers: choosing or making the gallery album for the photo
-strip, and pasting the address of the national booklet. Two things in the
+strip. The national team's two booklets (the IFMSA-Egypt exchange booklet
+and welcome booklet) are on the page itself since 2026-10-10, each read
+and searched in place (`src/data/nationalBooklets.js`), so the link an
+officer was to paste is gone. Two things in the
 shipped copy do not come from the booklet and are theirs to confirm: the
 four steps of "How you get to us" (the standard IFMSA procedure) and "at
 least one meal a day" (the standard IFMSA exchange condition). The two exchange pages are titled "Incomings" and
