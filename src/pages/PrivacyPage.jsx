@@ -4,12 +4,14 @@ import usePageTitle from '../hooks/usePageTitle.js'
 import { society } from '../data/society.js'
 import { usePublicEmail, useSiteSettings } from '../hooks/useSiteSettings.js'
 
-// Plain-language privacy policy for ausss-ainshams.org and the members portal.
+// Plain-language privacy policy for ausss-ainshams.org, the members portal and
+// the exchange exam's page.
 // Written to be read by a medical student in two minutes, not by a lawyer.
 // Keep it truthful: every item below maps to a real form, table or service in
 // this repo. Update LAST_UPDATED whenever the substance changes.
-const LAST_UPDATED = '4 October 2026'
-// (newsletter sign-up removed the same day; only the waitlist form remains)
+const LAST_UPDATED = '10 October 2026'
+// (10 October: the exchange exam's part added. 4 October: newsletter sign-up
+// removed; only the waitlist form remains.)
 const IFMSA_EXCHANGES_PRIVACY = 'https://ifmsa.org/exchanges-privacy/'
 const IFMSA_PRIVACY = 'https://ifmsa.org/privacy/'
 
@@ -20,7 +22,7 @@ const privacySections = (domainEmails) => [
     title: 'Who we are',
     body: [
       "AUSSS is the Ain Shams University Students' Scientific Society, the student society of the Faculty of Medicine, Ain Shams University, Cairo. We are the Ain Shams local committee of IFMSA-Egypt, which is a member of the International Federation of Medical Students' Associations (IFMSA).",
-      'This policy covers this website and the members portal at /portal. The Secretary General is the contact for anything about your data.',
+      'This policy covers this website, the members portal at /portal and the page where students sit the exchange exam. The Secretary General is the contact for anything about your data.',
     ],
   },
   {
@@ -72,10 +74,27 @@ const privacySections = (domainEmails) => [
     after: 'These rules are enforced in the database itself, not only in the screens you see.',
   },
   {
+    // Maps to src/exam (the page), the exam tables and rpc/exam_save_details
+    // (20261010120001_exchange_exam.sql), and the rollover that deletes the
+    // list, the papers and the answers (20261010120002_exam_rollover.sql).
+    id: 'exam',
+    title: 'The exchange exam',
+    body: [
+      'Students who registered for the exchange exam sit it on a page of its own. Nothing on this site links to that page: you reach it only by the address the exchange team sends you. Signing in uses Google and gives us your email address, name and profile picture, as it does for the portal.',
+    ],
+    bullets: [
+      'What you give: your full name, year, phone number and student ID. The student ID is checked against the list of registered students that the exchange officers uploaded, and you are told only whether your own ID is on it.',
+      'What is kept with your account: when you started and finished, and the answer you chose for each question. The site marks the exam. The page never shows you a grade.',
+      'Who reads it: the SCOPE and SCORE officers and the Executive Board see your details, your answers and your grade. No other member can read your answers or your grade.',
+      'How long it is kept: the list of registered student IDs, your answers and the results are deleted when the academic year the exam was sat in ends. Before then the exchange team may download the results it needs. The details you gave stay on your account until you ask us to delete it.',
+    ],
+    after: 'Our nightly backups are encrypted and hold a copy of the deleted records for up to 90 days more.',
+  },
+  {
     id: 'services',
     title: 'Services that hold data for us',
     bullets: [
-      'Supabase hosts the portal database and sign-in service.',
+      'Supabase hosts the database and the sign-in service, for the portal and for the exchange exam.',
       'Vercel hosts the website and counts page views.',
       'Google provides sign-in, and Google Sheets and Drive hold form submissions and society documents.',
       'Resend delivers sign-in and notification emails.',

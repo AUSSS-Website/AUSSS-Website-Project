@@ -148,20 +148,26 @@ Each gets the columns its Sheet has today, plus proper types and foreign keys.
 
 ### Exchange exam
 
-Planned, phase 8 (section 12.3). The exact tables are settled when it is
-built; this is the shape.
+Built in phase 8 (section 12.3; RUNBOOK section 30). Row-level security names
+the exam's officers only: the EB and the officers of SCOPE and SCORE. A
+taker's account reads none of these tables and reaches its own rows through
+five functions.
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `exams` | One exam per season; its dates and the hidden word in its address are set and changed by the officers | `term_id`, `title`, `address_word`, `opens_at`, `closes_at`, `minutes`, `status` |
-| `exam_registrations` | The student IDs that may sit an exam, uploaded by the officers and readable by them only; each ID is held by one account at most | `exam_id`, `student_id`, `profile_id` (the account holding it, once one starts), `added_by` |
-| `exam_questions` | The questions as a taker sees them | `exam_id`, `sort`, `body`, `options` (jsonb), `keep_option_order` |
-| `exam_key` | The right answer to each question, kept apart from the questions so that no taker's policy ever touches it; the exam's start code is kept out of reach the same way | `question_id`, `correct_option` |
-| `exam_attempts` | One per taker per exam, tied to their profile | `exam_id`, `profile_id`, `started_at`, `submitted_at`, the order this taker was shown the questions and options in |
-| `exam_answers` | One row per question a taker answered | `attempt_id`, `question_id`, `chosen_option`, `flagged`, `answered_at` |
-| `exam_results` | Written by the marking when an attempt is handed in; readable by the exam's officers only | `attempt_id`, `score`, which answers were right |
+| `exams` | One exam. The officers set and change its times, its length, the hidden word in its address and its start code; no taker's account can read the row | `term_id`, `title`, `address_word`, `status` (`draft`, `ready`), `opens_at`, `closes_at` (the window in which a student may start), `minutes`, `start_code`, `created_by` |
+| `exam_questions` | The questions as the officers wrote them | `exam_id`, `sort`, `body`, `options` (jsonb, 2 to 6 strings), `keep_option_order` |
+| `exam_key` | The right answer to each question, kept apart from the questions so that nothing that reads a question can carry it along | `question_id`, `correct_option` |
+| `exam_registrations` | The student IDs that may sit an exam, uploaded by the officers; each ID is held by one account at most, from the moment that account's details match | `exam_id`, `student_id`, `student_key` (the ID tidied, which is what is compared), `profile_id`, `claimed_at`, `added_by` |
+| `exam_attempts` | One per taker per exam, tied to their profile | `exam_id`, `profile_id`, `student_id`, `started_at`, `submitted_at`, `question_order` and `option_orders` (the order this taker was shown the questions and options in) |
+| `exam_answers` | One row per question a taker answered or flagged | `attempt_id`, `question_id`, `chosen_option`, `flagged`, `answered_at` |
+| `app.exam_tries` | Wrong student IDs and wrong start codes, kept only to limit them; no API role reads it | `exam_id`, `profile_id`, `kind` (`id`, `code`), `at` |
 
-`profiles` gains `student_id`.
+No table holds results. A grade is counted from `exam_answers` and `exam_key`
+each time the officers read it. `profiles` gains `student_id`, which only
+`rpc/exam_save_details` writes. The registrations, attempts, answers and
+tries are deleted when the term ends; the exam, its questions and its key
+stay.
 
 ### Storage buckets
 
@@ -528,7 +534,7 @@ dropped; similar tasks were merged. Four rules decided the order:
 | **5d. Pilot and rollout** | 1 of work, across about 6 weeks | A pre-rollout gate (security checklist re-run, backups healthy, DuckDuckGo check); one committee piloting for a month; the member-facing rollout to the roster; the Pro plan decision | One committee has run a real month of work through the portal; 100 members have accounts and the verification backlog is under a day; the Pro plan decision is recorded in section 13. |
 | **6. Site management** | 5, then ongoing | The schema-driven editor; the incomings exchange page as the first page built on it; then FAQ, merch, home sections, exchange and IFMSA copy, footer and contact details, and feature flags editable; then the events page (`/events`, committee pages, the home page), published by officers | An officer publishes a change to the FAQ, an event and the incomings page with no developer involved; the LC's link in the exchange portal points at `/exchange/incomings`. |
 | **7. Sustain** | 2, then ongoing | The term-rollover wizard with the gallery archive as one of its steps; the checks repeated every term (restore rehearsal, security checklist, handover review); documentation; the website guide | The first rollover to 2027-28 is done by the EB alone, and it leaves an empty gallery with last term's albums still reachable. |
-| **8. Exchange exam** | 3 | A hidden sign-in page for the exam, separate from the portal, with Google sign-in and a details form (name, year, phone, student ID), and only students whose ID is on the list the officers upload may sit; a 100-question multiple-choice exam for about 400 students in a hall, shown ten questions a page in a different order for each person, with flags, one clock for the whole exam and a start code read out in the hall; marking by the database, with the grade hidden from the taker; the portal's Exam page (dates that can be moved, the uploaded list of student IDs, ranking by grade, each person's answers, the overview figures); answers deleted when the term ends; a rehearsal by script and in the hall | A scripted run of 400 takers and a sitting in the hall have both passed and been ranked in the portal; a database test proves that a taker's account cannot read the answer key, its own grade, or which of its answers were right, and that an account whose student ID is not on the list, or that gives the wrong start code, cannot start. |
+| **8. Exchange exam** | 3 | A hidden sign-in page for the exam, separate from the portal, with Google sign-in and a details form (name, year, phone, student ID), and only students whose ID is on the list the officers upload may sit; a 100-question multiple-choice exam for about 400 students in a hall, shown ten questions a page in a different order for each person, with flags, a clock of their own for each taker (the exam's full length from the moment they start) and a start code read out in the hall; marking by the database, with the grade hidden from the taker; the portal's Exam page (dates that can be moved, the uploaded list of student IDs, ranking by grade, each person's answers, the overview figures); answers deleted when the term ends; a rehearsal by script and in the hall | A scripted run of 400 takers and a sitting in the hall have both passed and been ranked in the portal; a database test proves that a taker's account cannot read the answer key, its own grade, or which of its answers were right, and that an account whose student ID is not on the list, or that gives the wrong start code, cannot start. |
 
 Roughly 14 weeks of part-time work remain to the end of phase 6. Phase 5d is
 mostly waiting on people, so it overlaps phase 6. Phase 7 has one fixed
@@ -997,7 +1003,42 @@ the portal. Built differently from the text below in three ways, each settled wh
 
 #### Phase 8. Exchange exam
 
-**Added by the webmaster, 2026-10-10. Not started.** The exchange team's
+**Status, 2026-10-10: built on branch `phase8-exam`; not merged, and the two migrations are not
+applied to the hosted database (RUNBOOK section 30).** What exists: the tables and functions
+(migrations `20261010120001_exchange_exam` and `20261010120002_exam_rollover`, pgTAP file
+`340-exchange-exam.sql`); the students' pages at the hidden address `/exam/<word>` (`src/exam/`);
+the portal's **Exam** page with its five tabs (`src/portal/pages/exam/`); the Exam part of New
+term; the privacy page's new part; and the scripted rehearsal (`scripts/exam-rehearsal.mjs`,
+workflow `exam-rehearsal`). Built differently from the text below in seven ways, each settled
+while building:
+
+- **Each student has the exam's full length from their own start** (the webmaster, 2026-10-10,
+  after the build had begun). Step 2 was first written with one clock for the whole exam, a
+  paper stopping at the closing time at the latest; it now says the rule as built. The closing
+  time is only the last moment at which a student may start; it never cuts a running paper short,
+  and it can move either way at any time.
+- **No `exam_results` table.** A grade is counted from the answers and the key each time the
+  officers read it, so a corrected right answer or a longer exam needs no re-marking. Step 3 says
+  the database marks an attempt when it is handed in.
+- **A student ID is held from the moment the details are saved and match,** not from the start, so
+  the check before the day is real and a clash shows early.
+- **After the first start the wording of the questions is locked.** A right answer can still be
+  corrected, and the exam can be made longer but never shorter.
+- **The start code and the word in the address are columns of `exams`,** which no student's
+  account can read.
+- **A save that arrives up to 30 seconds after a paper's time is up is accepted,** so one that was
+  on its way when the clock ran out still lands.
+- **New term also clears an exam of an earlier term** when it holds a list or papers again. An
+  exam kept and set for the next year's students still names the term it was made in.
+
+Still to do: merge the branch and apply the two migrations to the hosted database (RUNBOOK
+section 1); the first run of the scripted rehearsal on a real stack, which the pull request starts
+(so far it has met only a stand-in, because the build machine has no Docker); the webmaster's
+steps in section 12.5 (the callback addresses, "Confirm email", the token refresh limit, the
+sitting in the hall);
+and the real questions from the exchange officers.
+
+**Added by the webmaster, 2026-10-10.** The exchange team's
 exam moves onto the site: registered students sit it signed in on their own
 phones in a hall, the site marks it, and the exchange officers read the
 results in the portal. About 400 students sit it.
@@ -1088,13 +1129,16 @@ How it is built, in order:
    where they stopped. One attempt per person. After handing in, a taker is
    told the exam was received and nothing more.
    - **The date can be moved** (the webmaster, 2026-10-10). The officers set
-     the opening and closing times in the portal and can change them until
-     the first taker starts; the closing time can be moved later while the
-     exam runs, for a hall that starts late.
-   - **One clock for the whole exam** (the webmaster, 2026-10-10). A taker's
-     time runs from the moment they start, for the exam's length, and stops
-     at the closing time at the latest. The exam is handed in on its own
-     when the time is up. The clock is the database's, not the phone's.
+     the opening and closing times in the portal. The opening time can
+     change until the first taker starts. The closing time is only the last
+     moment at which a student may start, and can move either way at any
+     time.
+   - **A clock of their own for each taker** (the webmaster, 2026-10-10;
+     first written as one clock for the whole exam and changed the same
+     day). A taker's time runs from the moment they start, for the exam's
+     full length, and the closing time never cuts a running paper short.
+     The exam is over on its own when the time is up. The clock is the
+     database's, not the phone's.
    - **A start code** (the webmaster, 2026-10-10). The officers set a code
      in the portal and read it out in the hall. A registered student types
      it to start, so the exam cannot be sat from somewhere else. The
@@ -1236,6 +1280,15 @@ Waiting on people:
 - **The exchange exam:** its real questions, from the exchange officers.
   Phase 8 is built and rehearsed on mock questions and does not wait for
   them; the date the officers set themselves in the portal.
+- **The exchange exam, the webmaster's steps** (RUNBOOK section 30 has them
+  as a checklist). Merge the branch `phase8-exam` and apply its two
+  migrations. Add the three exact `/exam/callback` addresses to the
+  redirect list on Supabase, at the same visit that removes the wildcard
+  lines (5d step 1), and before students get the address. Switch "Confirm
+  email" on for the Email sign-in provider, so that a made-up address gets
+  no session to hold student IDs with. Read the token refresh rate limit on
+  Supabase, raise it before the day of an exam and put it back after. Hold
+  the sitting in the hall with a test group.
 
 Parked:
 
