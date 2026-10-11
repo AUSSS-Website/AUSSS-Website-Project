@@ -91,7 +91,7 @@ const TIERS = {
   associate: {
     label: 'Associate Member',
     rank: 2,
-    rights: 'Speaking & proposing rights; may apply for a Team of Officials position (no voting).',
+    rights: 'Speaking and proposing rights; may apply for a Team of Officials position (no voting).',
     next: 'Full Member',
     needLga: 2,
     needNga: 3,
@@ -108,7 +108,7 @@ const TIERS = {
     rights: 'Speaking, proposing, voting and candidature rights at the Local GA (§2.6.2).',
     next: null,
     steps: [
-      'You hold the highest membership status, maintain it each term by contributing: a local team, an SWG/Taskforce/OC, or by giving local sessions/workshops (§2.9.1).',
+      'You hold the highest membership status. Maintain it each term by contributing: a local team, an SWG/Taskforce/OC, or by giving local sessions/workshops (§2.9.1).',
       'Failing to contribute within a term downgrades your status (§2.9.2).',
       'You may run for any Team of Officials or Executive Board position.',
     ],
@@ -116,7 +116,7 @@ const TIERS = {
   honorary: {
     label: 'Honorary Life Member',
     rank: 4,
-    rights: 'Attend events & GAs with speaking and proposing rights (no voting) (§2.7.3).',
+    rights: 'Attend events and GAs with speaking and proposing rights (no voting) (§2.7.3).',
     next: null,
     steps: [
       'Granted by the General Assembly to alumni who greatly contributed to AUSSS (§2.7).',
@@ -192,6 +192,6 @@ export const NOT_A_MEMBER = {
   steps: [
     'Apply during the next AUSSS recruitment campaign (online or hard copy) (§2.2.2.2a).',
     'Attend at least 50% of an orientation session (§2.2.2.2b).',
-    'Pay the membership fees per the set regulations (§2.2.2.2c), you’ll then be a Candidate Member.',
+    'Pay the membership fees per the set regulations (§2.2.2.2c). You’ll then be a Candidate Member.',
   ],
 }
