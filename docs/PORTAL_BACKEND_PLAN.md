@@ -531,7 +531,7 @@ dropped; similar tasks were merged. Four rules decided the order:
 | **5a. Stabilise and secure** | 2 | Search engines told about the site (Bing, and through it DuckDuckGo); nightly backups with one rehearsed restore, and failure alerts; the two quick bugs (gallery loading blank, the Google logo); a page-walk script that opens every page; the console clean-up and the security review done as one job | A backup has been restored into a scratch project; the gallery opens on ten cold loads in a row; the console shows none of our own errors on any page; the security checklist is in the RUNBOOK with every line passed; Bing Webmaster Tools shows the sitemap processed. |
 | **5b. Portal and people** | 3 | The portal header redone once (notifications bell and new order); tasks finished (date default, duplicate warning, file attachments); the invites screen; one source of truth for people (profile name and photo everywhere, the executive board, the directory) with a rebuild whenever something is published | An officer attaches a file to a new task and is warned about a repeat; the bell shows and clears unread notifications; an officer changes their photo in the portal and the public pages show it with no developer involved. |
 | **5c. One design pass** | 3 | Fluid sizing and light mode done together in one walk of every page, then the deeper magazine page-flip | The page-walk screenshots show every public and portal page reading well from a 320 px phone to a wide desktop, in both themes. |
-| **5d. Pilot and rollout** | 1 of work, across about 6 weeks | A pre-rollout gate (security checklist re-run, backups healthy, DuckDuckGo check); one committee piloting for a month; the member-facing rollout to the roster; the Pro plan decision | One committee has run a real month of work through the portal; 100 members have accounts and the verification backlog is under a day; the Pro plan decision is recorded in section 13. |
+| **5d. Pilot and rollout** | 1 of work, across about 6 weeks | A pre-rollout gate (security checklist re-run, backups healthy, DuckDuckGo check); one committee piloting for a month; a student ID asked of everyone on their first entry to the portal (added 2026-10-12); the member-facing rollout to the roster; the Pro plan decision | One committee has run a real month of work through the portal; 100 members have accounts and the verification backlog is under a day; the Pro plan decision is recorded in section 13. |
 | **6. Site management** | 5, then ongoing | The schema-driven editor; the incomings exchange page as the first page built on it; then FAQ, merch, home sections, exchange and IFMSA copy, footer and contact details, and feature flags editable; then the events page (`/events`, committee pages, the home page), published by officers | An officer publishes a change to the FAQ, an event and the incomings page with no developer involved; the LC's link in the exchange portal points at `/exchange/incomings`. |
 | **7. Sustain** | 2, then ongoing | The term-rollover wizard with the gallery archive as one of its steps; the checks repeated every term (restore rehearsal, security checklist, handover review); documentation; the website guide | The first rollover to 2027-28 is done by the EB alone, and it leaves an empty gallery with last term's albums still reachable. |
 | **8. Exchange exam** | 3 | A hidden sign-in page for the exam, separate from the portal, with Google sign-in and a details form (name, year, phone, student ID), and only students whose ID is on the list the officers upload may sit; a 100-question multiple-choice exam for about 400 students in a hall, shown ten questions a page in a different order for each person, with flags, a clock of their own for each taker (the exam's full length from the moment they start) and a start code read out in the hall; marking by the database, with the grade hidden from the taker; the portal's Exam page (dates that can be moved, the uploaded list of student IDs, ranking by grade, each person's answers, the overview figures); answers deleted when the term ends; a rehearsal by script and in the hall | A scripted run of 400 takers and a sitting in the hall have both passed and been ranked in the portal; a database test proves that a taker's account cannot read the answer key, its own grade, or which of its answers were right, and that an account whose student ID is not on the list, or that gives the wrong start code, cannot start. |
@@ -837,6 +837,33 @@ to tick.
    `public/assets`, and there were 49 deployments in the four days before.
    If it fills up again: delete old preview deployments or set a retention
    period for them, or move the large files to Supabase Storage.
+6. **A student ID on first entry to the portal (asked by the webmaster,
+   2026-10-12). Not started.** The first time someone enters the portal they
+   must give their student ID before they can go any further; after that they
+   are not asked again. It is listed last so that the steps above keep their
+   numbers, but it is built **before the rollout of step 3**, so that every
+   member who is invited in meets it on their first visit.
+   - **Where it is kept.** `profiles.student_id`, the column the exchange exam
+     added, tidied by the same rule (`app.tidy_student_id`). Someone who gave
+     their ID on the exam's details form has already answered and is not asked.
+   - **Where it is asked.** One screen behind the sign-in check and ahead of
+     every portal page, enforced in the database as well as on the page, so a
+     direct address cannot skip it. People who already have an account meet it
+     on their next visit.
+   - **To decide before building.** (a) Accounts with no student ID: the work
+     emails that hold officer positions, alumni, honorary members and anyone
+     who is not an Ain Shams student. They need a way through, either an
+     exemption by kind of account or a "I have no student ID" answer that the
+     Executive Board can see. (b) Whether the ID is only recorded or also
+     checked: against the roster if the Secretary General's sheet gains an ID
+     column, and for a second account giving the same ID (the exam already
+     holds one ID to one account). (c) Who may read it: the member and the
+     Executive Board, like the phone number, unless decided otherwise. (d) A
+     line in the privacy page and in the member-facing copy that says why it
+     is asked.
+   - **Done when** a new account cannot open any portal page until an ID is
+     saved, an existing account is asked once, the cases in (a) get through as
+     decided, and a database test covers each.
 
 #### Phase 6. Site management
 
