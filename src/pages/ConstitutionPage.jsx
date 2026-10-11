@@ -51,10 +51,7 @@ export default function ConstitutionPage() {
 
   return (
     <article className="bg-page">
-      {/* pt-44 on a phone: this header opens with a link at the left edge,
-          where the site's floating Back button sits, and at pt-32 the button
-          covered the start of it. */}
-      <header className="relative overflow-hidden pb-10 pt-44 sm:pt-40">
+      <header className="relative overflow-hidden pb-10 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{

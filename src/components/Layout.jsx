@@ -16,6 +16,8 @@ export default function Layout() {
       </a>
       <ScrollManager />
       <Navbar />
+      {/* The floating Back, shown from lg up. Below that the bar carries its
+          own (Navbar.jsx), so on a phone nothing floats over the page. */}
       <BackButton />
       {/* The skip link's target takes focus so the next Tab starts in the page.
           It is not a control, so it draws no focus ring round the whole page. */}
