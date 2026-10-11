@@ -2,7 +2,7 @@ import { useState, useEffect, useId, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-import { lookupMember, adviceFor, NOT_A_MEMBER } from '../lib/membership.js'
+import { lookupMember, adviceFor, MEMBERSHIP_ENDED, NOT_A_MEMBER } from '../lib/membership.js'
 import { splitPositions } from '../lib/text.js'
 import { errorText, UNREACHED } from '../lib/errorText.js'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
@@ -345,6 +345,7 @@ export default function MembersPage() {
         ? 'Your result is below.'
         : {
             'not-found': 'No matching member found.',
+            ended: `${MEMBERSHIP_ENDED.title}.`,
             ambiguous: 'More than one member shares this name.',
             'not-connected': 'The lookup is unavailable right now.',
           }[result?.state] || ''
@@ -569,6 +570,24 @@ export default function MembersPage() {
                     advice={{ ...NOT_A_MEMBER, progress: [], steps: NOT_A_MEMBER.steps }}
                     color={statusColor}
                   />
+                </div>
+              )}
+
+              {/* A membership that has ended: the fact and who to ask. The
+                  lookup hands back nothing more for it, and this card says
+                  nothing about why. */}
+              {result.state === 'ended' && (
+                <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                  <p className="heading-serif text-2xl text-ink">
+                    {MEMBERSHIP_ENDED.title}
+                  </p>
+                  <p className="mt-2 text-sm text-soft/65">
+                    {MEMBERSHIP_ENDED.body} If you have a question about it, please{' '}
+                    <Link to="/contact" className="text-accent hover:text-ink">
+                      contact the Executive Board
+                    </Link>
+                    .
+                  </p>
                 </div>
               )}
 

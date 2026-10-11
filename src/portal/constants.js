@@ -39,6 +39,25 @@ export const ROSTER_STATUSES = [
   'Archived',
 ]
 
+// The status of a dismissed member. It is not in the list above on purpose:
+// nobody types it. Only the President sets it, with "Dismiss member" on the
+// Roster page, and the database refuses it from anywhere else (migration
+// 20261011130001).
+export const DISMISSED_STATUS = 'Dismissed'
+
+// The key of the President's position. Holding it this term is what lets an
+// account dismiss and reinstate a member; the database asks the same question
+// (app.is_president), so this only decides which controls a page shows.
+export const PRESIDENT_KEY = 'eb.president'
+
+// Whether these assignments (useAuth().assignments: this term's active ones)
+// include the President's position.
+export const holdsPresidency = (assignments) =>
+  (assignments || []).some((a) => a?.position?.key === PRESIDENT_KEY)
+
+// A roster row is dismissed exactly while its dismissed_at is set.
+export const isDismissed = (row) => Boolean(row?.dismissed_at)
+
 const PORTAL_HOME = '/portal'
 export const SIGN_IN_PATH = '/portal/sign-in'
 export const CALLBACK_PATH = '/portal/callback'

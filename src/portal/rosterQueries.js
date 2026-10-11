@@ -19,8 +19,11 @@ const rosterKeys = {
   notes: (entryId, committeeId) => ['roster', 'notes', committeeId, entryId],
 }
 
+// The last three are a dismissal (migration 20261011130001): when, why, and the
+// status the row had before. A row is dismissed exactly while dismissed_at is
+// set. The board reads them; the reason reaches nobody else.
 const COLUMNS =
-  'id, full_name, email, status, joined_year, years_spent, lgas, ngas, current_position, origin, portal_edited_at, profile_id, import_batch, updated_at, committee_id, is_contact_person, position_id'
+  'id, full_name, email, status, joined_year, years_spent, lgas, ngas, current_position, origin, portal_edited_at, profile_id, import_batch, updated_at, committee_id, is_contact_person, position_id, dismissed_at, dismissal_reason, status_before_dismissal'
 
 // The columns an officer may type into; everything else is kept by the database
 // (years_spent is counted from joined_year and the academic year).
@@ -100,6 +103,40 @@ async function releaseRosterEntry(id) {
       .select(COLUMNS)
       .single(),
   )
+}
+
+// ---- dismissing and reinstating (the President) ----------------------------
+
+// Marks the row as dismissed and ends what the member held: the row's
+// committee and positions, the portal account's verification and every
+// position that account holds. Answers { accounts, positions_ended }. The
+// database refuses anybody but the President, in a sentence.
+const dismissRosterMember = async ({ id, reason }) =>
+  unwrap(await supabase.rpc('dismiss_roster_member', { entry: id, reason }))
+
+// Puts the row's status back to what it was. Answers { status }. Nothing else
+// comes back: the account stays unverified and positions are given again.
+const reinstateRosterMember = async (id) =>
+  unwrap(await supabase.rpc('reinstate_roster_member', { entry: id }))
+
+// What the Roster page says under a member's name once they are dismissed,
+// from what the database answered. An answer with no count in it (an older
+// database, a sample) gets the plain sentence.
+export function dismissedLine(result) {
+  const accounts = Number(result?.accounts) || 0
+  const ended = Number(result?.positions_ended) || 0
+  if (!accounts) return 'Dismissed. No portal account belongs to this row.'
+  const positions = ended === 1 ? '1 position has' : `${ended} positions have`
+  return ended
+    ? `Dismissed. Their portal account is unverified again and ${positions} ended.`
+    : 'Dismissed. Their portal account is unverified again.'
+}
+
+// The same for a reinstatement: the status the row has again, and what did
+// not come back with it.
+export function reinstatedLine(result) {
+  const status = typeof result?.status === 'string' ? result.status.trim() : ''
+  return `Reinstated${status ? ` as ${status}` : ''}. Portal access and positions are not given back.`
 }
 
 async function importRoster({ rows, batch }) {
@@ -484,6 +521,10 @@ function useRosterMutation(mutationFn) {
 export const useSaveRosterEntry = () => useRosterMutation(saveRosterEntry)
 export const useDeleteRosterEntry = () => useRosterMutation(deleteRosterEntry)
 export const useReleaseRosterEntry = () => useRosterMutation(releaseRosterEntry)
+// A dismissal ends positions, which the committee pages and the invites screen
+// list under the roster's own cache key, so dropping that key covers them.
+export const useDismissRosterMember = () => useRosterMutation(dismissRosterMember)
+export const useReinstateRosterMember = () => useRosterMutation(reinstateRosterMember)
 export const useImportRoster = () => useRosterMutation(importRoster)
 export const useRotateToken = () => useRosterMutation(rotateToken)
 export const useRevokeToken = () => useRosterMutation(revokeToken)
