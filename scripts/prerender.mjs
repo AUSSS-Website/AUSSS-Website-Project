@@ -300,6 +300,21 @@ async function loadEvents(vite) {
   }
 }
 
+// And the current term (src/hooks/useCurrentTerm.js): the copy counts the
+// society's years from it ({years}, {anniversary}; src/lib/anniversary.js).
+// With none, the pages count from the date of the build.
+async function loadTerm(vite) {
+  const mod = await vite.ssrLoadModule('/src/hooks/useCurrentTerm.js')
+  try {
+    const live = await mod.fetchCurrentTerm()
+    console.log('prerender: the current term is ' + (live ? live.label : 'not set; counting the years from today'))
+    return live
+  } catch (err) {
+    console.warn('prerender: could not fetch the current term (' + err.message + '); counting the years from today')
+    return null
+  }
+}
+
 async function main() {
   const template = await fs.readFile(path.join(dist, 'index.html'), 'utf8')
   await fs.writeFile(path.join(dist, 'spa.html'), template)
@@ -339,14 +354,15 @@ async function main() {
     const merch = await loadMerch(vite)
     const settings = await loadSettings(vite)
     const events = await loadEvents(vite)
-    const pages = publicPages(albums, issues, content, settings, events)
+    const term = await loadTerm(vite)
+    const pages = publicPages(albums, issues, content, settings, events, term)
 
     const seen = new Set()
     const hashes = {}
     for (const page of pages) {
       if (seen.has(page.path)) throw new Error(`duplicate page path ${page.path}`)
       seen.add(page.path)
-      const appHtml = await render(page.path, albums, issues, stories, people, content, merch, settings, events)
+      const appHtml = await render(page.path, albums, issues, stories, people, content, merch, settings, events, term)
       if (!appHtml.includes('<main')) {
         throw new Error(`${page.path} rendered without a <main>: is the route registered in App.jsx?`)
       }
@@ -372,7 +388,8 @@ async function main() {
     const { resolveDoc } = await vite.ssrLoadModule('/src/content/schema.js')
     const contactSchema = await vite.ssrLoadModule('/src/content/schemas/siteContact.js')
     const { publicEmail } = await vite.ssrLoadModule('/src/data/emailConfig.js')
-    const contact = resolveDoc(contactSchema.default, content[contactSchema.default.key])
+    const { termVars } = await vite.ssrLoadModule('/src/lib/anniversary.js')
+    const contact = resolveDoc(contactSchema.default, content[contactSchema.default.key], termVars(term))
     const contactEmail = publicEmail(society.contact, settings.domainEmailsLive === true)
     await fs.writeFile(path.join(dist, 'llms.txt'), llmsTxt(pages, contactEmail, contact, contactSchema.networkName))
     const changed = await changedSinceLive(SITE_URL, hashes)

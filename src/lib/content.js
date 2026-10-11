@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
 import { readJson } from './localCache.js'
 import { resolveDoc } from '../content/schema.js'
+import { useTermVars } from '../hooks/useCurrentTerm.js'
 
 const CACHE_KEY = 'ausss-content-snapshot'
 const GLOBAL_KEY = '__AUSSS_CONTENT__'
@@ -72,6 +73,8 @@ export function useContentBlock(schema) {
     }
   }, [])
 
+  // {years} and {anniversary} in the copy follow the current term.
+  const vars = useTermVars()
   const published = blocks[schema.key]
-  return useMemo(() => resolveDoc(schema, published), [schema, published])
+  return useMemo(() => resolveDoc(schema, published, vars), [schema, published, vars])
 }

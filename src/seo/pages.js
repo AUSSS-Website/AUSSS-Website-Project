@@ -17,6 +17,7 @@ import joinFaqSchema from '../content/schemas/joinFaq.js'
 import siteContactSchema from '../content/schemas/siteContact.js'
 import { publicEmail } from '../data/emailConfig.js'
 import { resolveDoc } from '../content/schema.js'
+import { termVars } from '../lib/anniversary.js'
 import { markdownToText } from '../lib/markdown.js'
 import {
   ARCHIVE_DESCRIPTION,
@@ -241,9 +242,10 @@ function eventJsonLd(ev, path) {
 // domain-email switch decides which address the JSON-LD gives.
 // `events` are the published events (src/lib/events.js shape): one page each,
 // upcoming or past by the build's clock.
-export function publicPages(albums = [], issues = [], content = {}, settings = {}, events = []) {
-  const joinFaqs = resolveDoc(joinFaqSchema, content[joinFaqSchema.key]).items
-  const contact = resolveDoc(siteContactSchema, content[siteContactSchema.key])
+export function publicPages(albums = [], issues = [], content = {}, settings = {}, events = [], term = null) {
+  const vars = termVars(term)
+  const joinFaqs = resolveDoc(joinFaqSchema, content[joinFaqSchema.key], vars).items
+  const contact = resolveDoc(siteContactSchema, content[siteContactSchema.key], vars)
   const email = publicEmail(society.contact, settings.domainEmailsLive === true)
   const latest = issues.find((i) => !i.missing && (i.pages?.count || i.canva)) || null
   const latestCover = latest && latest.pages?.count

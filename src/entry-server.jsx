@@ -15,6 +15,7 @@ import { setBakedContent } from './lib/content.js'
 import { setBakedMerch } from './lib/merch.js'
 import { setBakedSettings } from './hooks/useSiteSettings.js'
 import { setBakedEvents } from './lib/events.js'
+import { setBakedTerm } from './hooks/useCurrentTerm.js'
 
 // `albums`, `issues`, `stories` and `people` are the live gallery, magazine
 // shelf, published exchange stories and position holders the prerender fetched
@@ -24,8 +25,10 @@ import { setBakedEvents } from './lib/events.js'
 // published documents of the portal's content editor (src/lib/content.js), and
 // `merch` the shop's catalogue (src/lib/merch.js), and `settings` the site
 // settings (src/hooks/useSiteSettings.js), and `events` the published events
-// (src/lib/events.js).
-export function render(url, albums, issues, stories = [], people = [], content = {}, merch = [], settings = {}, events = []) {
+// (src/lib/events.js), and `term` the current term, which the copy counts the
+// society's years from (src/hooks/useCurrentTerm.js).
+export function render(url, albums, issues, stories = [], people = [], content = {}, merch = [], settings = {}, events = [], term = null) {
+  setBakedTerm(term)
   setBakedGallery(albums)
   setBakedMagazine(issues)
   setBakedStories(stories)

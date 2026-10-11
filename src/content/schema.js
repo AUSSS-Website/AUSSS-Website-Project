@@ -28,6 +28,7 @@
 //
 // Pure: no React, no network, so the pre-render and the tests use it as is.
 import { safeHref } from '../lib/markdown.js'
+import { fillText } from '../lib/anniversary.js'
 
 const LIST_MAX = 50
 const TEXT_MAX = { text: 200, url: 500, image: 500, textarea: 2000, markdown: 4000 }
@@ -140,10 +141,30 @@ export function sameDoc(schema, a, b) {
   return JSON.stringify(normalizeDoc(schema, a)) === JSON.stringify(normalizeDoc(schema, b))
 }
 
+function fillFields(fields, doc, vars) {
+  const out = {}
+  for (const field of fields) {
+    const v = doc[field.name]
+    if (field.type === 'list') out[field.name] = v.map((row) => fillFields(field.fields, row, vars))
+    else if (field.type === 'text' || field.type === 'textarea' || field.type === 'markdown') out[field.name] = fillText(v, vars)
+    else out[field.name] = v
+  }
+  return out
+}
+
+// A normalised document with the placeholders of src/lib/anniversary.js filled
+// in ({years}, {anniversary}) in every field that holds words. Addresses,
+// pictures and switches are left alone. The editor keeps the document as
+// typed; pages and the editor's preview show it filled.
+export function fillDoc(schema, doc, vars) {
+  return vars ? fillFields(schema.fields, doc, vars) : doc
+}
+
 // What a page should show: the published document, or the copy that ships in
-// the code when nothing is published or the published one is unusable.
-export function resolveDoc(schema, published) {
-  if (!published || typeof published !== 'object' || Array.isArray(published)) return defaultDoc(schema)
+// the code when nothing is published or the published one is unusable. Pass
+// `vars` (termVars) to have the placeholders filled in.
+export function resolveDoc(schema, published, vars) {
+  if (!published || typeof published !== 'object' || Array.isArray(published)) return fillDoc(schema, defaultDoc(schema), vars)
   const doc = normalizeDoc(schema, published)
-  return Object.keys(validateDoc(schema, doc)).length === 0 ? doc : defaultDoc(schema)
+  return fillDoc(schema, Object.keys(validateDoc(schema, doc)).length === 0 ? doc : defaultDoc(schema), vars)
 }

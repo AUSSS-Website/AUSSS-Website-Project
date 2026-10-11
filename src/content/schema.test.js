@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultDoc, emptyRow, normalizeDoc, resolveDoc, sameDoc, validateDoc } from './schema.js'
+import { defaultDoc, emptyRow, fillDoc, normalizeDoc, resolveDoc, sameDoc, validateDoc } from './schema.js'
 import { contentSchemas } from './index.js'
 
 const schema = {
@@ -129,6 +129,40 @@ describe('defaultDoc, emptyRow, sameDoc, resolveDoc', () => {
     expect(resolveDoc(schema, [1]).title).toBe('Shipped')
     // published but broken (no title, no items): never render it
     expect(resolveDoc(schema, { title: '', items: [] }).title).toBe('Shipped')
+  })
+})
+
+describe('fillDoc and the placeholders', () => {
+  const vars = { years: '56', anniversary: '56th' }
+  const typed = normalizeDoc(schema, {
+    title: 'Our {anniversary}',
+    intro: 'For **{years} years**.',
+    link: 'https://example.org/{years}',
+    photo: '/assets/{years}.jpg',
+    items: [{ q: '{years} years?', a: 'Yes, the {anniversary}.' }],
+  })
+
+  it('fills the fields that hold words, in lists too, and leaves the document it was given alone', () => {
+    const shown = fillDoc(schema, typed, vars)
+    expect(shown.title).toBe('Our 56th')
+    expect(shown.intro).toBe('For **56 years**.')
+    expect(shown.items).toEqual([{ q: '56 years?', a: 'Yes, the 56th.' }])
+    expect(typed.title).toBe('Our {anniversary}')
+    expect(typed.items[0].q).toBe('{years} years?')
+  })
+
+  it('never touches an address or a picture', () => {
+    const shown = fillDoc(schema, typed, vars)
+    expect(shown.link).toBe('https://example.org/{years}')
+    expect(shown.photo).toBe('/assets/{years}.jpg')
+    expect(shown.shown).toBe(true)
+  })
+
+  it('is what resolveDoc returns when it is given the term, for published and shipped copy alike', () => {
+    expect(resolveDoc(schema, typed, vars).title).toBe('Our 56th')
+    expect(resolveDoc(schema, typed).title).toBe('Our {anniversary}')
+    const shipped = { ...schema, defaults: { title: '{years} years', items: [{ q: 'q' }] } }
+    expect(resolveDoc(shipped, null, vars).title).toBe('56 years')
   })
 })
 
