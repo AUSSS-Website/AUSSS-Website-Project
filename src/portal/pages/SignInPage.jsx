@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import Button from '../../components/ui/Button.jsx'
 import { useAuth } from '../../auth/AuthProvider.jsx'
+import { errorText } from '../../lib/errorText.js'
+import { pressCls } from '../../lib/motion.js'
 import { safeNext } from '../constants.js'
 import {
   AuthCard,
@@ -16,6 +18,9 @@ import {
 // /portal/sign-in. Google is the primary path (works the moment the OAuth
 // client exists); the magic link needs custom SMTP before members can use
 // it, so it sits second. Both land on /portal/callback.
+//
+// An error is shown under the way of signing in that it belongs to, and only
+// the email field is marked invalid by an error about the email.
 
 // Google's "G" in its four standard colours, as the sign-in branding
 // guidelines require (developers.google.com/identity/branding-guidelines):
@@ -53,7 +58,26 @@ export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState('') // '' | 'google' | 'email'
   const [sent, setSent] = useState(false)
-  const [error, setError] = useState(params.get('error') || '')
+  // What went wrong, and which way of signing in it belongs to ('google' or
+  // 'email'). An address that arrives with ?error= says only that a sign-in
+  // went wrong: its own words are never shown, since anyone can write an
+  // address and they would be read as ours.
+  const [error, setError] = useState(() =>
+    params.get('error') ? { from: 'google', text: 'The sign-in did not finish. Try again.' } : null,
+  )
+  const emailRef = useRef(null)
+  // True from "Use a different email" until the form is back on the page.
+  const backToForm = useRef(false)
+
+  // Back on the form, the keyboard goes to the address that is to be changed,
+  // selected so that typing replaces it. The button that was pressed is gone,
+  // and the focus would otherwise fall to the top of the page.
+  useEffect(() => {
+    if (sent || !backToForm.current) return
+    backToForm.current = false
+    emailRef.current?.focus()
+    emailRef.current?.select()
+  }, [sent])
 
   if (loading) {
     return (
@@ -66,12 +90,12 @@ export default function SignInPage() {
 
   const google = async () => {
     setBusy('google')
-    setError('')
+    setError(null)
     try {
       await signInWithGoogle(next)
       // The browser is now leaving for Google; nothing else to do.
     } catch (e) {
-      setError(e?.message || 'Google sign-in failed. Try again.')
+      setError({ from: 'google', text: errorText(e, 'Google sign-in failed. Try again.') })
       setBusy('')
     }
   }
@@ -81,16 +105,19 @@ export default function SignInPage() {
     const addr = email.trim()
     if (!addr) return
     setBusy('email')
-    setError('')
+    setError(null)
     try {
       await signInWithMagicLink(addr, next)
       setSent(true)
     } catch (err) {
-      setError(err?.message || 'Could not send the link. Try again in a minute.')
+      setError({ from: 'email', text: errorText(err, 'Could not send the link. Try again in a minute.') })
     } finally {
       setBusy('')
     }
   }
+
+  const googleError = error?.from === 'google' ? error.text : ''
+  const emailError = error?.from === 'email' ? error.text : ''
 
   return (
     <AuthCard
@@ -98,36 +125,55 @@ export default function SignInPage() {
       title="Sign in to the portal"
       subtitle="Your membership, positions and details, in one place."
     >
-      {sent ? (
-        <div className="mt-6 rounded-xl border border-line/10 bg-veil/[0.03] p-4 text-center">
-          <p className="text-sm font-semibold text-ink">Check your inbox</p>
-          <p className="mt-1 text-sm text-soft/70">
-            We sent a sign-in link to <span className="text-ink">{email.trim()}</span>.
-            It works on any device and expires in an hour.
-          </p>
+      {/* The status line is on the page before the link is sent, so a screen
+          reader says "Check your inbox" when the words appear inside it. Until
+          then it and the box round it are empty and take up no room. */}
+      <div className={sent ? 'mt-6 rounded-xl border border-line/10 bg-veil/[0.03] p-4 text-center' : undefined}>
+        <div role="status">
+          {sent && (
+            <>
+              <p className="text-sm font-semibold text-ink">Check your inbox</p>
+              <p className="mt-1 text-sm text-soft/70">
+                We sent a sign-in link to <span className="text-ink">{email.trim()}</span>.
+                It works on any device and expires in an hour.
+              </p>
+            </>
+          )}
+        </div>
+        {/* One small line to the eye, with a finger's 44px of height round
+            it; the margins take back what that adds. */}
+        {sent && (
           <button
             type="button"
             onClick={() => {
+              backToForm.current = true
               setSent(false)
-              setError('')
+              setError(null)
             }}
-            className="mt-3 text-xs font-semibold text-accent hover:text-ink"
+            className={`-mb-3.5 -mt-0.5 inline-flex min-h-[44px] items-center px-2 text-xs font-semibold text-accent ${pressCls} hover:text-ink`}
           >
             Use a different email
           </button>
-        </div>
-      ) : (
+        )}
+      </div>
+      {!sent && (
         <>
           <Button
             type="button"
             variant="primary"
-            className="mt-6 w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light"
+            className="mt-6 min-h-[44px] w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light"
             onClick={google}
             disabled={Boolean(busy)}
+            aria-describedby={googleError ? 'portal-google-error' : undefined}
           >
             <GoogleMark />
             {busy === 'google' ? 'Redirecting…' : 'Continue with Google'}
           </Button>
+          {googleError && (
+            <div className="mt-3 text-center">
+              <ErrorText id="portal-google-error">{googleError}</ErrorText>
+            </div>
+          )}
 
           <div className="my-5 flex items-center gap-3 text-2xs font-semibold uppercase tracking-[0.2em] text-soft/40">
             <span className="h-px flex-1 bg-veil/10" />
@@ -140,21 +186,22 @@ export default function SignInPage() {
               Email
             </label>
             <input
+              ref={emailRef}
               id="portal-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
               autoComplete="email"
-              aria-invalid={!!error}
-              aria-describedby={error ? 'portal-signin-error' : undefined}
+              aria-invalid={Boolean(emailError)}
+              aria-describedby={emailError ? 'portal-signin-error' : undefined}
               className={authInputCls}
             />
-            <ErrorText id="portal-signin-error">{error}</ErrorText>
+            <ErrorText id="portal-signin-error">{emailError}</ErrorText>
             <button
               type="submit"
               disabled={Boolean(busy) || !email.trim()}
-              className="w-full rounded-full bg-cta px-4 py-3 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover disabled:opacity-40"
+              className={`min-h-[44px] w-full rounded-full bg-cta px-4 py-3 text-sm font-semibold text-on-cta ${pressCls} hover:bg-cta-hover disabled:opacity-40`}
             >
               {busy === 'email' ? 'Sending…' : 'Email me a sign-in link'}
             </button>

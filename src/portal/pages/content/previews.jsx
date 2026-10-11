@@ -31,7 +31,7 @@ export const previews = {
   // the block, so they are left out here. Half-typed rows are skipped.
   'exchange.incomings': ({ doc }) => (
     <div className="space-y-16">
-      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-light leading-relaxed text-soft/75">
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
         {doc.intro}
       </p>
       <IncomingsFacts facts={doc.facts.filter((f) => f.figure)} />
@@ -53,7 +53,7 @@ export const previews = {
   // part of the block.
   'exchange.outgoings': ({ doc }) => (
     <div className="space-y-16">
-      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-light leading-relaxed text-soft/75">
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
         {doc.intro}
       </p>
       <IncomingsFacts facts={doc.facts.filter((f) => f.figure)} />

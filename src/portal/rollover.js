@@ -1,6 +1,8 @@
 // Pure helpers for the term rollover page (src/portal/pages/admin/RolloverPage.jsx).
 // The database checks all of this again in rpc/roll_over_term; these only let the
-// page say what is wrong before anyone presses the button.
+// page say what is wrong before anyone presses the button. The one thing here
+// the database does not ask for is the name typed a second time (startBlocker):
+// that is the page's own guard against a slip.
 
 export const STORAGE_LIMIT_BYTES = 1024 ** 3 // the free plan's 1 GB
 export const STORAGE_WARN_BYTES = 600 * 1024 ** 2
@@ -30,6 +32,23 @@ export function workAccountState(row) {
 // refuses a rollover that leaves the society without a board.
 export function boardKept(accounts) {
   return accounts.some((row) => (row.level === 'eb' || row.level === 'webmaster') && workAccountState(row) === 'keeps')
+}
+
+// Why the Start button is off, as a sentence for the page, or '' when it can
+// be pressed. `problem` is termProblem's answer and `board` is boardKept's.
+// `typed` is what the box above the button holds: the switch cannot be undone,
+// so the new term's name has to be typed there, exactly, before the button
+// works. Spaces around either are not counted. While the typing is still on
+// its way to the name it is only asked for; once it has gone another way the
+// page says so.
+export function startBlocker({ problem, board, label, typed }) {
+  if (problem) return `Part 1 is not ready. ${problem}`
+  if (!board) return 'Nobody on the board would keep their access, so the new term cannot start. See part 2.'
+  const name = (label || '').trim()
+  const got = (typed || '').trim()
+  if (got === name) return ''
+  if (name.startsWith(got)) return `Type ${name} in the box to use the button.`
+  return `That is not ${name}. Type the name exactly as part 1 has it.`
 }
 
 // What the switch deletes of one exam: '396 registered IDs and 388 papers'.

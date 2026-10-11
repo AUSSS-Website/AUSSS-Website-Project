@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { testimonials } from '../data/society.js'
 import { useExchangeStories } from '../lib/exchangeStories.js'
+import { pressCls } from '../lib/motion.js'
 
 // Exchange stories from students who've been through it. Direction-agnostic,
 // someone who went abroad and someone who hosted both have one, so this sits
@@ -43,7 +44,7 @@ export default function ExchangeStories({ audience = 'outgoing' }) {
           </p>
           <Link
             to="/exchange/share"
-            className="mt-5 inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+            className={`mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
           >
             {incoming ? 'Share your story' : 'Share your experience'}
           </Link>
@@ -111,7 +112,7 @@ export default function ExchangeStories({ audience = 'outgoing' }) {
           <div className="mt-10 text-center">
             <Link
               to="/exchange/share"
-              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
             >
               {incoming ? 'Were you one of our incomings? Share your story' : 'Share your exchange story'}
             </Link>

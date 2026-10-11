@@ -145,6 +145,21 @@ export function useProfile(uid) {
   })
 }
 
+// The same row for a page that only watches it: it never starts the read by
+// itself, so mounting it changes nothing, and it sees a save the moment the
+// cache has it. The sign-in check (AuthProvider) does the reading through
+// useProfile above. A second useProfile on a page would ask again each time
+// the page mounts, and while the read is failing that never ends: the check
+// takes the page down to ask, then puts it back, and it asks again.
+// `refetch()` on what this returns asks once, when the reader says so.
+export function useLoadedProfile(uid) {
+  return useQuery({
+    queryKey: keys.profile(uid),
+    queryFn: () => fetchProfile(uid),
+    enabled: false,
+  })
+}
+
 export function useAssignments(uid) {
   return useQuery({
     queryKey: keys.assignments(uid),
@@ -198,16 +213,26 @@ export function useProfilePhoto(uid) {
   }
 }
 
+// The refusal ("Members only.", 42501) is final: asking again a second later
+// gets the same answer, so it is shown at once. Any other failure keeps the
+// one retry every portal query has.
 export function useDirectory() {
-  return useQuery({ queryKey: ['directory'], queryFn: fetchDirectory })
+  return useQuery({
+    queryKey: ['directory'],
+    queryFn: fetchDirectory,
+    retry: (failures, error) => error?.code !== '42501' && failures < 1,
+  })
 }
 
 export function useRequestVerification(uid) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (message) => requestVerification(uid, message),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.myVerification(uid) })
+    onSuccess: (row) => {
+      // The row that came back is this person's latest request, so the page
+      // shows it as pending at once. Waiting for a refetch left the form up,
+      // with its button live, long enough to send a second request.
+      qc.setQueryData(keys.myVerification(uid), row)
       qc.invalidateQueries({ queryKey: keys.pendingVerification() })
     },
   })

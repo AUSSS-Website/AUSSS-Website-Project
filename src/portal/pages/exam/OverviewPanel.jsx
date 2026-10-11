@@ -13,12 +13,14 @@ import {
   optionShares,
   percent,
   questionColumns,
+  readProblem,
   resultSummary,
   shareRight,
   tally,
 } from '../../examStats.js'
 import { ErrorText, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import { Figure } from './AttemptSheet.jsx'
+import { RefreshButton, tapCls } from './ExamsPage.jsx'
 
 // The Overview tab of an exam (/portal/exam/:id?tab=overview). From the
 // ranking (rpc/exam_results): how many started, handed in and are still
@@ -140,17 +142,13 @@ export default function OverviewPanel({ exam }) {
                 ? ' It refreshes every 30 seconds while students can still start.'
                 : ''}
           </p>
-          <button
-            type="button"
+          <RefreshButton
+            busy={busy}
             onClick={() => {
               results.refetch()
               stats.refetch()
             }}
-            disabled={busy}
-            className={outlineBtnCls}
-          >
-            {busy ? 'Refreshing…' : 'Refresh'}
-          </button>
+          />
         </div>
 
         {results.isPending ? (
@@ -159,13 +157,13 @@ export default function OverviewPanel({ exam }) {
           </div>
         ) : !results.data ? (
           <div className="mt-4">
-            <ErrorText>Couldn’t load the results: {results.error?.message || 'the database sent nothing back.'}</ErrorText>
+            <ErrorText>{readProblem('load the results', results.error)}</ErrorText>
           </div>
         ) : (
           <>
             {results.error && (
               <div className="mt-3">
-                <ErrorText>Couldn’t refresh the results: {results.error.message}</ErrorText>
+                <ErrorText>{readProblem('refresh the results', results.error)}</ErrorText>
               </div>
             )}
             {/* The figures move by themselves during a sitting: a screen reader
@@ -225,6 +223,7 @@ export default function OverviewPanel({ exam }) {
             rows={papers > 0 ? hardest : []}
             summary={results.data ? resultSummary(attempts, total) : []}
             landscape
+            className={`${outlineBtnCls} ${tapCls}`}
           />
         </div>
 
@@ -234,15 +233,13 @@ export default function OverviewPanel({ exam }) {
           </div>
         ) : !stats.data ? (
           <div className="mt-4">
-            <ErrorText>
-              Couldn’t load the question figures: {stats.error?.message || 'the database sent nothing back.'}
-            </ErrorText>
+            <ErrorText>{readProblem('load the question figures', stats.error)}</ErrorText>
           </div>
         ) : (
           <>
             {stats.error && (
               <div className="mt-3">
-                <ErrorText>Couldn’t refresh the question figures: {stats.error.message}</ErrorText>
+                <ErrorText>{readProblem('refresh the question figures', stats.error)}</ErrorText>
               </div>
             )}
             {hardest.length === 0 ? (
@@ -264,7 +261,7 @@ export default function OverviewPanel({ exam }) {
                       type="button"
                       aria-expanded={showAll}
                       onClick={() => setShowAll((v) => !v)}
-                      className={outlineBtnCls}
+                      className={`${outlineBtnCls} ${tapCls}`}
                     >
                       {showAll ? `Show the ${SHOWN} hardest only` : `Show all ${hardest.length} questions`}
                     </button>

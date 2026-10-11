@@ -18,7 +18,12 @@ const IMAGE_QUALITY = 0.85
 export const eventKeys = {
   all: () => ['events'],
   list: (scope) => ['events', 'list', scope],
+  one: (id) => ['events', 'one', id],
 }
+
+// Every flip of an event's Published switch, for telling whether one is still
+// on its way to the database.
+const PUBLISH_KEY = ['event-publish']
 
 function unwrap({ data, error }) {
   if (error) throw error
@@ -51,7 +56,7 @@ async function fetchEvent(id) {
 
 export function useEvent(id) {
   return useQuery({
-    queryKey: ['events', 'one', id],
+    queryKey: eventKeys.one(id),
     queryFn: () => fetchEvent(id),
     enabled: Boolean(id),
   })
@@ -83,11 +88,52 @@ async function deleteEvent(ev) {
 
 export function useEventMutations() {
   const qc = useQueryClient()
-  const done = () => qc.invalidateQueries({ queryKey: eventKeys.all() })
+  const readAgain = () => qc.invalidateQueries({ queryKey: eventKeys.all() })
+  const flipping = () => qc.isMutating({ mutationKey: PUBLISH_KEY })
+  // Everything is read again after a write, unless a flip of Published is
+  // still on its way: an answer read now would put the switch back where the
+  // database still has it. The flip reads everything again when it ends.
+  const done = () => (flipping() > 0 ? undefined : readAgain())
   const create = useMutation({ mutationFn: createEvent, onSuccess: done })
-  const update = useMutation({ mutationFn: ({ id, patch }) => updateEvent(id, patch), onSuccess: done })
+  const update = useMutation({
+    mutationFn: ({ id, patch }) => updateEvent(id, patch),
+    onSuccess: (row) => {
+      // The event's own page shows what was stored at once, before it is read
+      // again. A flip still on its way keeps the switch where it was put.
+      qc.setQueryData(eventKeys.one(row.id), (shown) =>
+        shown && flipping() > 0 ? { ...row, published: shown.published } : row,
+      )
+      return done()
+    },
+  })
   const remove = useMutation({ mutationFn: deleteEvent, onSuccess: done })
-  return { create, update, remove }
+  // Takes { id, published }: the Published switch on the event's page. The
+  // switch moves the moment it is flipped: the cached event takes the new
+  // value first, and gets the old one back if the save fails. Flips made in a
+  // row are saved one after the other (the scope), so the last of them is the
+  // one that stands, and everything is read again only after that one, so the
+  // screen ends on what the database holds. When the first of two fails, the
+  // switch is not put back: the second was made on top of it.
+  const publish = useMutation({
+    mutationKey: PUBLISH_KEY,
+    scope: { id: PUBLISH_KEY.join(':') },
+    mutationFn: ({ id, published }) => updateEvent(id, { published }),
+    onMutate: async ({ id, published }) => {
+      await qc.cancelQueries({ queryKey: eventKeys.one(id) })
+      const before = qc.getQueryData(eventKeys.one(id))
+      if (before) qc.setQueryData(eventKeys.one(id), { ...before, published })
+      return { was: before?.published }
+    },
+    onError: (_err, { id }, context) => {
+      // This flip still counts as one in progress here, so 1 means no later
+      // flip is waiting behind it.
+      if (typeof context?.was === 'boolean' && flipping() === 1) {
+        qc.setQueryData(eventKeys.one(id), (shown) => (shown ? { ...shown, published: context.was } : shown))
+      }
+    },
+    onSettled: () => (flipping() > 1 ? undefined : readAgain()),
+  })
+  return { create, update, remove, publish }
 }
 
 // ---- pictures --------------------------------------------------------------
@@ -120,7 +166,16 @@ function randomName() {
 // Shrinks the file, uploads it under the event's folder and answers with its
 // public address.
 export async function uploadEventImage(eventId, file) {
-  const blob = await resizeImage(file, IMAGE_PX, IMAGE_QUALITY)
+  let blob
+  try {
+    blob = await resizeImage(file, IMAGE_PX, IMAGE_QUALITY)
+  } catch {
+    // The browser could not open the file as a picture. This sentence is the
+    // site's own, so it is marked as one to show as written (errorText.js).
+    const refusal = new Error('That file could not be read as a picture. Choose a JPEG, a PNG or a WebP file.')
+    refusal.rejected = true
+    throw refusal
+  }
   const path = `${eventId}/${randomName()}.jpg`
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
     contentType: 'image/jpeg',

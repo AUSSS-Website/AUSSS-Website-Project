@@ -1,29 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import { errorText } from '../../../lib/errorText.js'
 import {
   removeProductImage,
   uploadProductImage,
+  useInstantSave,
   useProductMutations,
   useProducts,
 } from '../../merchQueries.js'
 import {
+  CheckField,
+  ConfirmButton,
   ErrorText,
   Field,
   PageHeader,
   PageLoading,
   Panel,
+  SaveStatus,
   Toggle,
+  UndoLine,
   inputCls,
   outlineBtnCls,
+  panelTitleCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
-import { ConfirmButton } from '../gallery/galleryUi.jsx'
 import { MerchGate } from './MerchPage.jsx'
 import { splitList } from '../../merchForm.js'
 
 // /portal/merch/:id. One product: its card text, price, sizes and designs, its
 // picture and size chart, whether it is on sale, and removing it.
+
+// On a touch screen a button is at least a thumb tall; with a mouse it keeps
+// the portal's small pill.
+const tapCls = '[@media(pointer:coarse)]:min-h-[44px]'
+
+// A held Enter presses a button again and again. On "Undo changes" and "Put
+// them back" that would undo, put back, undo: only a fresh press counts.
+const freshPressOnly = (e) => {
+  if (e.key === 'Enter' && e.repeat) e.preventDefault()
+}
 
 function formFrom(p) {
   return {
@@ -50,13 +67,27 @@ function patchFrom(form) {
   }
 }
 
-function DetailsForm({ product }) {
+function DetailsForm({ product: given, onDirty }) {
   const { update } = useProductMutations()
+  // The form reads the product for itself, so the render that follows its own
+  // save already holds the saved row. Handed down from the page, the row
+  // arrives a moment later and the form would look unsaved for a frame.
+  const product = useProducts().data?.find((p) => p.id === given.id) ?? given
   const [form, setForm] = useState(() => formFrom(product))
   const [saved, setSaved] = useState(false)
-  const set = (key) => (e) => {
+  // What "Undo changes" last threw away, for the line that offers it back.
+  const [undone, setUndone] = useState(null)
+  // Every edit: the form is no longer the saved one, there is nothing left to
+  // put back, and an error from the last save was about what the form held then.
+  const edited = () => {
     setSaved(false)
-    setForm((f) => ({ ...f, [key]: e.target.value }))
+    setUndone(null)
+    if (update.isError) update.reset()
+  }
+  const set = (key) => (e) => {
+    const { value } = e.target
+    edited()
+    setForm((f) => ({ ...f, [key]: value }))
   }
 
   // Follow the row when it changes elsewhere (another editor saved), unless
@@ -69,19 +100,73 @@ function DetailsForm({ product }) {
     if (base !== lastBase.current && current === lastBase.current) setForm(formFrom(product))
     lastBase.current = base
   }, [base, current, product])
+  useLeaveWarning(dirty)
+  // The page's way back asks first while there is typing here to lose.
+  useEffect(() => {
+    onDirty(dirty)
+  }, [dirty, onDirty])
 
   const designs = splitList(form.designs)
   const toggleWide = (d) => {
-    setSaved(false)
+    edited()
     setForm((f) => ({
       ...f,
       wideDesigns: f.wideDesigns.includes(d) ? f.wideDesigns.filter((x) => x !== d) : [...f.wideDesigns, d],
     }))
   }
 
+  // "Undo changes" and "Put them back" each go when pressed, and the other
+  // comes in its place. When the keyboard was on the one that went, it moves
+  // to the one that came: left alone it would be on nothing, and the next Tab
+  // would start from the top of the page.
+  const undoButton = useRef(null)
+  const undoLine = useRef(null)
+  const focusNext = useRef(null) // 'offer' or 'undo', until the focus has moved
+  useEffect(() => {
+    const next = focusNext.current
+    focusNext.current = null
+    if (next === 'offer') undoLine.current?.querySelector('button')?.focus()
+    if (next === 'undo') undoButton.current?.focus()
+  }, [undone])
+
+  const undoChanges = (e) => {
+    if (document.activeElement === e.currentTarget) focusNext.current = 'offer'
+    if (update.isError) update.reset()
+    setUndone(form)
+    setForm(formFrom(product))
+  }
+  const putBack = (e) => {
+    if (document.activeElement === e.currentTarget) focusNext.current = 'undo'
+    setSaved(false)
+    setForm(undone)
+    setUndone(null)
+  }
+
+  // A name of spaces alone gets past the browser's own check of the field, so
+  // it is caught here: said under the field once Save was pressed with it, and
+  // until a name is typed.
+  const [nameAsked, setNameAsked] = useState(false)
+  const nameMissing = nameAsked && !form.name.trim()
+
   const submit = async (e) => {
     e.preventDefault()
-    await update.mutateAsync({ id: product.id, patch: patchFrom(form) })
+    if (!form.name.trim()) {
+      setNameAsked(true)
+      document.getElementById('p-name')?.focus()
+      return
+    }
+    const sent = form
+    let row
+    try {
+      row = await update.mutateAsync({ id: product.id, patch: patchFrom(sent) })
+    } catch {
+      // update.error says why, under the buttons.
+      return
+    }
+    // The form takes the row as it was stored (trimmed, the lists tidied), so
+    // a space typed after a name does not leave it looking unsaved. Anything
+    // typed while the save was on its way is kept, and still to be saved.
+    setForm((f) => (f === sent ? formFrom(row) : f))
     setSaved(true)
   }
 
@@ -89,7 +174,21 @@ function DetailsForm({ product }) {
     <Panel title="On its card">
       <form onSubmit={submit} className="mt-4 grid gap-5 sm:grid-cols-2">
         <Field label="Name" htmlFor="p-name">
-          <input id="p-name" className={inputCls} value={form.name} onChange={set('name')} maxLength={140} required />
+          <input
+            id="p-name"
+            className={inputCls}
+            value={form.name}
+            onChange={set('name')}
+            maxLength={140}
+            required
+            aria-invalid={nameMissing ? true : undefined}
+            aria-describedby={nameMissing ? 'p-name-problem' : undefined}
+          />
+          {nameMissing && (
+            <p id="p-name-problem" className="mt-1 text-xs text-danger">
+              Give it a name.
+            </p>
+          )}
         </Field>
         <Field label="Price (EGP)" htmlFor="p-price" hint="What the next buyer pays. Orders already placed keep their price.">
           <input
@@ -136,34 +235,47 @@ function DetailsForm({ product }) {
         </Field>
         {designs.length > 0 && (
           <div className="sm:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Wide designs</p>
-            <p className="mb-3 mt-1 text-xs text-soft/50">
-              Designs with a long name take a whole row in the picker.
-            </p>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <p className={panelTitleCls}>Wide designs</p>
+            <p className="mt-1 text-xs text-soft/50">Designs with a long name take a whole row in the picker.</p>
+            {/* Tick boxes, as these wait for Save like the rest of the form. */}
+            <div className="flex flex-wrap gap-x-6">
               {designs.map((d) => (
-                <label key={d} className="inline-flex items-center gap-2 text-sm text-ink">
-                  <input type="checkbox" checked={form.wideDesigns.includes(d)} onChange={() => toggleWide(d)} />
-                  {d}
-                </label>
+                <CheckField key={d} checked={form.wideDesigns.includes(d)} onChange={() => toggleWide(d)} label={d} />
               ))}
             </div>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-          <button type="submit" className={primaryBtnCls} disabled={update.isPending || !dirty || !form.name.trim()}>
+          {/* Off only while there is nothing to save. With the name emptied it
+              stays on, and pressing it goes to the name, which says why. */}
+          <button type="submit" className={`${primaryBtnCls} ${tapCls}`} disabled={update.isPending || !dirty}>
             {update.isPending ? 'Saving…' : 'Save'}
           </button>
           {dirty && (
-            <button type="button" className={outlineBtnCls} onClick={() => setForm(formFrom(product))}>
+            <button
+              type="button"
+              ref={undoButton}
+              className={`${outlineBtnCls} ${tapCls}`}
+              disabled={update.isPending}
+              onClick={undoChanges}
+              onKeyDown={freshPressOnly}
+            >
               Undo changes
             </button>
           )}
-          {saved && !dirty && <span className="text-xs text-ok">Saved. The shop shows it now.</span>}
+          <SaveStatus dirty={dirty && !update.isPending} saved={saved} savedText="Saved. The shop shows it now." />
+        </div>
+        {/* Always in the page, and empty until changes are undone, so a screen
+            reader says the line when it comes. The wrapper is no box of its
+            own: it is there to find the line's button by. */}
+        <div ref={undoLine} className="contents" onKeyDown={freshPressOnly}>
+          <UndoLine className="py-1 sm:col-span-2" undoLabel="Put them back" onUndo={putBack}>
+            {undone ? 'Changes undone.' : null}
+          </UndoLine>
         </div>
         {update.error && (
           <div className="sm:col-span-2">
-            <ErrorText>{update.error.message}</ErrorText>
+            <ErrorText>{errorText(update.error, 'We couldn’t save the product.')}</ErrorText>
           </div>
         )}
       </form>
@@ -172,18 +284,36 @@ function DetailsForm({ product }) {
 }
 
 // One picture of the product (its photo, or its size chart): shows it, and
-// replaces or removes it.
+// replaces or removes it. Replacing is one act, the choice of a new file.
+// Removing deletes the stored file, so it asks first.
 function PictureSlot({ product, column, label, hint, removable }) {
   const { update } = useProductMutations()
   const inputRef = useRef(null)
-  const [busy, setBusy] = useState(false)
+  const chooseRef = useRef(null)
+  const actionsRef = useRef(null)
+  // What is being done to the picture: '', 'upload' or 'remove'.
+  const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  // What was last done, for a screen reader: the picture changing says it to the eye.
+  const [said, setSaid] = useState('')
   const current = product[column]
+  // Leaving part-way would cut the upload off, or leave a file no product points at.
+  useLeaveWarning(busy)
+
+  // Remove goes with the picture. When the keyboard was on it, it moves to
+  // the button that is left, once that button can take it again.
+  const focusChoose = useRef(false)
+  useEffect(() => {
+    if (busy || !focusChoose.current) return
+    focusChoose.current = false
+    chooseRef.current?.focus()
+  }, [busy])
 
   const replace = async (file) => {
     if (!file) return
-    setBusy(true)
+    setBusy('upload')
     setError('')
+    setSaid('')
     try {
       const url = await uploadProductImage(product.id, file)
       try {
@@ -193,29 +323,34 @@ function PictureSlot({ product, column, label, hint, removable }) {
         throw err
       }
       await removeProductImage(current).catch(() => {})
+      setSaid(`${label} uploaded.`)
     } catch (err) {
-      setError(err.message || 'The picture could not be uploaded.')
+      setError(errorText(err, 'The picture could not be uploaded.'))
     } finally {
-      setBusy(false)
+      setBusy('')
       if (inputRef.current) inputRef.current.value = ''
     }
   }
 
   const clear = async () => {
-    setBusy(true)
+    const hadFocus = Boolean(actionsRef.current?.contains(document.activeElement))
+    setBusy('remove')
     setError('')
+    setSaid('')
     try {
       await update.mutateAsync({ id: product.id, patch: { [column]: '' } })
       await removeProductImage(current).catch(() => {})
+      setSaid(`${label} removed.`)
+      focusChoose.current = hadFocus
     } catch (err) {
-      setError(err.message || 'The picture could not be removed.')
+      setError(errorText(err, 'The picture could not be removed.'))
     } finally {
-      setBusy(false)
+      setBusy('')
     }
   }
 
   return (
-    <div className="flex gap-4">
+    <div role="group" aria-labelledby={`pic-${column}-title`} className="flex gap-4">
       <div className="aspect-[5/7] w-28 shrink-0 overflow-hidden rounded-xl bg-sunk">
         {current ? (
           <img src={current} alt="" className="h-full w-full object-contain" />
@@ -226,27 +361,48 @@ function PictureSlot({ product, column, label, hint, removable }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-ink">{label}</p>
+        <p id={`pic-${column}-title`} className="text-sm font-semibold text-ink">
+          {label}
+        </p>
         <p className="mt-1 text-xs text-soft/55">{hint}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div ref={actionsRef} className="mt-3 flex flex-wrap items-center gap-2">
+          {/* The file box itself stays out of sight, out of the tab order and
+              out of a screen reader's way; the button below opens it, so the
+              keyboard lands on something that shows where it is and says what
+              it does. */}
           <input
             ref={inputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
-            id={`pic-${column}`}
+            tabIndex={-1}
+            aria-hidden="true"
             onChange={(e) => replace(e.target.files?.[0])}
-            disabled={busy}
+            disabled={Boolean(busy)}
           />
-          <label htmlFor={`pic-${column}`} className={`${outlineBtnCls} cursor-pointer ${busy ? 'pointer-events-none opacity-40' : ''}`}>
-            {busy ? 'Working…' : current ? 'Replace' : 'Upload'}
-          </label>
+          <button
+            ref={chooseRef}
+            type="button"
+            className={`${outlineBtnCls} ${tapCls}`}
+            disabled={Boolean(busy)}
+            onClick={() => inputRef.current?.click()}
+          >
+            {busy === 'upload' ? 'Uploading…' : current ? 'Replace' : 'Upload'}
+          </button>
           {removable && current && (
-            <button type="button" className={outlineBtnCls} onClick={clear} disabled={busy}>
-              Remove
-            </button>
+            <ConfirmButton
+              className={`${outlineBtnCls} ${tapCls}`}
+              label="Remove"
+              busyLabel="Removing…"
+              busy={busy === 'remove'}
+              disabled={Boolean(busy)}
+              onConfirm={clear}
+            />
           )}
         </div>
+        <p role="status" className="sr-only">
+          {said}
+        </p>
         {error && (
           <div className="mt-2">
             <ErrorText>{error}</ErrorText>
@@ -257,25 +413,71 @@ function PictureSlot({ product, column, label, hint, removable }) {
   )
 }
 
+// One line of small capitals to the eye; its ::after gives a finger 44px of
+// height, in px because the root size shrinks on a 320px phone.
+const backCls =
+  "relative uppercase tracking-[0.22em] transition-colors hover:text-ink after:absolute after:-inset-x-2 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
+
+// The way back to the list. With unsaved typing in the form it asks first, on
+// itself, as every other discard in the portal does: the router changes the
+// screen without the browser's own question, which is only put for a closed
+// tab or a reload (useLeaveWarning).
+function BackToProducts({ ask }) {
+  const navigate = useNavigate()
+  if (!ask) {
+    return (
+      <Link to="/portal/merch" className={backCls}>
+        &larr; All products
+      </Link>
+    )
+  }
+  return (
+    // The red "Discard changes" is read as a sentence, not in the eyebrow's
+    // spaced capitals.
+    <span className="normal-case tracking-normal">
+      <ConfirmButton
+        variant="text"
+        confirmLabel="Discard changes"
+        onConfirm={() => navigate('/portal/merch')}
+        className={backCls}
+      >
+        &larr; All products
+      </ConfirmButton>
+    </span>
+  )
+}
+
 function ProductEditor({ product }) {
   const navigate = useNavigate()
   const { update, remove } = useProductMutations()
+  // Whether the details form holds typing that is not saved (it says so itself).
+  const [unsaved, setUnsaved] = useState(false)
+  const [onSale, setOnSale, sale] = useInstantSave(product.available, (available) =>
+    update.mutateAsync({ id: product.id, patch: { available } }),
+  )
   const deleteProduct = async () => {
-    await remove.mutateAsync(product)
+    try {
+      await remove.mutateAsync(product)
+    } catch {
+      // remove.error says why, under the button.
+      return
+    }
     navigate('/portal/merch', { replace: true })
   }
   return (
     <>
       <PageHeader
         eyebrow={
-          <Link to="/portal/merch" className="hover:text-ink">
-            &larr; All products
-          </Link>
+          // As tall as the red pill the way back turns into, so the heading
+          // under it does not move when it asks.
+          <span className="flex min-h-5 items-center">
+            <BackToProducts ask={unsaved} />
+          </span>
         }
         title={product.name}
-        subtitle={`${product.available ? 'On sale' : 'Hidden'} · ${product.id}`}
+        subtitle={`${onSale ? 'On sale' : 'Hidden'} · ${product.id}`}
         action={
-          <Link to="/merch" target="_blank" rel="noopener noreferrer" className={outlineBtnCls}>
+          <Link to="/merch" target="_blank" rel="noopener noreferrer" className={`${outlineBtnCls} ${tapCls}`}>
             View the shop ↗
           </Link>
         }
@@ -283,29 +485,24 @@ function ProductEditor({ product }) {
 
       <Panel className="mb-8">
         <div className="flex items-start justify-between gap-6">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold text-ink">On sale</p>
             <p className="mt-1 text-xs text-soft/55">
-              {product.available
+              {onSale
                 ? 'Shown in the shop and can be ordered.'
                 : 'Hidden from the shop. Carts that hold it drop it, and an order for it is not taken.'}
             </p>
           </div>
-          <Toggle
-            checked={product.available}
-            onChange={(v) => update.mutate({ id: product.id, patch: { available: v } })}
-            label="On sale"
-            disabled={update.isPending}
-          />
+          <Toggle checked={onSale} onChange={setOnSale} label="On sale" />
         </div>
-        {update.error && (
+        {sale.error && (
           <div className="mt-3">
-            <ErrorText>{update.error.message}</ErrorText>
+            <ErrorText>{errorText(sale.error, 'We couldn’t save that. The switch is back where it was.')}</ErrorText>
           </div>
         )}
       </Panel>
 
-      <DetailsForm product={product} />
+      <DetailsForm product={product} onDirty={setUnsaved} />
 
       <Panel title="Pictures" className="mt-8">
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
@@ -332,13 +529,20 @@ function ProductEditor({ product }) {
         </p>
         <div className="mt-4">
           <ConfirmButton
+            className={`${outlineBtnCls} ${tapCls}`}
+            keepWidth
             label="Remove this product"
             confirmLabel="Remove product and pictures"
+            busyLabel="Removing…"
+            busy={remove.isPending}
             onConfirm={deleteProduct}
-            disabled={remove.isPending}
           />
         </div>
-        {remove.error && <ErrorText>{remove.error.message}</ErrorText>}
+        {remove.error && (
+          <div className="mt-3">
+            <ErrorText>{errorText(remove.error, 'We couldn’t remove the product.')}</ErrorText>
+          </div>
+        )}
       </Panel>
     </>
   )
@@ -354,9 +558,12 @@ export default function ProductEditorPage() {
     <MerchGate>
       {products.isPending ? (
         <PageLoading />
-      ) : products.error ? (
+      ) : !products.data ? (
+        // Only when the products were never read. A later reading that fails
+        // (one follows every save) leaves the page on what it has: the error
+        // in its place would take the form away with whatever was typed in it.
         <Panel>
-          <ErrorText>Couldn’t load the product: {products.error.message}</ErrorText>
+          <ErrorText>{errorText(products.error, 'We couldn’t load the product.')}</ErrorText>
         </Panel>
       ) : !product ? (
         <Panel>
@@ -366,7 +573,8 @@ export default function ProductEditorPage() {
           </Link>
         </Panel>
       ) : (
-        <ProductEditor product={product} />
+        // Keyed by the product, so nothing typed for one is ever shown under another.
+        <ProductEditor key={product.id} product={product} />
       )}
     </MerchGate>
   )

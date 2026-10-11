@@ -65,7 +65,7 @@ export default function CommitteePreview({
             <p className="heading-serif text-base text-soft/80">{c.name}</p>
           )}
           {(tagline || c.officer) && (
-            <p className="mx-auto mt-2 max-w-sm text-sm font-light text-soft/75">
+            <p className="mx-auto mt-2 max-w-sm text-sm font-normal text-soft/75 dark:font-light">
               {tagline || c.officer}
             </p>
           )}

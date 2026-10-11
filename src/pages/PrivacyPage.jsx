@@ -3,6 +3,8 @@ import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { society } from '../data/society.js'
 import { usePublicEmail, useSiteSettings } from '../hooks/useSiteSettings.js'
+import Button from '../components/ui/Button.jsx'
+import { pressCls } from '../lib/motion.js'
 
 // Plain-language privacy policy for ausss-ainshams.org, the members portal and
 // the exchange exam's page.
@@ -180,12 +182,16 @@ export default function PrivacyPage() {
       </header>
 
       <div className="container-prose pb-20 sm:pb-28">
-        <nav aria-label="Sections" className="mb-12 flex flex-wrap gap-2">
+        {/* Each chip stays small to look at and takes a tap on 44px: its
+            ::after reaches a little under half the row gap above and below,
+            so no two chips share a tap. Both are held in px, because the chip
+            and a rem gap shrink with the root size on a 320px phone. */}
+        <nav aria-label="Sections" className="mb-12 flex flex-wrap gap-x-2 gap-y-[max(1rem,16px)]">
           {sections.map((s) => (
             <a
               key={s.id}
               href={`#${s.id}`}
-              className="rounded-full border border-line/15 px-4 py-1.5 text-xs font-semibold text-soft/70 transition-colors hover:border-medical hover:text-ink"
+              className={`relative rounded-full border border-line/15 px-4 py-1.5 text-xs font-semibold text-soft/70 after:absolute after:inset-x-0 after:inset-y-[calc(50%-22px)] after:content-[''] hover:border-medical hover:text-ink ${pressCls}`}
             >
               {s.title}
             </a>
@@ -219,14 +225,16 @@ export default function PrivacyPage() {
                 <p className="mt-4 text-sm leading-relaxed text-soft/60">{s.after}</p>
               )}
               {s.links && (
-                <div className="mt-5 flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-x-3 gap-y-[max(0.75rem,12px)]">
                   {s.links.map((l) => (
                     <a
                       key={l.href}
                       href={l.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-line/20 px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-veil/10"
+                      // 44px tall to a finger at any root size, like the chips
+                      // at the top of the page.
+                      className={`relative inline-flex items-center gap-2 rounded-full border border-line/20 px-4 py-2 text-xs font-semibold text-ink after:absolute after:inset-x-0 after:inset-y-[calc(50%-22px)] after:content-[''] hover:bg-veil/10 ${pressCls}`}
                     >
                       {l.label}
                       <span aria-hidden="true">↗</span>
@@ -243,12 +251,9 @@ export default function PrivacyPage() {
               The Secretary General handles data requests and member
               correspondence.
             </p>
-            <a
-              href={`mailto:${secGenEmail}`}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
-            >
+            <Button href={`mailto:${secGenEmail}`} className="mt-5">
               Email the Secretary General
-            </a>
+            </Button>
             <p className="mt-3 text-xs text-soft/45">{secGenEmail}</p>
             <p className="mt-6 text-xs text-soft/45">
               See also the{' '}

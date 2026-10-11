@@ -53,12 +53,18 @@ export function parseCsv(text) {
   return rows
 }
 
+// A sentence for the officer who chose the file, thrown as an error. It is
+// marked `rejected` so that errorText (src/lib/errorText.js) shows it as
+// written: an error it does not know is taken for a fault, and the page's own
+// "Could not import that file." would stand in for the reason.
+const refusal = (message) => Object.assign(new Error(message), { rejected: true })
+
 // grid: array of arrays of cell text. Returns { rows, batch } or throws with a
 // message an officer can act on.
 function gridToRoster(grid) {
   const hi = grid.findIndex((r) => String(r?.[0] ?? '').trim().toLowerCase() === 'name')
   if (hi === -1) {
-    throw new Error(
+    throw refusal(
       'Couldn’t find the header row (a row whose first cell is “Name”). Export the “Database” tab.',
     )
   }
@@ -69,7 +75,7 @@ function gridToRoster(grid) {
     if (!cells[0]) continue
     rows.push(Object.fromEntries(FIELDS.map((f, j) => [f, cells[j]])))
   }
-  if (!rows.length) throw new Error('No member rows found under the header.')
+  if (!rows.length) throw refusal('No member rows found under the header.')
   return { rows, batch: asOf ? asOf[1].replace(/\s+/g, ' ').trim() : null }
 }
 
@@ -82,8 +88,8 @@ export async function parseRosterFile(file) {
     const XLSX = await import('xlsx')
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' })
     const sheet = wb.Sheets.Database || wb.Sheets[wb.SheetNames[0]]
-    if (!sheet) throw new Error('That workbook has no sheets.')
+    if (!sheet) throw refusal('That workbook has no sheets.')
     return gridToRoster(XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false }))
   }
-  throw new Error('Choose the roster as an .xlsx or .csv file.')
+  throw refusal('Choose the roster as an .xlsx or .csv file.')
 }

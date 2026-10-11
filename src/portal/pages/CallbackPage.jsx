@@ -1,35 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { supabase } from '../../lib/supabase.js'
 import { SIGN_IN_PATH, takeNext } from '../constants.js'
-import { AuthCard, BackLink, Spinner } from '../portalUi.jsx'
+import { AuthCard, Spinner, primaryBtnCls } from '../portalUi.jsx'
 
 // /portal/callback. Both Google and the magic link land here with tokens in
 // the URL hash (implicit flow); supabase-js already consumed them when the
-// client was created, so we just wait for the session to appear and go.
+// client was created, so we just wait for the session to appear and go. When
+// none appears, the card says why in a sentence of its own and offers the
+// sign-in page again.
 
 const TIMEOUT_MS = 8000
 
-// Supabase reports failures (expired link, denied consent) as
-// ?error_description= or #error_description= depending on the path taken.
-function errorFromUrl(location) {
+const LINK_FAILED = 'The sign-in link didn’t complete. It may have expired or already been used.'
+
+// Supabase reports failures (expired link, denied consent) as ?error= or
+// #error= depending on the path taken, with a code and a description beside
+// it. Only that there was one, and of which kind, is read: the page says its
+// own sentence and never the address's, since anyone can write an address and
+// its words would be read as ours (/exam/callback does the same). '' when the
+// address carries no error.
+function problemFromUrl(location) {
   const search = new URLSearchParams(location.search)
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''))
-  return (
-    search.get('error_description') ||
-    hash.get('error_description') ||
-    search.get('error') ||
-    hash.get('error') ||
-    ''
-  )
+  const read = (name) => search.get(name) || hash.get(name) || ''
+  const error = read('error')
+  const code = read('error_code')
+  if (!error && !code && !read('error_description')) return ''
+  // A used or expired email link comes back as access_denied too, so its code
+  // is looked at first.
+  if (code === 'otp_expired') return LINK_FAILED
+  if (error === 'access_denied' && !code) return 'You cancelled the sign-in.'
+  return 'The sign-in didn’t complete. It may have been cancelled or left open too long.'
 }
 
 export default function CallbackPage() {
   usePageTitle('Signing you in')
   const navigate = useNavigate()
   const location = useLocation()
-  const [error, setError] = useState(() => errorFromUrl(location))
+  const [error] = useState(() => problemFromUrl(location))
   const [timedOut, setTimedOut] = useState(false)
   const done = useRef(false)
 
@@ -66,13 +76,15 @@ export default function CallbackPage() {
       <AuthCard
         eyebrow="Members"
         title="We couldn’t sign you in"
-        subtitle={
-          error
-            ? error.replace(/\+/g, ' ')
-            : 'The sign-in link didn’t complete. It may have expired or already been used.'
-        }
+        // An alert, so the reason is said aloud when the wait runs out and
+        // this card takes the place of the spinner.
+        subtitle={<span role="alert">{error || LINK_FAILED}</span>}
       >
-        <BackLink to={SIGN_IN_PATH}>Try signing in again</BackLink>
+        {/* The one thing to do next, so it is the card's button and not a
+            small grey link. */}
+        <Link to={SIGN_IN_PATH} className={`${primaryBtnCls} mt-6 min-h-[44px] w-full`}>
+          Try signing in again
+        </Link>
       </AuthCard>
     )
   }

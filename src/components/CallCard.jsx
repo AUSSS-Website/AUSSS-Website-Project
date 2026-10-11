@@ -96,7 +96,7 @@ export default function CallCard({ call, color, onApply }) {
         <button
           type="button"
           onClick={() => onApply(call)}
-          className="w-full rounded-full px-5 py-2.5 text-sm font-semibold text-page transition-opacity hover:opacity-90 sm:w-auto"
+          className="min-h-11 w-full rounded-full px-5 py-2.5 text-sm font-semibold text-page transition-[opacity,transform] duration-150 ease-out hover:opacity-90 motion-safe:active:scale-[0.97] sm:w-auto"
           style={{ background: accent }}
         >
           Apply

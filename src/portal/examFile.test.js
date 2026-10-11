@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { errorText } from '../lib/errorText.js'
 import { parseCsv } from './rosterFile.js'
 import { toCsv } from './exportFile.js'
 import {
@@ -17,6 +18,7 @@ import {
   parseIdFile,
   parseQuestionFile,
   questionColumns,
+  questionFault,
   questionProblem,
   questionTemplateCsv,
   questionsFromGrid,
@@ -279,6 +281,25 @@ describe('one question, before it is sent', () => {
     expect(questionProblem({ ...good, correct: 2 })).toBe('Choose which option is right.')
   })
 
+  it('says where in the form the refusal is, so the form can take the officer there', () => {
+    expect(questionFault(good)).toBeNull()
+    expect(questionFault({ ...good, body: '   ' })).toEqual({ at: 'body', index: null, problem: 'A question needs its text.' })
+    // the first option that is empty or too long
+    expect(questionFault({ ...good, options: ['Yes', ' ', ''] })).toEqual({
+      at: 'options',
+      index: 1,
+      problem: 'A question needs between 2 and 6 options, none of them empty.',
+    })
+    expect(questionFault({ ...good, options: ['y'.repeat(501), 'No'] })).toMatchObject({ at: 'options', index: 0 })
+    // too few or too many, with no one option to point at
+    expect(questionFault({ ...good, options: ['Yes'] })).toMatchObject({ at: 'options', index: null })
+    expect(questionFault({ ...good, options: ['1', '2', '3', '4', '5', '6', '7'] })).toMatchObject({ at: 'options', index: null })
+    expect(questionFault({ ...good, correct: null })).toEqual({ at: 'correct', index: null, problem: 'Choose which option is right.' })
+    // the text is looked at first, then the options, then the right answer
+    expect(questionFault({ body: '', options: [], correct: null })).toMatchObject({ at: 'body' })
+    expect(questionFault({ body: 'Which?', options: [], correct: null })).toMatchObject({ at: 'options' })
+  })
+
   it('removing an option moves the right answer with its option', () => {
     const options = ['a', 'b', 'c', 'd']
     expect(dropOption(options, 3, 1)).toEqual({ options: ['a', 'c', 'd'], correct: 2 })
@@ -500,5 +521,25 @@ describe('reading a file', () => {
     expect(await parseIdFile(csvFile('ids.csv', '\uFEFFID\r\n20231234\r\n20231235\r\n'))).toEqual(['20231234', '20231235'])
     await expect(parseIdFile(csvFile('ids.csv', 'ID\r\n'))).rejects.toThrow('No IDs found in the first column of that file.')
     await expect(fileGrid({ name: 'ids.pdf' })).rejects.toThrow('Choose an .xlsx or a .csv file.')
+  })
+
+  it('marks its own sentences as written for the officer, so the pages show them as they are', async () => {
+    const wrongKind = await fileGrid({ name: 'ids.pdf' }).catch((e) => e)
+    expect(errorText(wrongKind, 'That file could not be imported.')).toBe('Choose an .xlsx or a .csv file.')
+    const noIds = await parseIdFile(csvFile('ids.csv', 'ID\r\n')).catch((e) => e)
+    expect(errorText(noIds, 'The IDs could not be added.')).toBe('No IDs found in the first column of that file.')
+  })
+
+  it('says a workbook could not be read in its own words, not in the reader’s', async () => {
+    const unreadable = {
+      name: 'broken.xlsx',
+      arrayBuffer: async () => {
+        throw new Error('ZIP end of central directory not found')
+      },
+    }
+    const err = await fileGrid(unreadable).catch((e) => e)
+    expect(errorText(err, 'That file could not be imported.')).toBe(
+      'That workbook could not be read. Save it again as an Excel workbook (.xlsx) and choose that.',
+    )
   })
 })

@@ -215,6 +215,62 @@ export function todayCairo() {
   }
 }
 
+// The pattern normalize_call checks a notification address against.
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+// What is wrong with a call as the editor's form holds it, by field, so each
+// sentence can stand at its own field. An empty object means it can be saved.
+//
+//   title           no title
+//   deadline        an open call whose last day has already passed
+//   notifyEmail     not an address
+//   position:<id>   a position with text in it and no title
+//   question:<id>   a question with choices typed and no wording
+//   options:<id>    a "choose one" question with no choices
+//
+// The last four are things the database does not refuse: normalize_call drops
+// such a position or question, turns such a question into a short answer and
+// empties such an address, all without a word. Said here, the officer hears of
+// it before saving and not from an applicant. A row with nothing typed in it is
+// left alone; it is dropped on save, as before.
+//
+// `form` is { title, deadline, status, notifyEmail, positions: [{ id, title,
+// blurb, slots }], questions: [{ id, label, type, options: [] }] }. `saved` is
+// the call's row when one is being edited: an open call that is already past
+// its deadline can have a spelling put right without being reopened, so the
+// date is only held against a call that would newly be open with it.
+export function callProblems(form, { saved = null, today = todayCairo() } = {}) {
+  const problems = {}
+  const text = (value) => String(value ?? '').trim()
+
+  if (!text(form.title)) problems.title = 'Give the call a title.'
+
+  if (form.deadline && form.status === 'open' && form.deadline < today) {
+    const asSaved = saved?.status === 'open' && (saved.deadline || '') === form.deadline
+    if (!asSaved) problems.deadline = 'That day has passed. Choose a later one, or clear the deadline.'
+  }
+
+  const email = text(form.notifyEmail)
+  if (email && !EMAIL.test(email)) problems.notifyEmail = 'That doesn’t look like an email address.'
+
+  for (const p of form.positions || []) {
+    if (!text(p.title) && (text(p.blurb) || text(p.slots))) {
+      problems[`position:${p.id}`] = 'Give this position a title, or remove it.'
+    }
+  }
+
+  for (const q of form.questions || []) {
+    const options = (q.options || []).map(text).filter(Boolean)
+    if (!text(q.label)) {
+      if (options.length) problems[`question:${q.id}`] = 'Write the question, or remove it.'
+    } else if (q.type === 'select' && options.length === 0) {
+      problems[`options:${q.id}`] = 'Add the choices, separated by commas.'
+    }
+  }
+
+  return problems
+}
+
 function normalizeCallRow(row) {
   const count = Array.isArray(row.applications) ? row.applications[0]?.count ?? 0 : 0
   const { applications, ...rest } = row
@@ -339,14 +395,30 @@ export function useApplications(callId) {
   })
 }
 
+// The list shows the change at once and the database is told after: a status
+// select that waited for the answer sprang back to the old value in between.
+// If the write fails, that one application goes back to what it was (the rest
+// of the list may have moved on meanwhile, so it is left as it is).
 export function useUpdateApplication(callId) {
   const qc = useQueryClient()
+  const key = officerKeys.applications(callId)
+  const putRow = (row) =>
+    qc.setQueryData(key, (prev) =>
+      Array.isArray(prev) ? prev.map((a) => (a.id === row.id ? row : a)) : prev,
+    )
   return useMutation({
     mutationFn: ({ id, patch }) => updateApplication(id, patch),
-    onSuccess: (row) => {
-      qc.setQueryData(officerKeys.applications(callId), (prev) =>
-        Array.isArray(prev) ? prev.map((a) => (a.id === row.id ? row : a)) : prev,
-      )
+    onMutate: async ({ id, patch }) => {
+      // A read still on its way would put the old row back over the new one.
+      await qc.cancelQueries({ queryKey: key })
+      const list = qc.getQueryData(key)
+      const before = Array.isArray(list) ? list.find((a) => a.id === id) : null
+      if (before) putRow({ ...before, ...patch })
+      return { before }
     },
+    onError: (_error, _change, context) => {
+      if (context?.before) putRow(context.before)
+    },
+    onSuccess: putRow,
   })
 }

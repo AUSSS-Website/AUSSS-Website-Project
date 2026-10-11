@@ -173,7 +173,8 @@ number is ignored; the field is read-only in the editor. To check or force it:
 tier (Candidate → Associate at 1 Local or 2 National GAs; Associate → Full at 2 Local and 3
 National) the Roster page shows *N members have the attendance for a higher status*. The EB ticks
 who also meets the activity score and approves (a logged bulk update, undoable under *Register a
-GA*), or presses *Not now*, which hides those members until next September. The rule is
+GA*), or presses *Not now*, which hides those members until next September. Either choice is
+followed by a line with **Undo**, so a slip is taken back at once. The rule is
 `app.next_status`; the list is `rpc/roster_upgrade_candidates`.
 
 **Who is verified at sign-in:** anyone whose email is on the roster (at least `candidate`, even
@@ -196,7 +197,10 @@ never returned.
    readable (see the service-account steps in `apps-script/README.md`).
 1. Portal → Roster → *Spreadsheet* → *Import an .xlsx or .csv*.
 2. The hourly Apps Script on the sheet (`apps-script/roster-sync.gs`), authenticated by the
-   token issued on the same panel.
+   token issued on the same panel. While a token is in use, **Issue a new token** (which
+   switches the old one off) and **Turn off** each ask for a second click, because either one
+   stops the script until a new token is pasted into it. **Disconnect**, for the connected
+   sheet, asks twice as well.
 3. `npm run db:import-roster` with `SUPABASE_SECRET_KEY=sb_secret_...` in `.env.local` (reads
    `_source/records/membership/updated AUSSS Membership Database.xlsx`; `:dry` parses only).
    Blank the key again afterwards.
@@ -375,6 +379,10 @@ at `/portal/verify`. Two ways to decide:
 - **Portal** (preferred): sign in as an EB member, open
   `/portal/admin/verification`, Approve or Decline. The page calls the
   `decide_verification` RPC, which checks `app.is_eb()` inside the database.
+  Approve is one click; Decline turns red and asks for a second. A decided
+  request stays in the list until the page is left, with what happened written
+  in its row ("Approved. … is now an active member."). Nothing on the page
+  takes a decision back: `decide_verification` accepts a pending request only.
 - **SQL**, as `postgres`, when the portal is unavailable:
 
   ```sql
@@ -455,7 +463,10 @@ next request.
 - **Supabase logs**: dashboard, Logs, pick API (PostgREST), Auth, or Postgres;
   or MCP `query_logs` with `service: api | auth | postgres`. Auth failures
   (redirect not allowed, provider error) are in the Auth log with the exact
-  reason; the browser only sees `error_description` in the callback URL.
+  reason; the browser only sees `error_description` in the callback URL. The
+  callback card does not print that text, since anyone can write an address:
+  it shows a sentence of its own, so read the reason from the address bar or
+  the log.
 - **Advisors**: MCP `get_advisors` (`security`, `performance`) after every
   migration. Findings about `rls_disabled`, `function_search_path_mutable` or
   `auth_rls_initplan` mean a migration broke a rule in section 2.
@@ -524,6 +535,22 @@ cards are additionally gated by the site setting `openCallsLive` ("Show Open
 Calls on the public site" on Site settings; off while the joining flow is
 unsettled, and officers can still prepare calls in the portal). See section 27.
 
+The committee editor keeps its place in the address (`useTabParam`, section 24):
+the open tab as `?tab=` (`events`, `calls`, `members` or `invites`; the
+Committee page tab is the plain address), an open call as `?call=` (`new`, or
+the call's id) and its applications as `?view=applications`. A reload, or a
+link sent to another officer, opens the same place. A tab stays loaded once it
+has been opened, so a half-written call survives a look at another tab, and
+Cancel and "Back to calls" ask "Discard changes" once something was typed.
+
+The call form checks a call before the database does (`callProblems` in
+`src/portal/officerQueries.js`) and says each problem under its own field: no
+title, an open call whose deadline day has passed (an expired call saved
+without touching its date or status still goes through), a notification
+address that is not an email, a position with text and no title, a "choose
+one" question with no choices. The last three the database would otherwise
+drop without a word.
+
 Useful SQL (as `postgres`):
 
 ```sql
@@ -573,6 +600,16 @@ updates. Migrations `20260920200001_tasks_and_notifications` and
 `rpc/profile_names(ids)` resolves name + avatar for ids a member already holds,
 because `profiles` RLS hides members from each other. `rpc/task_assignable_people`
 feeds the assignee picker.
+
+These pages keep their place in the address (`useTabParam`, section 24), so
+Back from a task returns to the same filtered list and a link can be sent to a
+colleague. Tasks: `?tab=new` (the new-task form), `?show=` (`mine`, `created`
+or `all`), `?view=` (`list` or `board`), `?committee=<slug>` and `?done=shown`;
+the scope and layout a person last chose are their default and stay out of the
+address. A task: `?tab=edit`. Updates: `?tab=new` and `?edit=<id>`. A form
+that has been typed in asks "Discard changes" on Cancel, and the update form
+refuses a schedule in the past or a take-down before the update goes out
+(`postTimeProblems` in `src/portal/workQueries.js`).
 
 To let an assistant position hand out tasks:
 
@@ -805,7 +842,8 @@ which renders every public page to real HTML at build time.
 - `spa.html`: the untouched shell. `vercel.json` rewrites every URL without a
   pre-rendered file to it: the portal, the redirect aliases, unknown paths.
   Vercel serves static files before rewrites, so a pre-rendered page always
-  wins.
+  wins. An unknown path then shows the site's not-found page ("Addresses that
+  name no page", below).
 - `sitemap.xml` and `llms.txt`, generated from the same page list. There is no
   `public/sitemap.xml` any more; do not add one back, it would shadow the generated one.
 
@@ -814,8 +852,31 @@ an entry to `src/seo/pages.js` (path, title, description; optionally an image an
 breadcrumb parent). Keep the title and description identical to what the page passes to
 `usePageTitle()`: the table is what crawlers read, the hook is what a visitor sees after
 client-side navigation. New committees and albums are picked up by themselves. The
-build fails if a listed path does not render a `<main>` (route missing) or is listed
-twice.
+build fails if a listed path is listed twice or renders without a `<main>`. It does not
+catch a listed path that `src/App.jsx` has no route for: the layout's own `<main>` is
+always there, so such a path is saved as the not-found page. Open a new page's saved
+file once (`npm run preview:prerendered`, below) to see that it is the page meant.
+
+**Addresses that name no page.** An address no route knows shows a page of its own,
+`src/pages/NotFoundPage.jsx`: "We couldn’t find that page", a button home and links to
+the main pages, inside the site's header and footer. A committee address with no such
+committee shows the same page. Before, both landed on the home page without a word.
+The portal and the exam never reach it: their routes take every address under `/portal`
+and `/exam`. A few addresses people may type still go somewhere: `/committees` to the
+committees section of the home page, `/index.html` to the home page, and the aliases
+listed in `src/App.jsx` (`/quiz`, `/login`, `/social` and the like). An album or event
+address that names nothing is still answered by its own page (`GalleryPage.jsx`,
+`EventsPage.jsx`).
+
+It is a soft 404. The server answers 200, because `vercel.json` hands the shell to every
+address without a file, so the page asks search engines to leave it out:
+`usePageTitle('Page not found', undefined, { noindex: true })` adds a `robots` tag of
+its own while the page is shown and takes it away on leaving. A crawler that runs no
+JavaScript sees only the empty shell, without the tag. A true 404 status would need two
+changes that have not been made: `vercel.json` rewriting only the routes that live in
+the app (the portal, the exam, the checkout, the aliases, and albums and events
+published since the last build), and `scripts/prerender.mjs` writing the not-found page
+to `dist/404.html`, outside the page list so it stays out of the sitemap.
 
 **Components must survive Node:** the pre-render runs the public pages in Node with no
 `window`, `document` or `localStorage`. Effects (`useEffect`) do not run there, so
@@ -907,8 +968,10 @@ together), and the public gallery follows on its next load. Held near the top or
 of the window, a dragged album scrolls the page, so a long shelf can be crossed. Without a
 pointer, focus the handle and press the up or down arrow key to move the album one place.
 If the save fails the albums go back to where they were and the error shows above the
-list. The list is `src/portal/SortableList.jsx`, written to be reused wherever a list is
-put in order by hand; the magazine shelf still uses its arrow buttons.
+list. A dropped album glides into its place (not under reduced motion), and Escape
+during a drag puts it back and saves nothing. The list is `src/portal/SortableList.jsx`,
+written to be reused wherever a list is put in order by hand: the magazine shelf, the
+merch products and payment methods and the exam's questions use it too.
 
 **Hide, remove, bin.** *Hide* keeps the photo in the album but off the site (the old
 takedown list). *Remove* sets `deleted_at`: the photo shows in the album's bin with
@@ -952,14 +1015,34 @@ likes counters in `apps-script/magazine.gs`), title, switcher_label, date_label,
 (the switcher order, newest first), pages_base, page_count, hero_page, download_url, canva_url.
 Page images are `<pages_base>/NNN.jpg`: the pre-portal editions keep theirs under
 `/assets/magazine/<id>/pages` (served by Vercel, 61 MB in the repo); editions uploaded from the
-portal put them in the public Storage bucket `magazine` under `<issue id>/pages/`. A published
-edition reaches the site once it has pages or a Canva link.
+portal put them in the public Storage bucket `magazine`, each upload in a folder of its own,
+`<issue id>/pages-<the time it began>/` (an edition uploaded before this was built has its pages
+in `<issue id>/pages/`). A published edition reaches the site once it has pages or a Canva link.
 
 **Uploading an edition.** The editor picks the PDF; pdf.js (loaded on demand in the portal
-only) renders every page to a 1300 px wide JPEG in the browser and uploads it; pages beyond the
-new count are removed, so a re-upload replaces the edition cleanly. Page images can also be
-picked directly. The **hero page** (the cover in the header, the switcher and the share card)
-is chosen by clicking a page; the database clamps it to the page count.
+only) renders every page to a 1300 px wide JPEG in the browser and uploads it. Page images can
+also be picked directly. The pages go into a new folder, and the edition is pointed at it
+(`pages_base`, `page_count`) only when the last page is in. So replacing an edition's pages
+never touches the pages on the site until it has finished: an upload that fails, or that the
+editor ends with **Stop**, removes its new folder and leaves the edition as it was, and the
+message says so. While pages go up the page shows a progress bar and a count, the browser asks
+before the tab is closed or reloaded, and "All editions" and Delete are switched off.
+
+The folder an edition has left is kept for seven days (`KEEP_DAYS` in
+`src/portal/magazineQueries.js`), because the saved `/magazine` page, its link preview and a
+reader half-way through an edition still name it until the site is rebuilt. It is removed the
+next time an editor opens that edition (`sweepPages`), so no scheduled job is involved, and an
+edition nobody opens again keeps its old copy (7 to 18 MB). The seven days are counted on the
+editors' own clocks. Deleting an edition removes all its folders. One case cannot be settled by
+the page: if the answer to the last step is lost and the edition cannot be read back either, it
+says "The new pages were uploaded, but we couldn’t see whether the edition switched to them."
+Reload to find out; the new folder is kept meanwhile.
+
+The **hero page** (the cover in the header, the switcher and the share card) is chosen by
+clicking a page; the database clamps it to the page count. The cover and the **status** take
+effect at once, without Save; the rest of the edition's form waits for Save and says "Unsaved
+changes" until then. The shelf is put in order by dragging an edition by its handle, as the
+gallery's albums are (section 16).
 
 **Public site.** `src/lib/magazine.js` fetches `rpc/magazine_public()` and caches it; the
 prerender bakes the shelf into `/magazine` and uses the latest edition's hero page as its
@@ -981,7 +1064,10 @@ on-page counter stays hidden until the EB switches it on (the site setting
 **Checks.** Signed in as an editor: `/portal/magazine` lists the editions; upload a small PDF to
 a draft, its pages appear and a click on one makes it the cover; set it to Published and it
 shows on `/magazine`. Anonymous: `rpc/magazine_public` answers, `/rest/v1/magazine_issues` is
-refused.
+refused. The upload into a new folder and the sweep of old ones were tried against a stand-in
+for the bucket only: after the first deploy that carries them, replace the pages of a draft once
+for real, and open that edition again more than a week later to see the old folder go (the sweep
+relies on how Storage lists folders and on removal under the bucket's policies).
 
 ## 18. Submissions: merch orders, exchange stories, the waitlist (Phase 5)
 
@@ -989,7 +1075,9 @@ Since 2026-09-25 the last three public forms write to the database instead of Go
 Script: the recruitment waitlist on `/join` (`signups`), the exchange story form on
 `/exchange/share` (`stories`) and the merch checkout on `/merch/checkout` (`orders`). They are
 handled in the portal at `/portal/submissions`: the EB sees all three tabs, the SCOPE and SCORE
-officers see Stories (`app.can_triage(kind)`). `orders.gs`, `signups.gs` and `stories.gs` are
+officers see Stories (`app.can_triage(kind)`). The open tab is in the address
+(`?tab=stories`, `?tab=signups`; a person's first tab is the plain address), which is where
+the links in a notification point. `orders.gs`, `signups.gs` and `stories.gs` are
 retired; the old Sheets keep their rows as an archive. Migration `20260925090001_submissions`,
 tests `190-submissions.sql` and the last block of `090-grants.sql`.
 
@@ -1015,24 +1103,36 @@ it. Deleting an order (EB) removes its receipt too.
 email digest (section 13). Sign-ups do not notify (they arrive in bulk); the dashboard panel
 and the Waitlist tab show the count.
 
-**Stories on the site.** A story is private until an exchange officer or the EB sets it to
-`published`; it then appears under "Exchange stories" on `/exchange/outgoings` and
+**Stories on the site.** A story is private until an exchange officer or the EB publishes it;
+it then appears under "Exchange stories" on `/exchange/outgoings` and
 `/exchange/incomings` (read through `rpc/stories_public()`, published rows and public fields
-only, baked into the pre-rendered pages and refreshed live). The officer can tidy the name and
-the text the site shows (blank = as submitted; the submission itself is never edited) and tick
-*Featured*, which pins the story first with a highlight. Declining or moving it back to
-`contacted` takes it off the site at once (the pre-rendered copy updates on the next deploy).
+only, baked into the pre-rendered pages and refreshed live). A story is published from the
+"On the exchange page" box on its card, never from the status list ("Published" is not in the
+list of a story that is not on the site): **Review and publish** opens the name and the text
+the site will show, filled in from what the student sent, with the *Featured* tick, which pins
+the story first with a highlight; **Publish on the exchange page** is the last step. The
+officer can tidy the name and the text (left as sent = as submitted; the submission itself is
+never edited). On a published story the three wait for **Save what the site shows**. Declining
+a published story or moving it back to `contacted` in its status list takes it off the site at
+once, with an Undo line (the pre-rendered copy updates on the next deploy).
 
 **Triage.** Each row has a status (`orders`: new, contacted, delivered, also set from the Merch page, section 26; `stories`:
 new, contacted, published, declined; `signups`: new, contacted, archived) and private notes
 (`officer_notes` on orders). Filter chips, a search box and *Export CSV* (the filtered rows,
-UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes.
+UTF-8 with BOM, opens in Excel) are on every tab. Only the EB deletes. A status change shows at
+once and is saved behind; if the save is refused the status goes back and a sentence says so.
+The row then stays where it is, whatever filter is on, with a line such as "Moved to Contacted.
+Undo", and leaves the list the next time a filter chip is chosen (the one that is on included).
+The Orders panel on the Merch page does the same. Notes say "Unsaved changes" until saved, and
+the browser asks before the tab is closed on them.
 
 **Exports.** Every list of collected data in the portal has *Export PDF* and *Export CSV*
 buttons (`src/portal/ExportButtons.jsx`, `exportFile.js`): the three Submissions tabs, a call's
 applications (Committees > Open calls), the membership roster (EB), a committee's Members tab,
-the verification queue, and an edition's Readers panel. They export the rows on screen,
-filters included. The PDF is made in the browser (jsPDF, loaded on demand) with IBM Plex Sans
+the verification queue, and an edition's Readers panel. They export the rows the filters and
+the search pick out. That is what is on screen, with two exceptions: a submission kept in
+sight after its status changed is left out once it no longer belongs under the filter, and the
+verification queue's file holds only the requests still waiting. The PDF is made in the browser (jsPDF, loaded on demand) with IBM Plex Sans
 Arabic embedded (`src/portal/fonts`, OFL, about 480 KB fetched once per session), so names and
 text typed in Arabic come out joined and complete. jsPDF shapes Arabic through the Unicode
 presentation forms, so any replacement font must carry those glyphs (Plex and Amiri do; Tajawal
@@ -1092,7 +1192,9 @@ the portal's Site settings, section 27). It stays off until forwarding is proven
 1. The MX lookup above answers, and every rule shows as verified in Squarespace.
 2. Send a message to each address from an account outside the society and confirm it
    arrives in the right inbox.
-3. Switch it on in Site settings. Visitors see the new addresses on their next page load;
+3. Switch it on in Site settings. Turning it on takes a second click: the first rings the
+   switch in red and says "Click the switch again to turn this on. Mail bounces unless
+   forwarding is set up." Visitors see the new addresses on their next page load;
    the saved pages follow at the next rebuild, which the change asks for by itself. The
    privacy policy gains its line about forwarding on its own; bump `LAST_UPDATED` in
    `src/pages/PrivacyPage.jsx` with the next code change.
@@ -1302,6 +1404,10 @@ bar, such as the header or the cart pill (`scripts/walk-checks.mjs`). The sidewa
 cannot see this, because content that runs out of a fixed bar never makes the page scroll. That
 is how the Members button went missing at 1024 px when Events joined the header. A finding names
 the element and where it runs to, for example `"Members" (948 to 1053)` on a 1024 px screen.
+The walk has no width between 1440 and 1920 px. The design pass of October 2026 reported the
+same button cut off at 1536 px, which no walk had seen; the header was then measured at every
+width and retuned (section 28), and the button now reads "Check membership". After a change to
+the header, walk it with `--widths 1280,1536,1600,1920` as well.
 
 ## 22. Security checklist (Phase 5a)
 
@@ -1604,7 +1710,7 @@ for dark. A class built on a token follows the theme by itself, so new markup ne
   committee's own colour takes `text-page`, which is dark on the lightened shade and
   light on the darkened one.
 - **A green button** is `bg-leaf text-white hover:bg-leaf-hover` when it is green in both
-  themes (Back, back to top, Members), or the `solid` tokens when it is the white pill on
+  themes (Back, back to top, Check membership), or the `solid` tokens when it is the white pill on
   dark. On light both are the same green, `--c-leaf` in `index.css`: change that one value
   to change every green button. White on it is 5.3:1, so keep such a button opaque on
   light (at 90% over cream it drops under 4.5:1).
@@ -1637,9 +1743,14 @@ with the ordinary Tailwind scale needs nothing extra to fill a large monitor. On
 screens a form field's text is never under 16px, because iOS zooms the page in when a
 smaller field takes focus.
 
-**The portal header** has the public navbar's dimensions (the 6rem bar, the logo, the type
-and the side padding); the links sit on a row of their own below it, on one line that
-scrolls sideways on a phone and wraps from a tablet up.
+**The portal header** is built to the public navbar's dimensions (the 6rem bar, the logo,
+the type and the side padding); the links sit on a row of their own below it, on one line
+that scrolls sideways on a phone and wraps from a tablet up. Since the design pass the two
+no longer step up at the same widths. The public bar was retuned to fit "Check membership"
+(section 28): its side padding widens at 1100 px and its larger type, pills and logo start
+at 1920 px. The portal header still widens its padding at 1024 px and takes the larger
+type and logo from 1536 px. In the portal's row of links the page a person is on is in
+semibold ink with a blue bar under it, and the other links are a shade quieter.
 
 **The magazine reader's depth** (`Flipbook.jsx`, the `.flipbook` rules in `index.css`):
 the gutter shading and the page edges are CSS on the classes the page-flip library puts
@@ -1647,12 +1758,208 @@ on each page (`--simple`, `--left`, `--right`); the edges grow on the side that 
 read (`--stack-left`, `--stack-right`); the shadow of the lifting page is the library's own
 (`maxShadowOpacity`). With reduced motion a page turns at once.
 
+### What the design pass added (October 2026)
+
+The audit of 2026-10-08 (`docs/DESIGN_AUDIT_2026-10.md`; its first section says where each
+finding stands) was worked through in two stages on the branch `apple-design-pass`. This
+is what a page written after it has to know. Each item ends with a line of use.
+
+**Type.**
+
+- **`text-2xs` and `text-3xs`** (`tailwind.config.js`) are 11px and 10px at the usual root
+  size, written in rem so they follow the reader's text size. Each is a size only, with no
+  line height of its own. Do not write a font size in px (`text-[11px]`); the six that
+  remain are in the two bespoke lookup cards (`SpecialResult.jsx`).
+  `<span className="text-2xs font-semibold uppercase tracking-[0.2em]">`
+- **`.heading-serif`** sets its own letter spacing from the heading's size: tight from
+  `text-4xl` up, none from `text-xl` down. A plain `tracking-*` class beside it loses to it.
+  `<h2 className="heading-serif text-3xl text-ink">`
+
+**Motion.**
+
+- **A scale or a move goes behind `motion-safe:`**, so a reader who asked for less motion
+  gets none. Colour and opacity changes stay for that reader: a cross-fade, not a slide.
+  Do not undo a movement with `motion-reduce:transform-none`: it loses to a `hover:` or
+  `active:` rule, and it strips a transform that holds something in place.
+  `motion-safe:hover:-translate-y-1 motion-safe:active:scale-[0.99]`
+- **Animate `transform` and `opacity`**, not `width`, `height`, `max-height`, `top` or
+  `left`, and name the properties: no `transition-all` is left in `src`. One exception was
+  left as designed: the cart label in the phone row still opens by `max-width`
+  (`NavCartButton.jsx`), and only fades under reduced motion.
+  `transition-[transform,border-color,box-shadow] duration-300 ease-out`
+- **`pressCls`** (`src/lib/motion.js`) is what every button shares: its colours ease over
+  150 ms and it sinks to 0.97 while pressed, the sinking only for readers who have not
+  asked for less motion. It is already in `<Button>`, `primaryBtnCls`, `outlineBtnCls` and
+  `chipBtnCls`; on a hand-typed button it takes the place of `transition-colors`.
+  `` className={`rounded-full px-5 py-2 ${pressCls} hover:bg-veil/10`} ``
+- **`scrollBehavior()`** (the same file) is the `behavior` of every `scrollTo` and
+  `scrollIntoView`: a jump under reduced motion, a smooth scroll otherwise. Do not write
+  `behavior: 'smooth'`. `prefersReducedMotion()` beside it is the test itself; both are
+  safe in the pre-render.
+  `el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })`
+- **Things that open over the page** take two plain classes from `index.css`.
+  `enter-scrim` goes on the layer that dims the page and fades in over 200 ms.
+  `enter-panel` goes on the thing that opens: it fades in over 240 ms while it rises 8px
+  and grows from 98% of its size (`cubic-bezier(0.2, 0, 0, 1)`), and only fades under
+  reduced motion.
+  `<div className="enter-scrim fixed inset-0 bg-forest-950/85"><div className="enter-panel rounded-3xl bg-card p-6">`
+  - They are plain CSS, not Tailwind utilities, so they take no variant prefix.
+  - Each sets its element's whole `transition`, so a Tailwind transition class or
+    `pressCls` on the same element is overridden. Put the entry class on a wrapper.
+  - The entry plays for an element that has just been mounted or has just stopped being
+    `display: none`. One that is always in the page and shown by swapping classes (the
+    cart drawer, the mobile menu) gets nothing from it and has a transition of its own.
+  - Only the way in is animated. For a way out the element has to stay mounted while it
+    leaves, as the gallery's photo viewer does for 200 ms.
+  - A popover that grows out of its button takes a transform origin beside it
+    (`origin-top-right`). A panel centred with
+    `left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2` needs `origin-top-left`, or it
+    drifts a few px on the way in; one centred by a flex or grid parent needs nothing.
+  - A browser without `@starting-style` shows the thing at once, as it always did.
+
+**Materials, contrast and hover.**
+
+- **A blurred, see-through panel takes a solid fallback** through the variant
+  `reduce-transparency:` (`tailwind.config.js`, for a reader whose system asks for fewer
+  see-through surfaces): the same token at full strength, and no blur. Where the fill is
+  set with `dark:` or a screen prefix, write that prefix first
+  (`dark:reduce-transparency:bg-leaf`). A scrim can simply drop its blur. Headless
+  Chromium on the build machine reports this setting as on, so its screenshots show the
+  solid fallbacks unless the setting is emulated as off.
+  `bg-page/70 backdrop-blur-md reduce-transparency:bg-page reduce-transparency:backdrop-filter-none`
+- **`prefers-contrast: more` is handled in `index.css`** for the tokens. The strength of
+  `line` rises until the usual hairline (`border-line/10`, and `ring-line`, `divide-line`
+  and `bg-line` with it) reaches 3:1, and the floor of `soft` rises until every step from
+  `text-soft/30` up reaches 7:1. Nothing is written in the markup for those. Tailwind's
+  own `contrast-more:` variant is for what the tokens cannot reach: a panel over a photo
+  or the aurora repeats its solid pair with it.
+  `contrast-more:bg-page contrast-more:backdrop-filter-none`
+- **Hover styles apply only where the device can hover** (`future.hoverOnlyWhenSupported`
+  in `tailwind.config.js`), so a tap on a phone no longer leaves one stuck on. Two things
+  follow: nothing may be reachable by hover alone, and a card or button that should
+  answer a finger needs an `active:` style of its own.
+  `hover:border-line/30 active:border-line/30`
+
+**Touch.** Where a finger lands, a control is at least 44px, written in px: the root size
+is 15px on a 320px phone, so `h-11` and `min-h-[2.75rem]` are 41px there. Three idioms are
+in use. `min-h-[44px]`, where the control may simply be taller.
+`[@media(pointer:coarse)]:min-h-[44px]` (the `tapCls` of the portal's pages), where it
+should stay a small pill under a mouse. And an unseen `::after`, 44px high and centred on
+the control, where it must not look any bigger; two such areas may meet and must not
+overlap.
+`relative after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-full after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']`
+
+**Errors people see.** `errorText(err, fallback)` (`src/lib/errorText.js`) turns a caught
+error into one whole sentence. Show its result alone, with nothing such as ". Please try
+again" after it.
+
+| The error | What comes out |
+| --- | --- |
+| The request got no answer (offline, a dropped connection, a timeout) | "We couldn’t reach the server. Check your connection and try again." |
+| A permission error | the database's own sentence when it wrote one, otherwise "You don’t have permission to do that." |
+| A refusal written for people: a function's `raise` (codes 22023, P0001, 23505, 40001), or an error marked `rejected` that carries no code | the sentence as written (Postgres's own words under those codes, such as "duplicate key value", become the fallback) |
+| Anything else | `fallback`, the caller's own words for what failed |
+
+`<ErrorText>{save.error ? errorText(save.error, 'Could not save the photo.') : ''}</ErrorText>`
+
+Two cautions. A sentence the site's own code throws with `new Error('…')` is replaced by
+the fallback: mark it `rejected = true` (as `refusal()` in `src/portal/magazineQueries.js`
+does), or show `err.message` at that one call site. `src/portal/exportFile.js` still
+throws its two font sentences unmarked, and `ExportButtons.jsx` recognises them by how
+they begin.
+And an error that carries a `code` is judged by the code alone (`src/lib/supabaseRest.js`
+puts the answer's code on what it throws), so PostgREST's own 4xx words, such as a missing
+function or a not-null violation, become the fallback. `src/lib/membership.js` still hands
+back the raw message; `MembersPage.jsx` rewords it.
+
+**The portal's shared pieces** are in `src/portal/portalUi.jsx` unless another file is
+named.
+
+- **`PageLoading`** is a page's own loading state inside the portal layout: the spinner a
+  little way under the header, where the content is about to appear. `Centered` is only
+  for a whole screen that is one message.
+  `if (list.isLoading) return <PageLoading />`
+- **A field's label** (`Field`) is plain 14px ink text, and the fields show a focus ring
+  (`inputCls`, and `smallInputCls` in `workUi.jsx`). The small blue capitals are a panel's
+  title, and **`panelTitleCls`** is that look for a heading that opens a section without
+  being a field's label.
+  `<p className={panelTitleCls}>Wide designs</p>`
+- **`CheckField`** is a tick box with its label and hint, for a choice that waits for
+  Save. A switch (`Toggle`) is only for a setting that takes effect the moment it is
+  flipped, so the two never look alike. `onChange` is handed the new true or false, as
+  Toggle's is, and the row brings its own 44px, so stacked ones need no margin.
+  `<CheckField checked={digest} onChange={setDigest} label="Email me a daily digest" hint="At most one email a day." />`
+- **`SaveStatus`** is the one line beside a Save button: "Unsaved changes" while the form
+  differs from what is stored, otherwise the saved wording, otherwise nothing. `saved` is
+  true (for "Saved.", or for `savedText`) or the sentence itself. It is always in the
+  page, out of sight when it has nothing to say, so a screen reader hears it change: the
+  page must not print a "Saved." of its own beside it, and a wrapper that counted on
+  `empty:hidden` will not collapse.
+  `<SaveStatus dirty={dirty} saved={saved} />`
+- **`UndoLine`** says what has just happened and offers to take it back. It stands in for
+  asking first where a slip costs little (a row that left a list, a removed day). Keep it
+  mounted with no children while there is nothing to undo, so it is read out when it
+  comes, and give it some padding in a dense list (`className="py-3"`): its Undo button
+  reaches 44px through an `::after`. The button leaves the page as it is pressed, so the
+  page that uses the line decides where the keyboard goes next.
+  `<UndoLine onUndo={() => move(row.id, was)}>{moved ? 'Moved to Contacted.' : null}</UndoLine>`
+- **`ConfirmButton`** is every remove, delete and discard: the first click turns it red
+  and asks again on the button, the second does it. A second click within 500 ms of the
+  first is ignored, so a double-click cannot confirm, and a held Enter counts once. It
+  goes back after 5 seconds, on Escape and when the focus leaves it, and the red wording
+  is read out. A pill with the default look is as wide as its longest wording from the
+  start; a pill with a `className` of its own takes `keepWidth` for the same. It renders
+  two sibling nodes (the button, then an unseen live line). The `text` variant turns into
+  a red pill about 20px tall with no larger reach: on a touch screen wrap it, as
+  `confirmReachCls` in `src/portal/pages/exam/ExamsPage.jsx` does.
+  `<ConfirmButton label="Delete" busyLabel="Deleting…" busy={remove.isPending} onConfirm={() => remove.mutate(row.id)} />`
+- **`useLeaveWarning(active)`** (`src/hooks/useLeaveWarning.js`) puts the browser's own
+  question before the tab is closed, reloaded or sent to a typed address while `active`
+  is truthy. It cannot see a link inside the site: the app uses `BrowserRouter`, which has
+  no navigation blocker. Where such a link would lose work, switch it off or make it a
+  `ConfirmButton` while there is something to lose (the editors' own back links do), or
+  keep the form mounted. The portal's header links are guarded nowhere.
+  `useLeaveWarning(dirty || uploading)`
+- **`useTabParam(allowed, fallback, name)`** (`src/hooks/useTabParam.js`) keeps the open
+  tab in the address as `?tab=`. Choosing a tab replaces the address and adds nothing to
+  the history, so Back leaves the page; the other parameters, the `#fragment` and the
+  state the page was opened with are kept; the fallback tab is the plain address. The
+  third argument names another parameter (`'view'`). Call it before any early return. Its
+  tested parts are `tabFromSearch` and `searchForTab`. On a public page `ScrollManager`
+  stays put when only the `?query` is replaced; the portal has no scroll handling.
+  `const [tab, setTab] = useTabParam(TABS, 'page')`
+
+Four habits the pass settled on, which have no shared helper yet:
+
+- **A control that saves at once moves at once.** A switch or a status picker shows the
+  change at the click, sends its writes in the order they were made, dims nothing beside
+  it, and goes back with a sentence if the save fails. Copy `useInstantSave` in
+  `src/portal/merchQueries.js`, or `shownAtOnce` in `src/portal/galleryQueries.js` for a
+  row of a list.
+- **A form follows its saved row only while it is clean**, and after a save it takes the
+  stored row only if nothing was typed meanwhile. `ProductEditorPage.jsx` is the model.
+- **A load error stands in for a page only when nothing was ever read**
+  (`q.error && !q.data`). A re-read that fails in the background keeps the page, and what
+  is typed in it, on screen.
+- **A sheet over a public page locks the scroll through `lockPageScroll()`**
+  (`src/components/ScrollManager.jsx`), a counted lock, so two open at once can close in
+  either order. The mobile menu and the cart use it; the apply dialog, the photo viewer
+  and the merch viewers still put back the value they found.
+  `useEffect(() => (open ? lockPageScroll() : undefined), [open])`
+
 **Checking a change to any of this.** `npm run walk -- --contrast` (section 21) must end
 with no page scrolling sideways and no low-contrast colour pairs; then look at the
 screenshots of the pages touched at 320 and 1920 px in both themes. State on 2026-10-05:
 the 37 public pages pass at all six widths in both themes, and so do the 18 portal pages
 of `npm run walk:portal-sample`. A signed-in walk of the portal against the real data
-(`npm run walk -- --login` first) has not been done yet.
+(`npm run walk -- --login` first) has not been done yet. The design pass was checked area
+by area with throwaway headless Chromium scripts against made-up sessions and data, and
+with `npm test` (the shared pieces have tests beside them: `src/lib/motion.test.js`,
+`errorText.test.js`, `supabaseRest.test.js`, `src/hooks/useTabParam.test.js`,
+`src/portal/SortableList.test.js`). Neither walk had been run over it when this was
+written, nothing was tried signed in against the real database or on a real phone, and
+only Chromium was used: run both walks before the branch is merged, and try the photo
+viewer's swipe and the exam's buttons on an iPhone.
 
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
@@ -1677,6 +1984,14 @@ opens each in the same form, drawn from the block's field schema.
   (section 23, "rebuild on publish").
 - Two people editing the same block: the second to save is refused with "Someone else
   saved this while you were editing" and reloads to see the other version.
+- **A slip costs little.** The line under the buttons says "Unsaved changes" from the first
+  edit after a save, and the save's own sentence only while nothing has changed since. A
+  removed list row or picture leaves a line with **Undo** where it stood. "Undo my
+  changes" asks for a second click, and so does the page's own "All site content" link
+  while there are unsaved edits; closing or reloading the tab asks too. "N things need
+  fixing above" is a button that goes to the first field with a problem. A picture that
+  finishes uploading lands in the row it was chosen for and no longer undoes what was
+  typed meanwhile. A failed re-read in the background leaves the editor on screen.
 - **The preview** (from 1280 px wide, beside the form) is a box of its own, as tall as the
   window, that scrolls on its own. It follows the form: the part of the preview made from
   the field with the cursor, or from what is a third of the way down the window, is kept
@@ -1776,7 +2091,8 @@ section there lists every story whose destination is not Egypt, Cairo or Ain Sha
    is `<page>.<part>` in lower case.
 2. A schema file in `src/content/schemas/` (copy `joinFaq.js`). Field types: `text`,
    `textarea`, `markdown`, `url`, `image`, `album`, `toggle`, `select`, `list`
-   (`src/content/schema.js` documents each). Its `defaults` are what the page shows until
+   (`src/content/schema.js` documents each; a `toggle` is drawn as a tick box, because it
+   counts only once the block is saved or published). Its `defaults` are what the page shows until
    someone publishes, so move the current copy there.
 3. Add it to the list in `src/content/index.js`.
 4. In the page, `const doc = useContentBlock(schema)` (`src/lib/content.js`) and render
@@ -1845,11 +2161,14 @@ database answers; it is only the fallback.
 
 - *Payment methods:* the "Payment methods" panel on the Merch page. Each method has a name,
   a type (payment link, handle or phone number), the link, handle or number itself, a short
-  hint and an "On the checkout" switch. Edit in place, drag to reorder, then "Save payment
-  methods"; the list is the site setting `merchPaymentMethods`, and until it is first saved the
+  hint and an "On the checkout" tick box (a tick box and not a switch, because nothing here is
+  stored until the list is saved). Edit in place, drag to reorder, then "Save payment
+  methods"; the panel says "Unsaved changes" until then. The list is the site setting
+  `merchPaymentMethods`, and until it is first saved the
   checkout uses the copy in `src/data/merchConfig.js`. A new method's id is made from its name
-  when it is saved and is permanent, because every order records it. Switch a method off rather
-  than removing it while orders may still name it.
+  when it is saved and is permanent, because every order records it. Take a method off the
+  checkout rather than removing it while orders may still name it. Removing a saved method asks
+  for a second click; one added since the last save goes in one click, with an Undo line.
 
 **Not editable yet.** The booklet on `/merch` (the page images in `public/assets/merch` and
 `src/data/merch.js`) is still a file.
@@ -1875,6 +2194,11 @@ on the portal's **Site settings** page (EB only). A missing row means off.
 | `openCallsLive` | Show Open Calls on the public site | the calls officers publish show on their committee pages with an Apply button |
 | `magazineCountersVisible` | Show reads and likes on the magazine | the reads count and a Like button show under each edition (reads are recorded either way) |
 | `domainEmailsLive` | Show the @ausss-ainshams.org addresses | every page shows a role's address on the domain instead of its Gmail inbox (section 19 says when) |
+
+Each switch saves the moment it is flipped: it moves at once, says "Saving…" and then
+"Saved." under itself for about four seconds, and goes back with the reason under it if the
+save fails. No switch waits for another. Turning `domainEmailsLive` on takes a second click
+on the switch, because mail bounces unless forwarding is set up; turning it off is one click.
 
 `src/hooks/useSiteSettings.js` is the one reader: one fetch serves the whole page and is
 repeated at most once a minute, the last answer is kept in the browser, and the build writes
@@ -1947,7 +2271,9 @@ from the time zone data, never a fixed offset).
 **Three kinds of event.** In the portal an event is **One time** (a start, and an end when
 known), **All day** (one or more whole days without times) or **Multiple days** (two to
 fourteen days, each with its own start and end; "Add a day" copies the last day's hours onto the
-next date). The new-event form opens on One time, starting now. On the site a multiple-day event
+next date). The new-event form opens on One time, starting now. Switching to another kind and
+back keeps what was typed under each (every day, each day's hours, an all-day event's last day),
+and a removed day leaves a line with **Undo**. On the site a multiple-day event
 reads "12–14 Nov 2026 · 3 days" on its card, its page shows one card per day with that day's
 hours, and Add to calendar puts every day in the calendar as an entry of its own (the Google
 Calendar link, which holds one entry, is left out for it). In the database the days are the
@@ -1969,8 +2295,12 @@ EB does so for every committee and alone adds the society-wide ones. In the port
 form with "Whose event") and the **Events** tab on each committee's page (the same list for that
 committee alone). A new event is a draft; its page (`/portal/events/<id>`) fills in the end,
 the place, the text (markdown: bold, italic, links and lists), the sign-up link, the link on
-the site and the picture, and the **Published** switch shows it to visitors. The side panel shows
-the event's card as the site will show it.
+the site and the picture, and the **Published** switch shows it to visitors. The switch takes
+effect at once; the rest of the form waits for Save and says "Unsaved changes" until then. The
+side panel shows the event's card as the site will show it, following the form as it is typed
+(its caption says when it holds changes not saved yet); it is a picture of the card, not a link.
+What is wrong is said under the field it is about, and Save puts the cursor there. Removing the
+picture asks for a second click, since it deletes the stored file.
 
 **The data.** Table `events` (row-level security: `app.is_officer_of(committee_id)`, which is
 the EB alone for a society-wide event), `event_slugs` (every link an event has had; an old link
@@ -1994,6 +2324,16 @@ sample walk has six sample events (three coming up, one of them over multiple da
 draft, two over). The header was measured with Events in it at 1024, 1100, 1280, 1366, 1440 and
 1920 px. Between 1024 and 1279 px its gaps are narrower and the magazine pill says "Magazine".
 
+**The header since the design pass (October 2026).** The green button reads "Check membership"
+(it opens the membership lookup, and as "Members" it read as the way in to the portal), in the
+bar, the phone menu and the footer; the page's own title is still "Members". The longer label
+needed room, so the steps of the bar moved (`src/components/Navbar.jsx`; the note above
+`MAGAZINE_CTA` there says it was measured at every width from 1024 to 2560 px): the magazine
+pill says "AUSSS Magazine" from 1280 px and its long wording from 1600 px (it was 1440 px), the
+bar keeps the tablet's side padding up to 1099 px, and the larger type, pills and logo start at
+1920 px (it was 1536 px). The Magazine and Check membership pills show a blue ring on their own
+page. On a phone the menu hangs under the bar and fades in; Escape closes it.
+
 ## 29. The term rollover and the gallery archive (Phase 7, step 1)
 
 Built 2026-10-08. Migration `20261008120001_term_rollover`, pgTAP file `330-term-rollover.sql`
@@ -2002,7 +2342,7 @@ Built 2026-10-08. Migration `20261008120001_term_rollover`, pgTAP file `330-term
 
 **The page.** **New term** in the portal (`/portal/admin/rollover`, the Executive Board only;
 it has no link in the header, since it is used once a year: the way in is the **New term**
-button at the foot of **Site settings**) shows, in order, what the switch will do, then does all of it at once with one button:
+button at the foot of **Site settings**) shows, in order, what the switch will do, then does all of it at once with one button, once the new term's name has been typed to confirm:
 
 1. **The new term**: its name and its first and last days, filled in as the year after the
    current term (`2027-28`, 1 September 2027 to 31 August 2028). Any day can be chosen, so an
@@ -2028,6 +2368,15 @@ button at the foot of **Site settings**) shows, in order, what the switch will d
    rebuild. The society's age on the site moves on with the term (the `{years}` and
    `{anniversary}` placeholders of section 27), with nothing to edit.
 
+**Starting takes three deliberate steps.** The button (**Start 2027-28**) stays off until the
+new term's name is typed in the box above it, exactly as part 1 has it and with an ordinary
+hyphen (a long dash, which some phones put in, is refused). A line under the button says why it
+is off: part 1 is not ready, nobody on the board would keep their access, or the name is not
+typed yet or is not the same. The button then asks for a second click ("Click again to start
+2027-28 now"), and "This cannot be undone." stands beside it. If the switch gets no answer,
+the page says it cannot tell whether the new term started: reload to see which term is current
+before trying again.
+
 It refuses to start when nobody would keep the board's access: no board or webmaster position
 whose work account exists. Without that check a rollover could leave a society that only the
 service key could put right. The page says so and keeps the button off; the fix is to set the
@@ -2042,7 +2391,8 @@ under a heading per term, newest first. Its own page, `/gallery/<link>`, keeps w
 its term above the title and links back to the archive. `/gallery` links to the archive when
 there is one, and says so when the new term has no albums yet. In the portal's gallery editor,
 archived albums are listed below the shelf by term; **Archive** moves one album there by hand
-(filed under the current term) and **Back to the gallery** returns one. No photo is shrunk or
+(filed under the current term) and **Back to the gallery** returns one; a line with **Undo**
+follows either move. No photo is shrunk or
 moved: archiving is one column, `albums.archived_term_id` (and `archived_at`, set by the
 database). `rpc/gallery_public()` returns every published album with its `term` (null while it is
 in the gallery). The link `archive` is the archive's own: a new album titled "Archive" gets
@@ -2171,7 +2521,9 @@ officers see.
 
 1. Under **New exam**, type a title and press **Add exam**. The exam starts as a draft, which
    students cannot reach, with a random word of twelve characters in its address. Its page has five
-   tabs: Set-up, Questions, Registered list, Results and Overview.
+   tabs: Set-up, Questions, Registered list, Results and Overview. The open tab is in the
+   address (`?tab=questions`, `list`, `results` or `overview`; Set-up is the plain address), and
+   choosing a tab adds nothing to the browser's Back.
 2. **Questions.** Add them one at a time (the text, 2 to 6 options, which one is right) or press
    **Import from a spreadsheet**. The file is `.xlsx` or `.csv` with the columns Question, Option A
    to Option F, Answer and Keep order; **Download a template** gives the header and two examples.
@@ -2179,7 +2531,9 @@ officers see.
    questions. Nothing is imported unless every row is good, and a bad row is named with its number
    and the reason. Tick "Keep the options in this order" (in a file, "yes" under Keep order) for a
    question whose last option is "All of the above": its options are then not shuffled. Drag a
-   question by its handle to move it.
+   question by its handle to move it. Several questions can be open for editing at once;
+   Cancel on a changed one asks "Discard changes", and an option taken out with words in it
+   can be brought back with Undo.
 3. **Registered list.** Add the student IDs (the next part).
 4. **Set-up**, under **The exam**: set **Opens** and **Closes** (Cairo time) and **Length in
    minutes**, then **Save**. The note beside them says when the last paper can end.

@@ -1,5 +1,88 @@
 # Design audit, October 2026
 
+## Status, 2026-10-11
+
+The audit below is left as it was written on 2026-10-08, with its line numbers from main
+`86b5004`. It was worked through in two stages on the branch `apple-design-pass`: stage 1
+(commit `ea5dab3`) did the shared pieces of section 1, and stage 2 did the pages, each area
+worked by one agent and then read again by a second. This section says where every numbered
+finding stands. The rules a new page follows are in `docs/RUNBOOK.md` section 24.
+
+How it was checked: headless Chromium scripts against made-up sessions and data, in both
+themes from 320 to 1920 px, with the keyboard, reduced motion and axe for contrast, and the
+unit tests. Not done when this was written: `npm run walk` and `npm run walk:portal-sample`
+over the result, anything signed in against the real database, a real phone, and Safari or
+Firefox.
+
+| Finding | Status | What was done, and what is left |
+| --- | --- | --- |
+| C1 | Fixed | `ConfirmButton` ignores a second click within 500 ms of the first, and a held Enter counts once. New term keeps Start off until the new term's name is typed and says "This cannot be undone." beside it. |
+| C2 | Fixed | `pressCls` (`src/lib/motion.js`: colours ease over 150 ms, the button sinks to 0.97 while pressed) is in `<Button>`, the portal's pill and chip classes and the hand-typed buttons. Left: with reduced motion on a touch screen a press shows nothing unless the button has an `active:` colour of its own, as the exam's buttons and the photo viewers' have, and a disabled portal pill still sinks. |
+| C3 | Fixed | `scroll-smooth` is gone from `index.html` and every scroll asks `scrollBehavior()`. No `behavior: 'smooth'` is left in `src`. |
+| C4 | Partly fixed | `text-2xs` and `text-3xs`, in rem, replaced the px sizes. Left: six px sizes in `SpecialResult.jsx`, the two bespoke lookup cards. |
+| C5 | Fixed | Under `prefers-contrast: more`, `index.css` strengthens lines and muted text. The variant `reduce-transparency:` exists and every blurred panel and scrim has a solid fallback. The stat grids and the Back button lost their blur instead, since nothing passed behind them. |
+| C6 | Fixed | `future: { hoverOnlyWhenSupported: true }` in `tailwind.config.js`. |
+| C7 | Fixed | `errorText(err, fallback)` (`src/lib/errorText.js`). The checkout and the story form get their sentence from `src/lib/orders.js` and `stories.js`, which return it; the seven portal files named call it, and so do the portal pages of stage 2. Left: `src/lib/membership.js` hands back the raw message, which `MembersPage.jsx` rewords, and `exportFile.js` throws its two font sentences unmarked, which `ExportButtons.jsx` recognises itself. |
+| C8 | Fixed | `SaveStatus` says "Unsaved changes" while a form differs from what is stored and the saved wording only while it is clean, on the four forms named and on the other portal forms that wait for Save. |
+| C9 | Fixed | A choice that waits for Save is a `CheckField` tick box: the daily digest, Pin to the top, On the checkout, and the yes or no fields of the content editor. `Toggle` is left only on settings that save at once. |
+| C10 | Fixed | Site settings, an event's Published switch, a submission's status and an album's switches and photo actions show the change at the click, go back with a sentence if the save fails, and dim nothing beside them. The same was done for merch, the magazine's status and cover, and the exam's Open to students. Left: `useUpsertSiteSetting` does not cancel a settings read already on its way, so the checker noted a rare race in which a switch shows its old position though the new one is saved. |
+| C11 | Fixed | `PageLoading` is the in-layout loading state. `Centered` is left for a whole screen that is one message. |
+| C12 | Fixed | `inputCls` and `smallInputCls` carry `focus-visible:ring-2 focus-visible:ring-medical/60`. |
+| C13 | Fixed | A default pill keeps the width of its longest wording (`keepWidth` for a pill with its own classes), and the armed wording is read out. The hand-made copies in `MembersPanel.jsx` and `PositionTypesPanel.jsx` are `ConfirmButton` now. Left: the armed red pill of the `text` variant is about 20px tall with no larger reach, so pages wrap it, and it cannot take a separate accessible wording. The content editor's "Discard draft" still asks with its own two buttons. |
+| C14 | Fixed | A dropped, cancelled or key-moved row settles by FLIP over 200 ms on `cubic-bezier(0.2, 0, 0, 1)`, skipped under reduced motion, and Escape cancels a pointer drag (`SortableList.jsx`, with tests for `settleOffsets`). |
+| H1 | Fixed | Every upload goes to a folder of its own, `<issue id>/pages-<time>`, and the edition is pointed at it only after the last page; a failure or Stop removes the new folder and changes nothing. The folder an edition has left is kept seven days and removed when an editor next opens the edition. No interim confirm was added. Left: tried against a stand-in for the bucket only. |
+| H2 | Fixed | The edition form follows its row only while it is clean, and after a save takes the stored row only if nothing was typed meanwhile. "Undo changes" is there, with "Put them back". |
+| H3 | Fixed | Every change is a functional update from the field up to `setDoc`, and list rows keep an identity, so a picture lands in the row it was chosen for. |
+| H4 | Fixed | A row whose status changed stays in the list, with "Moved to Contacted. Undo", until a filter chip is chosen again. Left: typing in Search or choosing another filter still drops unsaved notes on cards that leave the list. |
+| H5 | Partly fixed | Each tab of the committee editor stays mounted once opened, Cancel and "Back to calls" ask "Discard changes" when something was typed, the task and update forms do the same, and closing the tab asks. Left: a link inside the portal, or the browser's Back, still leaves a half-written form without asking, because `BrowserRouter` has no navigation blocker. |
+| H6 | Fixed | Deleting an officer's note is a `ConfirmButton`, and `remove.error` is shown under the list. |
+| H7 | Fixed | While a token is in use, "Turn off" and "Issue a new token" ask for a second click, and their errors show under them. "Disconnect" asks twice as well, which went beyond the finding. |
+| H8 | Fixed | The task page has an error per region: under the status chips, under the file list, under the comment box and under Delete. |
+| H9 | Partly fixed | `NotFoundPage.jsx`, with links and `noindex`, answers the catch-all route and an unknown committee. Left: the server still answers 200, since `vercel.json` hands the shell to every address, and the `noindex` tag is there only once JavaScript has run. A true 404 needs `vercel.json` and `scripts/prerender.mjs` (RUNBOOK section 15). Unknown album and event addresses are still answered by their own pages. |
+| H10 | Fixed | `useLeaveWarning` asks before the tab is closed or reloaded while photos or pages upload, and the back link and Delete are switched off meanwhile. Left: the portal's own menu can still be used to leave. The uploads then carry on in the background, and only the progress list and any failures go out of sight. |
+
+**Medium and low findings (sections 3 and 4).** All of them were taken up, and all but two
+are fixed in the code. Not fixed, or fixed in another way than the audit proposed:
+
+- **A translucent nav bar** (the audit called it optional): not done. The stacked border and
+  shadow became one hairline and the bar stays solid, because section 5 says the solid
+  hairline look suits the brand, and a see-through bar would need the contrast walk again.
+- **The magazine shelf's N writes**: the shelf is a `SortableList` now, but no single call
+  saves an order, so every row is still written. They are sent together, as the gallery's
+  are, and a second drop waits for the first.
+- **"Add event is disabled with no reason"**: fixed the other way round. The button is
+  always pressable and points at the missing title, as the new task and new update forms
+  do. The audit's wording was a dimmed button with a line saying why.
+- **"Nothing checks that a scheduled time is in the future"**: done for an update's two
+  times and for an open call's deadline. A due date in the past on a task is said and not
+  refused, and an update that is already out may be given a take-down time that has passed,
+  since that is the only way to retire it without deleting it.
+- **The lightbox's `touch-action: pan-y`** is `pan-y pinch-zoom`, so a photo can still be
+  pinched larger, as the old viewer allowed.
+- **`font-light` leads**: the twelve the audit names are `font-normal dark:font-light`. The
+  18px page leads were not on its list and now differ: some pages changed theirs, while the
+  home sections, Contact, Privacy, IFMSA, the IFMSA history header and two of the portal's
+  previews are still light. It wants one decision for the whole site.
+
+**What the pass kept running into**, and left for a change in a shared file:
+
+- A link inside the portal is never asked about (the remainder of H5 and H10). It needs a
+  guard in `PortalLayout.jsx` or a router that can block.
+- The shared classes are under 44px on a touch screen (`inputCls`, `primaryBtnCls`,
+  `outlineBtnCls`, `Toggle`, the armed `text` variant of `ConfirmButton`, the pills of
+  `ExportButtons.jsx`), so each page adds a `tapCls` or a wrapper of its own.
+- A button that removes or disables itself drops the keyboard focus to the page body. It was
+  repaired page by page, not in `ConfirmButton` or `UndoLine`.
+- `useFocusTrap` runs again whenever a caller passes a new `onClose`, and hears keys only
+  inside its container. The apply dialog works round both; the hook itself was left alone,
+  because the other dialogs were being built against it.
+- Much of the new pure logic has no unit test, because stage 2 could create no files:
+  `callProblems`, `postTimeProblems`, `stalePagesFolders`, `issueErrorText`, the photo
+  viewer's swipe maths and the form rules of the checkout and the story form. Each was
+  checked from a scratch script instead.
+
+---
+
 Run on 2026-10-08 with the apple-design skill (Emil Kowalski, installed at `.claude/skills/apple-design`).
 Eight read-only code reviews: three on the public site (motion, materials and type, design foundations) and
 five on the portal (shell and shared UI, admin, committees/tasks/updates, content/events/submissions,

@@ -93,17 +93,21 @@ export default function ExchangeJoinPage() {
         </section>
 
         {/* ── Back out ──────────────────────────────────────────────────── */}
+        {/* Each link is a line of text with a thumb's 44px to land on (in px,
+            not rem, since the root size shrinks on a 320px phone). When the
+            two wrap onto two lines on a narrow phone, the row gap keeps one
+            link's place to land clear of the other's. */}
         <section className="reveal text-center">
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-1">
             <Link
               to="/exchange/outgoings"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+              className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
               Outgoings instead
             </Link>
             <Link
               to="/exchange/incomings"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+              className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
               Incomings instead
             </Link>

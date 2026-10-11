@@ -15,8 +15,16 @@
 // "yes" for a question whose options must stay as written, else blank.
 // Nothing is imported unless every row is good: each bad row is named by its
 // number in the sheet, with the reason.
+import { UNREACHED } from '../lib/errorText.js'
 import { parseCsv } from './rosterFile.js'
 import { toCsv } from './exportFile.js'
+
+// An error whose message is a sentence of this file's own, written for the
+// officer. The mark is what errorText (src/lib/errorText.js) looks for: it
+// shows a marked sentence as written, and puts the page's own words in place
+// of anything else a failed read threw (the spreadsheet reader's, the
+// browser's).
+const refusal = (sentence) => Object.assign(new Error(sentence), { rejected: true })
 
 export const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 export const MAX_OPTIONS = OPTION_LETTERS.length
@@ -46,17 +54,33 @@ export function letterOf(index) {
 
 // ---- one question -----------------------------------------------------------
 
-// What the database would refuse about a question, in its own words, or ''.
-// `correct` is the right option's place, from 0.
-export function questionProblem({ body, options, correct }) {
+// What the database would refuse about a question, and where in the form it
+// is, or null: { at, index, problem }. `problem` is the database's own
+// sentence. `at` is 'body', 'options' or 'correct', so the form can say it
+// beside that part and take the officer there; for 'options', `index` is the
+// place of the first option that is empty or too long, or null when there are
+// simply too few or too many. `correct` is the right option's place, from 0.
+export function questionFault({ body, options, correct }) {
   const text = cell(body)
-  if (text === '' || chars(text) > BODY_MAX) return 'A question needs its text.'
+  if (text === '' || chars(text) > BODY_MAX) return { at: 'body', index: null, problem: 'A question needs its text.' }
   const opts = Array.isArray(options) ? options.map(cell) : []
-  if (opts.length < 2 || opts.length > MAX_OPTIONS || opts.some((o) => o === '' || chars(o) > OPTION_MAX)) {
-    return 'A question needs between 2 and 6 options, none of them empty.'
+  const bad = opts.findIndex((o) => o === '' || chars(o) > OPTION_MAX)
+  if (opts.length < 2 || opts.length > MAX_OPTIONS || bad !== -1) {
+    return {
+      at: 'options',
+      index: bad === -1 ? null : bad,
+      problem: 'A question needs between 2 and 6 options, none of them empty.',
+    }
   }
-  if (!Number.isInteger(correct) || correct < 0 || correct >= opts.length) return 'Choose which option is right.'
-  return ''
+  if (!Number.isInteger(correct) || correct < 0 || correct >= opts.length) {
+    return { at: 'correct', index: null, problem: 'Choose which option is right.' }
+  }
+  return null
+}
+
+// That refusal as the sentence alone, or ''.
+export function questionProblem(question) {
+  return questionFault(question)?.problem ?? ''
 }
 
 // The form's options without the one at `index`, and where the right answer
@@ -405,18 +429,28 @@ export async function fileGrid(file) {
   if (name.endsWith('.csv')) return parseCsv(await file.text())
   if (name.endsWith('.xlsx')) {
     // Loaded on demand, as the roster's import does: the spreadsheet reader is
-    // large and only these buttons need it.
-    const XLSX = await import('xlsx')
-    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    // large and only these buttons need it. When it cannot be fetched, the
+    // trouble is the connection, whatever the browser calls it.
+    const XLSX = await import('xlsx').catch(() => {
+      throw refusal(UNREACHED)
+    })
+    let wb
+    try {
+      wb = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    } catch {
+      // The reader's own words (a damaged file, one locked with a password)
+      // are not written for an officer.
+      throw refusal('That workbook could not be read. Save it again as an Excel workbook (.xlsx) and choose that.')
+    }
     const sheet = wb.Sheets[wb.SheetNames[0]]
-    if (!sheet) throw new Error('That workbook has no sheets.')
+    if (!sheet) throw refusal('That workbook has no sheets.')
     if (!sheet['!ref']) return []
     const range = { s: { r: 0, c: 0 }, e: XLSX.utils.decode_range(sheet['!ref']).e }
     const read = (raw) => XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: true, range, raw })
     const stored = read(true)
     return read(false).map((row, i) => row.map((shown, j) => cellText(shown, stored[i]?.[j])))
   }
-  throw new Error('Choose an .xlsx or a .csv file.')
+  throw refusal('Choose an .xlsx or a .csv file.')
 }
 
 // The questions in a file: { rows, problems }, as questionsFromGrid gives them.
@@ -427,6 +461,6 @@ export async function parseQuestionFile(file) {
 // The IDs in a file's first column. Throws when there are none.
 export async function parseIdFile(file) {
   const ids = idsFromGrid(await fileGrid(file))
-  if (ids.length === 0) throw new Error('No IDs found in the first column of that file.')
+  if (ids.length === 0) throw refusal('No IDs found in the first column of that file.')
   return ids
 }

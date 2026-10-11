@@ -40,10 +40,12 @@ async function request(path, { method = 'GET', body, timeoutMs = 10000, headers 
   })
   if (!res.ok) {
     let message = `Request failed (${res.status})`
+    let code = ''
     try {
       const err = await res.json()
       // PostgREST: {message, details, hint, code}; raised exceptions land in message.
       if (err && typeof err.message === 'string' && err.message) message = err.message
+      if (err && typeof err.code === 'string') code = err.code
     } catch {
       /* non-JSON error body */
     }
@@ -51,6 +53,12 @@ async function request(path, { method = 'GET', body, timeoutMs = 10000, headers 
     error.status = res.status
     // "The backend said no" (a refusal to show as-is) vs transport trouble.
     error.rejected = res.status >= 400 && res.status < 500
+    // Which no it was: the database's SQLSTATE ('22023' under a sentence one of
+    // its functions raised for people) or PostgREST's own code ('PGRST202').
+    // PostgREST answers 4xx in its own words too, so `rejected` alone cannot
+    // tell the two apart; src/lib/errorText.js reads this to do it. Left off
+    // when the answer carried none (a Storage error, a body that is not JSON).
+    if (code) error.code = code
     throw error
   }
   if (res.status === 204) return null

@@ -17,7 +17,8 @@
   left: 0;
   opacity: 0;
   overflow: hidden;
-  will-change: transform, filter;
+  /* What gsap animates on each picture. */
+  will-change: transform, opacity;
   pointer-events: none;
 }
 

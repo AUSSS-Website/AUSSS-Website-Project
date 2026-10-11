@@ -3,6 +3,7 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { PageHeader, Panel, outlineBtnCls } from '../../portalUi.jsx'
 import EventsPanel from './EventsPanel.jsx'
+import { tapCls } from './ScheduleFields.jsx'
 
 // /portal/events. Every event this person may edit in one list: their
 // committees' events, and for the EB every committee's and the society-wide
@@ -25,7 +26,7 @@ export default function EventsPage() {
             : 'The events of the committees you are an officer of this term.'
         }
         action={
-          <Link to="/events" target="_blank" rel="noopener noreferrer" className={outlineBtnCls}>
+          <Link to="/events" target="_blank" rel="noopener noreferrer" className={`${outlineBtnCls} ${tapCls}`}>
             View events page ↗
           </Link>
         }
@@ -38,7 +39,11 @@ export default function EventsPage() {
             Events are added by each committee&rsquo;s officers and by the Executive Board. If you think you should have
             access, ask the webmaster to check your assignment for this term.
           </p>
-          <Link to="/portal" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
+          {/* 44px for a finger; the margins take the extra height back. */}
+          <Link
+            to="/portal"
+            className="-mb-3 mt-1 inline-flex min-h-[44px] items-center text-sm font-semibold text-accent hover:text-ink"
+          >
             &larr; Back to your dashboard
           </Link>
         </Panel>

@@ -3,8 +3,10 @@ import { NO_PERMISSION, UNREACHED, WENT_WRONG, errorText } from './errorText.js'
 
 const FALLBACK = 'Could not save.'
 
-// An error as src/lib/supabaseRest.js throws it.
-const rest = (message, status) => Object.assign(new Error(message), { status, rejected: status >= 400 && status < 500 })
+// An error as src/lib/supabaseRest.js throws it: `code` is there when the
+// answer carried one (PostgREST's always do; a Storage error's does not).
+const rest = (message, status, code) =>
+  Object.assign(new Error(message), { status, rejected: status >= 400 && status < 500 }, code ? { code } : {})
 // An error as supabase-js hands it back from the database.
 const db = (message, code) => ({ name: 'PostgrestError', message, details: null, hint: null, code })
 // A failure with the name a browser gives it.
@@ -14,6 +16,18 @@ describe('errorText: a refusal is shown as written', () => {
   it('from the public pages, where supabaseRest.js marks it `rejected`', () => {
     expect(errorText(rest('This call has closed.', 400), FALLBACK)).toBe('This call has closed.')
     expect(errorText(rest('Please answer: Why do you want to join', 400), FALLBACK)).toBe('Please answer: Why do you want to join')
+  })
+
+  it('from the public pages, by the code the database raised it with', () => {
+    expect(errorText(rest('This call has closed.', 400, '22023'), FALLBACK)).toBe('This call has closed.')
+    expect(errorText(rest('Please answer: Why do you want to join', 400, '22023'), FALLBACK)).toBe('Please answer: Why do you want to join')
+    expect(errorText(rest('Too many orders right now, please retry shortly.', 400, '22023'), FALLBACK)).toBe(
+      'Too many orders right now, please retry shortly.',
+    )
+    // PostgREST answers a 40001 with 500, so only the code says it is a refusal.
+    expect(errorText(rest('Someone else saved this while you were editing. Reload to see their version before saving yours.', 500, '40001'), FALLBACK)).toBe(
+      'Someone else saved this while you were editing. Reload to see their version before saving yours.',
+    )
   })
 
   it('from the portal, by the codes the database raises its sentences with', () => {
@@ -103,6 +117,21 @@ describe('errorText: anything else is the caller’s own words', () => {
     expect(errorText(db('could not serialize access due to concurrent update', '40001'), FALLBACK)).toBe(FALLBACK)
     expect(errorText(db('null value in column "title" of relation "tasks" violates not-null constraint', '23502'), FALLBACK)).toBe(FALLBACK)
     expect(errorText(db('JSON object requested, multiple (or no) rows returned', 'PGRST116'), FALLBACK)).toBe(FALLBACK)
+  })
+
+  it('for PostgREST’s own words on the public pages, though supabaseRest.js marks every 4xx `rejected`', () => {
+    expect(
+      errorText(rest('Could not find the function public.submit_order(email, items, name) in the schema cache', 404, 'PGRST202'), FALLBACK),
+    ).toBe(FALLBACK)
+    expect(errorText(rest('null value in column "name" of relation "orders" violates not-null constraint', 400, '23502'), FALLBACK)).toBe(FALLBACK)
+    expect(errorText(rest('invalid input syntax for type uuid: "7"', 400, '22P02'), FALLBACK)).toBe(FALLBACK)
+    expect(errorText(rest('new row for relation "signups" violates check constraint "signups_kind_check"', 400, '23514'), FALLBACK)).toBe(FALLBACK)
+    expect(errorText(rest('JSON object requested, multiple (or no) rows returned', 406, 'PGRST116'), FALLBACK)).toBe(FALLBACK)
+    expect(errorText(rest('duplicate key value violates unique constraint "signups_email_key"', 409, '23505'), FALLBACK)).toBe(FALLBACK)
+  })
+
+  it('for a code that is no refusal, even on an error a page marked', () => {
+    expect(errorText(Object.assign(new Error('unknown edition 7'), { rejected: true, code: 'P0002' }), FALLBACK)).toBe(FALLBACK)
   })
 
   it('for an error nobody marked, and for no error at all', () => {

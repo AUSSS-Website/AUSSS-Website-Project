@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import PdfReader from './PdfReader.jsx'
-import { scrollBehavior } from '../lib/motion.js'
+import { pressCls, scrollBehavior } from '../lib/motion.js'
 
 // A PDF offered on a page as a card: what it is, then "Read it here", "Open in
 // a new tab" and "Download PDF". The reader (PdfReader, with its search bar)
@@ -19,8 +19,7 @@ import { scrollBehavior } from '../lib/motion.js'
 //             better wider than the card)
 //   children  the words about it
 
-const quietCls =
-  'inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10'
+const quietCls = `inline-flex min-h-11 items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`
 
 export default function DocumentCard({
   id,
@@ -37,13 +36,17 @@ export default function DocumentCard({
 }) {
   // The page the reader is open on, or 0 while it is closed.
   const [openAt, setOpenAt] = useState(0)
+  // Counts the presses of the `jump` button, so each one opens the reader on
+  // that page afresh: pressed again after reading on, or after scrolling back
+  // up to the card, it used to do nothing at all.
+  const [jumps, setJumps] = useState(0)
   const readerRef = useRef(null)
 
   // The reader opens below the card: bring it into view once it is there.
   useEffect(() => {
     if (!openAt) return
     readerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
-  }, [openAt])
+  }, [openAt, jumps])
 
   return (
     <div id={id} className="scroll-mt-28">
@@ -70,7 +73,7 @@ export default function DocumentCard({
             onClick={() => setOpenAt((at) => (at ? 0 : 1))}
             aria-expanded={Boolean(openAt)}
             aria-controls={`${id}-reader`}
-            className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M7 3h7l5 5v13H7V3Z" strokeLinejoin="round" />
@@ -79,7 +82,15 @@ export default function DocumentCard({
             {openAt ? 'Close the document' : 'Read it here'}
           </button>
           {jump && (
-            <button type="button" onClick={() => setOpenAt(jump.page)} aria-controls={`${id}-reader`} className={quietCls}>
+            <button
+              type="button"
+              onClick={() => {
+                setOpenAt(jump.page)
+                setJumps((n) => n + 1)
+              }}
+              aria-controls={`${id}-reader`}
+              className={quietCls}
+            >
               {jump.label}
             </button>
           )}
@@ -93,8 +104,17 @@ export default function DocumentCard({
       </div>
 
       <div id={`${id}-reader`} ref={readerRef} className={`mx-auto w-full ${readerWidth} scroll-mt-28 ${openAt ? 'mt-6' : ''}`}>
-        {/* Keyed by the page, so "open at our pages" on an open reader starts it there. */}
-        {openAt > 0 && <PdfReader key={openAt} src={src} title={title} heightClass="h-[92vh]" startPage={openAt} large={large} />}
+        {/* Keyed by the page and the press, so "open at our pages" on an open reader starts it there. */}
+        {openAt > 0 && (
+          <PdfReader
+            key={`${openAt}-${jumps}`}
+            src={src}
+            title={title}
+            heightClass="h-[92vh]"
+            startPage={openAt}
+            large={large}
+          />
+        )}
       </div>
     </div>
   )

@@ -7,12 +7,23 @@ import { isPostLive, usePosts, useTasks } from '../workQueries.js'
 import { useSubmissionCounts } from '../submissionsQueries.js'
 import { PageHeader, Panel, StatusBadge } from '../portalUi.jsx'
 import { CommitteeTag, DueLabel, PriorityPill, UnreadDot } from '../workUi.jsx'
+import { errorText } from '../../lib/errorText.js'
 
 // /portal. One glance: the work waiting on you, the updates you haven't read,
 // who you are, whether you're verified, what you hold this term, and (EB
 // only) how many verification requests are waiting.
 
-const moreLinkCls = 'mt-4 inline-block text-sm font-semibold text-accent hover:text-ink'
+// A panel's way on to its page. The words are one line of small text, and the
+// link around them is 44px tall, in px because the root size shrinks on a 320px
+// phone, so a finger has room to land.
+const linkCls =
+  'inline-flex min-h-[44px] items-center text-sm font-semibold text-accent transition-colors hover:text-ink'
+// The margins take the extra height back, so the words sit where they would
+// under a plain mt-4.
+const moreLinkCls = `mt-1 -mb-3 ${linkCls}`
+// The portal's pills are under 44px tall to the eye. This ::after gives a
+// finger the difference without changing how they look.
+const tapCls = "relative after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
 
 // Open tasks assigned to this person, soonest due first (the query's order).
 function MyTasksPanel({ uid }) {
@@ -34,7 +45,7 @@ function MyTasksPanel({ uid }) {
             <li key={t.id}>
               <Link
                 to={`/portal/tasks/${t.id}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm text-ink hover:text-accent"
+                className="flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm text-ink transition-colors hover:text-accent"
               >
                 <CommitteeTag committee={t.committee} />
                 <span className="min-w-[9rem] flex-1 truncate font-medium">{t.title}</span>
@@ -156,7 +167,7 @@ function PositionChip({ assignment }) {
 
 export default function DashboardPage() {
   usePageTitle('Members portal')
-  const { user, profile, assignments, isEB, officerOf, profileError } = useAuth()
+  const { user, profile, assignments, isEB, officerOf, profileError, assignmentsError } = useAuth()
   // Committees this person can edit: officers see theirs, the EB sees all.
   const officerCommittees = assignments
     .filter((a) => a.position?.level === 'officer' && a.position?.committee)
@@ -170,6 +181,10 @@ export default function DashboardPage() {
   const requestPending = myVer.data?.status === 'pending'
   const showVerifyCta = status === 'unverified' && !myVer.isPending && !requestPending
   const name = firstName(profile, user)
+  // With no profile to read, "unverified" would be a guess, and so would
+  // "no positions" when this term's positions did not load.
+  const profileMissing = Boolean(profileError) && !profile
+  const positionsMissing = Boolean(assignmentsError) && assignments.length === 0
 
   return (
     <>
@@ -181,7 +196,7 @@ export default function DashboardPage() {
 
       {profileError && (
         <p role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger">
-          We couldn’t load your profile ({profileError.message}). Try again in a moment.
+          {errorText(profileError, 'We couldn’t load your profile. Try again in a moment.')}
         </p>
       )}
 
@@ -190,30 +205,38 @@ export default function DashboardPage() {
         <UpdatesPanel uid={user.id} />
 
         <Panel title="Membership">
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <StatusBadge status={status} />
-            {profile?.membership_tier && (
-              <span className="text-xs text-soft/55">{profile.membership_tier}</span>
-            )}
-            {profile?.joined_year && (
-              <span className="text-xs text-soft/55">Joined {profile.joined_year}</span>
-            )}
-          </div>
-          <p className="mt-3 text-sm text-soft/70">{STATUS_BLURB[status] || ''}</p>
-          {showVerifyCta && (
-            <Button to="/portal/verify" variant="accent" size="sm" className="mt-4">
-              Request verification
-            </Button>
-          )}
-          {requestPending && (
-            <p className="mt-4 text-xs font-semibold text-accent">
-              Verification requested. An EB member will review it soon.
-            </p>
+          {profileMissing ? (
+            <p className="mt-4 text-sm text-soft/60">Couldn’t load your membership.</p>
+          ) : (
+            <>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <StatusBadge status={status} />
+                {profile?.membership_tier && (
+                  <span className="text-xs text-soft/55">{profile.membership_tier}</span>
+                )}
+                {profile?.joined_year && (
+                  <span className="text-xs text-soft/55">Joined {profile.joined_year}</span>
+                )}
+              </div>
+              <p className="mt-3 text-sm text-soft/70">{STATUS_BLURB[status] || ''}</p>
+              {showVerifyCta && (
+                <Button to="/portal/verify" variant="accent" size="sm" className={`mt-4 ${tapCls}`}>
+                  Request verification
+                </Button>
+              )}
+              {requestPending && (
+                <p className="mt-4 text-xs font-semibold text-accent">
+                  Verification requested. An EB member will review it soon.
+                </p>
+              )}
+            </>
           )}
         </Panel>
 
         <Panel title="Positions this term">
-          {assignments.length === 0 ? (
+          {positionsMissing ? (
+            <p className="mt-4 text-sm text-soft/60">Couldn’t load your positions.</p>
+          ) : assignments.length === 0 ? (
             <p className="mt-4 text-sm text-soft/60">
               No positions on record for this term. If you hold one, ask your
               officer or the EB to add you.
@@ -234,10 +257,7 @@ export default function DashboardPage() {
           <p className="mt-4 text-sm text-soft/70">
             Keep your name, phone and year current so officers can reach you.
           </p>
-          <Link
-            to="/portal/profile"
-            className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
-          >
+          <Link to="/portal/profile" className={moreLinkCls}>
             Edit profile &rarr;
           </Link>
         </Panel>
@@ -255,7 +275,7 @@ export default function DashboardPage() {
                   ? `/portal/committees/${officerCommittees[0].slug}`
                   : '/portal/committees'
               }
-              className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink"
+              className={moreLinkCls}
             >
               Open the editor &rarr;
             </Link>
@@ -299,17 +319,11 @@ export default function DashboardPage() {
                         pending.data.length === 1 ? '' : 's'
                       } waiting for a decision.`}
             </p>
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-              <Link
-                to="/portal/admin/verification"
-                className="text-sm font-semibold text-accent hover:text-ink"
-              >
+            <div className="-mb-3 mt-1 flex flex-wrap gap-x-6">
+              <Link to="/portal/admin/verification" className={linkCls}>
                 Open the queue &rarr;
               </Link>
-              <Link
-                to="/portal/admin/settings"
-                className="text-sm font-semibold text-accent hover:text-ink"
-              >
+              <Link to="/portal/admin/settings" className={linkCls}>
                 Site settings &rarr;
               </Link>
             </div>

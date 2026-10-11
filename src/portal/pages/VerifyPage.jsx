@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useAuth } from '../../auth/AuthProvider.jsx'
-import { useMyVerification, useRequestVerification } from '../queries.js'
+import { useLoadedProfile, useMyVerification, useRequestVerification } from '../queries.js'
 import {
   ErrorText,
   Field,
@@ -11,12 +11,19 @@ import {
   Panel,
   StatusBadge,
   inputCls,
+  outlineBtnCls,
+  panelTitleCls,
   primaryBtnCls,
 } from '../portalUi.jsx'
+import { errorText } from '../../lib/errorText.js'
 
 // /portal/verify. For people who signed in with an email the roster doesn't
 // know: they ask, an EB member confirms. One row per request; the page shows
 // the latest request's state instead of letting them pile up.
+
+// The portal's pills are under 44px tall to the eye. This ::after gives a
+// finger the difference without changing how they look.
+const tapCls = "relative after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
 
 function when(iso) {
   try {
@@ -28,19 +35,44 @@ function when(iso) {
 
 export default function VerifyPage() {
   usePageTitle('Request verification')
-  const { user, profile } = useAuth()
+  const { user, profile, profileError } = useAuth()
+  // The row the sign-in check read, held here to ask for it again.
+  const row = useLoadedProfile(user.id)
   const mine = useMyVerification(user.id)
   const request = useRequestVerification(user.id)
   const [message, setMessage] = useState('')
+  // True once a request has gone out from this page.
+  const [sent, setSent] = useState(false)
+  const pendingTitle = useRef(null)
 
   const status = profile?.membership_status || 'unverified'
-
-  if (mine.isPending) return <PageLoading />
-
   const latest = mine.data
+  const pending = status === 'unverified' && latest?.status === 'pending'
+
+  // Sending takes the form away, and the button that had the focus with it.
+  // The focus goes to the title of the panel that took its place, so the
+  // keyboard carries on from there and a screen reader says what happened.
+  useEffect(() => {
+    if (sent && pending) pendingTitle.current?.focus()
+  }, [sent, pending])
 
   let body
-  if (status !== 'unverified') {
+  if (profileError && !profile) {
+    // With no profile to read, "unverified" would be a guess, and the form
+    // would invite a member who is verified to ask again.
+    body = (
+      <Panel>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <ErrorText>{errorText(profileError, 'We couldn’t load your profile. Try again in a moment.')}</ErrorText>
+          <button type="button" onClick={() => row.refetch()} className={`${outlineBtnCls} ${tapCls}`}>
+            Try again
+          </button>
+        </div>
+      </Panel>
+    )
+  } else if (mine.isPending) {
+    body = <PageLoading />
+  } else if (status !== 'unverified') {
     body = (
       <Panel>
         <div className="flex flex-wrap items-center gap-3">
@@ -49,15 +81,18 @@ export default function VerifyPage() {
         </div>
       </Panel>
     )
-  } else if (latest?.status === 'pending') {
+  } else if (pending) {
     body = (
-      <Panel title="Request pending">
+      <Panel>
+        <p ref={pendingTitle} tabIndex={-1} className={`${panelTitleCls} focus:outline-none`}>
+          Request pending
+        </p>
         <p className="mt-4 text-sm text-soft/70">
           Sent {when(latest.created_at)}. An EB member will check you against the
           membership records. You’ll see your badge change on the dashboard.
         </p>
         {latest.message && (
-          <blockquote className="mt-4 border-l-2 border-line/15 pl-4 text-sm text-soft/55">
+          <blockquote className="mt-4 whitespace-pre-wrap break-words border-l-2 border-line/15 pl-4 text-sm text-soft/55">
             {latest.message}
           </blockquote>
         )}
@@ -69,6 +104,7 @@ export default function VerifyPage() {
       try {
         await request.mutateAsync(message.trim())
         setMessage('')
+        setSent(true)
       } catch {
         // request.error is rendered below.
       }
@@ -84,7 +120,7 @@ export default function VerifyPage() {
         )}
         <Panel className="space-y-5">
           <p className="text-sm text-soft/70">
-            You signed in as <span className="text-ink">{user.email}</span>. If the
+            You signed in as <span className="break-words text-ink">{user.email}</span>. If the
             roster has you under a different email, say so below so the EB can match you.
           </p>
           <Field
@@ -103,12 +139,10 @@ export default function VerifyPage() {
           </Field>
         </Panel>
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <button type="submit" disabled={request.isPending} className={primaryBtnCls}>
+          <button type="submit" disabled={request.isPending} className={`${primaryBtnCls} ${tapCls}`}>
             {request.isPending ? 'Sending…' : 'Request verification'}
           </button>
-          <ErrorText>
-            {request.error ? request.error.message || 'Could not send the request.' : ''}
-          </ErrorText>
+          <ErrorText>{request.error ? errorText(request.error, 'Could not send the request.') : ''}</ErrorText>
         </div>
       </form>
     )
@@ -122,14 +156,17 @@ export default function VerifyPage() {
         subtitle="Verified members see their positions and appear to their officers."
       />
       {mine.error && (
-        <p role="alert" className="mb-5 text-sm text-danger">
-          Couldn’t check earlier requests: {mine.error.message}
-        </p>
+        <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <ErrorText>{errorText(mine.error, 'Couldn’t check your earlier requests.')}</ErrorText>
+          <button type="button" onClick={() => mine.refetch()} className={`${outlineBtnCls} ${tapCls}`}>
+            Try again
+          </button>
+        </div>
       )}
       {body}
       <Link
         to="/portal"
-        className="mt-8 inline-block text-sm font-semibold text-soft/60 transition-colors hover:text-ink"
+        className="mt-5 inline-flex min-h-[44px] items-center text-sm font-semibold text-soft/60 transition-colors hover:text-ink"
       >
         &larr; Back to dashboard
       </Link>

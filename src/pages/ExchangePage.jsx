@@ -46,7 +46,7 @@ export default function ExchangePage() {
           <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
             Exchange the world
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg font-light leading-relaxed text-soft/75">
+          <p className="mx-auto mt-5 max-w-xl text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
             Four weeks of medicine somewhere new: our students abroad, or
             theirs here in Cairo. Which one are you here for?
           </p>
@@ -55,11 +55,15 @@ export default function ExchangePage() {
 
       <div className="container-prose flex flex-1 items-center py-16 sm:py-20">
         <div className="grid w-full gap-6 lg:grid-cols-3">
+          {/* The three cards are the page's only controls. Each answers a
+              press at once (a stronger border, and a slight sink for a reader
+              who has not asked for less motion): on a phone there is no
+              pointer to hover with, so the press is all the feedback there is. */}
           {options.map((o) => (
             <Link
               key={o.key}
               to={o.to}
-              className="group flex flex-col rounded-3xl border border-line/10 bg-card p-8 transition-colors hover:border-medical/40"
+              className="group flex flex-col rounded-3xl border border-line/10 bg-card p-8 transition-[border-color,transform] duration-200 ease-out hover:border-medical/40 active:border-medical/60 motion-safe:active:scale-[0.985]"
             >
               <span className="text-accent">
                 <OptionIcon which={o.key} />
@@ -75,7 +79,7 @@ export default function ExchangePage() {
               </p>
               <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-accent">
                 {o.cta}
-                <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>

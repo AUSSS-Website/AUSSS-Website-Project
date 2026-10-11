@@ -12,12 +12,23 @@ import { ErrorText, Spinner, outlineBtnCls, primaryBtnCls } from '../portal/port
 export const focusCls =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-page'
 
-// The portal's blue and outline buttons at a thumb's size.
-export const tapPrimaryCls = `${primaryBtnCls} ${focusCls} min-h-[44px]`
-export const tapOutlineCls = `${outlineBtnCls} ${focusCls} min-h-[44px] !px-5 !text-sm`
+// The portal's blue and outline buttons at a thumb's size. Both also change
+// colour while pressed. On a phone nothing hovers, and the small sinking the
+// portal's buttons do is left out for a taker who asked for less motion, who
+// would otherwise press "Next" and see nothing until the page changed.
+//
+// Only a button that is switched on changes colour. A browser counts a press
+// on a disabled button as a press too, and "Start the exam" with no code
+// typed would light up under the thumb and then do nothing. The rule is
+// written with :not(:disabled) and not with enabled:, which a link styled as
+// a button ("Try again" on the sign-in's error card) would never pass.
+export const tapPrimaryCls = `${primaryBtnCls} ${focusCls} min-h-[44px] [&:not(:disabled)]:active:bg-cta-hover`
+export const tapOutlineCls = `${outlineBtnCls} ${focusCls} min-h-[44px] !px-5 !text-sm [&:not(:disabled)]:active:bg-veil/10`
 
-// A quiet text button ("Sign out", "Edit my details", "Clear answer").
-export const tapLinkCls = `inline-flex min-h-[44px] items-center justify-center rounded-lg px-2 text-sm font-semibold text-accent underline-offset-4 hover:underline disabled:opacity-40 ${focusCls}`
+// A quiet text button ("Sign out", "Edit my details", "Clear answer"). It
+// takes a faint fill under the thumb, so a press is answered before the tap
+// lands; the underline is for a pointer that can hover.
+export const tapLinkCls = `inline-flex min-h-[44px] items-center justify-center rounded-lg px-2 text-sm font-semibold text-accent underline-offset-4 hover:underline [&:not(:disabled)]:active:bg-veil/10 disabled:opacity-40 ${focusCls}`
 
 // Whether the taker is moving about with a keyboard: true from a press of Tab
 // until the next touch or click.
@@ -51,8 +62,11 @@ export function moveFocus(element) {
   element.focus({ preventScroll: true })
 }
 
-// For an element moveFocus is used on.
-export const focusTargetCls = 'outline-none data-[ring]:focus-visible:ring-2 data-[ring]:focus-visible:ring-accent/60'
+// For an element moveFocus is used on. The browser's outline is taken away
+// only while the element has the focus: Tailwind does it with a see-through
+// outline, which a system that forces its own colours (Windows high
+// contrast) paints in, and left on always it boxed every question on a page.
+export const focusTargetCls = 'focus:outline-none data-[ring]:focus-visible:ring-2 data-[ring]:focus-visible:ring-accent/60'
 
 // Whether a screen of the exam has been on show since the page loaded. The
 // first one leaves the focus where the browser put it; each one after it is a
@@ -91,14 +105,19 @@ export function ExamCard({ eyebrow = 'Exchange exam', title, subtitle, children 
     <div className="w-full max-w-sm rounded-3xl border border-line/10 bg-sunk p-6 sm:p-8">
       <div className="text-center">
         {eyebrow && (
-          <span className="eyebrow justify-center">
+          // No wider than the card: with very large text on a narrow phone
+          // the words wrap and the two rules give way, where the right-hand
+          // rule used to stick out and let the whole page slide sideways.
+          <span className="eyebrow max-w-full justify-center">
             <span className="h-px w-8 bg-medical" />
             {eyebrow}
             <span className="h-px w-8 bg-medical" />
           </span>
         )}
         {title && (
-          <h1 ref={heading} tabIndex={-1} className={`heading-serif mt-4 rounded-lg text-2xl text-ink ${focusTargetCls}`}>
+          // Balanced, so a title that takes two lines on a phone does not
+          // leave one word alone on the second.
+          <h1 ref={heading} tabIndex={-1} className={`heading-serif mt-4 text-balance rounded-lg text-2xl text-ink ${focusTargetCls}`}>
             {title}
           </h1>
         )}
@@ -110,13 +129,14 @@ export function ExamCard({ eyebrow = 'Exchange exam', title, subtitle, children 
   )
 }
 
-// The portal's spinner. It stands still for a taker who asked for less
-// motion, so it always comes with a line of words: a still ring alone would
-// not say that anything is on its way.
+// The portal's spinner. For a taker who asked for less motion it does not
+// turn: it fades and comes back, slowly, which still says that something is
+// on its way where a ring standing still would look stuck. It always comes
+// with a line of words as well.
 export function Waiting({ children = 'One moment…' }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <Spinner className="h-8 w-8 motion-reduce:animate-none" />
+      <Spinner className="h-8 w-8 motion-reduce:animate-pulse" />
       <p className="text-sm text-soft/80">{children}</p>
     </div>
   )
@@ -162,12 +182,16 @@ function GoogleMark() {
 
 // The portal's Google button: the light one in both themes (white fill,
 // #747775 outline, #1F1F1F label), which is what the guidelines allow.
+// <Button> keeps it still for a taker who asked for less motion. Its own
+// focus ring is a pale line drawn against the button's edge, which is lost
+// round a white button on the dark theme, so this one takes the exam's blue
+// ring, set off from the button by a gap in the card's colour.
 export function GoogleButton({ busy, onClick }) {
   return (
     <Button
       type="button"
       variant="primary"
-      className="mt-6 min-h-[44px] w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light motion-reduce:transition-none motion-reduce:hover:scale-100"
+      className="mt-6 min-h-[44px] w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light active:!bg-silver-light focus-visible:!ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sunk"
       onClick={onClick}
       disabled={busy}
     >

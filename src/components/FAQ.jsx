@@ -12,11 +12,14 @@ export default function FAQ({ items, className = '' }) {
           key={i}
           className="group rounded-2xl border border-line/10 bg-card px-5 open:border-medical/30 sm:px-6"
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-base font-semibold text-ink marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60">
+          {/* Older Safari draws its own triangle unless the -webkit marker is
+              hidden too. The plus turns into a cross either way; the turn is
+              only animated for a reader who has not asked for less motion. */}
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg py-4 text-left text-base font-semibold text-ink marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 [&::-webkit-details-marker]:hidden">
             <span>{item.q}</span>
             <svg
               viewBox="0 0 24 24"
-              className="h-5 w-5 shrink-0 text-accent transition-transform duration-300 group-open:rotate-45"
+              className="h-5 w-5 shrink-0 text-accent group-open:rotate-45 motion-safe:transition-transform motion-safe:duration-300"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"

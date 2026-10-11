@@ -1,10 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
+import { errorText } from '../../../lib/errorText.js'
 import { cairoLocalToIso, isoToCairoLocal } from '../../../lib/eventTime.js'
 import { useExamMutations } from '../../examQueries.js'
 import { examPhase } from '../../examStats.js'
-import { ConfirmButton, ErrorText, Field, Panel, Toggle, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
-import { countOf, whenInCairo } from './ExamsPage.jsx'
+import {
+  ConfirmButton,
+  ErrorText,
+  Field,
+  Panel,
+  SaveStatus,
+  Toggle,
+  inputCls,
+  outlineBtnCls,
+  primaryBtnCls,
+} from '../../portalUi.jsx'
+import { countOf, examTabId, tapCls, tapLinkCls, whenInCairo } from './ExamsPage.jsx'
 
 // The Set-up part of /portal/exam/:id. Whether students can reach the exam,
 // its title, times and length, the word in its address, the start code, what
@@ -14,6 +26,8 @@ import { countOf, whenInCairo } from './ExamsPage.jsx'
 // as they are; a field is switched off here only where the database would
 // refuse every change to it.
 
+const NOT_SAVED = 'The exam could not be saved.'
+
 // One of this page's forms. It follows the exam's row: it shows the row, keeps
 // unsaved edits when the row changes elsewhere (another officer saved), and
 // otherwise takes the row's new values. Saving sends only the columns this
@@ -21,7 +35,8 @@ import { countOf, whenInCairo } from './ExamsPage.jsx'
 // shows what the database stored (it tidies the word and the code).
 //   formFrom(row)      the row as the form holds it
 //   columnsFrom(form)  the form as columns of public.exams
-//   problem(form)      what is wrong with the form, in words, or ''
+//   problem(form)      what is wrong with the form, or null: { at, text },
+//                      where `at` is the id of the field it is about
 function useRowForm(exam, { formFrom, columnsFrom, problem }) {
   const { update } = useExamMutations()
   const [form, setForm] = useState(() => formFrom(exam))
@@ -36,9 +51,14 @@ function useRowForm(exam, { formFrom, columnsFrom, problem }) {
     if (base !== lastBase.current && current === lastBase.current) setForm(formFrom(exam))
     lastBase.current = base
   }, [base, current, exam, formFrom])
+  // Closing or reloading the tab would lose what is typed and not saved: the
+  // browser asks first. (Another part of the exam keeps this form as it is.)
+  useLeaveWarning(dirty)
 
   const change = (key, value) => {
     setSaved(false)
+    // A refusal was about the form as it stood: it goes once the form changes.
+    setError('')
     setForm((f) => ({ ...f, [key]: value }))
   }
   const set = (key) => (e) => change(key, e.target.value)
@@ -52,7 +72,8 @@ function useRowForm(exam, { formFrom, columnsFrom, problem }) {
     e.preventDefault()
     setError('')
     if (issue) {
-      setError(issue)
+      // It is already said under its field (Issue): take the officer there.
+      document.getElementById(issue.at)?.focus()
       return
     }
     const was = columnsFrom(formFrom(exam))
@@ -67,28 +88,55 @@ function useRowForm(exam, { formFrom, columnsFrom, problem }) {
       setForm(formFrom(row))
       setSaved(true)
     } catch (err) {
-      setError(err.message || 'The exam could not be saved.')
+      setError(errorText(err, NOT_SAVED))
     }
   }
 
   return { form, set, change, undo, dirty, issue, saved, error, saving: update.isPending, submit }
 }
 
-// Save, Undo, and what happened, under each form.
+// What is wrong with one field, said under that field while the form holds an
+// unsaved change. `at` is the field's id. The line is in the page from the
+// start, empty and out of sight, so a screen reader says it when it comes.
+function Issue({ f, at }) {
+  const text = f.dirty && f.issue?.at === at ? f.issue.text : ''
+  return (
+    <p id={`${at}-issue`} aria-live="polite" className={text ? 'mt-1.5 text-xs text-warn' : 'sr-only'}>
+      {text}
+    </p>
+  )
+}
+
+// For the <input> of that field: marked as the one at fault, and described by
+// the line under it.
+const faultOf = (f, at) =>
+  f.dirty && f.issue?.at === at ? { 'aria-invalid': true, 'aria-describedby': `${at}-issue` } : {}
+
+// Save, Undo, and where the form stands, under each form: "Unsaved changes"
+// while there is something to save, else what the last save said.
 function FormFoot({ f, savedText = 'Saved.' }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className={primaryBtnCls} disabled={f.saving || !f.dirty}>
+        <button type="submit" className={`${primaryBtnCls} ${tapCls}`} disabled={f.saving || !f.dirty}>
           {f.saving ? 'Saving…' : 'Save'}
         </button>
         {f.dirty && (
-          <button type="button" className={outlineBtnCls} onClick={f.undo}>
+          <button
+            type="button"
+            className={`${outlineBtnCls} ${tapCls}`}
+            onClick={(e) => {
+              // The button goes with the changes: the keyboard is handed to
+              // the form's first open field, not dropped.
+              const fields = e.currentTarget.form
+              f.undo()
+              fields?.querySelector('input:not(:disabled), textarea:not(:disabled)')?.focus()
+            }}
+          >
             Undo changes
           </button>
         )}
-        {f.saved && !f.dirty && <span className="text-xs text-ok">{savedText}</span>}
-        {f.dirty && f.issue && <span className="text-xs text-warn">{f.issue}</span>}
+        <SaveStatus dirty={f.dirty && !f.saving} saved={f.saved} savedText={savedText} />
       </div>
       <ErrorText>{f.error}</ErrorText>
     </>
@@ -101,9 +149,48 @@ const offCls = 'disabled:cursor-not-allowed disabled:opacity-60'
 
 // ---- open to students -------------------------------------------------------
 
+// The portal's switch (Toggle) is 28px tall. Wrapped in this, its button has
+// an ::after 44px tall, so a finger has the height to land on it.
+const switchReachCls =
+  "inline-flex shrink-0 [&>button]:after:absolute [&>button]:after:left-1/2 [&>button]:after:top-1/2 [&>button]:after:h-[44px] [&>button]:after:w-full [&>button]:after:-translate-x-1/2 [&>button]:after:-translate-y-1/2 [&>button]:after:content-['']"
+
 function StatusPanel({ exam }) {
   const { update } = useExamMutations()
-  const ready = exam.status === 'ready'
+  const stored = exam.status === 'ready'
+  // What was last asked for, until the database has answered: the switch and
+  // the words beside it show that at once. null means they show what the
+  // database holds.
+  const [asked, setAsked] = useState(null)
+  const [error, setError] = useState('')
+  const want = useRef(null)
+  const sending = useRef(false)
+  const ready = asked ?? stored
+
+  // The switch moves the moment it is pressed and is never dimmed while the
+  // database is asked. A second press made meanwhile is sent after the first,
+  // one write at a time, so the last position asked for is the one kept. If
+  // the database refuses, the switch goes back to what it holds and the
+  // refusal is shown under it.
+  const flip = async (next) => {
+    want.current = next
+    setAsked(next)
+    setError('')
+    if (sending.current) return
+    sending.current = true
+    try {
+      let sent
+      do {
+        sent = want.current
+        await update.mutateAsync({ id: exam.id, patch: { status: sent ? 'ready' : 'draft' } })
+      } while (want.current !== sent)
+    } catch (err) {
+      setError(errorText(err, NOT_SAVED))
+    } finally {
+      sending.current = false
+      setAsked(null)
+    }
+  }
+
   return (
     <Panel>
       <div className="flex items-start justify-between gap-6">
@@ -114,18 +201,15 @@ function StatusPanel({ exam }) {
               ? 'Students who have the address can sign in, fill in their details and check that their ID is on the list. They can start only between the opening and closing times, with the start code.'
               : 'A draft: the address shows students nothing. Open it once the times are set, so students can sign in and check their ID before the day.'}
           </p>
-          {ready && exam.started && <p className={lockedCls}>The exam has started, so it cannot go back to a draft.</p>}
+          {stored && exam.started && <p className={lockedCls}>The exam has started, so it cannot go back to a draft.</p>}
         </div>
-        <Toggle
-          checked={ready}
-          onChange={(v) => update.mutate({ id: exam.id, patch: { status: v ? 'ready' : 'draft' } })}
-          label="Open to students"
-          disabled={update.isPending || (ready && exam.started)}
-        />
+        <span className={switchReachCls}>
+          <Toggle checked={ready} onChange={flip} label="Open to students" disabled={stored && exam.started} />
+        </span>
       </div>
-      {update.error && (
+      {error && (
         <div className="mt-3">
-          <ErrorText>{update.error.message}</ErrorText>
+          <ErrorText>{error}</ErrorText>
         </div>
       )}
     </Panel>
@@ -150,16 +234,19 @@ const details = {
     minutes: Number(form.minutes),
   }),
   problem: (form) => {
-    if (!form.title.trim()) return 'An exam needs a title.'
+    if (!form.title.trim()) return { at: 'exam-title', text: 'An exam needs a title.' }
     const opens = form.opens ? cairoLocalToIso(form.opens) : null
     const closes = form.closes ? cairoLocalToIso(form.closes) : null
-    if ((form.opens && !opens) || (form.closes && !closes)) return 'One of the times is not a time the form understands.'
-    if (opens && closes && Date.parse(closes) <= Date.parse(opens)) return 'The exam must close after it opens.'
+    if (form.opens && !opens) return { at: 'exam-opens', text: 'One of the times is not a time the form understands.' }
+    if (form.closes && !closes) return { at: 'exam-closes', text: 'One of the times is not a time the form understands.' }
+    if (opens && closes && Date.parse(closes) <= Date.parse(opens)) {
+      return { at: 'exam-closes', text: 'The exam must close after it opens.' }
+    }
     const minutes = Number(form.minutes)
     if (form.minutes === '' || !Number.isInteger(minutes) || minutes < 5 || minutes > 600) {
-      return 'The exam’s length must be between 5 and 600 minutes.'
+      return { at: 'exam-minutes', text: 'The exam’s length must be between 5 and 600 minutes.' }
     }
-    return ''
+    return null
   },
 }
 
@@ -180,9 +267,19 @@ function windowNote(form) {
   return `Students can start between the opening and the closing time. Every student has the full ${minutes} minutes from their own start, so one who starts just before closing still gets all of it and finishes by ${whenInCairo(lastEnd)}.`
 }
 
-function ClearButton({ onClick, label }) {
+// Empties the time field `id`. The button goes once the field is empty, so
+// the keyboard is handed to the field it emptied.
+function ClearButton({ id, onClear, label }) {
   return (
-    <button type="button" className={`${outlineBtnCls} shrink-0`} onClick={onClick} aria-label={label}>
+    <button
+      type="button"
+      className={`${outlineBtnCls} ${tapCls} shrink-0`}
+      onClick={() => {
+        onClear()
+        document.getElementById(id)?.focus()
+      }}
+      aria-label={label}
+    >
       Clear
     </button>
   )
@@ -197,7 +294,16 @@ function DetailsForm({ exam }) {
       <form onSubmit={f.submit} className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Field label="Title" htmlFor="exam-title" hint="Students see it at the top of the exam.">
-            <input id="exam-title" className={inputCls} value={form.title} onChange={f.set('title')} maxLength={140} required />
+            <input
+              id="exam-title"
+              className={`${inputCls} ${tapCls}`}
+              value={form.title}
+              onChange={f.set('title')}
+              maxLength={140}
+              required
+              {...faultOf(f, 'exam-title')}
+            />
+            <Issue f={f} at="exam-title" />
           </Field>
         </div>
 
@@ -207,15 +313,19 @@ function DetailsForm({ exam }) {
           <div className="flex flex-wrap gap-2">
             <input
               id="exam-opens"
-              className={`${inputCls} ${offCls} min-w-0 flex-1 basis-52`}
+              className={`${inputCls} ${tapCls} ${offCls} min-w-0 flex-1 basis-52`}
               type="datetime-local"
               value={form.opens}
               onChange={f.set('opens')}
               disabled={exam.started}
+              {...faultOf(f, 'exam-opens')}
             />
-            {form.opens && !exam.started && <ClearButton label="Clear the opening time" onClick={() => f.change('opens', '')} />}
+            {form.opens && !exam.started && (
+              <ClearButton id="exam-opens" label="Clear the opening time" onClear={() => f.change('opens', '')} />
+            )}
           </div>
           {exam.started && <p className={lockedCls}>The exam has started: its opening time cannot change.</p>}
+          <Issue f={f} at="exam-opens" />
         </Field>
         <Field
           label="Closes"
@@ -225,22 +335,26 @@ function DetailsForm({ exam }) {
           <div className="flex flex-wrap gap-2">
             <input
               id="exam-closes"
-              className={`${inputCls} min-w-0 flex-1 basis-52`}
+              className={`${inputCls} ${tapCls} min-w-0 flex-1 basis-52`}
               type="datetime-local"
               value={form.closes}
               onChange={f.set('closes')}
+              {...faultOf(f, 'exam-closes')}
             />
             {/* A started exam is open to students, and that needs both times. */}
-            {form.closes && !exam.started && <ClearButton label="Clear the closing time" onClick={() => f.change('closes', '')} />}
+            {form.closes && !exam.started && (
+              <ClearButton id="exam-closes" label="Clear the closing time" onClear={() => f.change('closes', '')} />
+            )}
           </div>
           {exam.started && <p className="mt-1.5 text-xs text-soft/55">You can still move it, earlier or later.</p>}
+          <Issue f={f} at="exam-closes" />
         </Field>
 
         <div className="sm:max-w-[14rem]">
           <Field label="Length in minutes" htmlFor="exam-minutes" hint="Every student gets this long from their own start.">
             <input
               id="exam-minutes"
-              className={inputCls}
+              className={`${inputCls} ${tapCls}`}
               type="number"
               inputMode="numeric"
               min={exam.started ? exam.minutes : 5}
@@ -249,9 +363,11 @@ function DetailsForm({ exam }) {
               value={form.minutes}
               onChange={f.set('minutes')}
               required
+              {...faultOf(f, 'exam-minutes')}
             />
           </Field>
           {exam.started && <p className={lockedCls}>The exam has started: it can be made longer, not shorter.</p>}
+          <Issue f={f} at="exam-minutes" />
         </div>
         <p className="self-end text-xs text-soft/55 sm:pb-3">{note}</p>
 
@@ -274,10 +390,10 @@ const address = {
   problem: (form) => {
     const word = form.word.trim().toLowerCase()
     if (word.length < 6 || word.length > 60 || !WORD_SHAPE.test(word)) {
-      return 'The word in the address needs 6 to 60 lower-case letters, digits or hyphens.'
+      return { at: 'exam-word', text: 'The word in the address needs 6 to 60 lower-case letters, digits or hyphens.' }
     }
-    if (word === 'callback') return 'That word is reserved. Choose another.'
-    return ''
+    if (word === 'callback') return { at: 'exam-word', text: 'That word is reserved. Choose another.' }
+    return null
   },
 }
 
@@ -313,7 +429,7 @@ function CopyButton({ text, label }) {
   }
   return (
     <>
-      <button type="button" className={`${outlineBtnCls} shrink-0`} onClick={copy} aria-label={label}>
+      <button type="button" className={`${outlineBtnCls} ${tapCls} shrink-0`} onClick={copy} aria-label={label}>
         {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}
       </button>
       <span role="status" className="sr-only">
@@ -348,7 +464,7 @@ function AddressForm({ exam }) {
           <div className="flex flex-wrap gap-2">
             <input
               id="exam-word"
-              className={`${inputCls} ${offCls} min-w-0 flex-1 basis-48`}
+              className={`${inputCls} ${tapCls} ${offCls} min-w-0 flex-1 basis-48`}
               value={f.form.word}
               onChange={f.set('word')}
               maxLength={60}
@@ -357,12 +473,19 @@ function AddressForm({ exam }) {
               spellCheck={false}
               disabled={exam.started}
               required
+              {...faultOf(f, 'exam-word')}
             />
-            <button type="button" className={`${outlineBtnCls} shrink-0`} onClick={() => f.change('word', newWord())} disabled={exam.started}>
+            <button
+              type="button"
+              className={`${outlineBtnCls} ${tapCls} shrink-0`}
+              onClick={() => f.change('word', newWord())}
+              disabled={exam.started}
+            >
               Make a new word
             </button>
           </div>
           {exam.started && <p className={lockedCls}>The exam has started: the word in its address cannot change.</p>}
+          <Issue f={f} at="exam-word" />
         </Field>
         <FormFoot f={f} savedText="Saved. The address above is the one that works now." />
       </form>
@@ -376,7 +499,10 @@ const startCode = {
   formFrom: (row) => ({ code: row.start_code || '' }),
   columnsFrom: (form) => ({ start_code: form.code }),
   // The database stores the code in capitals with its spaces dropped.
-  problem: (form) => (form.code.replace(/\s+/g, '').length > 40 ? 'The start code can have at most 40 characters.' : ''),
+  problem: (form) =>
+    form.code.replace(/\s+/g, '').length > 40
+      ? { at: 'exam-code', text: 'The start code can have at most 40 characters.' }
+      : null,
 }
 
 function StartCodeForm({ exam }) {
@@ -405,18 +531,24 @@ function StartCodeForm({ exam }) {
           <div className="flex flex-wrap gap-2">
             <input
               id="exam-code"
-              className={`${inputCls} min-w-0 flex-1 basis-48 font-mono`}
+              className={`${inputCls} ${tapCls} min-w-0 flex-1 basis-48 font-mono`}
               value={f.form.code}
               onChange={f.set('code')}
               maxLength={60}
               autoCapitalize="characters"
               autoComplete="off"
               spellCheck={false}
+              {...faultOf(f, 'exam-code')}
             />
-            <button type="button" className={`${outlineBtnCls} shrink-0`} onClick={() => f.change('code', newCode())}>
+            <button
+              type="button"
+              className={`${outlineBtnCls} ${tapCls} shrink-0`}
+              onClick={() => f.change('code', newCode())}
+            >
               Make a code
             </button>
           </div>
+          <Issue f={f} at="exam-code" />
         </Field>
         <FormFoot f={f} savedText={exam.start_code ? 'Saved. This is the code from now on.' : 'Saved. Without a code nobody can start.'} />
       </form>
@@ -438,7 +570,7 @@ function Mark({ done }) {
   )
 }
 
-const tabLinkCls = 'font-semibold text-accent hover:text-ink'
+const tabLinkCls = `${tapLinkCls} font-semibold text-accent hover:text-ink`
 
 function Checklist({ exam }) {
   const items = [
@@ -493,7 +625,16 @@ function Checklist({ exam }) {
               {item.tab && !item.done && (
                 <>
                   {'. '}
-                  <Link to={`?tab=${item.tab}`} className={tabLinkCls}>
+                  {/* It opens another part as that part's tab does: in place,
+                      adding nothing to the browser's Back. This part goes out
+                      of sight as it does, so the keyboard is handed to the
+                      tab, not left on a link that can no longer be seen. */}
+                  <Link
+                    to={`?tab=${item.tab}`}
+                    replace
+                    className={tabLinkCls}
+                    onClick={() => document.getElementById(examTabId(item.tab))?.focus()}
+                  >
                     {item.link} &rarr;
                   </Link>
                 </>
@@ -543,7 +684,8 @@ function DeletePanel({ exam }) {
   const deleteExam = async () => {
     try {
       await remove.mutateAsync(exam.id)
-      navigate('/portal/exam', { replace: true })
+      // The list of exams says what was done (useArrivalNotice in ExamsPage.jsx).
+      navigate('/portal/exam', { replace: true, state: { notice: `“${exam.title}” was deleted.` } })
     } catch {
       // The refusal is shown under the button.
     }
@@ -561,11 +703,13 @@ function DeletePanel({ exam }) {
           busyLabel="Deleting…"
           onConfirm={deleteExam}
           busy={remove.isPending}
+          className={`${outlineBtnCls} ${tapCls}`}
+          keepWidth
         />
       </div>
       {remove.error && (
         <div className="mt-3">
-          <ErrorText>{remove.error.message}</ErrorText>
+          <ErrorText>{errorText(remove.error, 'The exam could not be deleted.')}</ErrorText>
         </div>
       )}
     </Panel>

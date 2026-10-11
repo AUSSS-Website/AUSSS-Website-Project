@@ -1,4 +1,5 @@
 import { restRpc, restSelect } from './supabaseRest.js'
+import { errorText } from './errorText.js'
 import { makeReference } from './reference.js'
 
 // ── Open Calls (public side) ───────────────────────────────────────────────
@@ -11,7 +12,8 @@ import { makeReference } from './reference.js'
 // officer side lives in src/portal/officerQueries.js.
 //
 // Every function resolves to { ok: true, … } or { ok: false, error } so call
-// sites need one branch, not a try/catch each. Whether the public pages show
+// sites need one branch, not a try/catch each; `error` is a whole sentence, to
+// be shown as it is (src/lib/errorText.js). Whether the public pages show
 // calls at all is the site setting `openCallsLive` (src/hooks/useCalls.js).
 
 const REFERENCE_PREFIX = 'CALL'
@@ -51,13 +53,11 @@ export async function submitApplication({ callId, positions, answers, ...applica
     return { ok: true, ref: res?.ref || ref }
   } catch (err) {
     // 22023 from the function carries the message to show verbatim
-    // ("This call has closed.", "Please answer: …"); anything else is
-    // transport trouble.
+    // ("This call has closed.", "Please answer: …"); a request that got no
+    // answer says so; anything else is ours to word.
     return {
       ok: false,
-      error: err?.rejected && err.message
-        ? err.message
-        : 'Something went wrong. Please try again.',
+      error: errorText(err, 'We couldn’t send your application. Please try again in a moment.'),
     }
   }
 }

@@ -67,105 +67,107 @@ function CommitteeCard({ c, i, ov, holders }) {
   const accent = readableAccent(c.color)
 
   return (
-    <Link
-      to={`/committees/${slugFor(c)}`}
-      className="reveal group flex h-full flex-col rounded-2xl border border-line/10 bg-card p-3 text-center transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-forest-950/40 sm:p-6"
-      style={{
-        transitionDelay: `${(i % 5) * 70}ms`,
-        '--brandGlow': c.color ? rgba(c.color, 0.22) : 'transparent',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = accent
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = ''
-      }}
-    >
-      <div className="relative mx-auto flex h-14 w-full items-center justify-center sm:h-20">
-        <div
-          className="absolute h-16 w-16 rounded-full blur-2xl sm:h-20 sm:w-20"
-          style={{ background: 'var(--brandGlow)' }}
+    // The fade-in on scroll and its stagger sit on this wrapper, and the card
+    // keeps a quick transition of its own. On one element the 0.9 s reveal took
+    // over the hover: the lift was slow and late, and the border snapped.
+    <div className="reveal flex" style={{ transitionDelay: `${(i % 5) * 70}ms` }}>
+      <Link
+        to={`/committees/${slugFor(c)}`}
+        // The border takes the committee's colour under the pointer and under
+        // keyboard focus. It is a CSS rule, so a tap on a phone does not leave
+        // it switched on.
+        className="group flex w-full flex-col rounded-2xl border border-line/10 bg-card p-3 text-center transition-[transform,border-color,box-shadow] duration-300 ease-out hover:border-[color:var(--brand)] hover:shadow-2xl hover:shadow-forest-950/40 focus-visible:border-[color:var(--brand)] motion-safe:hover:-translate-y-1.5 motion-safe:active:scale-[0.99] sm:p-6"
+        style={{
+          '--brand': accent,
+          '--brandGlow': c.color ? rgba(c.color, 0.22) : 'transparent',
+        }}
+      >
+        <div className="relative mx-auto flex h-14 w-full items-center justify-center sm:h-20">
+          <div
+            className="absolute h-16 w-16 rounded-full blur-2xl sm:h-20 sm:w-20"
+            style={{ background: 'var(--brandGlow)' }}
+            aria-hidden="true"
+          />
+          {c.logo ? (
+            <img
+              src={c.logo}
+              alt={`${c.abbr} logo`}
+              loading="lazy"
+              className="logo-ink relative max-h-14 w-auto object-contain drop-shadow sm:max-h-20"
+            />
+          ) : (
+            <span className="heading-serif relative text-2xl text-accent sm:text-3xl">
+              {c.abbr}
+            </span>
+          )}
+        </div>
+
+        <h3 className="heading-serif mt-3 text-sm leading-snug text-ink sm:mt-4 sm:text-lg">
+          {(() => {
+            const [top, bottom] = splitName(c.name)
+            return bottom ? (
+              <>
+                <span className="block">{top}</span>
+                <span className="block">{bottom}</span>
+              </>
+            ) : (
+              c.name
+            )
+          })()}
+        </h3>
+        <span
+          className="mx-auto mt-2 block h-0.5 w-8 rounded-full"
+          style={{ background: accent }}
           aria-hidden="true"
         />
-        {c.logo ? (
-          <img
-            src={c.logo}
-            alt={`${c.abbr} logo`}
-            loading="lazy"
-            className="logo-ink relative max-h-14 w-auto object-contain drop-shadow sm:max-h-20"
-          />
-        ) : (
-          <span className="heading-serif relative text-2xl tracking-wide text-accent sm:text-3xl">
-            {c.abbr}
-          </span>
-        )}
-      </div>
-
-      <h3 className="heading-serif mt-3 text-sm leading-snug text-ink sm:mt-4 sm:text-lg">
-        {(() => {
-          const [top, bottom] = splitName(c.name)
-          return bottom ? (
-            <>
-              <span className="block">{top}</span>
-              <span className="block">{bottom}</span>
-            </>
-          ) : (
-            c.name
-          )
-        })()}
-      </h3>
-      <span
-        className="mx-auto mt-2 block h-0.5 w-8 rounded-full"
-        style={{ background: accent }}
-        aria-hidden="true"
-      />
-      {c.officer && (
-        <p
-          className="mt-3 text-2xs font-semibold uppercase tracking-[0.16em]"
-          style={{ color: accent }}
-        >
-          {c.officer}
-        </p>
-      )}
-      <ul className="mt-4 flex flex-wrap items-start justify-center gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-4">
-        {people.map((o, idx) => (
-          <li
-            key={o.abbr || idx}
-            className="flex w-20 flex-col items-center text-center sm:w-28"
+        {c.officer && (
+          <p
+            className="mt-3 text-2xs font-semibold uppercase tracking-[0.16em]"
+            style={{ color: accent }}
           >
-            <Avatar person={o} color={c.color} />
-            <span
-              className={`mt-2 block text-sm font-medium leading-tight ${
-                o.name?.trim() ? 'text-soft' : 'italic text-soft/35'
-              }`}
+            {c.officer}
+          </p>
+        )}
+        <ul className="mt-4 flex flex-wrap items-start justify-center gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-4">
+          {people.map((o, idx) => (
+            <li
+              key={o.abbr || idx}
+              className="flex w-20 flex-col items-center text-center sm:w-28"
             >
-              {o.name?.trim() || 'Name TBA'}
-            </span>
-            {o.abbr && (
+              <Avatar person={o} color={c.color} />
               <span
-                className="mt-0.5 block text-xs font-bold tracking-[0.2em]"
-                style={{ color: accent }}
+                className={`mt-2 block text-sm font-medium leading-tight ${
+                  o.name?.trim() ? 'text-soft' : 'italic text-soft/35'
+                }`}
               >
-                {o.abbr}
+                {o.name?.trim() || 'Name TBA'}
               </span>
-            )}
-          </li>
-        ))}
-      </ul>
-      {c.description && (
-        <p className="mt-4 text-xs leading-relaxed text-soft/65 sm:text-sm">
-          {c.description}
-        </p>
-      )}
-      <span
-        className="mt-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors group-hover:text-ink"
-      >
-        View page
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-    </Link>
+              {o.abbr && (
+                <span
+                  className="mt-0.5 block text-xs font-bold tracking-[0.2em]"
+                  style={{ color: accent }}
+                >
+                  {o.abbr}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        {c.description && (
+          <p className="mt-4 text-xs leading-relaxed text-soft/65 sm:text-sm">
+            {c.description}
+          </p>
+        )}
+        <span
+          className="mt-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors group-hover:text-ink"
+        >
+          View page
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </Link>
+    </div>
   )
 }
 

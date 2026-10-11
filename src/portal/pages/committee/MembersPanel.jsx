@@ -12,7 +12,17 @@ import {
   useRemovePosition,
 } from '../../rosterQueries.js'
 import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
-import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { errorText } from '../../../lib/errorText.js'
+import {
+  ConfirmButton,
+  ErrorText,
+  PageLoading,
+  Panel,
+  Spinner,
+  inputCls,
+  outlineBtnCls,
+  primaryBtnCls,
+} from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
 import { MEMBERSHIP_LABELS } from '../../constants.js'
 import ExportButtons from '../../ExportButtons.jsx'
@@ -32,6 +42,18 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 
 const tagCls =
   'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
+
+// Delete and Remove are one word of small text beside what they act on. An
+// unseen ::after gives a finger 44px to land on, in px because the root size
+// shrinks on a 320px phone. Where they stand, it reaches nothing else that can
+// be pressed.
+const rowActionCls =
+  "relative text-xs font-semibold text-soft/60 transition-colors hover:text-ink disabled:opacity-40 after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[calc(100%+1rem)] after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']"
+
+// The same for a pill, which is some 30px high to the eye: the 44px are added
+// above and below it only.
+const pillTapCls =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
 
 function Fact({ label, children }) {
   return (
@@ -58,7 +80,7 @@ function Notes({ member, committee }) {
       await add.mutateAsync({ entryId: member.id, committeeId: member.committee_id || committee.id, body })
       setBody('')
     } catch (err) {
-      setError(err?.message || 'Could not save the note.')
+      setError(errorText(err, 'Could not save the note.'))
     }
   }
 
@@ -76,23 +98,30 @@ function Notes({ member, committee }) {
         <ul className="mt-3 space-y-3">
           {(notes.data || []).map((n) => (
             <li key={n.id} className="rounded-xl border border-line/10 bg-sunk px-4 py-3">
-              <p className="whitespace-pre-line text-sm text-soft/85">{n.body}</p>
-              <p className="mt-1 flex items-center gap-3 text-xs text-soft/45">
+              <p className="whitespace-pre-line break-words text-sm text-soft/85">{n.body}</p>
+              {/* A note cannot be brought back, so deleting it asks first. */}
+              <p className="mt-1 flex flex-wrap items-center gap-3 text-xs text-soft/45">
                 {when(n.created_at)}
                 {(n.author_id === user?.id || isEB) && (
-                  <button
-                    type="button"
+                  <ConfirmButton
+                    variant="text"
+                    label="Delete"
+                    busyLabel="Deleting…"
+                    busy={remove.isPending && remove.variables === n.id}
                     disabled={remove.isPending}
-                    onClick={() => remove.mutate(n.id)}
-                    className="font-semibold text-soft/60 hover:text-danger"
-                  >
-                    Delete
-                  </button>
+                    onConfirm={() => remove.mutate(n.id)}
+                    className={rowActionCls}
+                  />
                 )}
               </p>
             </li>
           ))}
         </ul>
+      )}
+      {remove.error && (
+        <div className="mt-2">
+          <ErrorText>{errorText(remove.error, 'Could not delete the note.')}</ErrorText>
+        </div>
       )}
       <form onSubmit={onAdd} className="mt-3 space-y-2">
         <textarea
@@ -105,8 +134,8 @@ function Notes({ member, committee }) {
           aria-label={`New note about ${member.full_name}`}
           className={inputCls}
         />
-        <ErrorText>{error || notes.error?.message}</ErrorText>
-        <button type="submit" disabled={add.isPending || !body.trim()} className={outlineBtnCls}>
+        <ErrorText>{error || (notes.error ? errorText(notes.error, 'Could not load the notes.') : '')}</ErrorText>
+        <button type="submit" disabled={add.isPending || !body.trim()} className={`${outlineBtnCls} ${pillTapCls}`}>
           {add.isPending ? 'Saving…' : 'Add note'}
         </button>
       </form>
@@ -141,7 +170,7 @@ function Assign({ member, committee, positions }) {
               : 'Saved. The roster has no email for them, so it cannot reach an account yet.',
       )
     } catch (err) {
-      setError(err?.message || 'Could not save that position.')
+      setError(errorText(err, 'Could not save that position.'))
     }
   }
 
@@ -153,11 +182,17 @@ function Assign({ member, committee, positions }) {
           {member.position.title}. Only the Executive Board changes an officer&rsquo;s position.
         </p>
       ) : (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        // Where Save goes under the picker (a phone), the two stand far enough
+        // apart that its unseen 44px stops short of the picker.
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-3">
           <select
             required
             value={position}
-            onChange={(e) => setPosition(e.target.value)}
+            onChange={(e) => {
+              setPosition(e.target.value)
+              // What the last save said is about the choice before this one.
+              setNote('')
+            }}
             aria-label={`Position for ${member.full_name}`}
             className={`${inputCls} max-w-xs`}
           >
@@ -171,17 +206,16 @@ function Assign({ member, committee, positions }) {
           <button
             type="submit"
             disabled={assign.isPending || !position || position === current}
-            className={`${primaryBtnCls} px-5 py-1.5 text-xs`}
+            className={`${primaryBtnCls} px-5 py-1.5 text-xs ${pillTapCls}`}
           >
             {assign.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       )}
-      {note && (
-        <p className="mt-2 text-xs text-ok" role="status">
-          {note}
-        </p>
-      )}
+      {/* Always on the page, so a screen reader hears the sentence arrive. */}
+      <p role="status" className={note ? 'mt-2 text-xs text-ok' : 'sr-only'}>
+        {note}
+      </p>
       <div className="mt-2">
         <ErrorText>{error}</ErrorText>
       </div>
@@ -195,44 +229,33 @@ function Assign({ member, committee, positions }) {
 // changed with the picker above.
 function ExtraPositions({ extras, committee }) {
   const remove = useRemovePosition()
-  const [asking, setAsking] = useState('')
   if (extras.length === 0) return null
   return (
     <div className="mt-5 border-t border-line/10 pt-5">
       <p className="text-sm font-semibold text-ink">Also holds in {committee.abbr}</p>
-      <ul className="mt-3 space-y-2">
+      {/* The rows stand far enough apart that one Remove's 44px does not reach
+          the next row's. */}
+      <ul className="mt-3 space-y-3">
         {extras.map((h) => (
           <li key={h.assignment_id} className="flex flex-wrap items-center gap-3 text-sm text-soft/85">
             <span>{h.position.title}</span>
-            {h.can_remove &&
-              (asking === h.assignment_id ? (
-                <span className="flex items-center gap-3 text-xs font-semibold">
-                  <button
-                    type="button"
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate(h.assignment_id)}
-                    className="text-danger hover:text-danger disabled:opacity-40"
-                  >
-                    {remove.isPending ? 'Removing…' : 'Yes, remove'}
-                  </button>
-                  <button type="button" onClick={() => setAsking('')} className="text-soft/60 hover:text-ink">
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAsking(h.assignment_id)}
-                  className="text-xs font-semibold text-soft/60 hover:text-ink"
-                >
-                  Remove
-                </button>
-              ))}
+            {h.can_remove && (
+              <ConfirmButton
+                variant="text"
+                label="Remove"
+                ariaLabel={`Remove ${h.position.title}`}
+                busyLabel="Removing…"
+                busy={remove.isPending && remove.variables === h.assignment_id}
+                disabled={remove.isPending}
+                onConfirm={() => remove.mutate(h.assignment_id)}
+                className={rowActionCls}
+              />
+            )}
           </li>
         ))}
       </ul>
       <div className="mt-2">
-        <ErrorText>{remove.error?.message}</ErrorText>
+        <ErrorText>{remove.error ? errorText(remove.error, 'Could not remove that position.') : ''}</ErrorText>
       </div>
     </div>
   )
@@ -254,7 +277,11 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
           <span className="block truncate text-sm text-soft/60">{member.email || 'No email on file'}</span>
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-soft/70">
-          <span className="font-semibold text-accent">{member.status || 'No status'}</span>
+          {/* The roster's status as people word it: a sheet that holds the
+              bare code ("active") shows its label, as the export does. */}
+          <span className="font-semibold text-accent">
+            {MEMBERSHIP_LABELS[member.status] || member.status || 'No status'}
+          </span>
           {member.position && <span className={tagCls}>{member.position.title}</span>}
           {member.is_contact_person && <span className={tagCls}>Contact person</span>}
           {member.notes > 0 && (
@@ -337,17 +364,11 @@ export default function MembersPanel({ committee: opened }) {
     return map
   }, [held.data])
 
-  if (roster.isPending) {
-    return (
-      <div className="py-16 text-center">
-        <Spinner />
-      </div>
-    )
-  }
+  if (roster.isPending) return <PageLoading />
   if (roster.error) {
     return (
       <Panel>
-        <ErrorText>Couldn’t load the members: {roster.error.message}</ErrorText>
+        <ErrorText>{errorText(roster.error, 'Couldn’t load the members.')}</ErrorText>
       </Panel>
     )
   }

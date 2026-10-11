@@ -68,24 +68,31 @@ export default function NavCartButton({ tone = 'solid', compact = false }) {
       ? 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/15 dark:text-silver dark:hover:bg-white/5'
       : 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10'
 
+  // The button's own changes take 150 ms, the pace of every other button, and
+  // it sinks a little while pressed; the label inside keeps its slower slide.
+  // With reduced motion only the colours ease, and the label fades in without
+  // sliding. The round button is under 44px, so an unseen ::after of that
+  // height (and at least that width), in px because the root size shrinks on
+  // a small phone, takes the finger.
   return (
     <button
       type="button"
       onClick={openCartDrawer}
       aria-label={label}
       data-expanded={expanded ? 'true' : 'false'}
-      className={`relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border transition-[padding,background-color,color,box-shadow] duration-300 motion-reduce:transition-none ${size} ${pad} ${skin}`}
+      className={`relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border transition-[padding,background-color,border-color,color,box-shadow,transform] duration-150 ease-out after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-full after:min-w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] motion-safe:active:scale-[0.97] motion-reduce:transition-colors ${size} ${pad} ${skin}`}
     >
       <CartIcon />
 
-      {/* The label slides open by its max-width; with reduced motion it just
-          appears. On the narrowest phones it is the subtotal alone and the
-          badge keeps the count, so the logo and menu button keep their room.
-          aria-hidden: the button's aria-label already says all of it. */}
+      {/* The label slides open by its max-width; with reduced motion it fades
+          in at its full width. On the narrowest phones it is the subtotal
+          alone and the badge keeps the count, so the logo and menu button keep
+          their room. aria-hidden: the button's aria-label already says all of
+          it. */}
       {compact && (
         <span
           aria-hidden="true"
-          className={`overflow-hidden text-xs font-semibold transition-[max-width,opacity,margin] duration-300 motion-reduce:transition-none ${
+          className={`overflow-hidden text-xs font-semibold transition-[max-width,opacity,margin] duration-300 motion-reduce:transition-opacity ${
             expanded ? 'ml-2 max-w-[16rem] opacity-100' : 'ml-0 max-w-0 opacity-0'
           }`}
         >
@@ -119,7 +126,8 @@ export default function NavCartButton({ tone = 'solid', compact = false }) {
 
 // The desktop pill: floats at the bottom centre while the order section is on
 // screen, from lg up (below that the phone row grows its own button). Hidden, it
-// is out of the tab order and the accessibility tree.
+// is out of the tab order and the accessibility tree. It fades in while it
+// rises 12px, and only fades for a reader who asked for less motion.
 export function FloatingCartPill() {
   const { count, subtotal, items, label } = useCartSummary()
   const shown = useOrderSectionInView()
@@ -137,10 +145,10 @@ export function FloatingCartPill() {
         onClick={openCartDrawer}
         aria-label={label}
         data-floating-cart={shown ? 'shown' : 'hidden'}
-        className={`inline-flex h-12 items-center gap-2.5 whitespace-nowrap rounded-full border pl-4 pr-5 text-sm font-semibold transition-[opacity,transform,background-color] duration-300 motion-reduce:transition-none ${PILL_SKIN} ${
+        className={`inline-flex h-12 items-center gap-2.5 whitespace-nowrap rounded-full border pl-4 pr-5 text-sm font-semibold transition-[opacity,transform,background-color] duration-200 ease-out motion-safe:active:scale-[0.97] ${PILL_SKIN} ${
           shown
             ? 'pointer-events-auto translate-y-0 opacity-100'
-            : 'translate-y-3 opacity-0 motion-reduce:translate-y-0'
+            : 'opacity-0 motion-safe:translate-y-3'
         }`}
       >
         <CartIcon />

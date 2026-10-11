@@ -15,6 +15,7 @@ import {
   optionText,
   percent,
   questionColumns,
+  readProblem,
   refreshIn,
   resultColumns,
   resultSummary,
@@ -162,6 +163,35 @@ describe('when a page asks again by itself', () => {
     // never a wait of nothing, which would stop the asking altogether
     expect(refreshIn(exam(), at('18:00') - 1, EVERY)).toBeGreaterThan(0)
     expect(refreshIn(exam({ opens_at: null, closes_at: null }), at('18:05'), EVERY)).toBe(false)
+  })
+})
+
+describe('a read that failed', () => {
+  // An error as supabase-js hands it back from the database.
+  const db = (message, code) => ({ name: 'PostgrestError', message, details: null, hint: null, code })
+
+  it('says what could not be read, then why when the reason is one to act on', () => {
+    expect(readProblem('refresh the list', new TypeError('Failed to fetch'))).toBe(
+      'Couldn’t refresh the list. We couldn’t reach the server. Check your connection and try again.',
+    )
+    expect(readProblem('load the results', db('Only the exchange officers and the Executive Board can do this.', '42501'))).toBe(
+      'Couldn’t load the results. Only the exchange officers and the Executive Board can do this.',
+    )
+    expect(readProblem('load this paper', db('That paper is not there any more.', '22023'))).toBe(
+      'Couldn’t load this paper. That paper is not there any more.',
+    )
+  })
+
+  it('leaves out words that were not written for people', () => {
+    expect(readProblem('load the exam', db('JSON object requested, multiple (or no) rows returned', 'PGRST116'))).toBe(
+      'Couldn’t load the exam.',
+    )
+    expect(readProblem('load the exams', new Error('boom'))).toBe('Couldn’t load the exams.')
+  })
+
+  it('says the read came back empty when there was no error', () => {
+    expect(readProblem('load the results', null)).toBe('Couldn’t load the results: the database sent nothing back.')
+    expect(readProblem('load the results', undefined)).toBe('Couldn’t load the results: the database sent nothing back.')
   })
 })
 

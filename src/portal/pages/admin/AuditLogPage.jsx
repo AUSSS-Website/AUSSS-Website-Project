@@ -5,7 +5,8 @@ import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { AUDIT_PAGE_SIZE, useAuditLog } from '../../contentQueries.js'
 import { useNames } from '../../workQueries.js'
 import { when } from '../../workUi.jsx'
-import { ErrorText, PageHeader, Panel, Spinner, inputCls, outlineBtnCls } from '../../portalUi.jsx'
+import { errorText } from '../../../lib/errorText.js'
+import { ErrorText, PageHeader, PageLoading, Panel, inputCls, outlineBtnCls } from '../../portalUi.jsx'
 
 // /portal/admin/audit (webmaster only; the database returns no rows to anyone
 // else). The trail app.audit() writes on every change to the main tables: who
@@ -94,13 +95,32 @@ function changedFields(entry) {
 const valueCls =
   'max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-line/10 bg-sunk px-3 py-2 font-mono text-xs leading-relaxed text-soft/85'
 
+// On a touch screen the two paging buttons are at least a thumb tall; with a
+// mouse they keep the portal's small pill.
+const tapCls = '[@media(pointer:coarse)]:min-h-[44px]'
+
 function Entry({ entry, names }) {
   const fields = useMemo(() => changedFields(entry), [entry])
   const actor = entry.actor ? names[entry.actor]?.full_name || 'Someone without a profile' : 'The system'
   return (
     <li>
       <details className="group rounded-2xl border border-line/10 bg-card open:border-medical/30">
-        <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 sm:px-5">
+        {/* The row opens: the arrow says so before it is tried (a pointer
+            cursor says nothing on a phone) and turns to show that it has. The
+            row is rounded like its card, so the keyboard's ring follows it. */}
+        <summary className="flex min-h-[44px] cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl px-4 py-3 marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 group-open:rounded-b-none sm:px-5 [&::-webkit-details-marker]:hidden">
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="h-3.5 w-3.5 shrink-0 text-soft/50 group-open:rotate-90 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out"
+          >
+            <path d="M6 3.5 10.5 8 6 12.5" />
+          </svg>
           <span className={`rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em] ${ACTION_CLS[entry.action] || ''}`}>
             {ACTION_LABEL[entry.action] || entry.action}
           </span>
@@ -200,19 +220,21 @@ export default function AuditLogPage() {
       </div>
 
       {log.isPending ? (
-        <div className="py-16 text-center">
-          <Spinner />
-        </div>
+        <PageLoading />
       ) : log.error ? (
         <Panel>
-          <ErrorText>Couldn’t load the log: {log.error.message}</ErrorText>
+          <ErrorText>{errorText(log.error, 'We couldn’t load the log.')}</ErrorText>
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
           <p className="text-sm text-soft/70">{page > 0 ? 'No older entries.' : 'No entries match.'}</p>
         </Panel>
       ) : (
-        <ul className={`space-y-2.5 ${log.isPlaceholderData ? 'opacity-60' : ''}`}>
+        // The page before stays up, dimmed, while the next one loads.
+        <ul
+          aria-busy={log.isPlaceholderData || undefined}
+          className={`space-y-2.5 transition-opacity duration-150 ${log.isPlaceholderData ? 'opacity-60' : ''}`}
+        >
           {rows.map((entry) => (
             <Entry key={entry.id} entry={entry} names={names} />
           ))}
@@ -220,11 +242,14 @@ export default function AuditLogPage() {
       )}
 
       <div className="mt-6 flex items-center justify-between gap-3">
-        <button type="button" className={outlineBtnCls} disabled={page === 0 || log.isFetching} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+        <button type="button" className={`${outlineBtnCls} ${tapCls}`} disabled={page === 0 || log.isFetching} onClick={() => setPage((p) => Math.max(0, p - 1))}>
           &larr; Newer
         </button>
-        <span className="text-xs text-soft/50">Page {page + 1}</span>
-        <button type="button" className={outlineBtnCls} disabled={rows.length < AUDIT_PAGE_SIZE || log.isFetching} onClick={() => setPage((p) => p + 1)}>
+        {/* A status, so the page number is read out when it changes. */}
+        <span role="status" className="text-xs text-soft/50">
+          Page {page + 1}
+        </span>
+        <button type="button" className={`${outlineBtnCls} ${tapCls}`} disabled={rows.length < AUDIT_PAGE_SIZE || log.isFetching} onClick={() => setPage((p) => p + 1)}>
           Older &rarr;
         </button>
       </div>

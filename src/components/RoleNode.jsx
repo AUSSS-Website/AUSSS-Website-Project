@@ -40,6 +40,12 @@ export default function RoleNode({ role, tier = 'officer' }) {
       className="relative"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
+      // On the wrapper, not the button: focus can also leave from the address
+      // inside the card, and Tab from there to the next role used to leave
+      // this card open under the next one.
+      onBlur={(e) => {
+        if (!wrapRef.current?.contains(e.relatedTarget)) setOpen(false)
+      }}
     >
       <button
         type="button"
@@ -50,9 +56,6 @@ export default function RoleNode({ role, tier = 'officer' }) {
         // elsewhere or pressing Escape is what closes it.
         onClick={() => setOpen(true)}
         onFocus={() => setOpen(true)}
-        onBlur={(e) => {
-          if (!wrapRef.current?.contains(e.relatedTarget)) setOpen(false)
-        }}
         className={`w-full rounded-2xl border bg-card text-left transition-colors ${
           isOfficer ? 'p-6' : 'p-5'
         } ${open ? 'border-line/30' : 'border-line/10 hover:border-line/25'}`}
@@ -100,9 +103,11 @@ export default function RoleNode({ role, tier = 'officer' }) {
             {role.about}
           </p>
           {email && (
+            // The ::after makes the small address 44px tall to a finger at any
+            // root size; the reach stays inside the card's padding.
             <a
               href={`mailto:${email}`}
-              className="mt-3 inline-block text-xs font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
+              className="relative mt-3 inline-block text-xs font-semibold text-accent underline-offset-2 after:absolute after:inset-x-0 after:inset-y-[calc(50%-22px)] after:content-[''] hover:text-ink hover:underline"
             >
               {email}
             </a>

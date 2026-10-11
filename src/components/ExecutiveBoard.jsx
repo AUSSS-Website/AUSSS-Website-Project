@@ -25,74 +25,80 @@ function Member({ m, size = 'md' }) {
     : {}
 
   return (
-    <Wrapper
-      {...wrapperProps}
-      className={`reveal flex flex-col items-center rounded-3xl border p-[2.0625rem] text-center transition-all duration-500 hover:-translate-y-1.5 ${
-        m.candidature ? 'cursor-pointer' : ''
-      } ${
-        m.tier === 'lead'
-          ? 'border-line/15 bg-card text-ink hover:shadow-2xl hover:shadow-forest-950/40'
-          : 'border-forest-600/10 bg-white text-forest-900 hover:border-medical/40 hover:shadow-xl hover:shadow-forest-900/5 dark:border-white/10 dark:bg-forest-900 dark:text-silver dark:hover:border-medical/40'
-      }`}
-    >
-      <div
-        className={`grid ${avatar} place-items-center overflow-hidden rounded-full bg-gradient-to-br from-forest to-forest-600 font-serif font-semibold text-silver ring-[3px] ${ring}`}
-      >
-        {m.photo ? (
-          <img
-            src={m.photo}
-            alt={m.name}
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          initials(m.name)
-        )}
-      </div>
-      <h3
-        className={`heading-serif mt-[1.3125rem] text-[1.3125rem] ${
-          m.tier === 'lead' ? 'text-ink' : 'text-forest dark:text-medical-light'
+    // The fade-in on scroll sits on this wrapper and the card keeps a quick
+    // transition of its own. On one element the 0.9 s reveal took over the
+    // hover: the lift was slow, and the border and shadow snapped.
+    <div className="reveal flex">
+      <Wrapper
+        {...wrapperProps}
+        className={`flex w-full flex-col items-center rounded-3xl border p-[2.0625rem] text-center transition-[transform,border-color,box-shadow] duration-300 ease-out motion-safe:hover:-translate-y-1.5 ${
+          m.candidature ? 'cursor-pointer motion-safe:active:scale-[0.99]' : ''
+        } ${
+          m.tier === 'lead'
+            ? 'border-line/15 bg-card text-ink hover:shadow-2xl hover:shadow-forest-950/40'
+            : 'border-forest-600/10 bg-white text-forest-900 hover:border-medical/40 hover:shadow-xl hover:shadow-forest-900/5 dark:border-white/10 dark:bg-forest-900 dark:text-silver dark:hover:border-medical/40'
         }`}
       >
-        {m.name}
-      </h3>
-      <p
-        className={`mt-1 text-[0.7875rem] font-semibold uppercase tracking-[0.18em] ${
-          m.tier === 'lead' ? 'text-accent' : 'text-accent dark:text-medical'
-        }`}
-      >
-        {m.role}
-      </p>
-      <p
-        className={`mt-[1.125rem] text-[0.9rem] leading-relaxed ${
-          m.tier === 'lead' ? 'text-soft/80' : 'text-forest-900/70 dark:text-silver/65'
-        }`}
-      >
-        {m.blurb}
-      </p>
-      {m.candidature && (
-        <span
-          className={`mt-[1.3125rem] inline-flex items-center gap-1.5 text-[0.7875rem] font-semibold uppercase tracking-[0.16em] ${
+        <div
+          className={`grid ${avatar} place-items-center overflow-hidden rounded-full bg-gradient-to-br from-forest to-forest-600 font-serif font-semibold text-silver ring-[3px] ${ring}`}
+        >
+          {m.photo ? (
+            <img
+              src={m.photo}
+              alt={m.name}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials(m.name)
+          )}
+        </div>
+        <h3
+          className={`heading-serif mt-[1.3125rem] text-[1.3125rem] ${
+            m.tier === 'lead' ? 'text-ink' : 'text-forest dark:text-medical-light'
+          }`}
+        >
+          {m.name}
+        </h3>
+        <p
+          className={`mt-1 text-[0.7875rem] font-semibold uppercase tracking-[0.18em] ${
             m.tier === 'lead' ? 'text-accent' : 'text-accent dark:text-medical'
           }`}
         >
-          View candidature
-          <svg
-            viewBox="0 0 24 24"
-            className="h-[0.9375rem] w-[0.9375rem]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+          {m.role}
+        </p>
+        <p
+          className={`mt-[1.125rem] text-[0.9rem] leading-relaxed ${
+            m.tier === 'lead' ? 'text-soft/80' : 'text-forest-900/70 dark:text-silver/65'
+          }`}
+        >
+          {m.blurb}
+        </p>
+        {m.candidature && (
+          <span
+            className={`mt-[1.3125rem] inline-flex items-center gap-1.5 text-[0.7875rem] font-semibold uppercase tracking-[0.16em] ${
+              m.tier === 'lead' ? 'text-accent' : 'text-accent dark:text-medical'
+            }`}
           >
-            <path
-              d="M7 17 17 7M9 7h8v8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-      )}
-    </Wrapper>
+            View candidature
+            <svg
+              viewBox="0 0 24 24"
+              className="h-[0.9375rem] w-[0.9375rem]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path
+                d="M7 17 17 7M9 7h8v8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        )}
+      </Wrapper>
+    </div>
   )
 }
 

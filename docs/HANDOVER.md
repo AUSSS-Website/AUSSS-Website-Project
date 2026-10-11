@@ -308,7 +308,10 @@ section 29 explains each part; section 10 has the SQL fallback for when the port
       (**Exam**, the exam, **Results**, **Export PDF** or **Export CSV**). The switch deletes the
       exam's registered student IDs, papers and answers for good; the exam and its questions
       stay (RUNBOOK section 30).
-- [ ] Press **Start** (twice: the button asks again). The page then lists what it did.
+- [ ] Type the new term's name (for example `2027-28`, with an ordinary hyphen) in the box
+      above the **Start** button, which stays off until the name matches; a line under it
+      says why it is off. Then press **Start** twice: the button asks again, and the switch
+      cannot be undone. The page then lists what it did.
 - [ ] Hand each incoming officer and board member their position's work account, after changing
       its password and recovery details so the outgoing holder no longer has them. Nobody is
       invited on a personal email: officer and board access belongs to the work accounts alone.

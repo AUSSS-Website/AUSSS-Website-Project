@@ -1,5 +1,8 @@
-import { useDeferredValue, useMemo, useRef, useState } from 'react'
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
+import { errorText } from '../../../lib/errorText.js'
+import { scrollBehavior } from '../../../lib/motion.js'
 import ExportButtons from '../../ExportButtons.jsx'
 import {
   PAGE_SIZE,
@@ -29,6 +32,8 @@ import PositionTypesPanel, { PositionOptions, localMemberOf } from './PositionTy
 import PositionsPanel from '../committee/PositionsPanel.jsx'
 import { BOARD, BOARD_LABEL, boardPositions, rosterUnits, unitOf, unitPositions } from '../../rosterUnits.js'
 import {
+  CheckField,
+  ConfirmButton,
   ErrorText,
   Field,
   PageHeader,
@@ -36,6 +41,7 @@ import {
   Spinner,
   inputCls,
   outlineBtnCls,
+  panelTitleCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
 
@@ -95,34 +101,55 @@ function RecordOnlyNote({ what }) {
   )
 }
 
+// What the page says once an editor has closed, by what it did. `row` stands
+// on the row itself, under the member's name; `full` names the member, for a
+// row that is no longer in the list and for a screen reader.
+const DONE = {
+  saved: { row: 'Saved.', full: (name) => `Saved ${name}.` },
+  added: { row: 'Added to the roster.', full: (name) => `Added ${name} to the roster.` },
+  released: { row: 'Follows the spreadsheet again.', full: (name) => `${name} follows the spreadsheet again.` },
+  removed: { row: '', full: (name) => `Removed ${name} from the roster.` },
+}
+
+// The id of a row's own button, which the page scrolls to and focuses.
+const rowId = (id) => `roster-row-${id}`
+
 // `board` are the Executive Board's positions; a member of the board has no
-// committee and one of them.
-function Editor({ row, committees, positions, board, onClose }) {
+// committee and one of them. `onDone(what, row)` closes the editor once it
+// has saved, added, removed or handed back a row (the keys of DONE), so the
+// page can say which; `onClose` closes it with nothing done.
+function Editor({ row, committees, positions, board, onClose, onDone }) {
   const save = useSaveRosterEntry()
   const remove = useDeleteRosterEntry()
   const release = useReleaseRosterEntry()
   const [form, setForm] = useState(() => (row ? toForm(row) : BLANK))
+  const [opened] = useState(form)
   // the unit the member is in: SCOPE/SCORE for either of the two committees
   const unit = unitOf(committees, form.committee_id)
   // "Executive Board" was picked, or the member already holds one of its positions
   const [pickedBoard, setPickedBoard] = useState(false)
   const boardPosition = board.find((p) => p.id === form.position_id)
   const onBoard = !unit && (pickedBoard || Boolean(boardPosition))
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
   const busy = save.isPending || remove.isPending || release.isPending
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   // A status typed into the sheet that isn't one of ours still has to show.
   const statusOptions =
     form.status && !STATUSES.includes(form.status) ? [form.status, ...STATUSES] : STATUSES
+  // A sheet row edited here belongs to the portal; this hands it back.
+  const canRelease = Boolean(row?.portal_edited_at) && row.origin === 'sheet'
 
-  const run = async (fn) => {
+  // The browser asks before a reload or a closed tab loses what was typed.
+  useLeaveWarning(form !== opened || busy)
+
+  // `done` is handed what the server answered. `otherwise` are the words for
+  // a failure the server gave no sentence for.
+  const run = async (fn, done, otherwise = 'Could not save.') => {
     setError('')
     try {
-      await fn()
-      onClose()
+      done(await fn())
     } catch (e) {
-      setError(e?.message || 'Could not save.')
+      setError(errorText(e, otherwise))
     }
   }
 
@@ -134,13 +161,17 @@ function Editor({ row, committees, positions, board, onClose }) {
           setError('Choose their position on the Executive Board, or pick "No committee".')
           return
         }
-        run(() => save.mutateAsync({ id: row?.id, values: form }))
+        run(
+          () => save.mutateAsync({ id: row?.id, values: form }),
+          (saved) => onDone(row ? 'saved' : 'added', saved || row),
+        )
       }}
       className="mt-4 space-y-5 border-t border-line/10 pt-5"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Full name" htmlFor="r-name">
-          <input id="r-name" required value={form.full_name} onChange={set('full_name')} className={inputCls} />
+          {/* A new member's form opens with the keyboard in its first field. */}
+          <input id="r-name" required autoFocus={!row} value={form.full_name} onChange={set('full_name')} className={inputCls} />
         </Field>
         <Field label="Email" htmlFor="r-email">
           <input id="r-email" type="email" value={form.email} onChange={set('email')} className={inputCls} />
@@ -164,10 +195,14 @@ function Editor({ row, committees, positions, board, onClose }) {
               id="r-years"
               readOnly
               value={form.years_spent}
-              title="Counted from the year joined; goes up by itself every 1 September"
+              aria-describedby="r-years-note"
               className={`${inputCls} cursor-default opacity-60`}
             />
           </Field>
+          {/* On the page and not in a tooltip, which a phone never shows. */}
+          <p id="r-years-note" className="col-span-2 -mt-3 text-xs text-soft/50">
+            Years spent is counted from the year joined and goes up by itself every 1 September.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-5">
           <Field label="Local GAs" htmlFor="r-lgas">
@@ -221,14 +256,11 @@ function Editor({ row, committees, positions, board, onClose }) {
               </option>
             ))}
           </select>
-          <label className="mt-3 flex items-center gap-2 text-sm text-soft/75">
-            <input
-              type="checkbox"
-              checked={form.is_contact_person}
-              onChange={(e) => setForm((f) => ({ ...f, is_contact_person: e.target.checked }))}
-            />
-            Exchange contact person (held alongside their committee)
-          </label>
+          <CheckField
+            checked={form.is_contact_person}
+            onChange={(on) => setForm((f) => ({ ...f, is_contact_person: on }))}
+            label="Exchange contact person (held alongside their committee)"
+          />
         </Field>
         {onBoard && (
           <Field
@@ -302,55 +334,81 @@ function Editor({ row, committees, positions, board, onClose }) {
 
       <ErrorText>{error}</ErrorText>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {row &&
-            (confirmDelete ? (
-              <>
-                <button type="button" disabled={busy} onClick={() => run(() => remove.mutateAsync(row.id))} className={`${outlineBtnCls} border-red-400/50 text-danger`}>
-                  Yes, remove {row.full_name}
-                </button>
-                <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)} className={outlineBtnCls}>
-                  Keep
-                </button>
-              </>
-            ) : (
-              <button type="button" disabled={busy} onClick={() => setConfirmDelete(true)} className={outlineBtnCls}>
-                Remove from roster
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Removing is for good, so it is the portal's two-click button:
+                a second click that is half of a double-click does not count. */}
+            {row && (
+              <ConfirmButton
+                label="Remove from roster"
+                busyLabel="Removing…"
+                busy={remove.isPending}
+                disabled={busy}
+                onConfirm={() =>
+                  run(
+                    () => remove.mutateAsync(row.id),
+                    () => onDone('removed', row),
+                    'Could not remove this member.',
+                  )
+                }
+              />
+            )}
+            {canRelease && (
+              <button
+                type="button"
+                disabled={busy}
+                aria-describedby="r-release-note"
+                onClick={() =>
+                  run(
+                    () => release.mutateAsync(row.id),
+                    (saved) => onDone('released', saved || row),
+                  )
+                }
+                className={outlineBtnCls}
+              >
+                {release.isPending ? 'Handing back…' : 'Follow the spreadsheet again'}
               </button>
-            ))}
-          {row?.portal_edited_at && row.origin === 'sheet' && !confirmDelete && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => run(() => release.mutateAsync(row.id))}
-              className={outlineBtnCls}
-              title="The next spreadsheet import may overwrite this row again"
-            >
-              Follow the spreadsheet again
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={busy} onClick={onClose} className={outlineBtnCls}>
+              Cancel
             </button>
-          )}
+            <button type="submit" disabled={busy} className={`${primaryBtnCls} px-5 py-1.5 text-xs`}>
+              {save.isPending ? 'Saving…' : row ? 'Save' : 'Add member'}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" disabled={busy} onClick={onClose} className={outlineBtnCls}>
-            Cancel
-          </button>
-          <button type="submit" disabled={busy} className={`${primaryBtnCls} px-5 py-1.5 text-xs`}>
-            {save.isPending ? 'Saving…' : row ? 'Save' : 'Add member'}
-          </button>
-        </div>
+        {/* What the button does, on the page: it was only in its tooltip. */}
+        {canRelease && (
+          <p id="r-release-note" className="mt-3 text-xs text-soft/50">
+            After “Follow the spreadsheet again”, the next spreadsheet import may overwrite this row.
+          </p>
+        )}
       </div>
     </form>
   )
 }
 
-function Row({ row, committees, positions, board, open, onToggle }) {
+// `note` is what the last editor did to this row ("Saved."), shown while the
+// row is closed.
+function Row({ row, committees, positions, board, open, note, onToggle, onDone }) {
   const boardPosition = board.find((p) => p.id === row.position_id)
   const committee = boardPosition ? { abbr: BOARD_LABEL } : unitOf(committees, row.committee_id)
   const position = boardPosition || positions.find((p) => p.id === row.position_id)
   return (
     <li className="rounded-2xl border border-line/10 bg-card p-5">
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-left">
+      {/* The whole header opens the row, so it answers a pointer and a press
+          with a tint. Its negative margin lets the tint reach a little past
+          the text without moving anything. */}
+      <button
+        type="button"
+        id={rowId(row.id)}
+        onClick={onToggle}
+        aria-expanded={open}
+        className="-m-2 flex w-[calc(100%+1rem)] flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-xl p-2 text-left transition-colors duration-150 ease-out hover:bg-veil/5 active:bg-veil/10"
+      >
         <span className="min-w-0">
           <span className="block truncate text-base font-semibold text-ink">{row.full_name}</span>
           <span className="block truncate text-sm text-soft/60">{row.email || 'No email on file'}</span>
@@ -368,7 +426,10 @@ function Row({ row, committees, positions, board, open, onToggle }) {
           {row.portal_edited_at && <span className={tagCls}>Portal</span>}
         </span>
       </button>
-      {open && <Editor row={row} committees={committees} positions={positions} board={board} onClose={onToggle} />}
+      {note && !open && <p className="mt-3 text-xs text-ok">{note}</p>}
+      {open && (
+        <Editor row={row} committees={committees} positions={positions} board={board} onClose={onToggle} onDone={onDone} />
+      )}
     </li>
   )
 }
@@ -411,14 +472,15 @@ function SheetConnection({ onResult, onError }) {
   const busy = setSheet.isPending || syncNow.isPending
   const active = info.data?.active
 
-  const run = async (fn) => {
+  // `otherwise` are the words for a failure that came with no sentence.
+  const run = async (fn, otherwise) => {
     onError('')
     onResult(null)
     try {
       const out = await fn()
       if (out && typeof out === 'object' && 'inserted' in out) onResult(out)
     } catch (e) {
-      onError(e?.message || 'That did not work.')
+      onError(errorText(e, otherwise))
     }
   }
 
@@ -436,12 +498,23 @@ function SheetConnection({ onResult, onError }) {
       </p>
       {active ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" disabled={busy} onClick={() => run(() => syncNow.mutateAsync())} className={outlineBtnCls}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run(() => syncNow.mutateAsync(), 'The sync did not run.')}
+            className={outlineBtnCls}
+          >
             {syncNow.isPending ? 'Syncing…' : 'Sync now'}
           </button>
-          <button type="button" disabled={busy} onClick={() => run(() => setSheet.mutateAsync(null))} className={outlineBtnCls}>
-            Disconnect
-          </button>
+          {/* It stops the hourly check, and connecting again needs the
+              sheet's link to hand: two clicks, like every removal here. */}
+          <ConfirmButton
+            label="Disconnect"
+            busyLabel="Disconnecting…"
+            busy={setSheet.isPending}
+            disabled={busy}
+            onConfirm={() => run(() => setSheet.mutateAsync(null), 'Could not disconnect the sheet.')}
+          />
         </div>
       ) : (
         <form
@@ -450,7 +523,7 @@ function SheetConnection({ onResult, onError }) {
             run(async () => {
               await setSheet.mutateAsync(link)
               setLink('')
-            })
+            }, 'Could not connect that sheet.')
           }}
           className="mt-3 flex flex-wrap items-center gap-2"
         >
@@ -481,7 +554,18 @@ function SpreadsheetPanel() {
   const [error, setError] = useState('')
   const [last, setLast] = useState(null)
   const [newToken, setNewToken] = useState('')
-  const [copied, setCopied] = useState(false)
+  // '' until Copy is pressed, then 'yes' or 'no': whether the token reached the clipboard
+  const [copied, setCopied] = useState('')
+  // The token's own errors, shown under its own buttons.
+  const [tokenError, setTokenError] = useState('')
+  const copyRef = useRef(null)
+
+  // A token that has just been issued hands the keyboard to Copy, which is
+  // the next step. The button that issued it cannot keep it: turning on swaps
+  // that button for the two-click pair, and the keyboard would be left nowhere.
+  useEffect(() => {
+    if (newToken) copyRef.current?.focus()
+  }, [newToken])
 
   const onFile = async (e) => {
     const file = e.target.files?.[0]
@@ -493,21 +577,35 @@ function SpreadsheetPanel() {
       const { rows, batch } = await parseRosterFile(file)
       setLast(await importRoster.mutateAsync({ rows, batch }))
     } catch (err) {
-      setError(err?.message || 'Could not import that file.')
+      // rosterFile.js's own sentences ("Couldn’t find the header row…") come
+      // through as written: it marks them for errorText.
+      setError(errorText(err, 'Could not import that file.'))
     }
   }
 
   const issue = async () => {
-    setError('')
-    setCopied(false)
+    setTokenError('')
+    setCopied('')
     try {
       setNewToken(await rotate.mutateAsync())
     } catch (err) {
-      setError(err?.message || 'Could not issue a token.')
+      setTokenError(errorText(err, 'Could not issue a token.'))
+    }
+  }
+
+  const turnOff = async () => {
+    setTokenError('')
+    try {
+      await revoke.mutateAsync()
+      // a token still on screen would be one that no longer works
+      setNewToken('')
+    } catch (err) {
+      setTokenError(errorText(err, 'Could not turn the token off.'))
     }
   }
 
   const active = token.data?.active
+  const tokenBusy = rotate.isPending || revoke.isPending
 
   return (
     <Panel title="Spreadsheet" className="mt-10">
@@ -542,36 +640,74 @@ function SpreadsheetPanel() {
           apps-script/roster-sync.gs, which sends the roster here every hour using this token.
           Issuing a new token switches the old one off.
         </p>
+        {/* While a token is in use both buttons take two clicks: either one
+            stops the script on the sheet until a new token is pasted into it. */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" disabled={rotate.isPending} onClick={issue} className={outlineBtnCls}>
-            {active ? 'Issue a new token' : 'Turn on: issue a token'}
-          </button>
-          {active && (
-            <button type="button" disabled={revoke.isPending} onClick={() => revoke.mutate()} className={outlineBtnCls}>
-              Turn off
+          {active ? (
+            <>
+              <ConfirmButton
+                label="Issue a new token"
+                confirmLabel="Click again to replace the token"
+                busyLabel="Issuing…"
+                busy={rotate.isPending}
+                disabled={tokenBusy}
+                onConfirm={issue}
+              />
+              <ConfirmButton
+                label="Turn off"
+                busyLabel="Turning off…"
+                busy={revoke.isPending}
+                disabled={tokenBusy}
+                onConfirm={turnOff}
+              />
+            </>
+          ) : (
+            // Off until it is known whether a token is in use: pressed in the
+            // moment before that, this one click would replace one that is.
+            <button type="button" disabled={tokenBusy || token.isPending} onClick={issue} className={outlineBtnCls}>
+              {rotate.isPending ? 'Issuing…' : 'Turn on: issue a token'}
             </button>
           )}
         </div>
+        {tokenError && (
+          <div className="mt-3">
+            <ErrorText>{tokenError}</ErrorText>
+          </div>
+        )}
         {newToken && (
           <div className="mt-4 rounded-xl border border-amber-400/30 bg-sunk p-4">
-            <p className="text-xs text-warn">
+            <p id="roster-token-note" className="text-xs text-warn">
               Copy this now and paste it into the script’s SYNC_TOKEN property. It is not shown again.
             </p>
             <code className="mt-2 block break-all text-xs text-ink">{newToken}</code>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(newToken)
-                  setCopied(true)
-                } catch {
-                  setCopied(false)
-                }
-              }}
-              className={`${outlineBtnCls} mt-3`}
-            >
-              {copied ? 'Copied' : 'Copy'}
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {/* The sentence above is read with the button, for a screen
+                  reader that arrives here without having passed it. */}
+              <button
+                ref={copyRef}
+                type="button"
+                aria-describedby="roster-token-note"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(newToken)
+                    setCopied('yes')
+                  } catch {
+                    setCopied('no')
+                  }
+                }}
+                className={outlineBtnCls}
+              >
+                {copied === 'yes' ? 'Copied' : 'Copy'}
+              </button>
+              {/* Kept in the page so that a screen reader says it when it comes. */}
+              <p role="status" className={copied === 'no' ? 'text-xs text-warn' : 'sr-only'}>
+                {copied === 'yes'
+                  ? 'Copied.'
+                  : copied === 'no'
+                    ? 'Couldn’t copy it. Select the token above and copy it by hand.'
+                    : ''}
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -606,6 +742,16 @@ export default function RosterPage() {
   const [openId, setOpenId] = useState(null) // row id, or 'new'
   // Its own switch: opening a member below must not close the panel and lose a pasted list.
   const [bulk, setBulk] = useState('') // '', 'lga' or 'committee': which bulk update is open
+  // What the editor that has just closed did: { what, id, name, before, after },
+  // with `what` a key of DONE. `before` is the row that stood under it, so that
+  // a sentence about a row which has left the list can stand where the row was;
+  // `after` is the row that stood over it. A removed row hands the keyboard to
+  // the first of the two that there is.
+  const [notice, setNotice] = useState(null)
+  // The id of a member just added, until their row has been brought into view.
+  const [reveal, setReveal] = useState(null)
+  const listRef = useRef(null)
+  const departedRef = useRef(null)
 
   // The whole roster is loaded once and searched in the browser
   // (rosterSearch.js), so the list follows every letter with no request and no
@@ -620,17 +766,22 @@ export default function RosterPage() {
   const board = useMemo(() => boardPositions(societyPositions || []), [societyPositions])
   const [showTypes, setShowTypes] = useState(false)
   const [showBoard, setShowBoard] = useState(false)
+  // A member just removed leaves the list at once, ahead of the roster being read again.
+  const removedId = notice?.what === 'removed' ? notice.id : null
   const matches = useMemo(() => {
-    const found = searchRoster(prepared, term, status)
+    const all = searchRoster(prepared, term, status)
+    const found = removedId ? all.filter((r) => r.id !== removedId) : all
     if (!committee) return found
     if (committee === 'none') return found.filter((r) => !r.committee_id)
     if (committee === 'contact') return found.filter((r) => r.is_contact_person)
     if (committee === BOARD) return found.filter((r) => board.some((p) => p.id === r.position_id))
     const unit = committees.find((c) => c.id === committee)
     return found.filter((r) => (unit ? unit.ids.includes(r.committee_id) : r.committee_id === committee))
-  }, [prepared, term, status, committee, committees, board])
+  }, [prepared, term, status, committee, committees, board, removedId])
   const total = matches.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  // A removal or a narrower search can leave the page number past the last page.
+  const at = Math.min(page, pages - 1)
   const committeeAbbr = useMemo(
     () => Object.fromEntries(committees.flatMap((c) => c.ids.map((id) => [id, c.abbr]))),
     [committees],
@@ -669,7 +820,106 @@ export default function RosterPage() {
   ]
     .filter(Boolean)
     .join(', ')
-  const visible = matches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const visible = matches.slice(at * PAGE_SIZE, (at + 1) * PAGE_SIZE)
+
+  // A new member is shown: once the roster has been read again their row is
+  // found (the search and the filters are cleared if they would hide it, and
+  // the list turns to its page), scrolled to and given the keyboard.
+  useEffect(() => {
+    if (!reveal) return
+    if (roster.error) {
+      setReveal(null)
+      return
+    }
+    if (!(roster.data || []).some((r) => r.id === reveal)) return
+    const index = matches.findIndex((r) => r.id === reveal)
+    if (index === -1) {
+      if (q || status || committee) {
+        setQ('')
+        setStatus('')
+        setCommittee('')
+      } else if (!term) {
+        // nothing narrows the list and they are not in it: nothing more to try
+        setReveal(null)
+      }
+      return
+    }
+    const theirs = Math.floor(index / PAGE_SIZE)
+    if (theirs !== at) {
+      setPage(theirs)
+      return
+    }
+    const el = document.getElementById(rowId(reveal))
+    if (!el) return
+    setReveal(null)
+    el.focus({ preventScroll: true })
+    el.scrollIntoView({ block: 'center', behavior: scrollBehavior() })
+  }, [reveal, roster.data, roster.error, matches, at, q, status, committee, term])
+
+  // Opening a row, searching or turning the page moves on from whatever the
+  // last editor did, so its sentence goes.
+  const open = (id) => {
+    setNotice(null)
+    setOpenId(id)
+  }
+  // The search box and the two filters: each starts the list at its first page.
+  const narrow = (set) => (e) => {
+    set(e.target.value)
+    setPage(0)
+    setNotice(null)
+  }
+  // Previous and Next sit at the foot of a long list: the new page starts at
+  // its top.
+  const turn = (to) => {
+    setPage(to)
+    setNotice(null)
+    listRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  }
+
+  // A removed row leaves at once, and the editor that closed with it may have
+  // been taller than the screen. Once the list has been drawn without it, the
+  // sentence that stands in its place is brought into view and the keyboard
+  // goes to the row beside it, so that it is not left at the top of the page.
+  useEffect(() => {
+    if (notice?.what !== 'removed') return
+    const beside = notice.before ?? notice.after
+    if (beside) document.getElementById(rowId(beside))?.focus({ preventScroll: true })
+    departedRef.current?.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() })
+  }, [notice])
+
+  // An editor has finished (`what` is a key of DONE): close it and say so.
+  const onDone = (what, row) => {
+    setOpenId(null)
+    if (!row?.id) return
+    // The rows on either side in the whole list, not only on this page: the
+    // one under a page's last row is drawn on this page once that row has gone.
+    const index = matches.findIndex((r) => r.id === row.id)
+    setNotice({
+      what,
+      id: row.id,
+      name: row.full_name,
+      before: index === -1 ? null : matches[index + 1]?.id ?? null,
+      after: index < 1 ? null : matches[index - 1].id,
+    })
+    if (what === 'added') setReveal(row.id)
+    else if (what !== 'removed') {
+      // The keyboard goes back to the row's own button, and the row comes
+      // back into view when its editor was taller than the screen.
+      const el = document.getElementById(rowId(row.id))
+      el?.focus({ preventScroll: true })
+      el?.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() })
+    }
+  }
+
+  // A row that has left the list (removed, or saved out of the search, a
+  // filter or this page) has its sentence where it stood.
+  const gone = notice && notice.what !== 'added' && !visible.some((r) => r.id === notice.id) ? notice : null
+  const goneAt = gone ? visible.findIndex((r) => r.id === gone.before) : -1
+  const departed = gone ? (
+    <li ref={departedRef} className="rounded-2xl border border-dashed border-line/20 px-5 py-3 text-xs text-soft/70">
+      {DONE[gone.what].full(gone.name)}
+    </li>
+  ) : null
 
   return (
     <>
@@ -714,7 +964,7 @@ export default function RosterPage() {
             <button
               type="button"
               aria-expanded={openId === 'new'}
-              onClick={() => setOpenId(openId === 'new' ? null : 'new')}
+              onClick={() => open(openId === 'new' ? null : 'new')}
               className={`${primaryBtnCls} px-5 py-2 text-xs`}
             >
               Add a member
@@ -733,16 +983,14 @@ export default function RosterPage() {
           handed out here, by address, the same way a committee invites. */}
       {showBoard && (
         <div className="mb-8">
-          <p className="pb-4 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            Executive Board and webmaster
-          </p>
+          <p className={`pb-4 ${panelTitleCls}`}>Executive Board and webmaster</p>
           <PositionsPanel />
         </div>
       )}
 
       {openId === 'new' && (
         <Panel title="New member" className="mb-6">
-          <Editor row={null} committees={committees} positions={positions} board={board} onClose={() => setOpenId(null)} />
+          <Editor row={null} committees={committees} positions={positions} board={board} onClose={() => setOpenId(null)} onDone={onDone} />
         </Panel>
       )}
 
@@ -750,20 +998,14 @@ export default function RosterPage() {
         <input
           type="search"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value)
-            setPage(0)
-          }}
+          onChange={narrow(setQ)}
           placeholder="Search by name, email or position"
           aria-label="Search the roster"
           className={`${inputCls} max-w-sm`}
         />
         <select
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value)
-            setPage(0)
-          }}
+          onChange={narrow(setStatus)}
           aria-label="Filter by status"
           className={`${inputCls} sm:w-auto`}
         >
@@ -775,10 +1017,7 @@ export default function RosterPage() {
         </select>
         <select
           value={committee}
-          onChange={(e) => {
-            setCommittee(e.target.value)
-            setPage(0)
-          }}
+          onChange={narrow(setCommittee)}
           aria-label="Filter by committee"
           className={`${inputCls} sm:w-auto`}
         >
@@ -808,38 +1047,61 @@ export default function RosterPage() {
         </span>
       </div>
 
+      {/* What the last editor did, for a screen reader: the sentence a sighted
+          reader finds on the row, or where the row was. Always in the page, so
+          that it is said when it comes. */}
+      <p role="status" className="sr-only">
+        {notice ? DONE[notice.what].full(notice.name) : ''}
+      </p>
+
       {roster.error ? (
         <Panel>
-          <ErrorText>Couldn’t load the roster: {roster.error.message}</ErrorText>
+          <ErrorText>{errorText(roster.error, 'Couldn’t load the roster.')}</ErrorText>
         </Panel>
       ) : roster.isPending ? (
         <div className="py-16 text-center">
           <Spinner />
         </div>
       ) : total === 0 ? (
-        <Panel>
-          <p className="text-sm text-soft/70">
-            {term || status || committee
-              ? 'Nobody matches that.'
-              : 'The roster is empty. Import the membership spreadsheet below to fill it.'}
-          </p>
-        </Panel>
+        <>
+          {departed && <ul className="pb-3">{departed}</ul>}
+          <Panel>
+            <p className="text-sm text-soft/70">
+              {term || status || committee
+                ? 'Nobody matches that.'
+                : 'The roster is empty. Import the membership spreadsheet below to fill it.'}
+            </p>
+          </Panel>
+        </>
       ) : (
         <>
-          <ul className="space-y-3">
-            {visible.map((row) => (
-              <Row key={row.id} row={row} committees={committees} positions={positions} board={board} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />
+          <ul ref={listRef} className="space-y-3">
+            {visible.map((row, i) => (
+              <Fragment key={row.id}>
+                {i === goneAt && departed}
+                <Row
+                  row={row}
+                  committees={committees}
+                  positions={positions}
+                  board={board}
+                  open={openId === row.id}
+                  note={notice?.id === row.id ? DONE[notice.what].row : ''}
+                  onToggle={() => open(openId === row.id ? null : row.id)}
+                  onDone={onDone}
+                />
+              </Fragment>
             ))}
+            {goneAt === -1 && departed}
           </ul>
           {pages > 1 && (
             <div className="flex items-center justify-center gap-4 pt-6 text-xs text-soft/60">
-              <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)} className={outlineBtnCls}>
+              <button type="button" disabled={at === 0} onClick={() => turn(at - 1)} className={outlineBtnCls}>
                 Previous
               </button>
               <span>
-                Page {page + 1} of {pages}
+                Page {at + 1} of {pages}
               </span>
-              <button type="button" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)} className={outlineBtnCls}>
+              <button type="button" disabled={at + 1 >= pages} onClick={() => turn(at + 1)} className={outlineBtnCls}>
                 Next
               </button>
             </div>

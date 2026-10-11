@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
+import { UNREACHED, errorText } from '../../../lib/errorText.js'
 import { useRollOverTerm, useRolloverPreview } from '../../rolloverQueries.js'
 import {
   STORAGE_LIMIT_BYTES,
@@ -9,10 +11,12 @@ import {
   examLoss,
   formatBytes,
   formatDay,
+  startBlocker,
   termProblem,
   workAccountState,
 } from '../../rollover.js'
 import {
+  CheckField,
   ConfirmButton,
   ErrorText,
   Field,
@@ -30,6 +34,10 @@ import {
 // deleted (they are kept for one term), and the term switches. Each panel says
 // what will happen before the button at the end does it. The seats and
 // secrets of HANDOVER section 6 are people's work and stay a checklist.
+//
+// Nothing in the portal is harder to take back, so the button at the end is
+// guarded twice: the new term's name has to be typed beside it first, and it
+// then asks for a second click like every other button of its kind.
 
 const STATE = {
   keeps: { text: 'Keeps it', cls: 'text-ok' },
@@ -37,8 +45,22 @@ const STATE = {
   'no-email': { text: 'No work email: nobody holds it', cls: 'text-danger' },
 }
 
+// A small blue link or button that stands on its own, with a thumb's 44px to
+// land on (in px: the root size shrinks on a 320px phone).
+const textLinkCls =
+  'inline-flex min-h-[44px] items-center font-semibold text-accent transition-colors hover:text-ink'
+
 function positionName(row) {
   return row.committee ? `${row.committee} ${row.title}` : row.title
+}
+
+// The sentence for a switch that failed. The database does all of it or none
+// of it, so a refusal changed nothing. A request that got no answer is the one
+// case where nobody can tell: it may have gone through before the line dropped.
+function startError(err) {
+  const text = errorText(err, 'We couldn’t start the new term. Nothing was changed.')
+  if (text !== UNREACHED) return text
+  return 'We couldn’t reach the server, so we can’t tell whether the new term started. Reload the page to see which term is current before trying again.'
 }
 
 export default function RolloverPage() {
@@ -46,12 +68,20 @@ export default function RolloverPage() {
   const preview = useRolloverPreview()
   const roll = useRollOverTerm()
   const [result, setResult] = useState(null)
+  // The switch finishes in the database whatever the tab does, but its summary
+  // is only shown here: ask before the tab is closed or reloaded on the way.
+  useLeaveWarning(roll.isPending)
 
   return (
     <>
       <PageHeader
         eyebrow={
-          <Link to="/portal/admin/settings" className="hover:text-ink">
+          // The ::after gives the small link a thumb's 44px to land on without
+          // moving the title under it (in px: the root size shrinks on a phone).
+          <Link
+            to="/portal/admin/settings"
+            className="relative transition-colors after:absolute after:-inset-x-2 after:-inset-y-[15px] after:content-[''] hover:text-ink"
+          >
             &larr; Site settings
           </Link>
         }
@@ -62,9 +92,13 @@ export default function RolloverPage() {
         <Done result={result} />
       ) : preview.isPending ? (
         <PageLoading />
-      ) : preview.error ? (
+      ) : preview.error && !preview.data ? (
+        // Only when there is nothing to show. If the preview is up and could
+        // not be fetched again (a connection that came and went), the form
+        // stays, with what was typed and unticked in it; the database checks
+        // everything again when the button is pressed.
         <Panel>
-          <ErrorText>Couldn’t load what the new term would change: {preview.error.message}</ErrorText>
+          <ErrorText>{errorText(preview.error, 'We couldn’t load what the new term would change.')}</ErrorText>
         </Panel>
       ) : (
         <Wizard
@@ -97,6 +131,8 @@ function Wizard({ preview, busy, error, onStart }) {
   // The exams whose registered IDs and papers go with the term. None, and the
   // page has no exam panel (nor has it on a database from before the exam).
   const exams = preview.exams ?? []
+  // The new term's name, typed a second time beside the button.
+  const [typed, setTyped] = useState('')
 
   const problem = termProblem({ label, startsOn, endsOn }, current)
   const name = label.trim() || 'the new term'
@@ -104,6 +140,8 @@ function Wizard({ preview, busy, error, onStart }) {
 
   const accounts = preview.work_accounts
   const board = boardKept(accounts)
+  // Why the button is off, in words. Empty when it can be pressed.
+  const blocker = startBlocker({ problem, board, label, typed })
   const counts = useMemo(() => {
     const c = { keeps: 0, 'first-sign-in': 0, 'no-email': 0 }
     for (const row of accounts) c[workAccountState(row)] += 1
@@ -155,7 +193,9 @@ function Wizard({ preview, busy, error, onStart }) {
           </Field>
         </div>
         {problem ? (
-          <ErrorText>{problem}</ErrorText>
+          <div className="mt-3">
+            <ErrorText>{problem}</ErrorText>
+          </div>
         ) : (
           early && (
             <p className="mt-3 text-xs text-soft/60">
@@ -194,10 +234,12 @@ function Wizard({ preview, busy, error, onStart }) {
           })}
         </ul>
         {!board && (
-          <ErrorText>
-            Nobody on the board would keep their access. Set the board’s work emails, and sign in once
-            with one of those accounts, before starting the new term.
-          </ErrorText>
+          <div className="mt-3">
+            <ErrorText>
+              Nobody on the board would keep their access. Set the board’s work emails, and sign in once
+              with one of those accounts, before starting the new term.
+            </ErrorText>
+          </div>
         )}
         <p className="mt-3 text-xs text-soft/55">
           A work email is changed under “Work emails” on the{' '}
@@ -251,33 +293,31 @@ function Wizard({ preview, busy, error, onStart }) {
           <p className="mt-3 text-sm text-soft/60">The gallery has no albums to archive.</p>
         ) : (
           <>
-            <div className="mt-3 flex gap-4 text-xs">
+            <div className="flex gap-5 text-xs">
               <button
                 type="button"
                 onClick={() => setArchive(new Set(albums.map((a) => a.id)))}
-                className="font-semibold text-accent hover:text-ink"
+                className={textLinkCls}
               >
                 Tick all
               </button>
-              <button
-                type="button"
-                onClick={() => setArchive(new Set())}
-                className="font-semibold text-accent hover:text-ink"
-              >
+              <button type="button" onClick={() => setArchive(new Set())} className={textLinkCls}>
                 Untick all
               </button>
             </div>
-            <ul className="mt-3 space-y-2">
+            {/* The portal's own tick box: these ticks count only when the button
+                at the end is pressed. The title wraps in full on a phone, with
+                the number of photos under it. */}
+            <ul className="space-y-2">
               {albums.map((a) => (
                 <li key={a.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line/10 bg-sunk px-4 py-3">
-                    <input type="checkbox" checked={archive.has(a.id)} onChange={() => toggle(a.id)} />
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{a.title}</span>
-                    <span className="shrink-0 text-xs text-soft/55">
-                      {a.photos} {a.photos === 1 ? 'photo' : 'photos'}
-                      {!a.published && ' · unpublished'}
-                    </span>
-                  </label>
+                  <CheckField
+                    checked={archive.has(a.id)}
+                    onChange={() => toggle(a.id)}
+                    label={a.title}
+                    hint={`${a.photos} ${a.photos === 1 ? 'photo' : 'photos'}${a.published ? '' : ' · unpublished'}`}
+                    className="rounded-xl border border-line/10 bg-sunk px-4"
+                  />
                 </li>
               ))}
             </ul>
@@ -303,9 +343,9 @@ function Wizard({ preview, busy, error, onStart }) {
               return (
                 <li
                   key={exam.id}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5"
+                  className="flex flex-wrap items-center justify-between gap-x-4 px-4 py-1.5"
                 >
-                  <span className="min-w-0">
+                  <span className="min-w-0 py-1">
                     <span className="block text-sm text-ink">{exam.title}</span>
                     <span className="block text-xs text-soft/55">
                       {loss ? `${loss} will be deleted` : 'Nothing to delete'}
@@ -313,7 +353,7 @@ function Wizard({ preview, busy, error, onStart }) {
                   </span>
                   <Link
                     to={loss ? `/portal/exam/${exam.id}?tab=results` : `/portal/exam/${exam.id}`}
-                    className="text-xs font-semibold text-accent hover:text-ink"
+                    className={`${textLinkCls} text-xs`}
                   >
                     {loss ? 'Open its results' : 'Open the exam'}
                   </Link>
@@ -331,26 +371,64 @@ function Wizard({ preview, busy, error, onStart }) {
           minutes. The seats and secrets of the handover (HANDOVER section 6) stay a checklist for
           the President and the webmasters.
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-4">
+        {/* The name typed again: the one step a slip of the hand cannot take. */}
+        <div className="mt-5 max-w-xs">
+          <Field
+            label={problem ? 'Type the new term’s name to confirm' : `Type ${label.trim()} to confirm`}
+            htmlFor="term-confirm"
+          >
+            <input
+              id="term-confirm"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              className={inputCls}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-describedby="term-no-undo term-start-why"
+            />
+          </Field>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
           <ConfirmButton
             label={`Start ${name}`}
             confirmLabel={`Click again to start ${name} now`}
             busyLabel="Switching…"
             busy={busy}
-            disabled={Boolean(problem) || !board}
+            disabled={Boolean(blocker)}
             className={primaryBtnCls}
+            keepWidth
             onConfirm={() =>
               onStart({ label: label.trim(), startsOn, endsOn, archiveAlbums: [...archive] })
             }
           />
+          <p id="term-no-undo" className="text-sm font-semibold text-warn">
+            This cannot be undone.
+          </p>
         </div>
-        {error && <ErrorText>{error.message}</ErrorText>}
+        {/* Why the button is off. Always in the page, so a screen reader hears
+            it change; out of sight when there is nothing to say. */}
+        <p id="term-start-why" role="status" className={blocker ? 'mt-3 text-xs text-soft/70' : 'sr-only'}>
+          {blocker}
+        </p>
+        {error && (
+          <div className="mt-3">
+            <ErrorText>{startError(error)}</ErrorText>
+          </div>
+        )}
       </Panel>
     </div>
   )
 }
 
 function Done({ result }) {
+  // The button that was pressed went with the form, taking the keyboard's
+  // place with it: put it on the outcome, which is also read out from there.
+  const outcome = useRef(null)
+  useEffect(() => {
+    outcome.current?.focus({ preventScroll: true })
+  }, [])
   const examIds = result.exam_registrations_deleted ?? 0
   const examPapers = result.exam_attempts_deleted ?? 0
   const rows = [
@@ -370,7 +448,9 @@ function Done({ result }) {
   return (
     <div className="max-w-3xl space-y-5">
       <Panel title="Done">
-        <p className="mt-4 text-lg text-ink">{result.to} is the current term.</p>
+        <p ref={outcome} tabIndex={-1} className="mt-4 text-lg text-ink focus:outline-none">
+          {result.to} is the current term.
+        </p>
         <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-soft/75">
           {rows.map(([text]) => (
             <li key={text}>{text}</li>
@@ -380,11 +460,11 @@ function Done({ result }) {
           Next: the seats and secrets of the handover, HANDOVER section 6. The public pages show the new term
           within a few minutes.
         </p>
-        <div className="mt-5 flex flex-wrap gap-4 text-sm">
-          <Link to="/portal" className="font-semibold text-accent hover:text-ink">
+        <div className="mt-2 flex flex-wrap gap-x-5 text-sm">
+          <Link to="/portal" className={textLinkCls}>
             Back to the dashboard
           </Link>
-          <a href="/gallery/archive" className="font-semibold text-accent hover:text-ink">
+          <a href="/gallery/archive" className={textLinkCls}>
             See the gallery archive
           </a>
         </div>

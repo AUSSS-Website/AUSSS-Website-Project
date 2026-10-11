@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, lazy, Suspense, Component } from 'react'
 import { incomingsBooklet } from '../data/incomingsBooklet.js'
 import { pageUrls } from '../lib/pageImages.js'
-import { scrollBehavior } from '../lib/motion.js'
+import { pressCls, scrollBehavior } from '../lib/motion.js'
 
 // The flipbook drags in react-pageflip and eagerly preloads every page image
 // (~4 MB), so it is both code-split AND only mounted once the reader is opened.
@@ -66,7 +66,7 @@ export default function IncomingsBooklet() {
                 onClick={() => setOpen((v) => !v)}
                 aria-expanded={open}
                 aria-controls="incomings-booklet-reader"
-                className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
               >
                 {open ? 'Close the booklet' : 'Read the booklet'}
                 <span aria-hidden="true">{open ? '×' : '›'}</span>
@@ -76,7 +76,7 @@ export default function IncomingsBooklet() {
                   href={booklet.download}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
                 >
                   Download (full quality)
                 </a>

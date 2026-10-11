@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
+import { errorText } from '../../../lib/errorText.js'
 import { eventWhen } from '../../../lib/eventTime.js'
 import { isUpcoming, normalizeEvent } from '../../../lib/events.js'
+import { pressCls } from '../../../lib/motion.js'
 import { useEventList, useEventMutations } from '../../eventQueries.js'
 import { useCommittees } from '../../officerQueries.js'
-import { defaultSchedule, scheduleProblem, schedulePatch } from '../../eventSchedule.js'
-import ScheduleFields from './ScheduleFields.jsx'
+import { defaultSchedule, scheduleFault, schedulePatch } from '../../eventSchedule.js'
+import ScheduleFields, { FieldProblem, fieldCls, problemProps, scheduleFieldId, tapCls } from './ScheduleFields.jsx'
 import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
 // The list of events one person may edit, and the form that starts a new one.
@@ -33,16 +35,33 @@ function NewEventForm({ committee, choices }) {
   // Until a choice is made, the first one (the list may arrive after the form).
   const [chosen, setOwner] = useState('')
   const owner = committee ? committee.id : chosen || choices[0]?.value || ''
+  // What the database said when the event could not be added.
   const [error, setError] = useState('')
+  // The title's message waits until the title has been typed in, or a save
+  // was tried: nobody is told off for a field they have not reached yet. A
+  // time that is wrong shows at once (ScheduleFields), since the form opens
+  // with one that is right.
+  const [seen, setSeen] = useState(false)
+  // One press of Enter, one event: a second submit while the first is still
+  // on its way is dropped.
+  const adding = useRef(false)
+
+  const titleProblem = title.trim() ? '' : 'Give the event a title.'
+  const fault = scheduleFault(schedule)
+  const ownerProblem = owner ? '' : 'Choose whose event it is.'
 
   const submit = async (e) => {
     e.preventDefault()
+    if (adding.current) return
     setError('')
-    const issue = !title.trim() ? 'Give the event a title.' : scheduleProblem(schedule)
-    if (issue || !owner) {
-      setError(issue || 'Choose whose event it is.')
+    if (titleProblem || fault || ownerProblem) {
+      // Every message shows at its own field; the first of them gets the cursor.
+      setSeen(true)
+      const first = titleProblem ? 'ev-new-title' : ownerProblem ? 'ev-new-owner' : scheduleFieldId('ev-new', fault)
+      document.getElementById(first)?.focus()
       return
     }
+    adding.current = true
     try {
       const row = await create.mutateAsync({
         committeeId: owner === SOCIETY ? null : owner,
@@ -51,9 +70,14 @@ function NewEventForm({ committee, choices }) {
       })
       navigate(`/portal/events/${row.id}`)
     } catch (err) {
-      setError(err.message || 'The event could not be added.')
+      setError(errorText(err, 'The event could not be added.'))
+    } finally {
+      adding.current = false
     }
   }
+
+  const showTitleProblem = seen ? titleProblem : ''
+  const showOwnerProblem = seen ? ownerProblem : ''
 
   return (
     <Panel title="New event">
@@ -61,36 +85,50 @@ function NewEventForm({ committee, choices }) {
         It starts as a draft that only editors can see. On its own page you add the place, the
         text, a picture and the sign-up link, then publish it.
       </p>
-      <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {/* noValidate: what is missing is said at its field in the form's own
+          words, not in the browser's bubble. */}
+      <form onSubmit={submit} noValidate className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Field label="Title" htmlFor="ev-new-title">
             <input
               id="ev-new-title"
-              className={inputCls}
+              className={fieldCls(inputCls, showTitleProblem)}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value)
+                setSeen(true)
+              }}
               maxLength={140}
               placeholder="World Health Day stand"
               required
+              {...problemProps('ev-new-title', showTitleProblem)}
             />
+            <FieldProblem id="ev-new-title-problem">{showTitleProblem}</FieldProblem>
           </Field>
         </div>
         {!committee && (
           <Field label="Whose event" htmlFor="ev-new-owner">
-            <select id="ev-new-owner" className={inputCls} value={owner} onChange={(e) => setOwner(e.target.value)}>
+            <select
+              id="ev-new-owner"
+              className={fieldCls(inputCls, showOwnerProblem)}
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              {...problemProps('ev-new-owner', showOwnerProblem)}
+            >
               {choices.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
               ))}
             </select>
+            <FieldProblem id="ev-new-owner-problem">{showOwnerProblem}</FieldProblem>
           </Field>
         )}
         <div className="sm:col-span-2">
           <ScheduleFields value={schedule} onChange={setSchedule} idPrefix="ev-new" />
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-          <button type="submit" className={primaryBtnCls} disabled={create.isPending || !title.trim()}>
+          <button type="submit" className={`${primaryBtnCls} ${tapCls}`} disabled={create.isPending}>
             {create.isPending ? 'Adding…' : 'Add event'}
           </button>
           <ErrorText>{error}</ErrorText>
@@ -117,7 +155,10 @@ function EventRow({ row, showCommittee }) {
   const ev = eventFromRow(row)
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-xl border border-line/10 bg-sunk/40 p-3">
-      <div className="min-w-0 flex-1">
+      {/* The words ask for 12rem of the row. Where the chips do not fit
+          beside that (a phone), they go under the words, which were being
+          squeezed into a column one letter wide. */}
+      <div className="min-w-0 grow basis-48">
         <p className="break-words text-sm font-semibold text-ink">{row.title}</p>
         <p className="mt-0.5 text-xs text-soft/60">
           {eventWhen(ev, { short: true })}
@@ -128,7 +169,7 @@ function EventRow({ row, showCommittee }) {
         {showCommittee && <StatusChip>{row.committee?.abbr || 'Society-wide'}</StatusChip>}
         {row.published ? <StatusChip tone="ok">Published</StatusChip> : <StatusChip>Draft</StatusChip>}
         {!isUpcoming(ev) && <StatusChip>Over</StatusChip>}
-        <Link to={`/portal/events/${row.id}`} className={outlineBtnCls}>
+        <Link to={`/portal/events/${row.id}`} className={`${outlineBtnCls} ${tapCls}`} aria-label={`Edit ${row.title}`}>
           Edit
         </Link>
       </div>
@@ -143,6 +184,7 @@ export default function EventsPanel({ committee = null }) {
   const committees = useCommittees(!committee)
   const [showPast, setShowPast] = useState(false)
   const [filter, setFilter] = useState('')
+  const pastId = useId()
 
   // Whose a new event can be, on /portal/events: the committees this person is
   // an officer of, and the society for the EB.
@@ -171,7 +213,7 @@ export default function EventsPanel({ committee = null }) {
 
       <Panel title={committee ? `${committee.abbr} events` : 'Events you can edit'}>
         <p className="mt-2 text-xs text-soft/55">
-          Published events show on <Link to="/events" target="_blank" className="font-semibold text-accent hover:text-ink">/events</Link>,
+          Published events show on <Link to="/events" target="_blank" rel="noopener noreferrer" className="font-semibold text-accent hover:text-ink">/events</Link>,
           on the committee&rsquo;s page and, for the next three, on the home page. An event moves to the
           archive by itself once it is over; its page and link keep working.
         </p>
@@ -197,8 +239,11 @@ export default function EventsPanel({ committee = null }) {
             <Spinner />
           </div>
         ) : list.error ? (
-          <div className="mt-4">
-            <ErrorText>Couldn’t load the events: {list.error.message}</ErrorText>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+            <ErrorText>{errorText(list.error, 'Couldn’t load the events.')}</ErrorText>
+            <button type="button" onClick={() => list.refetch()} className={`${outlineBtnCls} ${tapCls}`}>
+              Try again
+            </button>
           </div>
         ) : (
           <>
@@ -215,16 +260,20 @@ export default function EventsPanel({ committee = null }) {
 
             {past.length > 0 && (
               <div className="mt-6">
+                {/* One line of small capitals to the eye; its ::after gives a
+                    finger 44px of height, in px because the root size shrinks
+                    on a 320px phone. */}
                 <button
                   type="button"
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-soft/50 hover:text-ink"
+                  className={`relative text-xs font-semibold uppercase tracking-[0.2em] text-soft/50 ${pressCls} hover:text-ink after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']`}
                   aria-expanded={showPast}
+                  aria-controls={pastId}
                   onClick={() => setShowPast((v) => !v)}
                 >
-                  {showPast ? '▾' : '▸'} Over ({past.length})
+                  <span aria-hidden="true">{showPast ? '▾' : '▸'}</span> Over ({past.length})
                 </button>
                 {showPast && (
-                  <ul className="mt-3 space-y-2">
+                  <ul id={pastId} className="mt-3 space-y-2">
                     {past.map((r) => (
                       <EventRow key={r.id} row={r} showCommittee={!committee} />
                     ))}

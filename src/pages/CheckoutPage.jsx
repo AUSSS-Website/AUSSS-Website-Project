@@ -14,7 +14,7 @@ import { useMerchCatalogue } from '../lib/merch.js'
 import { useSiteSettings } from '../hooks/useSiteSettings.js'
 import { submitOrder } from '../lib/orders.js'
 import { paymentMethodsFrom } from '../data/merchConfig.js'
-import { scrollBehavior } from '../lib/motion.js'
+import { pressCls, scrollBehavior } from '../lib/motion.js'
 
 // The faculty's years of study (five, then the two intern years; STUDY_YEARS
 // in src/portal/constants.js has the same in the portal's words), and two more
@@ -33,6 +33,43 @@ const YEAR_OPTIONS = [
 
 const MAX_SCREENSHOT_MB = 5
 const MAX_NOTES_LENGTH = 280
+
+// One rule for each contact field that can be wrong. Each answers with the
+// words to show under the field, or with nothing when the field is fine. The
+// same rules run when a field is left, while a flagged field is being put
+// right, and for the whole form on Place order. (The receipt has its own
+// check below: it is a file, not part of `contact`.)
+const RULES = {
+  name: (c) => (c.name.trim() ? '' : 'Required'),
+  email: (c) =>
+    c.email.trim() && /^\S+@\S+\.\S+$/.test(c.email) ? '' : 'Enter a valid email',
+  phone: (c) => {
+    // Numbers in local Egyptian format must be a full mobile (01x + 8 digits);
+    // anything else (international WhatsApp) just needs a plausible length.
+    const digits = c.phone.replace(/\D/g, '')
+    const ok = digits.startsWith('0') ? /^01[0125][0-9]{8}$/.test(digits) : digits.length >= 10
+    return c.phone.trim() && ok
+      ? ''
+      : 'Enter a valid phone / WhatsApp number (e.g. 01x xxxx xxxx)'
+  },
+  isMember: (c) => (c.isMember ? '' : 'Pick one'),
+  lc: (c) => (c.isMember === 'No' && !c.lc.trim() ? 'Tell us which local committee' : ''),
+  year: (c) => (c.year ? '' : 'Pick one'),
+  notes: (c) =>
+    c.notes.length > MAX_NOTES_LENGTH ? `Keep it under ${MAX_NOTES_LENGTH} characters` : '',
+}
+// The order the fields come in on the page, to find the first one in error.
+const FIELD_ORDER = ['name', 'email', 'phone', 'isMember', 'lc', 'year', 'notes', 'screenshot']
+
+// The pills of this page: the green one, the blue one and the outlined one.
+// Colours ease and the pill sinks a little when pressed (pressCls); the small
+// growth under the pointer is left out for a reader who asked for less motion.
+// The least height is in px: the padding is in rem, and the root size shrinks
+// on a 320px phone, which left a pill a little under the 44px a thumb needs.
+const pillCls = 'inline-flex min-h-[44px] items-center justify-center rounded-full text-sm font-semibold'
+const solidPillCls = `${pillCls} bg-solid text-on-solid hover:bg-solid-hover ${pressCls} motion-safe:hover:scale-[1.02]`
+const ctaPillCls = `${pillCls} bg-cta text-on-cta hover:bg-cta-hover ${pressCls} motion-safe:hover:scale-[1.02]`
+const outlinePillCls = `${pillCls} border border-line/25 text-ink hover:bg-veil/10 ${pressCls}`
 
 export default function CheckoutPage() {
   useReveal()
@@ -97,30 +134,58 @@ export default function CheckoutPage() {
     return <OrderSuccess result={result} contact={contact} />
   }
 
-  const updateContact = (key, value) =>
+  // Sets or clears one field's error and leaves the others as they are.
+  const mark = (key, message) =>
+    setErrors((prev) => {
+      if ((prev[key] || '') === message) return prev
+      const next = { ...prev }
+      if (message) next[key] = message
+      else delete next[key]
+      return next
+    })
+
+  const updateContact = (key, value) => {
     setContact((c) => ({ ...c, [key]: value }))
+    // A field already marked wrong is checked again on every change, so its
+    // error goes the moment it is put right.
+    if (errors[key]) mark(key, RULES[key]({ ...contact, [key]: value }))
+  }
+
+  // Leaving a field checks it there and then, without waiting for Place order.
+  // An empty one is left alone: tabbing past a field is not a mistake yet, and
+  // Place order catches whatever is still missing.
+  const check = (key) => {
+    if (contact[key].trim()) mark(key, RULES[key](contact))
+  }
+
+  // What the form's own markup cannot say about a field: that it is in error,
+  // and which line of text says why.
+  const fieldProps = (key) => ({
+    onBlur: () => check(key),
+    'aria-invalid': errors[key] ? true : undefined,
+    'aria-describedby': errors[key] ? `${key}-error` : undefined,
+  })
+
+  const pickMember = (opt) => {
+    setContact((c) => ({
+      ...c,
+      isMember: opt,
+      // clear the LC field when switching back to "Yes"
+      lc: opt === 'Yes' ? '' : c.lc,
+    }))
+    mark('isMember', '')
+    // With "Yes" the committee question is gone, and its error with it.
+    if (opt === 'Yes') mark('lc', '')
+  }
 
   const selectedMethod = availablePaymentMethods.find((m) => m.id === paymentMethod)
 
   const validate = () => {
     const next = {}
-    if (!contact.name.trim()) next.name = 'Required'
-    if (!contact.email.trim() || !/^\S+@\S+\.\S+$/.test(contact.email))
-      next.email = 'Enter a valid email'
-    // Numbers in local Egyptian format must be a full mobile (01x + 8 digits);
-    // anything else (international WhatsApp) just needs a plausible length.
-    const phoneDigits = contact.phone.replace(/\D/g, '')
-    const phoneOk = phoneDigits.startsWith('0')
-      ? /^01[0125][0-9]{8}$/.test(phoneDigits)
-      : phoneDigits.length >= 10
-    if (!contact.phone.trim() || !phoneOk)
-      next.phone = 'Enter a valid phone / WhatsApp number (e.g. 01x xxxx xxxx)'
-    if (!contact.isMember) next.isMember = 'Pick one'
-    if (contact.isMember === 'No' && !contact.lc.trim())
-      next.lc = 'Tell us which local committee'
-    if (!contact.year) next.year = 'Pick one'
-    if (contact.notes.length > MAX_NOTES_LENGTH)
-      next.notes = `Keep it under ${MAX_NOTES_LENGTH} characters`
+    for (const key of Object.keys(RULES)) {
+      const message = RULES[key](contact)
+      if (message) next[key] = message
+    }
     if (!screenshot)
       next.screenshot = `Upload the ${selectedMethod?.label || 'payment'} receipt`
     setErrors(next)
@@ -129,14 +194,16 @@ export default function CheckoutPage() {
 
   // Bring the first invalid field into view; on a long mobile form the
   // error text is often above the fold when the submit button is tapped.
-  const FIELD_ORDER = ['name', 'email', 'phone', 'isMember', 'lc', 'year', 'notes', 'screenshot']
   const focusFirstError = (next) => {
     const first = FIELD_ORDER.find((k) => next[k])
     if (!first) return
     const el = document.getElementById(first)
     if (!el) return
+    // "AUSSS member?" is a group of two buttons, not one field: the first
+    // button takes the focus.
+    const target = el.matches('input, select, textarea') ? el : el.querySelector('button') || el
     el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' })
-    if (typeof el.focus === 'function') el.focus({ preventScroll: true })
+    if (typeof target.focus === 'function') target.focus({ preventScroll: true })
   }
 
   const onScreenshotChange = (e) => {
@@ -157,6 +224,8 @@ export default function CheckoutPage() {
       return
     }
     setScreenshot(file)
+    // A receipt is chosen: "Upload the receipt" no longer applies.
+    mark('screenshot', '')
   }
 
   const onSubmit = async (e) => {
@@ -169,6 +238,8 @@ export default function CheckoutPage() {
       focusFirstError(invalid)
       return
     }
+    // Take the last failure off the page, so a second one is read out again.
+    setResult(null)
     setSubmitting(true)
 
     const payload = {
@@ -197,7 +268,7 @@ export default function CheckoutPage() {
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
             Confirm your order
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/75">
+          <p className="mx-auto mt-4 max-w-xl text-base font-normal text-soft/75 dark:font-light">
             Tell us how to reach you. We&rsquo;ll confirm details and arrange
             pickup once production wraps.
           </p>
@@ -238,8 +309,10 @@ export default function CheckoutPage() {
                     id="name"
                     type="text"
                     autoComplete="name"
+                    required
                     value={contact.name}
                     onChange={(e) => updateContact('name', e.target.value)}
+                    {...fieldProps('name')}
                     className={inputClass(errors.name)}
                   />
                 </Field>
@@ -250,8 +323,10 @@ export default function CheckoutPage() {
                     type="email"
                     inputMode="email"
                     autoComplete="email"
+                    required
                     value={contact.email}
                     onChange={(e) => updateContact('email', e.target.value)}
+                    {...fieldProps('email')}
                     className={inputClass(errors.email)}
                   />
                 </Field>
@@ -267,8 +342,10 @@ export default function CheckoutPage() {
                     inputMode="tel"
                     autoComplete="tel"
                     placeholder="01x xxxx xxxx"
+                    required
                     value={contact.phone}
                     onChange={(e) => updateContact('phone', e.target.value)}
+                    {...fieldProps('phone')}
                     className={inputClass(errors.phone)}
                   />
                 </Field>
@@ -285,16 +362,9 @@ export default function CheckoutPage() {
                       <button
                         key={opt}
                         type="button"
-                        onClick={() =>
-                          setContact((c) => ({
-                            ...c,
-                            isMember: opt,
-                            // clear the LC field when switching back to "Yes"
-                            lc: opt === 'Yes' ? '' : c.lc,
-                          }))
-                        }
+                        onClick={() => pickMember(opt)}
                         aria-pressed={contact.isMember === opt}
-                        className={`flex-1 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                        className={`min-h-[44px] flex-1 rounded-full border px-4 py-2 text-sm font-semibold ${pressCls} ${
                           contact.isMember === opt
                             ? 'border-medical bg-cta text-on-cta'
                             : 'border-line/15 text-soft/80 hover:border-line/30 hover:text-ink'
@@ -317,8 +387,10 @@ export default function CheckoutPage() {
                       id="lc"
                       type="text"
                       maxLength={60}
+                      required
                       value={contact.lc}
                       onChange={(e) => updateContact('lc', e.target.value)}
+                      {...fieldProps('lc')}
                       placeholder="e.g. Cairo, Alex, Mansoura, Helwan…"
                       className={inputClass(errors.lc)}
                     />
@@ -333,8 +405,10 @@ export default function CheckoutPage() {
                 >
                   <select
                     id="year"
+                    required
                     value={contact.year}
                     onChange={(e) => updateContact('year', e.target.value)}
+                    {...fieldProps('year')}
                     className={inputClass(errors.year)}
                   >
                     <option value="" disabled>
@@ -365,6 +439,7 @@ export default function CheckoutPage() {
                         e.target.value.slice(0, MAX_NOTES_LENGTH),
                       )
                     }
+                    {...fieldProps('notes')}
                     className={inputClass(errors.notes) + ' resize-y'}
                   />
                   <span className="self-end text-2xs text-soft/55">
@@ -398,29 +473,35 @@ export default function CheckoutPage() {
                   total={subtotal}
                   screenshot={screenshot}
                   onChange={onScreenshotChange}
-                  error={errors.screenshot || screenshotError}
+                  // What is wrong with the file just chosen comes before
+                  // "Upload the receipt", which it also answers.
+                  error={screenshotError || errors.screenshot}
                 />
               </div>
             </fieldset>
 
+            {/* The sentence comes whole from src/lib/orders.js: nothing is
+                added after it. */}
             {result?.ok === false && (
-              <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger">
-                {result.error}. Please try again or contact us if it keeps
-                failing.
+              <p
+                role="alert"
+                className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger"
+              >
+                {result.error}
               </p>
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Link
                 to="/merch"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-soft/70 transition-colors hover:text-ink"
+                className="inline-flex min-h-[44px] items-center gap-1 self-start text-sm font-semibold text-soft/70 transition-colors hover:text-ink sm:self-auto"
               >
                 ← Back to merch
               </Link>
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-solid px-8 py-3.5 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
+                className={`gap-2 px-8 py-3.5 disabled:cursor-wait disabled:opacity-70 disabled:hover:scale-100 ${solidPillCls}`}
               >
                 {submitting ? (
                   <>
@@ -450,21 +531,13 @@ export default function CheckoutPage() {
                       className="flex gap-4 py-4"
                     >
                       {p.image ? (
-
                         <img
-
                           src={p.image}
-
                           alt=""
-
                           className="h-20 w-16 flex-shrink-0 rounded-md object-cover"
-
                         />
-
                       ) : (
-
                         <span className="h-20 w-16 flex-shrink-0 rounded-md bg-sunk" aria-hidden="true" />
-
                       )}
                       <div className="flex flex-1 flex-col">
                         <span className="text-sm font-semibold text-ink">
@@ -507,25 +580,27 @@ export default function CheckoutPage() {
 
 // ── Bits ─────────────────────────────────────────────────────────────────
 
+// Under a finger a field is at least 44px tall (in px, not rem, since the root
+// size shrinks on a 320px phone); under a mouse it keeps the height it had.
 function inputClass(error) {
-  return `w-full rounded-lg border bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-soft/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 ${
+  return `w-full rounded-lg border bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-soft/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 [@media(pointer:coarse)]:min-h-[44px] ${
     error
       ? 'border-red-400/50'
       : 'border-line/15 hover:border-line/25'
   }`
 }
 
+// The label holds the field's name and nothing else. When it wrapped the whole
+// block, the error and the character count were read out as part of the name.
+//
 // `group` mode is for fields whose control isn't a single labelable element
 // (e.g. a row of toggle buttons): renders a role="group" labelled by the text
-// instead of a <label htmlFor> that browsers would silently ignore.
+// instead of a <label htmlFor> that browsers would silently ignore. The group
+// carries the id, so the page can still find the field when it is in error.
 function Field({ label, htmlFor, error, span = 1, group = false, children }) {
   const errorId = error ? `${htmlFor}-error` : undefined
   const cls = `flex flex-col gap-1.5 ${span === 2 ? 'sm:col-span-2' : ''}`
-  const labelText = (
-    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-soft/70">
-      {label}
-    </span>
-  )
+  const labelCls = 'text-xs font-semibold uppercase tracking-[0.14em] text-soft/70'
   const errorNode = error && (
     <span id={errorId} role="alert" className="text-xs text-danger">
       {error}
@@ -534,23 +609,28 @@ function Field({ label, htmlFor, error, span = 1, group = false, children }) {
   if (group) {
     return (
       <div
+        id={htmlFor}
         role="group"
         aria-labelledby={`${htmlFor}-label`}
         aria-describedby={errorId}
         className={cls}
       >
-        <span id={`${htmlFor}-label`}>{labelText}</span>
+        <span id={`${htmlFor}-label`} className={labelCls}>
+          {label}
+        </span>
         {children}
         {errorNode}
       </div>
     )
   }
   return (
-    <label htmlFor={htmlFor} className={cls}>
-      {labelText}
+    <div className={cls}>
+      <label htmlFor={htmlFor} className={labelCls}>
+        {label}
+      </label>
       {children}
       {errorNode}
-    </label>
+    </div>
   )
 }
 
@@ -560,7 +640,7 @@ function PaymentOption({ selected, onClick, title, hint }) {
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+      className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-[background-color,border-color,transform] duration-150 ease-out motion-safe:active:scale-[0.985] ${
         selected
           ? 'border-medical bg-medical/10'
           : 'border-line/15 hover:border-line/30'
@@ -613,8 +693,11 @@ function DigitalPaymentPanel({ method, total, screenshot, onChange, error }) {
             id="screenshot"
             type="file"
             accept="image/*"
+            required
             onChange={onChange}
-            className="block w-full text-sm text-soft/80 file:mr-4 file:rounded-full file:border-0 file:bg-solid file:px-4 file:py-2 file:text-sm file:font-semibold file:text-on-solid hover:file:bg-solid-hover"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'screenshot-error' : undefined}
+            className="block w-full text-sm text-soft/80 file:mr-4 file:cursor-pointer file:rounded-full file:border-0 file:bg-solid file:px-4 file:py-2 file:text-sm file:font-semibold file:text-on-solid file:transition-colors file:duration-150 hover:file:bg-solid-hover [@media(pointer:coarse)]:file:min-h-[44px]"
           />
           {screenshot && (
             <span className="text-xs text-soft/60">
@@ -638,7 +721,7 @@ function LinkValue({ method }) {
         href={method.value}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center justify-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-transform hover:scale-[1.02]"
+        className={`gap-2 px-5 py-2.5 ${ctaPillCls}`}
       >
         Pay via {method.label}
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -668,10 +751,13 @@ function CopyableValue({ value }) {
       <span className="break-all font-mono text-base text-accent">
         {value}
       </span>
+      {/* A small pill with a thumb's 44px to land on: an unseen ::after reaches
+          past its edges. In px, not rem, since the root size shrinks on a
+          320px phone. */}
       <button
         type="button"
         onClick={copy}
-        className="inline-flex items-center gap-1.5 rounded-full border border-line/15 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.14em] text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
+        className={`relative inline-flex items-center gap-1.5 rounded-full border border-line/15 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.14em] text-soft/80 after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-full after:min-w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] hover:border-line/30 hover:text-ink ${pressCls}`}
       >
         {copied ? (
           <>
@@ -684,6 +770,10 @@ function CopyableValue({ value }) {
           'Copy'
         )}
       </button>
+      {/* A button's changed label is not read out by itself. */}
+      <span className="sr-only" role="status">
+        {copied ? 'Copied' : ''}
+      </span>
     </div>
   )
 }
@@ -723,16 +813,31 @@ function Spinner() {
 }
 
 function OrderSuccess({ result, contact }) {
+  // The form, and the Place order button that had the focus, are gone. The
+  // heading takes the focus, so a screen reader says the order went through
+  // and the page stands at this card and not where the long form had been
+  // scrolled to. A jump, not a glide: this is another screen, not a place
+  // further up the same one.
+  const headingRef = useRef(null)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    headingRef.current?.focus({ preventScroll: true })
+  }, [])
+
   return (
     <article className="bg-page">
       <div className="container-prose pt-32 pb-24 sm:pt-40">
         <div className="mx-auto max-w-xl rounded-2xl border border-medical/30 bg-sunk p-8 text-center sm:p-12">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-medical/15 text-accent">
-            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M5 12l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="heading-serif mt-6 text-3xl text-ink sm:text-4xl">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="heading-serif mt-6 text-3xl text-ink focus:outline-none sm:text-4xl"
+          >
             Order received
           </h1>
           <p className="mt-4 text-base text-soft/75">
@@ -768,16 +873,10 @@ function OrderSuccess({ result, contact }) {
             and mention it so we can find your order.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link
-              to="/merch"
-              className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] sm:w-auto"
-            >
+            <Link to="/merch" className={`w-full px-6 py-3 sm:w-auto ${solidPillCls}`}>
               Back to merch
             </Link>
-            <Link
-              to="/"
-              className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
-            >
+            <Link to="/" className={`w-full px-6 py-3 sm:w-auto ${outlinePillCls}`}>
               Home
             </Link>
           </div>
@@ -799,10 +898,7 @@ function OrdersClosed() {
             We&rsquo;re between drops right now. Follow our channels to hear
             when orders open again.
           </p>
-          <Link
-            to="/merch"
-            className="mt-7 inline-flex rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02]"
-          >
+          <Link to="/merch" className={`mt-7 px-6 py-3 ${solidPillCls}`}>
             Back to merch
           </Link>
         </div>

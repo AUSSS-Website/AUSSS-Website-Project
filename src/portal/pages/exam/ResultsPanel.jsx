@@ -6,6 +6,7 @@ import {
   durationWords,
   examPhase,
   exportName,
+  readProblem,
   resultColumns,
   resultSummary,
   searchResults,
@@ -14,6 +15,7 @@ import {
 } from '../../examStats.js'
 import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls } from '../../portalUi.jsx'
 import AttemptSheet, { StateChip } from './AttemptSheet.jsx'
+import { RefreshButton, tapCls } from './ExamsPage.jsx'
 
 // The Results tab of an exam (/portal/exam/:id?tab=results): the ranking as
 // the database returns it (rpc/exam_results: highest grade first, equal grades
@@ -48,7 +50,7 @@ function Row({ row, questions, to, tied }) {
       <Link
         id={rowId(row.attempt_id)}
         to={to}
-        className="flex items-center gap-x-4 rounded-xl border border-line/10 bg-sunk/40 p-3 transition-colors hover:border-line/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60"
+        className="flex items-center gap-x-4 rounded-xl border border-line/10 bg-sunk/40 p-3 transition-colors hover:border-line/30 active:bg-veil/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60"
       >
         <span className="w-12 shrink-0 text-center text-lg font-semibold tabular-nums text-ink">
           <span className="sr-only">{tied ? 'Joint rank ' : 'Rank '}</span>
@@ -89,6 +91,10 @@ export default function ResultsPanel({ exam }) {
   const results = useExamResults(exam.id, exam)
   const [q, setQ] = useState('')
   const [page, setPage] = useState(0)
+  // What a paper's page had to say on its way out ("The paper was deleted."),
+  // shown above the ranking until another paper is opened.
+  const [notice, setNotice] = useState('')
+  const noticeRef = useRef(null)
   const listRef = useRef(null)
   // The whole ranking is in the browser, so the list follows every letter;
   // useDeferredValue keeps typing smooth if a render ever lags.
@@ -102,15 +108,23 @@ export default function ResultsPanel({ exam }) {
   const columns = useMemo(() => resultColumns(questions), [questions])
 
   // Back from a paper: the row it was opened from, in view and in focus again.
+  // After a delete that row has gone (useDeleteAttempt takes it out of the
+  // ranking, which is then read again), so the line that says what was done
+  // takes the keyboard instead, and it is not dropped at the top of the page.
   const lastOpen = useRef('')
+  const deleted = useRef(false)
   useEffect(() => {
     if (paper) {
       lastOpen.current = paper
+      setNotice('')
       return
     }
-    const el = lastOpen.current ? document.getElementById(rowId(lastOpen.current)) : null
+    const el = lastOpen.current && !deleted.current ? document.getElementById(rowId(lastOpen.current)) : null
     lastOpen.current = ''
-    if (el) {
+    if (deleted.current) {
+      deleted.current = false
+      noticeRef.current?.focus()
+    } else if (el) {
       el.scrollIntoView({ block: 'center', behavior: 'instant' })
       el.focus({ preventScroll: true })
     }
@@ -126,7 +140,11 @@ export default function ResultsPanel({ exam }) {
         rank={rank}
         tied={shared.has(rank)}
         backTo={{ search: withPaper(params, '').toString() }}
-        onDeleted={() => setParams((prev) => withPaper(prev, ''), { replace: true })}
+        onDeleted={() => {
+          deleted.current = true
+          setNotice('The paper was deleted. The student can start again.')
+          setParams((prev) => withPaper(prev, ''), { replace: true })
+        }}
       />
     )
   }
@@ -154,6 +172,12 @@ export default function ResultsPanel({ exam }) {
         Students never see a grade.
       </p>
 
+      {/* In the page from the start, so a screen reader says it when it comes;
+          it can take the keyboard (tabIndex) after a delete. */}
+      <p ref={noticeRef} tabIndex={-1} role="status" className={notice ? 'mt-4 text-sm text-ok' : 'sr-only'}>
+        {notice}
+      </p>
+
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <input
           type="search"
@@ -164,16 +188,9 @@ export default function ResultsPanel({ exam }) {
           }}
           placeholder="Search name, ID, email, phone"
           aria-label="Search the results"
-          className={`${inputCls} max-w-sm`}
+          className={`${inputCls} ${tapCls} max-w-sm`}
         />
-        <button
-          type="button"
-          onClick={() => results.refetch()}
-          disabled={results.isFetching}
-          className={outlineBtnCls}
-        >
-          {results.isFetching ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <RefreshButton busy={results.isFetching} onClick={() => results.refetch()} />
         <span className="ml-auto">
           <ExportButtons
             title={`Results: ${exam.title}`}
@@ -185,6 +202,7 @@ export default function ResultsPanel({ exam }) {
             rows={found.rows}
             summary={resultSummary(found.rows, questions)}
             landscape
+            className={`${outlineBtnCls} ${tapCls}`}
           />
         </span>
       </div>
@@ -195,7 +213,7 @@ export default function ResultsPanel({ exam }) {
         </div>
       ) : !results.data ? (
         <div className="mt-4">
-          <ErrorText>Couldn’t load the results: {results.error?.message || 'the database sent nothing back.'}</ErrorText>
+          <ErrorText>{readProblem('load the results', results.error)}</ErrorText>
         </div>
       ) : (
         <>
@@ -215,7 +233,7 @@ export default function ResultsPanel({ exam }) {
           </p>
           {results.error && (
             <div className="mt-3">
-              <ErrorText>Couldn’t refresh the results: {results.error.message}</ErrorText>
+              <ErrorText>{readProblem('refresh the results', results.error)}</ErrorText>
             </div>
           )}
 
@@ -243,7 +261,12 @@ export default function ResultsPanel({ exam }) {
               </ol>
               {pages > 1 && (
                 <div className="flex items-center justify-center gap-4 pt-6 text-xs text-soft/60">
-                  <button type="button" disabled={at === 0} onClick={() => turn(at - 1)} className={outlineBtnCls}>
+                  <button
+                    type="button"
+                    disabled={at === 0}
+                    onClick={() => turn(at - 1)}
+                    className={`${outlineBtnCls} ${tapCls}`}
+                  >
                     Previous
                   </button>
                   <span>
@@ -253,7 +276,7 @@ export default function ResultsPanel({ exam }) {
                     type="button"
                     disabled={at + 1 >= pages}
                     onClick={() => turn(at + 1)}
-                    className={outlineBtnCls}
+                    className={`${outlineBtnCls} ${tapCls}`}
                   >
                     Next
                   </button>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { errorText } from '../../../lib/errorText.js'
 import { eventWhen } from '../../../lib/eventTime.js'
 import ExportButtons from '../../ExportButtons.jsx'
 import { useDeleteAttempt, useExamSheet } from '../../examResultQueries.js'
@@ -8,15 +9,16 @@ import {
   durationWords,
   exportName,
   optionLetter,
+  readProblem,
   rowOutcome,
   sheetColumns,
   sheetCounts,
   sheetSummary,
   stateLabel,
 } from '../../examStats.js'
-import { ConfirmButton, ErrorText, Panel, Spinner } from '../../portalUi.jsx'
+import { ConfirmButton, ErrorText, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import { chipBtnCls } from '../../workUi.jsx'
-import { StatusChip } from './ExamsPage.jsx'
+import { StatusChip, tapCls, tapLinkCls } from './ExamsPage.jsx'
 
 // One person's paper, opened from a row of the ranking (ResultsPanel): who
 // they are, the grade and the time, then every question in the officers'
@@ -60,6 +62,10 @@ const FILTER_NOTE = {
 }
 
 const OUTCOME_CLS = { right: 'text-ok', wrong: 'text-danger', blank: 'text-soft/65' }
+
+// The student's address and phone number, as links in a line of small text.
+const contactLinkCls =
+  'transition-colors hover:text-ink [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:items-center'
 
 function QuestionRow({ row }) {
   const outcome = rowOutcome(row)
@@ -126,7 +132,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
   }, [])
 
   const back = (
-    <Link replace to={backTo} className="text-xs font-semibold text-soft/60 transition-colors hover:text-ink">
+    <Link replace to={backTo} className={`${tapLinkCls} text-xs font-semibold text-soft/60 transition-colors hover:text-ink`}>
       &larr; Back to the ranking
     </Link>
   )
@@ -142,9 +148,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
             </div>
           ) : (
             <div className="mt-4">
-              <ErrorText>
-                Couldn’t load this paper: {sheet.error?.message || 'the database sent nothing back.'}
-              </ErrorText>
+              <ErrorText>{readProblem('load this paper', sheet.error)}</ErrorText>
             </div>
           )}
         </Panel>
@@ -164,7 +168,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
       await remove.mutateAsync(attemptId)
       onDeleted()
     } catch (e) {
-      setError(e?.message || 'The paper could not be deleted.')
+      setError(errorText(e, 'The paper could not be deleted.'))
     }
   }
 
@@ -174,22 +178,26 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
         {back}
         {sheet.error && (
           <div className="mt-3">
-            <ErrorText>Couldn’t refresh this paper: {sheet.error.message}</ErrorText>
+            <ErrorText>{readProblem('refresh this paper', sheet.error)}</ErrorText>
           </div>
         )}
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h2 className="heading-serif break-words text-2xl text-ink">{a.full_name || 'No name'}</h2>
-            <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-soft/60">
+            {/* On a touch screen the address and the number are each a thumb
+                tall, since a tap on the number rings it; the two can sit on
+                lines of their own there, so the height is real and not an
+                ::after that would reach over the other. */}
+            <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft/60">
               {a.student_id && <span className="break-all">Student ID {a.student_id}</span>}
               {a.faculty_year && <span>{a.faculty_year}</span>}
               {a.email && (
-                <a href={`mailto:${a.email}`} className="break-all text-accent hover:text-ink">
+                <a href={`mailto:${a.email}`} className={`${contactLinkCls} break-all text-accent`}>
                   {a.email}
                 </a>
               )}
               {a.phone && (
-                <a href={`tel:${a.phone}`} className="hover:text-ink">
+                <a href={`tel:${a.phone}`} className={contactLinkCls}>
                   {a.phone}
                 </a>
               )}
@@ -205,6 +213,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
             rows={shown}
             summary={sheetSummary(a, rows.length)}
             csv={false}
+            className={`${outlineBtnCls} ${tapCls}`}
           />
         </div>
 
@@ -236,7 +245,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
               type="button"
               onClick={() => setFilter(value)}
               aria-pressed={filter === value}
-              className={chipBtnCls(filter === value)}
+              className={`${chipBtnCls(filter === value)} ${tapCls}`}
             >
               {label} · {counts[value]}
             </button>
@@ -266,6 +275,8 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
             busy={remove.isPending}
             disabled={remove.isSuccess}
             onConfirm={deletePaper}
+            className={`${outlineBtnCls} ${tapCls}`}
+            keepWidth
           />
           <ErrorText>{error}</ErrorText>
         </div>

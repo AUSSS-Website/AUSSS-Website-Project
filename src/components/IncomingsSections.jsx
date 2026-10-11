@@ -16,6 +16,11 @@ import { PersonCard } from './committeeUi.jsx'
 
 const h2Cls = 'heading-serif text-center text-3xl text-ink sm:text-4xl'
 const leadCls = 'mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-soft/70'
+// A link that is one line of text keeps a thumb's 44px to land on: an unseen
+// ::after reaches above and below the words, so nothing around it moves. In
+// px, not rem, since the root size shrinks on a 320px phone.
+const tapAreaCls =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
 
 // A row of figures under the introduction.
 export function IncomingsFacts({ facts }) {
@@ -180,7 +185,7 @@ export function IncomingsContacts({ contacts = CONTACTS, lead = CONTACTS_LEAD })
               {email && (
                 <a
                   href={`mailto:${email}`}
-                  className="mt-3 break-all text-sm font-semibold text-accent underline decoration-line/25 underline-offset-2 hover:text-ink"
+                  className={`mt-3 break-all text-sm font-semibold text-accent underline decoration-line/25 underline-offset-2 transition-colors hover:text-ink ${tapAreaCls}`}
                 >
                   {email}
                 </a>
@@ -228,7 +233,7 @@ function AlbumStrip({ slug, heading }) {
       <div className="mt-7 text-center">
         <Link
           to={`/gallery/${album.slug}`}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+          className={`inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink ${tapAreaCls}`}
         >
           See all {album.count} photos
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

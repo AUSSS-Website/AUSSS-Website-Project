@@ -45,7 +45,10 @@ export default function useFocusTrap(active, onClose) {
       }
       const firstEl = items[0]
       const lastEl = items[items.length - 1]
-      if (e.shiftKey && document.activeElement === firstEl) {
+      // The container itself can hold the focus: a click on plain text inside
+      // one that has tabindex="-1" puts it there. Shift+Tab from it would step
+      // out to the page behind, so it wraps like the first control does.
+      if (e.shiftKey && (document.activeElement === firstEl || document.activeElement === node)) {
         e.preventDefault()
         lastEl.focus()
       } else if (!e.shiftKey && document.activeElement === lastEl) {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 import { resizeImage } from '../lib/resizeImage.js'
@@ -68,21 +68,135 @@ async function deleteProduct(product) {
   return product.id
 }
 
+// New shop order: the array of product ids, first to last. The rows are written
+// together, so a drop is saved in one round trip's time however many products
+// there are.
 async function reorderProducts(ids) {
-  for (let i = 0; i < ids.length; i++) {
-    unwrap(await supabase.from('merch_products').update({ sort_order: i }).eq('id', ids[i]))
-  }
+  const results = await Promise.all(
+    ids.map((id, i) => supabase.from('merch_products').update({ sort_order: i }).eq('id', id)),
+  )
+  results.forEach(unwrap)
   return ids
 }
 
 export function useProductMutations() {
   const qc = useQueryClient()
-  const done = () => qc.invalidateQueries({ queryKey: merchKeys.products() })
+  const key = merchKeys.products()
+  const done = () => qc.invalidateQueries({ queryKey: key })
   const create = useMutation({ mutationFn: createProduct, onSuccess: done })
-  const update = useMutation({ mutationFn: ({ id, patch }) => updateProduct(id, patch), onSuccess: done })
+  // The saved row goes into the list as the answer arrives, and the save is
+  // over then: a form or a switch that waited for it finds the page already
+  // holding what was saved, without waiting for the list to be read again
+  // (which still happens, after).
+  const update = useMutation({
+    mutationFn: ({ id, patch }) => updateProduct(id, patch),
+    onSuccess: async (row) => {
+      // A read that set off before this save would put the old row back over it.
+      await qc.cancelQueries({ queryKey: key })
+      qc.setQueryData(key, (prev) => (Array.isArray(prev) ? prev.map((p) => (p.id === row.id ? row : p)) : prev))
+      done()
+    },
+  })
   const remove = useMutation({ mutationFn: deleteProduct, onSuccess: done })
-  const reorder = useMutation({ mutationFn: reorderProducts, onSuccess: done })
+  // The list shows the new order the moment a row is dropped: the cached
+  // products are put in that order first, and put back if the save fails.
+  // Either way the list is read again afterwards, so the screen ends on what
+  // the database holds. Same as the gallery's shelf (galleryQueries.js).
+  const reorder = useMutation({
+    mutationFn: reorderProducts,
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: key })
+      const before = qc.getQueryData(key)
+      if (before) {
+        const byId = new Map(before.map((p) => [p.id, p]))
+        const next = ids.map((id, i) => byId.get(id) && { ...byId.get(id), sort_order: i }).filter(Boolean)
+        // Only when the drop names every product: a list that changed under it is left to the re-read.
+        if (next.length === before.length) qc.setQueryData(key, next)
+      }
+      return { before }
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.before) qc.setQueryData(key, context.before)
+    },
+    onSettled: done,
+  })
   return { create, update, remove, reorder }
+}
+
+// ---- a control that saves by itself ----------------------------------------
+
+const NOT_ASKED = Symbol('nothing asked for')
+
+// For a switch or a picker that takes effect the moment it is set: a product
+// on sale, taking orders, an order's status. The control shows what was asked
+// for at once and is never locked. A change made while a write is on its way
+// is sent after it, so the last value asked for is the one kept; if a write
+// fails, the control goes back to what the database holds and `error` is why.
+//
+//   const [on, setOn, { error }] = useInstantSave(p.available, (v) =>
+//     update.mutateAsync({ id: p.id, patch: { available: v } }),
+//   )
+//   <Toggle checked={on} onChange={setOn} label="On sale" />
+//
+// `kept` is the value the page's data holds, and `send(value)` stores one and
+// resolves when it is stored. Values are compared with ===, so they are
+// booleans or strings. The setter resolves to true once everything asked for
+// is saved, and to false if a write failed.
+export function useInstantSave(kept, send) {
+  // What was last asked for, until the page's data holds it as well.
+  const [asked, setAsked] = useState(NOT_ASKED)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  // What the writes read at the moment they run.
+  const latest = useRef(null)
+  latest.current = { kept, send }
+  const want = useRef(NOT_ASKED)
+  const busy = useRef(false)
+  const writes = useRef(null) // the writes on their way, as one promise
+  const landedOn = useRef(kept) // what the page's data held as the last write landed
+
+  const write = async () => {
+    try {
+      let sent
+      do {
+        sent = want.current
+        await latest.current.send(sent)
+      } while (want.current !== sent)
+      return true
+    } catch (err) {
+      setError(err)
+      setAsked(NOT_ASKED)
+      return false
+    } finally {
+      busy.current = false
+      landedOn.current = latest.current.kept
+      setSaving(false)
+    }
+  }
+
+  const set = (next) => {
+    want.current = next
+    setAsked(next)
+    setError(null)
+    if (!busy.current) {
+      busy.current = true
+      setSaving(true)
+      writes.current = write()
+    }
+    return writes.current
+  }
+
+  // A row handed down by a parent arrives a moment after this hook hears that
+  // its write has landed. Until it does, the value asked for stays on show, or
+  // the control would flick back to the old one for a frame. The wait is over
+  // when the data holds that value, and also when it moves to any other:
+  // someone else has changed it since.
+  const caughtUp = asked !== NOT_ASKED && !saving && (kept === asked || kept !== landedOn.current)
+  useEffect(() => {
+    if (caughtUp) setAsked(NOT_ASKED)
+  }, [caughtUp])
+
+  return [asked === NOT_ASKED || caughtUp ? kept : asked, set, { saving, error }]
 }
 
 // The checkout's payment methods (the site setting, else the shipped copy),
@@ -123,7 +237,15 @@ function randomName() {
 // Shrinks the file, uploads it under the product's folder and answers with its
 // public address.
 export async function uploadProductImage(productId, file) {
-  const blob = await resizeImage(file, IMAGE_PX, IMAGE_QUALITY)
+  let blob
+  try {
+    blob = await resizeImage(file, IMAGE_PX, IMAGE_QUALITY)
+  } catch {
+    // Marked as a refusal so that errorText shows this sentence as written.
+    throw Object.assign(new Error('That file could not be read as a picture. Choose a JPEG, PNG or WebP.'), {
+      rejected: true,
+    })
+  }
   const path = `${productId}/${randomName()}.jpg`
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
     contentType: 'image/jpeg',

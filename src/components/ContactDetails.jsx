@@ -1,10 +1,14 @@
 import SocialIcon from './SocialIcon.jsx'
+import { pressCls } from '../lib/motion.js'
 import { mapEmbed, mapLink, networkName } from '../content/schemas/siteContact.js'
 
 // The parts of the block `site.contact` (src/content/schemas/siteContact.js) as
 // the footer and /contact draw them. The portal's preview draws the same ones.
 
-// The round icons under the motto in the footer.
+// The round icons under the motto in the footer. Each stays 36px to look at
+// and takes a tap on 44px: the ::after is a 44px square centred on it, in px
+// because the icon shrinks with the root size on a 320px phone. The gap
+// between two icons is wider than both reaches together.
 export function SocialIconLinks({ socials }) {
   return (
     <div className="mt-1 flex gap-3">
@@ -15,7 +19,7 @@ export function SocialIconLinks({ socials }) {
           target="_blank"
           rel="noopener noreferrer"
           aria-label={networkName(s.network)}
-          className="grid h-9 w-9 place-items-center rounded-full border border-line/15 text-soft/70 transition-colors hover:border-medical hover:text-ink"
+          className={`relative grid h-9 w-9 place-items-center rounded-full border border-line/15 text-soft/70 after:absolute after:inset-[calc(50%-22px)] after:rounded-full after:content-[''] hover:border-medical hover:text-ink ${pressCls}`}
         >
           <SocialIcon name={s.network} className="h-4 w-4" />
         </a>
@@ -34,7 +38,7 @@ export function SocialCards({ socials }) {
           href={s.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="group flex flex-col items-center rounded-3xl border border-line/10 bg-card p-8 text-center transition-all duration-500 hover:-translate-y-1.5 hover:border-medical/40 hover:shadow-2xl hover:shadow-forest-950/40"
+          className="group flex flex-col items-center rounded-3xl border border-line/10 bg-card p-8 text-center transition-[transform,border-color,box-shadow] duration-300 ease-out hover:border-medical/40 hover:shadow-2xl hover:shadow-forest-950/40 motion-safe:hover:-translate-y-1.5 motion-safe:active:scale-[0.99]"
         >
           <span className="grid h-16 w-16 place-items-center rounded-2xl bg-page text-accent transition-colors group-hover:bg-cta group-hover:text-on-cta">
             <SocialIcon name={s.network} className="h-8 w-8" />
@@ -68,7 +72,9 @@ export function FindUs({ doc }) {
           href={mapLink(doc.mapQuery)}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-1 inline-flex items-center gap-1.5 text-sm text-soft/70 transition-colors hover:text-ink"
+          // As wide as its words, not the card, and 44px tall to a finger at
+          // any root size.
+          className="relative mt-1 inline-flex items-center gap-1.5 self-start text-sm text-soft/70 transition-colors after:absolute after:inset-x-0 after:inset-y-[calc(50%-22px)] after:content-[''] hover:text-ink"
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
             <path

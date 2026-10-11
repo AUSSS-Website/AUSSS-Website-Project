@@ -1,8 +1,12 @@
 // Adapted from react-bits (MIT), https://reactbits.dev/animations/image-trail
-// Only variant 7 is kept (the gallery hero uses it). One change from upstream:
-// the useEffect returns a cleanup that breaks the requestAnimationFrame chain
-// and kills in-flight gsap tweens, so navigating away from /gallery doesn't
-// leave an animation loop running.
+// Only variant 7 is kept (the gallery hero uses it). What differs from
+// upstream is the frame loop. There it starts on the first pointer move and
+// never ends. Here it runs only while there is something to work out: it
+// rests once the eased point has caught the pointer up, wakes on the next
+// move, and stays at rest while the hero is scrolled off screen. Leaving
+// /gallery stops it, removes its listeners and kills the gsap tweens in
+// flight. The pictures themselves are moved by gsap, which keeps its own
+// clock and stops by itself.
 
 import { useRef, useEffect } from 'react'
 import { gsap } from 'gsap'
@@ -78,29 +82,61 @@ class ImageTrailVariant7 {
     this.visibleImagesTotal = 9
     this.visibleImagesTotal = Math.min(this.visibleImagesTotal, this.imagesTotal - 1)
 
-    const handlePointerMove = (ev) => {
-      const rect = container.getBoundingClientRect()
-      this.mousePos = getLocalPointerPos(ev, rect)
-    }
-    container.addEventListener('mousemove', handlePointerMove)
-    container.addEventListener('touchmove', handlePointerMove)
+    this.frame = 0 // the frame asked for, 0 while the loop rests
+    this.lastFrameAt = 0
+    this.moved = false
+    this.inView = true
+    this.destroyed = false
 
-    const initRender = (ev) => {
+    this.onPointerMove = (ev) => {
       const rect = container.getBoundingClientRect()
       this.mousePos = getLocalPointerPos(ev, rect)
-      this.cacheMousePos = { ...this.mousePos }
-      requestAnimationFrame(() => this.render())
-      container.removeEventListener('mousemove', initRender)
-      container.removeEventListener('touchmove', initRender)
+      if (!this.moved) {
+        // The first move: the eased point starts under the pointer.
+        this.moved = true
+        this.cacheMousePos = { ...this.mousePos }
+      }
+      this.wake()
     }
-    container.addEventListener('mousemove', initRender)
-    container.addEventListener('touchmove', initRender)
+    container.addEventListener('mousemove', this.onPointerMove)
+    // The listener only reads the finger's place, so it must not hold up a scroll.
+    container.addEventListener('touchmove', this.onPointerMove, { passive: true })
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      // Several changes can arrive in one call, oldest first: the last is how
+      // things stand now. Going by the first could leave the trail at rest
+      // with the hero back on screen.
+      this.observer = new IntersectionObserver((entries) => {
+        this.inView = entries[entries.length - 1].isIntersecting
+        if (!this.inView) this.rest()
+      })
+      this.observer.observe(container)
+    }
   }
 
-  render() {
+  // Ask for one frame, unless one is already on its way.
+  wake() {
+    if (this.frame || !this.inView || this.destroyed) return
+    this.frame = requestAnimationFrame((time) => this.render(time))
+  }
+
+  rest() {
+    cancelAnimationFrame(this.frame)
+    this.frame = 0
+    this.lastFrameAt = 0
+  }
+
+  render(time) {
+    this.frame = 0
+    // Upstream eases 0.3 of the way on every frame, which is twice as fast on
+    // a 120 Hz screen. This is the same ease measured in time.
+    const elapsed = this.lastFrameAt ? Math.min(time - this.lastFrameAt, 100) : 1000 / 60
+    this.lastFrameAt = time
+    const ease = 1 - 0.7 ** (elapsed / (1000 / 60))
+
     let distance = getMouseDistance(this.mousePos, this.lastMousePos)
-    this.cacheMousePos.x = lerp(this.cacheMousePos.x, this.mousePos.x, 0.3)
-    this.cacheMousePos.y = lerp(this.cacheMousePos.y, this.mousePos.y, 0.3)
+    this.cacheMousePos.x = lerp(this.cacheMousePos.x, this.mousePos.x, ease)
+    this.cacheMousePos.y = lerp(this.cacheMousePos.y, this.mousePos.y, ease)
 
     if (distance > this.threshold) {
       this.showNextImage()
@@ -108,7 +144,27 @@ class ImageTrailVariant7 {
     }
     if (this.isIdle && this.zIndexVal !== 1) this.zIndexVal = 1
 
-    requestAnimationFrame(() => this.render())
+    // Another frame only while the eased point is still catching up. Once it
+    // has, nothing here changes until the pointer moves, and that wakes the
+    // loop again.
+    if (getMouseDistance(this.cacheMousePos, this.mousePos) > 0.5) {
+      this.wake()
+    } else {
+      this.cacheMousePos = { ...this.mousePos }
+      this.lastFrameAt = 0
+    }
+  }
+
+  destroy() {
+    this.destroyed = true
+    this.rest()
+    this.observer?.disconnect()
+    this.container.removeEventListener('mousemove', this.onPointerMove)
+    this.container.removeEventListener('touchmove', this.onPointerMove)
+    this.images.forEach((img) => {
+      gsap.killTweensOf(img.DOM.el)
+      window.removeEventListener('resize', img.resize)
+    })
   }
 
   showNextImage() {
@@ -187,17 +243,7 @@ export default function ImageTrail({ items = [] }) {
   useEffect(() => {
     if (!containerRef.current) return
     const instance = new ImageTrailVariant7(containerRef.current)
-
-    return () => {
-      // Break the requestAnimationFrame chain: the next scheduled frame
-      // calls `instance.render()` via closure; making it a no-op stops the
-      // recursion. Then clean up any in-flight gsap tweens on the images.
-      instance.render = () => {}
-      instance.images.forEach((img) => {
-        gsap.killTweensOf(img.DOM.el)
-        window.removeEventListener('resize', img.resize)
-      })
-    }
+    return () => instance.destroy()
   }, [items])
 
   return (

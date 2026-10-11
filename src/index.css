@@ -400,9 +400,68 @@
   }
 }
 
+/* Entry for things that open over the page: a modal, a lightbox, a drawer's
+   scrim, a popover. `enter-scrim` goes on the layer that dims the page and
+   `enter-panel` on the thing that opens:
+
+     <div className="enter-scrim fixed inset-0 bg-forest-950/85">
+       <div className="enter-panel rounded-3xl bg-card p-6">
+
+   The scrim fades in over 200 ms. The panel fades in over 240 ms while it
+   rises 8px and grows from 98% of its size, slowing into place with no
+   overshoot. With reduced motion (the block below) the panel only fades.
+
+   No JavaScript is needed. @starting-style gives the browser the look to
+   start from on the first frame an element is drawn, so the entry plays for
+   an element React has just mounted and for one that was `hidden` a moment
+   ago. A browser without @starting-style skips that block and shows the thing
+   at once, as it always did.
+
+   The rise is written with `translate` and `scale`, not `transform`, so a
+   panel that is placed with a transform keeps it and the two add up. A
+   popover that should grow out of its button takes a transform origin as
+   usual (origin-top-right). One more case needs an origin: a panel centred
+   with left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 grows from the
+   point those two offsets name, which is one corner of the box before it is
+   shifted, so it drifts a few px on the way in unless it also has
+   origin-top-left. A panel centred by its parent (flex, grid) needs nothing.
+
+   Each class sets the element's whole `transition`, so leave Tailwind's
+   transition classes off the same element. Only the way in is animated: an
+   element taken out of the page is gone at once. */
+.enter-scrim {
+  transition: opacity 200ms ease-out;
+}
+.enter-panel {
+  transition:
+    opacity 240ms cubic-bezier(0.2, 0, 0, 1),
+    translate 240ms cubic-bezier(0.2, 0, 0, 1),
+    scale 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+@starting-style {
+  .enter-scrim {
+    opacity: 0;
+  }
+  .enter-panel {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.98;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  /* Things that open over the page still fade in, and no longer move. */
+  .enter-panel {
+    transition: opacity 200ms ease-out;
+  }
+  @starting-style {
+    .enter-panel {
+      translate: none;
+      scale: none;
+    }
   }
   .reveal {
     opacity: 1;

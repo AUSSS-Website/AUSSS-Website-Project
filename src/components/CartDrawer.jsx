@@ -10,7 +10,18 @@ import {
 } from '../lib/cart.js'
 import { useMerchCatalogue } from '../lib/merch.js'
 import useFocusTrap from '../hooks/useFocusTrap.js'
+import { pressCls } from '../lib/motion.js'
+import { lockPageScroll } from './ScrollManager.jsx'
 
+// The cart, a sheet that slides in from the right edge over a dimmed page and
+// leaves the way it came. With reduced motion it does not slide: it fades in
+// where it stands.
+//
+// It is always in the page, so closed it must be out of reach as well as out
+// of sight: `inert` takes it from the tab order and from screen readers, and
+// `invisible` hides it outright once the way out has played (the transition
+// on `visibility` is there only while closing; on the way in it would keep
+// the close button from taking focus).
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart()
   const { byId: productById } = useMerchCatalogue()
@@ -19,44 +30,45 @@ export default function CartDrawer({ open, onClose }) {
   const panelRef = useFocusTrap(open, onClose)
 
   // Lock background scroll while the drawer is open. (Escape + focus trapping
-  // are handled by useFocusTrap.)
-  useEffect(() => {
-    if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [open])
+  // are handled by useFocusTrap.) The lock is shared with the mobile menu,
+  // which can be open under the cart and close before it does.
+  useEffect(() => (open ? lockPageScroll() : undefined), [open])
 
   return (
     <div
-      className={`fixed inset-0 z-[60] ${open ? '' : 'pointer-events-none'}`}
+      className={`fixed inset-0 z-[60] ${
+        open ? 'visible' : 'pointer-events-none invisible transition-[visibility] duration-300'
+      }`}
       aria-hidden={!open}
+      inert={open ? undefined : ''}
     >
-      {/* Backdrop */}
+      {/* Backdrop. The dimming is what tells the cart from the page; the blur
+          is a nicety, dropped for a reader who asked for fewer see-through
+          surfaces. */}
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-forest-950/70 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-forest-950/70 backdrop-blur-sm transition-opacity duration-300 reduce-transparency:backdrop-filter-none ${
           open ? 'opacity-100' : 'opacity-0'
         }`}
       />
 
-      {/* Panel */}
-      <aside
+      {/* Panel. Plain divs for it and for its top and bottom strips: a dialog
+          is not an <aside>, and a <header> or <footer> in here would count as
+          a second banner and a second footer of the page. */}
+      <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-heading"
-        className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-cream text-forest-900 shadow-2xl transition-transform duration-300 dark:bg-forest-900 dark:text-silver ${
-          open ? 'translate-x-0' : 'translate-x-full'
+        className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-cream text-forest-900 shadow-2xl transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.2,0,0,1)] dark:bg-forest-900 dark:text-silver ${
+          open ? 'translate-x-0 opacity-100' : 'motion-safe:translate-x-full motion-reduce:opacity-0'
         }`}
       >
-        <header className="flex items-center justify-between border-b border-forest-600/10 px-6 py-5 dark:border-white/10">
+        <div className="flex items-center justify-between border-b border-forest-600/10 py-4 pl-6 pr-5 dark:border-white/10">
           <h2 id="cart-heading" className="heading-serif text-xl text-forest dark:text-white">
             Your cart
             {count > 0 && (
-              <span className="ml-2 text-sm font-normal text-forest-900/60 dark:text-silver/60">
+              <span className="ml-2 text-sm font-normal text-soft/60">
                 ({count} item{count === 1 ? '' : 's'})
               </span>
             )}
@@ -65,13 +77,13 @@ export default function CartDrawer({ open, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close cart"
-            className="grid h-9 w-9 place-items-center rounded-full text-forest-900/70 transition-colors hover:bg-forest-900/5 dark:text-silver/70 dark:hover:bg-white/5"
+            className={`grid h-[44px] w-[44px] place-items-center rounded-full text-forest-900/70 hover:bg-forest-900/5 dark:text-silver/70 dark:hover:bg-white/5 ${pressCls}`}
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
           </button>
-        </header>
+        </div>
 
         {cart.items.length === 0 ? (
           <EmptyState onClose={onClose} />
@@ -104,7 +116,7 @@ export default function CartDrawer({ open, onClose }) {
                       <h3 className="text-sm font-semibold text-forest dark:text-white">
                         {p.name}
                       </h3>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-2xs uppercase tracking-[0.12em] text-forest-900/60 dark:text-silver/60">
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-2xs uppercase tracking-[0.12em] text-soft/60">
                         {it.size && <span>Size: {it.size}</span>}
                         {it.design && <span>Design: {it.design}</span>}
                       </div>
@@ -129,30 +141,30 @@ export default function CartDrawer({ open, onClose }) {
               })}
             </ul>
 
-            <footer className="border-t border-forest-600/10 px-6 py-5 dark:border-white/10">
+            <div className="border-t border-forest-600/10 px-6 py-5 dark:border-white/10">
               <div className="mb-2 flex items-baseline justify-between">
-                <span className="text-sm font-semibold uppercase tracking-[0.14em] text-forest-900/70 dark:text-silver/70">
+                <span className="text-sm font-semibold uppercase tracking-[0.14em] text-soft/70">
                   Subtotal
                 </span>
                 <span className="heading-serif text-2xl text-forest dark:text-white">
                   {formatEGP(subtotal)}
                 </span>
               </div>
-              <p className="mb-4 text-xs leading-relaxed text-forest-900/60 dark:text-silver/55">
+              <p className="mb-4 text-xs leading-relaxed text-soft/60">
                 Everything is made to order. We&rsquo;ll WhatsApp you to confirm the
                 details and arrange pickup.
               </p>
               <Link
                 to="/merch/checkout"
                 onClick={onClose}
-                className="block w-full rounded-full bg-leaf py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover"
+                className={`flex min-h-[44px] w-full items-center justify-center rounded-full bg-leaf py-3 text-sm font-semibold text-white hover:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover ${pressCls}`}
               >
                 Checkout
               </Link>
-            </footer>
+            </div>
           </>
         )}
-      </aside>
+      </div>
     </div>
   )
 }
@@ -166,6 +178,7 @@ function EmptyState({ onClose }) {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
+        aria-hidden="true"
       >
         <path
           d="M3 6h2l2 12h12l2-9H7"
@@ -178,19 +191,25 @@ function EmptyState({ onClose }) {
       <p className="heading-serif mt-4 text-xl text-forest dark:text-white">
         Your cart is empty
       </p>
-      <p className="mt-2 text-sm text-forest-900/60 dark:text-silver/60">
+      <p className="mt-2 text-sm text-soft/60">
         Browse the merch and add something you like.
       </p>
       <button
         type="button"
         onClick={onClose}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-leaf px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover"
+        className={`mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-leaf px-5 py-2.5 text-sm font-semibold text-white hover:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover ${pressCls}`}
       >
         Keep browsing
       </button>
     </div>
   )
 }
+
+// The pill stays 36px high to the eye. Each of its two buttons is 44px wide,
+// and an unseen ::after gives it the same 44px of height for a finger. The
+// 44px are in px here and on the buttons above, so they do not shrink with
+// the root size on a small phone.
+const stepBtnCls = `relative grid h-9 w-[44px] place-items-center rounded-full text-forest-900/70 after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-[''] hover:text-forest dark:text-silver/70 dark:hover:text-white ${pressCls}`
 
 function QtyStepper({ qty, onDec, onInc, onRemove }) {
   return (
@@ -200,9 +219,9 @@ function QtyStepper({ qty, onDec, onInc, onRemove }) {
           type="button"
           onClick={qty <= 1 ? onRemove : onDec}
           aria-label={qty <= 1 ? 'Remove from cart' : 'Decrease quantity'}
-          className="grid h-9 w-9 place-items-center text-forest-900/70 transition-colors hover:text-forest dark:text-silver/70 dark:hover:text-white"
+          className={stepBtnCls}
         >
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             {qty <= 1 ? (
               <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" strokeLinecap="round" strokeLinejoin="round" />
             ) : (
@@ -217,9 +236,9 @@ function QtyStepper({ qty, onDec, onInc, onRemove }) {
           type="button"
           onClick={onInc}
           aria-label="Increase quantity"
-          className="grid h-9 w-9 place-items-center text-forest-900/70 transition-colors hover:text-forest dark:text-silver/70 dark:hover:text-white"
+          className={stepBtnCls}
         >
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M12 5v14M5 12h14" strokeLinecap="round" />
           </svg>
         </button>
