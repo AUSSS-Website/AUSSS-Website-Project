@@ -204,6 +204,7 @@ export default {
     showContacts: true,
     links: [
       { label: 'Egypt on the IFMSA exchange platform', href: 'https://exchange.ifmsa.org/explore-pages/national/view/6' },
+      { label: 'IFMSA-Egypt exchange page', href: 'https://www.ifmsa-egypt.org.eg/exchange/' },
       { label: 'Our exchange team on Instagram', href: 'https://www.instagram.com/ausssexchanges_/' },
     ],
   },
