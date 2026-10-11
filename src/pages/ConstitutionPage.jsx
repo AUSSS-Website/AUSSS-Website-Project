@@ -160,7 +160,7 @@ export default function ConstitutionPage() {
                     <h3 className="heading-serif text-lg text-ink">
                       {s.title}
                     </h3>
-                    <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-soft/40">
+                    <span className="text-2xs font-medium uppercase tracking-[0.16em] text-soft/40">
                       {s.ref}
                     </span>
                   </div>

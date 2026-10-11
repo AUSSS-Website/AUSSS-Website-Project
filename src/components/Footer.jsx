@@ -67,14 +67,14 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t border-line/10 pt-10">
-          <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/55">
+          <p className="mb-5 text-center text-2xs font-semibold uppercase tracking-[0.22em] text-soft/55">
             Find us
           </p>
           <FindUs doc={contact} />
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-5 border-t border-line/10 pt-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/40">
+          <p className="text-2xs font-semibold uppercase tracking-[0.22em] text-soft/40">
             An autonomous affiliate of
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">

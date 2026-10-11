@@ -18,7 +18,7 @@ export function StatBand({ title, items }) {
             <div className="heading-serif text-2xl text-ink sm:text-3xl">
               <CountUp value={s.value} />
             </div>
-            <div className="mt-1 text-[11px] uppercase tracking-widest text-soft/70">
+            <div className="mt-1 text-2xs uppercase tracking-widest text-soft/70">
               {s.label}
             </div>
           </div>

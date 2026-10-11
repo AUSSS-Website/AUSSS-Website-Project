@@ -13,13 +13,12 @@ import {
   workAccountState,
 } from '../../rollover.js'
 import {
-  Centered,
   ConfirmButton,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   inputCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
@@ -62,9 +61,7 @@ export default function RolloverPage() {
       {result ? (
         <Done result={result} />
       ) : preview.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : preview.error ? (
         <Panel>
           <ErrorText>Couldn’t load what the new term would change: {preview.error.message}</ErrorText>

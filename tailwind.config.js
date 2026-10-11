@@ -2,8 +2,19 @@
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   darkMode: 'class',
+  // `hover:` styles apply only where the device can really hover. On a phone a
+  // tap used to leave the hover style stuck on until the next tap elsewhere.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
+      // Two sizes under text-xs, in rem so they follow the reader's text size
+      // (a `text-[11px]` does not): text-2xs is 11px and text-3xs is 10px at
+      // the usual 16px root. A size only, with no line height of their own, so
+      // either one drops in where the px size was and nothing else moves.
+      fontSize: {
+        '2xs': '0.6875rem',
+        '3xs': '0.625rem',
+      },
       colors: {
         forest: {
           DEFAULT: '#06402B',
@@ -94,5 +105,17 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // `reduce-transparency:` applies when the reader's system asks for fewer
+    // see-through surfaces. A blurred, translucent panel takes a solid fill
+    // and drops its blur:
+    //   bg-page/70 backdrop-blur-md
+    //   reduce-transparency:bg-page reduce-transparency:backdrop-filter-none
+    // On an element whose fill is set with `dark:` or a screen prefix, put the
+    // same prefix first (`dark:reduce-transparency:bg-leaf`), or the more
+    // specific rule wins.
+    ({ addVariant }) => {
+      addVariant('reduce-transparency', '@media (prefers-reduced-transparency: reduce)')
+    },
+  ],
 }

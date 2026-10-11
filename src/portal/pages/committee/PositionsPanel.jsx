@@ -30,7 +30,7 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 const NO_EMAILS = {}
 
 const tagCls =
-  'inline-flex shrink-0 items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
+  'inline-flex shrink-0 items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
 const textBtnCls = 'text-xs font-semibold transition-colors disabled:opacity-40'
 
 

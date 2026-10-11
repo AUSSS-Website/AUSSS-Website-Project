@@ -101,7 +101,7 @@ function Entry({ entry, names }) {
     <li>
       <details className="group rounded-2xl border border-line/10 bg-card open:border-medical/30">
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 sm:px-5">
-          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${ACTION_CLS[entry.action] || ''}`}>
+          <span className={`rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em] ${ACTION_CLS[entry.action] || ''}`}>
             {ACTION_LABEL[entry.action] || entry.action}
           </span>
           <span className="text-sm font-semibold text-ink">{TABLE_LABEL[entry.table_name] || entry.table_name}</span>
@@ -126,13 +126,13 @@ function Entry({ entry, names }) {
                 <div className={`grid gap-2 ${'before' in f && 'after' in f ? 'md:grid-cols-2' : ''}`}>
                   {'before' in f && (
                     <div className="min-w-0">
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-soft/50">Before</p>
+                      <p className="mb-1 text-3xs font-semibold uppercase tracking-[0.16em] text-soft/50">Before</p>
                       <pre className={valueCls}>{show(f.before)}</pre>
                     </div>
                   )}
                   {'after' in f && (
                     <div className="min-w-0">
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-soft/50">After</p>
+                      <p className="mb-1 text-3xs font-semibold uppercase tracking-[0.16em] text-soft/50">After</p>
                       <pre className={valueCls}>{show(f.after)}</pre>
                     </div>
                   )}

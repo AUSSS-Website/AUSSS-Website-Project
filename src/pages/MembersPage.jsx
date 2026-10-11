@@ -4,6 +4,7 @@ import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { lookupMember, adviceFor, NOT_A_MEMBER } from '../lib/membership.js'
 import { splitPositions } from '../lib/text.js'
+import { scrollBehavior } from '../lib/motion.js'
 import SpecialResult from '../components/SpecialResult.jsx'
 import {
   matchPosition,
@@ -91,7 +92,7 @@ function GuidanceCard({ advice, accent }) {
         {advice.steps.map((s, i) => (
           <li key={i} className="flex gap-3 text-sm leading-relaxed text-soft/80">
             <span
-              className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+              className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-2xs font-bold"
               style={{ background: 'rgba(91,141,184,0.2)', color: accent }}
             >
               {i + 1}
@@ -186,7 +187,7 @@ export default function MembersPage() {
         // Centre the card in the usable viewport area.
         top -= (usable - rect.height) / 2
       }
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      window.scrollTo({ top: Math.max(0, top), behavior: scrollBehavior() })
     })
     return () => window.cancelAnimationFrame(id)
   }, [result])
@@ -306,7 +307,7 @@ export default function MembersPage() {
               placeholder="As registered with AUSSS"
               className="mb-4 w-full rounded-xl border border-line/10 bg-veil/5 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
             />
-            <div className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-soft/35">
+            <div className="mb-4 flex items-center gap-3 text-2xs uppercase tracking-[0.2em] text-soft/35">
               <span className="h-px flex-1 bg-veil/10" />
               or
               <span className="h-px flex-1 bg-veil/10" />
@@ -328,7 +329,7 @@ export default function MembersPage() {
             >
               {busy ? 'Checking…' : 'Check my status'}
             </button>
-            <p className="mt-4 text-center text-[11px] text-soft/50">
+            <p className="mt-4 text-center text-2xs text-soft/50">
               Not yet a Life Saver, Change Maker?{' '}
               <Link
                 to="/join"
@@ -371,7 +372,7 @@ export default function MembersPage() {
                           <div className="heading-serif text-xl text-ink">
                             {v}
                           </div>
-                          <div className="mt-1 text-[10px] uppercase tracking-widest text-soft/55">
+                          <div className="mt-1 text-3xs uppercase tracking-widest text-soft/55">
                             {k}
                           </div>
                         </div>

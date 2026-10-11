@@ -31,12 +31,12 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 // the positions and notes of both.
 
 const tagCls =
-  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
+  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
 
 function Fact({ label, children }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-soft/45">{label}</dt>
+      <dt className="text-3xs font-semibold uppercase tracking-wider text-soft/45">{label}</dt>
       <dd className="mt-0.5 whitespace-pre-line text-sm text-soft/85">{children || '–'}</dd>
     </div>
   )

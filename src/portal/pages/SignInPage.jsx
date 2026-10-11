@@ -129,7 +129,7 @@ export default function SignInPage() {
             {busy === 'google' ? 'Redirecting…' : 'Continue with Google'}
           </Button>
 
-          <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/40">
+          <div className="my-5 flex items-center gap-3 text-2xs font-semibold uppercase tracking-[0.2em] text-soft/40">
             <span className="h-px flex-1 bg-veil/10" />
             or
             <span className="h-px flex-1 bg-veil/10" />

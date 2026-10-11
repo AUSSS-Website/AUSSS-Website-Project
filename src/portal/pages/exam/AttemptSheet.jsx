@@ -39,7 +39,7 @@ export function StateChip({ state }) {
 export function Figure({ label, children }) {
   return (
     <div className="min-w-0 rounded-xl border border-line/10 bg-page p-3">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-soft/50">{label}</dt>
+      <dt className="text-3xs font-semibold uppercase tracking-[0.2em] text-soft/50">{label}</dt>
       <dd className="heading-serif mt-1 break-words text-xl text-ink min-[360px]:text-2xl">{children}</dd>
     </div>
   )

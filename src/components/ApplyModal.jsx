@@ -137,7 +137,7 @@ export default function ApplyModal({ call, color, onClose }) {
         <div className="flex items-start justify-between gap-4 border-b border-line/10 p-6 sm:p-8">
           <div className="min-w-0">
             <p
-              className="text-[11px] font-semibold uppercase tracking-[0.2em]"
+              className="text-2xs font-semibold uppercase tracking-[0.2em]"
               style={{ color: accent }}
             >
               Applying for

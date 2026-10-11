@@ -58,7 +58,7 @@ export default function RoleNode({ role, tier = 'officer' }) {
         } ${open ? 'border-line/30' : 'border-line/10 hover:border-line/25'}`}
       >
         <span
-          className="inline-block rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+          className="inline-block rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em]"
           style={{ background: rgba(role.color, 0.2), color: chipAccent(role.color) }}
         >
           {role.committee || `Supports ${role.reportsTo}`}

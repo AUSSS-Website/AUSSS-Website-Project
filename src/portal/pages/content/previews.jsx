@@ -85,14 +85,14 @@ export const previews = {
     return (
       <div className="space-y-12">
         <div className="flex flex-col items-center gap-3 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/45">Footer</p>
+          <p className="text-2xs font-semibold uppercase tracking-[0.22em] text-soft/45">Footer</p>
           <p className="heading-serif text-base text-soft/75">{doc.motto}</p>
           <p className="mt-1 max-w-xs whitespace-pre-line text-xs leading-relaxed text-soft/55">{doc.footerLine}</p>
           <SocialIconLinks socials={socials} />
         </div>
         {doc.mapQuery && <FindUs doc={doc} />}
         <div className="border-t border-line/10 pt-10 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-soft/45">Contact page</p>
+          <p className="text-2xs font-semibold uppercase tracking-[0.22em] text-soft/45">Contact page</p>
           <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-lg font-light text-soft/75">{doc.contactIntro}</p>
         </div>
         <div>

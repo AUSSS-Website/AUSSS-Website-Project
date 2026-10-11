@@ -284,7 +284,7 @@ const AlbumCard = memo(function AlbumCard({ a, headingLevel = 2 }) {
         )}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-page/85 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5">
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-accent sm:text-[10px]">
+          <p className="text-3xs font-bold uppercase tracking-[0.2em] text-accent">
             {a.count} {a.count === 1 ? 'photo' : 'photos'}
           </p>
           <Heading className="heading-serif mt-1 line-clamp-2 text-base text-ink sm:text-xl">
@@ -378,7 +378,7 @@ function AlbumView({ album }) {
                 aria-hidden="true"
               />
               {featuredPhoto.label && (
-                <figcaption className="dark absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-page/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-accent ring-1 ring-line/10 backdrop-blur-sm sm:bottom-5 sm:left-5 sm:text-xs">
+                <figcaption className="dark absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-page/70 px-3 py-1.5 text-3xs font-bold uppercase tracking-[0.2em] text-accent ring-1 ring-line/10 backdrop-blur-sm sm:bottom-5 sm:left-5 sm:text-xs">
                   <span className="h-1.5 w-1.5 rounded-full bg-medical" />
                   {featuredPhoto.label}
                 </figcaption>

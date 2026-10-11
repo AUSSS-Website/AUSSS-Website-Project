@@ -44,7 +44,7 @@ function CartIcon() {
 
 function CountBadge({ count }) {
   return (
-    <span className="absolute -right-1 -top-1 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-cta px-1 text-[10px] font-bold text-on-cta ring-2 ring-cream dark:ring-forest-950">
+    <span className="absolute -right-1 -top-1 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-cta px-1 text-3xs font-bold text-on-cta ring-2 ring-cream dark:ring-forest-950">
       {count > 99 ? '99+' : count}
     </span>
   )

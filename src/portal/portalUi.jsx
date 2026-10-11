@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { pressCls } from '../lib/motion.js'
 import { MEMBERSHIP_LABELS } from './constants.js'
 
 // Shared dark-chrome primitives for the portal, matching the public site's
 // look so the two never drift apart.
 
-// Full-height centred stage (spinners, error cards, empty states).
+// Full-height centred stage, for when the whole screen is one message: the
+// sign-in check, a sign-in error card. A page inside the portal layout that
+// is loading uses PageLoading below.
 export function Centered({ children }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-page px-4 text-center">
@@ -21,6 +24,17 @@ export function Spinner({ className = 'h-8 w-8' }) {
       aria-label="Loading"
       className={`${className} inline-block animate-spin rounded-full border-2 border-line/15 border-t-accent`}
     />
+  )
+}
+
+// A page's own loading state, inside the portal layout. The header and the
+// navigation are already on screen, so the spinner sits a little way under
+// them, where the content is about to appear, and not half a screen down.
+export function PageLoading() {
+  return (
+    <div className="flex justify-center py-16">
+      <Spinner />
+    </div>
   )
 }
 
@@ -80,9 +94,10 @@ export function PageHeader({ eyebrow, title, subtitle, action }) {
   )
 }
 
-// Compact form input.
+// Compact form input. The ring shows which field the keyboard is in; the
+// border alone was too faint a change to find.
 export const inputCls =
-  'w-full rounded-xl border border-line/15 bg-sunk px-4 py-2.5 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none'
+  'w-full rounded-xl border border-line/15 bg-sunk px-4 py-2.5 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
 // Taller input for the sign-in card.
 export const authInputCls =
@@ -91,20 +106,20 @@ export const authInputCls =
 // Blue primary pill and hairline outline pill. Both centre their content
 // both ways, on a <button> or on a link or label styled as one, even when a
 // flex row stretches them taller; the gap stands in for the space before an
-// icon, which a flex box drops.
+// icon, which a flex box drops. Both sink a little when pressed (pressCls).
 const btnCentreCls = 'inline-flex items-center justify-center gap-1.5 text-center'
 export const primaryBtnCls =
-  `${btnCentreCls} rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover disabled:opacity-40`
+  `${btnCentreCls} rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta ${pressCls} hover:bg-cta-hover disabled:opacity-40`
 export const outlineBtnCls =
-  `${btnCentreCls} rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40`
+  `${btnCentreCls} rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink ${pressCls} hover:bg-veil/10 disabled:opacity-40`
 
+// A labelled form field. The label is plain text in the ink colour, as typed:
+// the small blue capitals are a panel's title (Panel above), and a field that
+// looked like one read as the start of a new section.
 export function Field({ label, hint, htmlFor, children }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        className="block text-xs font-semibold uppercase tracking-[0.2em] text-accent"
-      >
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
         {label}
       </label>
       {hint && <p className="mb-3 mt-1 text-xs text-soft/50">{hint}</p>}
@@ -192,7 +207,22 @@ export function BackLink({ to = '/', children = 'Back to AUSSS home' }) {
 // while `busy`, and `children` (with `ariaLabel`) replaces the idle label, for
 // an icon such as ×. `className` styles the idle button; the armed one is red
 // whatever it is.
+//
+// The two clicks have to be two decisions. A second click that comes within
+// half a second of the first is the other half of a double-click: it is
+// ignored and the button stays red, waiting. Holding Enter down counts once.
+//
+// A pill with the default look is as wide as its longest wording from the
+// start, so nothing beside it moves when it turns red (its labels share one
+// grid cell). With a `className` of your own, pass `keepWidth` to get the same
+// where there is room for the longer wording, or `keepWidth={false}` to switch
+// it off. A text link and an icon have no width to keep: they grow into the
+// red pill.
+//
+// The red state is also said aloud ("Click again to delete"), through a
+// polite live region beside the button.
 const DISARM_MS = 5000
+const CONFIRM_AFTER_MS = 500
 
 const confirmIdle = {
   button: outlineBtnCls,
@@ -202,7 +232,7 @@ const confirmIdle = {
 // under the 4.5 that text of this size needs.
 const confirmArmed = {
   button: '!border-red-600 !bg-red-600 !text-white hover:!bg-red-700',
-  text: `${btnCentreCls} rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-40`,
+  text: `${btnCentreCls} rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white ${pressCls} hover:bg-red-700 disabled:opacity-40`,
 }
 
 export function ConfirmButton({
@@ -214,11 +244,14 @@ export function ConfirmButton({
   disabled = false,
   variant = 'button',
   className,
+  keepWidth,
   ariaLabel,
   title,
   children,
 }) {
   const [armed, setArmed] = useState(false)
+  // When the first click landed, on the clock that only runs forwards.
+  const armedAt = useRef(0)
   useEffect(() => {
     if (!armed) return undefined
     const timer = setTimeout(() => setArmed(false), DISARM_MS)
@@ -230,30 +263,63 @@ export function ConfirmButton({
   // shape and turns red.
   const armedCls = variant === 'text' ? confirmArmed.text : `${idleCls} ${confirmArmed.button}`
   const askAgain = confirmLabel || `Click again to ${String(label || 'confirm').toLowerCase()}`
-  const text = busy && busyLabel ? busyLabel : armed ? askAgain : children ?? label
+  const showBusy = busy && Boolean(busyLabel)
+  const text = showBusy ? busyLabel : armed ? askAgain : children ?? label
+
+  // Every wording the button can show, the one in use marked. Laid over each
+  // other in one grid cell they make the button as wide as the longest.
+  const steady = variant === 'button' && children == null && (keepWidth ?? className == null)
+  const wordings = [
+    ['idle', label, !armed && !showBusy],
+    ['armed', askAgain, armed && !showBusy],
+    ['busy', busyLabel, showBusy],
+  ].filter(([, wording]) => wording)
 
   return (
-    <button
-      type="button"
-      disabled={disabled || busy}
-      onClick={() => {
-        if (!armed) {
-          setArmed(true)
-          return
-        }
-        setArmed(false)
-        onConfirm()
-      }}
-      onBlur={() => setArmed(false)}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') setArmed(false)
-      }}
-      aria-label={armed ? askAgain : ariaLabel}
-      title={armed ? askAgain : title}
-      className={armed ? armedCls : idleCls}
-    >
-      {text}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={() => {
+          if (!armed) {
+            armedAt.current = performance.now()
+            setArmed(true)
+            return
+          }
+          if (performance.now() - armedAt.current < CONFIRM_AFTER_MS) return
+          setArmed(false)
+          onConfirm()
+        }}
+        onBlur={() => setArmed(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setArmed(false)
+          // A held key repeats Enter's click; only a fresh press arms or confirms.
+          if (e.key === 'Enter' && e.repeat) e.preventDefault()
+        }}
+        aria-label={armed ? askAgain : ariaLabel}
+        title={armed ? askAgain : title}
+        className={armed ? armedCls : idleCls}
+      >
+        {steady ? (
+          <span className="grid items-center justify-items-center text-center">
+            {wordings.map(([state, wording, shown]) => (
+              <span
+                key={state}
+                aria-hidden={shown ? undefined : true}
+                className={`col-start-1 row-start-1 ${shown ? '' : 'invisible'}`}
+              >
+                {wording}
+              </span>
+            ))}
+          </span>
+        ) : (
+          text
+        )}
+      </button>
+      <span className="sr-only" aria-live="polite">
+        {armed ? askAgain : ''}
+      </span>
+    </>
   )
 }
 

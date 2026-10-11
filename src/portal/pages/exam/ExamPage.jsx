@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useExam } from '../../examQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel } from '../../portalUi.jsx'
 import { ExamGate, StatusChip, examStanding, opensWords, useIsExamOfficer } from './ExamsPage.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import QuestionsPanel from './QuestionsPanel.jsx'
@@ -123,13 +123,7 @@ export default function ExamPage() {
   usePageTitle(exam.data ? exam.data.title : 'Exam')
 
   if (!allowed) return <ExamGate />
-  if (exam.isPending) {
-    return (
-      <Centered>
-        <Spinner />
-      </Centered>
-    )
-  }
+  if (exam.isPending) return <PageLoading />
   // Only a first read that failed takes the page's place. Once the exam is
   // here, a later read that fails (every save ends with one, and the page asks
   // again by itself during a sitting) must not: the page holds unsaved work,

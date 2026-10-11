@@ -17,7 +17,7 @@ import { inputCls, outlineBtnCls } from '../../portalUi.jsx'
 // two forms' field ids apart.
 
 const labelCls = 'block text-xs font-semibold uppercase tracking-[0.2em] text-accent'
-const smallLabelCls = 'mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-soft/55'
+const smallLabelCls = 'mb-1 block text-2xs font-semibold uppercase tracking-[0.16em] text-soft/55'
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -186,7 +186,7 @@ function DayByDay({ value, onChange, idPrefix }) {
             <li key={i} className={`rounded-2xl border border-line/10 bg-sunk/50 ${oneRow ? 'p-4' : 'p-3'}`}>
               <div className={`mb-3 flex items-center gap-3 ${oneRow ? 'hidden' : ''}`}>
                 <DayNumber n={i + 1} />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-soft/55">
+                <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-soft/55">
                   Day {i + 1}
                   {weekday && <span className="ml-1.5 normal-case tracking-normal text-soft/45">{weekday}</span>}
                 </p>

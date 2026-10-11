@@ -47,7 +47,7 @@ function CommitteeRow({ list }) {
             className="flex flex-col rounded-2xl border border-line/10 bg-card p-6 transition-colors hover:border-line/25"
           >
             <span
-              className="self-start rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+              className="self-start rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em]"
               style={{ background: rgba(c.color, 0.2), color: chipAccent(c.color) }}
             >
               {c.abbr}

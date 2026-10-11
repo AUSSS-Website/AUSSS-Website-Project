@@ -4,7 +4,7 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { committeeBySlug } from '../../../data/society.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useCommittee } from '../../officerQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel, outlineBtnCls } from '../../portalUi.jsx'
 import PageEditor from './PageEditor.jsx'
 import CallsPanel from './CallsPanel.jsx'
 import MembersPanel from './MembersPanel.jsx'
@@ -35,13 +35,7 @@ export default function CommitteeEditorPage() {
   const [tab, setTab] = useState('page')
   usePageTitle(staticCommittee ? `Edit ${staticCommittee.abbr}` : 'Edit committee')
 
-  if (committee.isPending) {
-    return (
-      <Centered>
-        <Spinner />
-      </Centered>
-    )
-  }
+  if (committee.isPending) return <PageLoading />
   if (committee.error) {
     return (
       <Panel>

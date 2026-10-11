@@ -199,7 +199,7 @@ export default function ShareStoryPage() {
                   }
                   className={inputClass(errors.story) + ' resize-y'}
                 />
-                <span className="self-end text-[11px] text-soft/55">
+                <span className="self-end text-2xs text-soft/55">
                   {form.story.length} / {MAX_STORY_LENGTH}
                 </span>
               </Field>
@@ -319,7 +319,7 @@ function StorySuccess({ result, name }) {
             your story and we&rsquo;ll reach out before featuring anything.
           </p>
           <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-line/10 bg-page px-6 py-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/55">
+            <span className="text-2xs font-semibold uppercase tracking-[0.18em] text-soft/55">
               Reference
             </span>
             <span className="font-mono text-lg text-accent">

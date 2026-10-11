@@ -4,12 +4,11 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { pageUrl, useIssueMutations, useIssues } from '../../magazineQueries.js'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   inputCls,
   outlineBtnCls,
   primaryBtnCls,
@@ -72,7 +71,7 @@ function NewIssueForm({ onDone }) {
             autoFocus
           />
         </Field>
-        <Field label="Id" htmlFor="new-issue-slug" hint="Short and permanent, for example vol-8. Made from the title when left blank.">
+        <Field label="ID" htmlFor="new-issue-slug" hint="Short and permanent, for example vol-8. Made from the title when left blank.">
           <input
             id="new-issue-slug"
             className={inputCls}
@@ -108,7 +107,7 @@ function IssueRow({ m, index, total, onMove, moving }) {
         {cover ? (
           <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="grid h-full w-full place-items-center text-center text-[9px] uppercase tracking-[0.2em] text-soft/40">
+          <span className="grid h-full w-full place-items-center text-center text-3xs uppercase tracking-[0.2em] text-soft/40">
             No pages
           </span>
         )}
@@ -206,9 +205,7 @@ export default function MagazinePage() {
       )}
 
       {issues.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : issues.error ? (
         <Panel>
           <ErrorText>Couldn’t load the editions: {issues.error.message}</ErrorText>

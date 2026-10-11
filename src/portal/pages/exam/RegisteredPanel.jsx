@@ -290,7 +290,7 @@ export default function RegisteredPanel({ exam }) {
             // justify-end keeps the three numbers on one line when a label
             // wraps on a narrow phone and the others do not.
             <div key={label} className="flex min-w-0 flex-col-reverse justify-end rounded-xl border border-line/10 bg-sunk/40 px-1 py-3 sm:px-2">
-              <dt className="mt-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-soft/55 sm:tracking-[0.12em]">
+              <dt className="mt-1 text-2xs font-semibold uppercase tracking-[0.04em] text-soft/55 sm:tracking-[0.12em]">
                 {label}
               </dt>
               <dd className="heading-serif text-2xl text-ink">{known ? n : '…'}</dd>

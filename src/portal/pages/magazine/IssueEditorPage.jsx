@@ -11,12 +11,11 @@ import {
   useIssues,
 } from '../../magazineQueries.js'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   inputCls,
   outlineBtnCls,
   primaryBtnCls,
@@ -78,7 +77,7 @@ function DetailsForm({ issue }) {
         <Field label="Line under the title" htmlFor="issue-date" hint="For example Volume 8 · A CBSD production. Optional.">
           <input id="issue-date" className={inputCls} value={form.date_label} onChange={set('date_label')} maxLength={80} />
         </Field>
-        <Field label="Id" htmlFor="issue-slug" hint="Permanent id, also the key of the reads and likes counters. Change it only for a brand-new edition.">
+        <Field label="ID" htmlFor="issue-slug" hint="Permanent id, also the key of the reads and likes counters. Change it only for a brand-new edition.">
           <input id="issue-slug" className={inputCls} value={form.slug} onChange={set('slug')} maxLength={40} pattern="[A-Za-z0-9 \-]+" required />
         </Field>
         <div className="sm:col-span-2">
@@ -223,11 +222,11 @@ function PagesPanel({ issue }) {
                   }`}
                 >
                   <img src={pageUrl(issue, n)} alt="" loading="lazy" className="aspect-[1300/1839] w-full object-cover" />
-                  <span className="absolute bottom-1 left-1 rounded-full bg-page/80 px-1.5 text-[10px] font-semibold text-ink">
+                  <span className="absolute bottom-1 left-1 rounded-full bg-page/80 px-1.5 text-3xs font-semibold text-ink">
                     {n}
                   </span>
                   {hero && (
-                    <span className="absolute right-1 top-1 rounded-full bg-cta px-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-on-cta">
+                    <span className="absolute right-1 top-1 rounded-full bg-cta px-1.5 text-3xs font-bold uppercase tracking-[0.15em] text-on-cta">
                       Cover
                     </span>
                   )}
@@ -292,7 +291,7 @@ function ReadersPanel({ issue }) {
               ['Read to the end', tracked ? `${pct(d.finished)}%` : '–'],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl border border-line/10 bg-page p-3">
-                <dt className="text-[10px] font-semibold uppercase tracking-[0.2em] text-soft/50">{label}</dt>
+                <dt className="text-3xs font-semibold uppercase tracking-[0.2em] text-soft/50">{label}</dt>
                 <dd className="heading-serif mt-1 text-2xl text-ink">{value}</dd>
               </div>
             ))}
@@ -319,7 +318,7 @@ function ReadersPanel({ issue }) {
                   </li>
                 ))}
               </ol>
-              <div className="mt-1 flex justify-between text-[10px] text-soft/40">
+              <div className="mt-1 flex justify-between text-3xs text-soft/40">
                 <span>Page 1</span>
                 <span>Page {issue.page_count}</span>
               </div>
@@ -389,9 +388,7 @@ export default function IssueEditorPage() {
   return (
     <MagazineGate>
       {issues.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : issues.error ? (
         <Panel>
           <ErrorText>Couldn’t load the edition: {issues.error.message}</ErrorText>

@@ -76,7 +76,7 @@ function Cover({ src, alt, label }) {
   }
   return (
     <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-forest-700 via-card to-page p-4 text-center">
-      <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-accent">
+      <span className="text-3xs font-semibold uppercase tracking-[0.28em] text-accent">
         AUSSS Magazine
       </span>
       <span className="heading-serif mt-1 text-base text-ink/90">{label}</span>

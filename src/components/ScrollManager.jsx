@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigationType } from 'react-router-dom'
+import { scrollBehavior } from '../lib/motion.js'
 
 /**
  * Scroll behaviour on navigation:
@@ -38,7 +39,7 @@ export default function ScrollManager() {
       const go = () => {
         const el = document.getElementById(id)
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
         } else if (++tries < 40) {
           t = setTimeout(go, 75)
         }

@@ -24,7 +24,7 @@ function CardLink({ href, className, children }) {
 // Small "Read on ifmsa.org ↗" affordance shown at the foot of each card.
 function ExternalCue() {
   return (
-    <span className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/45 transition-colors group-hover:text-accent">
+    <span className="mt-4 inline-flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.18em] text-soft/45 transition-colors group-hover:text-accent">
       Read on ifmsa.org
       <svg
         viewBox="0 0 24 24"
@@ -160,7 +160,7 @@ export default function IFMSAHistoryPage() {
 
                 {c.renames && (
                   <div className="mt-5 border-t border-line/10 pt-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/45">
+                    <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-soft/45">
                       Renamed over the years
                     </p>
                     <ol className="mt-3 space-y-2">
@@ -218,7 +218,7 @@ export default function IFMSAHistoryPage() {
                 >
                   <div className="flex items-center gap-4">
                     <span
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold tracking-wide text-forest-950"
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xs font-bold tracking-wide text-forest-950"
                       style={{ backgroundColor: d.accent }}
                     >
                       {d.abbr}

@@ -323,7 +323,7 @@ export default function PageEditor({ committee, staticCommittee }) {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <span className="text-[10px] text-soft/40">No photo</span>
+                          <span className="text-3xs text-soft/40">No photo</span>
                         )}
                       </div>
                       <div className="flex min-w-[12rem] flex-1 flex-col gap-2">

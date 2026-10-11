@@ -71,7 +71,7 @@ const BLANK = {
 }
 
 const tagCls =
-  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-soft/60'
+  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
 
 function toForm(row) {
   const f = {}

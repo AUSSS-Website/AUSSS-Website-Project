@@ -32,13 +32,13 @@ export function DateTile({ ev, accent, tint, className = '' }) {
       aria-hidden="true"
     >
       <span
-        className={`text-[10px] font-bold uppercase tracking-[0.18em] ${accent ? '' : 'text-accent'}`}
+        className={`text-3xs font-bold uppercase tracking-[0.18em] ${accent ? '' : 'text-accent'}`}
         style={accent ? { color: accent } : undefined}
       >
         {t.month}
       </span>
       <span className="heading-serif text-2xl leading-none text-ink">{t.day}</span>
-      <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-soft/80">{t.weekday}</span>
+      <span className="mt-0.5 text-3xs font-semibold uppercase tracking-[0.12em] text-soft/80">{t.weekday}</span>
     </div>
   )
 }
@@ -87,7 +87,7 @@ export default function EventCard({ ev, past = false, headingLevel = 3 }) {
         <DateTile ev={ev} accent={chip} tint={tint} />
         <div className="min-w-0">
           <p
-            className={`text-[11px] font-bold uppercase tracking-[0.2em] ${accent ? '' : 'text-accent'}`}
+            className={`text-2xs font-bold uppercase tracking-[0.2em] ${accent ? '' : 'text-accent'}`}
             style={accent ? { color: accent } : undefined}
           >
             {committee ? committee.abbr : 'AUSSS'}

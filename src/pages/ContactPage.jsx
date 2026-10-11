@@ -31,7 +31,7 @@ function Row({ name, role, email }) {
           {name?.trim() || 'Name TBA'}
         </p>
         {role && (
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-soft/50">
+          <p className="text-2xs font-medium uppercase tracking-[0.16em] text-soft/50">
             {role}
           </p>
         )}

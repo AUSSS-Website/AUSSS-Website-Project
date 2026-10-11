@@ -266,12 +266,12 @@ function EventView({ ev, events }) {
 
           <dl className="mx-auto mt-8 grid max-w-3xl gap-4 text-left sm:grid-cols-2">
             <div className="rounded-2xl border border-line/10 bg-card p-5">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/50">When</dt>
+              <dt className="text-2xs font-semibold uppercase tracking-[0.2em] text-soft/50">When</dt>
               <dd className="mt-2 text-base font-medium text-ink">{eventWhen(ev)}</dd>
               <dd className="mt-1 text-xs text-soft/50">Cairo time</dd>
             </div>
             <div className="rounded-2xl border border-line/10 bg-card p-5">
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/50">Where</dt>
+              <dt className="text-2xs font-semibold uppercase tracking-[0.2em] text-soft/50">Where</dt>
               <dd className="mt-2 break-words text-base font-medium text-ink">{ev.place || 'To be announced'}</dd>
             </div>
           </dl>
@@ -385,11 +385,11 @@ function DayByDay({ ev }) {
           <li key={d.startsAt} className="flex items-center gap-3 rounded-2xl border border-line/10 bg-card p-3.5">
             <DateTile ev={d} accent={chip} tint={tint} className="!self-center" />
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/50">
+              <p className="text-2xs font-semibold uppercase tracking-[0.2em] text-soft/50">
                 Day {i + 1} of {days.length}
               </p>
               {/* One line: three cards share the row on a wide screen. */}
-              <p className="mt-1 whitespace-nowrap text-[15px] font-medium text-ink">{dayHours(d)}</p>
+              <p className="mt-1 whitespace-nowrap text-[0.9375rem] font-medium text-ink">{dayHours(d)}</p>
             </div>
           </li>
         ))}

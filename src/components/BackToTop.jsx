@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { scrollBehavior } from '../lib/motion.js'
 
 export default function BackToTop() {
   const [show, setShow] = useState(false)
@@ -11,7 +12,7 @@ export default function BackToTop() {
 
   return (
     <button
-      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      onClick={() => window.scrollTo({ top: 0, behavior: scrollBehavior() })}
       aria-label="Back to top"
       aria-hidden={!show}
       tabIndex={show ? undefined : -1}

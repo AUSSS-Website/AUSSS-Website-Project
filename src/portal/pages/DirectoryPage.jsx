@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useDirectory } from '../queries.js'
-import { Centered, PageHeader, Panel, Spinner, inputCls } from '../portalUi.jsx'
+import { PageHeader, PageLoading, Panel, inputCls } from '../portalUi.jsx'
 import { Avatar } from '../Avatar.jsx'
 import { normalize } from '../../lib/text.js'
 
@@ -40,9 +40,7 @@ export default function DirectoryPage() {
       />
 
       {directory.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : directory.error ? (
         <Panel>
           <p className="text-sm text-soft/70">

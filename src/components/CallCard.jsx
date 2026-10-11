@@ -16,7 +16,7 @@ export default function CallCard({ call, color, onApply }) {
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           {call.kind && (
             <span
-              className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
+              className="rounded-full px-3 py-1 text-2xs font-bold uppercase tracking-[0.14em]"
               style={{ background: rgba(color, 0.18), color: chipAccent(color) }}
             >
               {call.kind}
@@ -24,7 +24,7 @@ export default function CallCard({ call, color, onApply }) {
           )}
           {call.deadline && (
             <span
-              className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${
+              className={`text-2xs font-semibold uppercase tracking-[0.14em] ${
                 closingSoon ? 'text-warn' : 'text-soft/50'
               }`}
             >
@@ -58,7 +58,7 @@ export default function CallCard({ call, color, onApply }) {
 
       {positions.length > 0 && (
         <div className="mt-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/45">
+          <p className="text-2xs font-semibold uppercase tracking-[0.2em] text-soft/45">
             Open positions
           </p>
           <ul className="mt-3 space-y-2">
