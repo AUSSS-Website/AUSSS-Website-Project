@@ -11,7 +11,17 @@ import {
   useWorkEmails,
 } from '../../rosterQueries.js'
 import { PositionOptions } from '../admin/PositionTypesPanel.jsx'
-import { ConfirmButton, ErrorText, Panel, Spinner, inputCls, primaryBtnCls } from '../../portalUi.jsx'
+import { errorText } from '../../../lib/errorText.js'
+import {
+  ConfirmButton,
+  ErrorText,
+  PageLoading,
+  Panel,
+  SaveStatus,
+  Spinner,
+  inputCls,
+  primaryBtnCls,
+} from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
 import { Avatar } from '../../Avatar.jsx'
 import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
@@ -32,7 +42,16 @@ const NO_EMAILS = {}
 const tagCls =
   'inline-flex shrink-0 items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
 const textBtnCls = 'text-xs font-semibold transition-colors disabled:opacity-40'
-
+// Withdraw and Remove are one word of small text at the end of a row. An
+// unseen ::after gives a finger 44px to land on, in px because the root size
+// shrinks on a 320px phone; the row is taller than that, so it reaches nothing
+// else that can be pressed.
+const rowActionCls = `${textBtnCls} relative text-soft/60 hover:text-ink after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[calc(100%+1rem)] after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']`
+// The same for a pill, and for a word that is a button in the middle of a
+// sentence: the 44px are added above and below it only, so it reaches no
+// further sideways than it looks.
+const tallTapCls =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
 
 // An officer's, a board member's or the webmaster's position: it opens editors
 // and admin pages, so it has one work email and goes to no other address.
@@ -69,7 +88,7 @@ function InviteForm({ committee, positions, workEmails }) {
       )
       setTyped('')
     } catch (err) {
-      setError(err?.message || 'Could not save the invite.')
+      setError(errorText(err, 'Could not save the invite.'))
     }
   }
 
@@ -108,7 +127,7 @@ function InviteForm({ committee, positions, workEmails }) {
         <button
           type="submit"
           disabled={invite.isPending || (fixed && !workEmail)}
-          className={`${primaryBtnCls} px-5 py-2 text-xs`}
+          className={`${primaryBtnCls} px-5 py-2 text-xs ${tallTapCls}`}
         >
           {invite.isPending ? 'Saving…' : 'Invite'}
         </button>
@@ -120,11 +139,10 @@ function InviteForm({ committee, positions, workEmails }) {
             : 'This position has no work email yet. Set it under “Work emails” below; it can only be given to that address.'}
         </p>
       )}
-      {note && (
-        <p className="mt-3 text-xs text-ok" role="status">
-          {note}
-        </p>
-      )}
+      {/* Always on the page, so a screen reader hears the sentence arrive. */}
+      <p role="status" className={note ? 'mt-3 text-xs text-ok' : 'sr-only'}>
+        {note}
+      </p>
       <div className="mt-2">
         <ErrorText>{error}</ErrorText>
       </div>
@@ -135,6 +153,15 @@ function InviteForm({ committee, positions, workEmails }) {
 function WorkEmailRow({ position, email, locked }) {
   const save = useSetWorkEmail()
   const [value, setValue] = useState(email)
+  // The address this row last took from the list. When the list brings
+  // another (after this row's own save, or someone else's), the field shows
+  // it. The row used to be made afresh for that, which threw "Saved." away
+  // the moment it was due.
+  const [listed, setListed] = useState(email)
+  if (listed !== email) {
+    setListed(email)
+    setValue(email)
+  }
   const [saved, setSaved] = useState(false)
   const changed = value.trim().toLowerCase() !== email
 
@@ -168,15 +195,15 @@ function WorkEmailRow({ position, email, locked }) {
           className={`${inputCls} max-w-xs ${locked ? 'cursor-not-allowed opacity-70' : ''}`}
         />
         {!locked && changed && value.trim() && (
-          <button type="submit" disabled={save.isPending} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
+          <button type="submit" disabled={save.isPending} className={`${primaryBtnCls} px-5 py-2 text-xs ${tallTapCls}`}>
             {save.isPending ? 'Saving…' : 'Save'}
           </button>
         )}
-        {saved && !changed && <span className="text-xs text-ok">Saved.</span>}
+        <SaveStatus saved={saved && !changed} />
         {locked && <span className="text-xs text-soft/45">Only the webmaster changes this one</span>}
         {save.error && (
           <span className="w-full">
-            <ErrorText>{save.error.message}</ErrorText>
+            <ErrorText>{errorText(save.error, 'Could not save that work email.')}</ErrorText>
           </span>
         )}
       </form>
@@ -199,7 +226,7 @@ function WorkEmails({ positions, workEmails }) {
       <ul className="mt-3 divide-y divide-line/5">
         {positions.map((p) => (
           <WorkEmailRow
-            key={`${p.id}-${workEmails[p.id] || ''}`}
+            key={p.id}
             position={p}
             email={workEmails[p.id] || ''}
             locked={p.level === 'webmaster' && !isWebmaster}
@@ -214,7 +241,9 @@ function InviteRow({ invite }) {
   const withdraw = useWithdrawInvite()
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
-      <span className="min-w-0 flex-1">
+      {/* The address keeps room to be read: on a phone the tag and the button
+          go under it and do not squeeze it to a few letters. */}
+      <span className="min-w-[11rem] flex-1">
         <span className="block truncate text-sm font-semibold text-ink">{invite.email}</span>
         <span className="block text-xs text-soft/50">
           {invite.invited_by ? `Invited by ${invite.invited_by} · ` : ''}
@@ -226,14 +255,16 @@ function InviteRow({ invite }) {
         <ConfirmButton
           variant="text"
           label="Withdraw"
-          busyLabel="Working…"
+          ariaLabel={`Withdraw the invite to ${invite.email}`}
+          busyLabel="Withdrawing…"
           busy={withdraw.isPending}
           onConfirm={() => withdraw.mutate(invite.id)}
+          className={rowActionCls}
         />
       )}
       {withdraw.error && (
         <span className="w-full">
-          <ErrorText>{withdraw.error.message}</ErrorText>
+          <ErrorText>{errorText(withdraw.error, 'Could not withdraw that invite.')}</ErrorText>
         </span>
       )}
     </li>
@@ -247,7 +278,8 @@ function HolderRow({ holder, rosterHint }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
       <Avatar name={holder.full_name} src={holder.avatar_url} />
-      <span className="min-w-0 flex-1">
+      {/* As for an invite: the name keeps room to be read on a phone. */}
+      <span className="min-w-[9rem] flex-1">
         <span className="block truncate text-sm font-semibold text-ink">
           {holder.full_name || 'No name yet'}
           {isSelf && <span className="font-normal text-soft/50"> (you)</span>}
@@ -262,15 +294,17 @@ function HolderRow({ holder, rosterHint }) {
           <ConfirmButton
             variant="text"
             label="Remove"
-            busyLabel="Working…"
+            ariaLabel={`Remove ${holder.position.title} from ${holder.full_name || holder.email}`}
+            busyLabel="Removing…"
             busy={remove.isPending}
             onConfirm={() => remove.mutate(holder.assignment_id)}
+            className={rowActionCls}
           />
         )
       )}
       {remove.error && (
         <span className="w-full">
-          <ErrorText>{remove.error.message}</ErrorText>
+          <ErrorText>{errorText(remove.error, 'Could not remove that position.')}</ErrorText>
         </span>
       )}
     </li>
@@ -302,17 +336,11 @@ export default function PositionsPanel({ committee: opened = null }) {
     }
   }, [held.data])
 
-  if (held.isPending) {
-    return (
-      <div className="py-16 text-center">
-        <Spinner />
-      </div>
-    )
-  }
+  if (held.isPending) return <PageLoading />
   if (held.error) {
     return (
       <Panel>
-        <ErrorText>Couldn’t load the positions: {held.error.message}</ErrorText>
+        <ErrorText>{errorText(held.error, 'Couldn’t load the positions.')}</ErrorText>
       </Panel>
     )
   }
@@ -355,7 +383,7 @@ export default function PositionsPanel({ committee: opened = null }) {
                     type="button"
                     aria-expanded={showRoster}
                     onClick={() => setShowRoster((v) => !v)}
-                    className={`${textBtnCls} text-accent hover:text-ink`}
+                    className={`${textBtnCls} ${tallTapCls} text-accent hover:text-ink`}
                   >
                     {showRoster ? 'Hide' : 'Show them'}
                   </button>
@@ -364,7 +392,7 @@ export default function PositionsPanel({ committee: opened = null }) {
                   <ul className="mt-2 divide-y divide-line/5">
                     {fromRoster.map((i) => (
                       <li key={i.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-                        <span className="min-w-0 flex-1 truncate text-sm text-soft/85">{i.email}</span>
+                        <span className="min-w-[11rem] flex-1 truncate text-sm text-soft/85">{i.email}</span>
                         <span className={tagCls}>{i.position.title}</span>
                       </li>
                     ))}

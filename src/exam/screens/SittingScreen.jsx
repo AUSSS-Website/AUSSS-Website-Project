@@ -24,7 +24,9 @@ import ReviewScreen from './ReviewScreen.jsx'
 //   - nothing moves when the save state changes or an answer is chosen (the
 //     bar keeps room for its longest line, each question keeps a row for its
 //     "Clear answer");
-//   - nothing needs hover, and nothing animates but the small saving mark;
+//   - nothing needs hover, and nothing moves on its own but the small saving
+//     mark (a button changes colour, and may sink a little, only while it is
+//     pressed);
 //   - one tap can never lose work: a cleared answer can be put back, and
 //     handing in asks twice (ReviewScreen).
 // `sitting` is what useSitting returns while its status is 'sitting'.
@@ -185,8 +187,14 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
                 <span className="min-w-0 flex-1 whitespace-pre-wrap text-base leading-snug text-ink [overflow-wrap:anywhere]">
                   {text}
                 </span>
-                {/* The focus ring, round the whole row. */}
-                <span aria-hidden="true" className="pointer-events-none absolute -inset-px rounded-xl ring-accent peer-focus-visible:ring-2" />
+                {/* The focus ring, round the whole row and a gap away from it. A
+                    chosen row has a blue edge of its own, and a ring drawn
+                    against that edge only made it a hair thicker: with the
+                    arrow keys the option in focus is the chosen one. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -inset-px rounded-xl ring-accent ring-offset-page peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2"
+                />
               </label>
             )
           })}
@@ -202,8 +210,13 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
           aria-label={`Flag to come back, question ${q.n}`}
           disabled={locked}
           onClick={() => onFlag(q.id)}
+          // The fill deepens under the thumb, so the press is answered before
+          // the flag changes. Nothing moves or changes size. Not while the
+          // paper is locked: a flag that cannot be set must not look pressed.
           className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-3 text-sm font-semibold disabled:opacity-40 ${focusCls} ${
-            answer.f ? 'border-warn/50 bg-warn/10 text-warn' : 'border-transparent text-soft/80'
+            answer.f
+              ? 'border-warn/50 bg-warn/10 text-warn [&:not(:disabled)]:active:bg-warn/20'
+              : 'border-transparent text-soft/80 [&:not(:disabled)]:active:bg-veil/10'
           }`}
         >
           <FlagIcon filled={answer.f} />
@@ -277,7 +290,8 @@ function PaperPage({ sitting, place, headingRef }) {
 
 // ---- under the page -------------------------------------------------------------
 
-const stepCls = `relative flex min-h-[52px] w-full flex-col items-center justify-center rounded-xl border px-1 py-1 ${focusCls}`
+// A step darkens under the thumb (active:bg-sunk), in both themes.
+const stepCls = `relative flex min-h-[52px] w-full flex-col items-center justify-center rounded-xl border px-1 py-1 active:bg-sunk ${focusCls}`
 const stepTone = (current) => (current ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-line/15 bg-card')
 
 // Previous and Next, then every page as a button that says how many of its

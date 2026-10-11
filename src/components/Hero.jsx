@@ -28,7 +28,7 @@ export function HeroBadge({ text }) {
 export function HeroLead({ text }) {
   return (
     <p
-      className="animate-fade-up mx-auto mt-5 max-w-2xl text-balance text-base font-light text-soft/80 sm:text-xl"
+      className="animate-fade-up mx-auto mt-5 max-w-2xl text-balance text-base font-normal text-soft/80 sm:text-xl dark:font-light"
       style={{ animationDelay: '0.2s' }}
     >
       {text}
@@ -37,19 +37,35 @@ export function HeroLead({ text }) {
 }
 
 // Two columns on a phone; from 640px one row, however many figures there are.
-const COLS = { 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-4' }
+const COLS = { 1: 'sm:grid-cols-1', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-4' }
 
 // The live member count first, then the figures from the block.
 export function HeroFigures({ memberCount, figures }) {
   const all = [[memberCount.toLocaleString(), 'Members'], ...figures.map((f) => [f.value, f.label])]
   const cols = COLS[all.length] || COLS[4]
   return (
+    // The 1px gaps are the dividers: the wrapper's line colour showing between
+    // cells filled with the page colour. Two faint fills on top of each other
+    // came out the same shade on the light theme and the dividers vanished.
+    // The dark theme's lines are stronger here than elsewhere: the hero's dark
+    // stage is black, and a 10% line on black is as dark as the green cells.
     <div
-      className={`animate-fade-in mx-auto mt-20 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line/10 bg-veil/[0.06] ${cols}`}
+      className={`animate-fade-in mx-auto mt-20 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line/10 bg-line/10 dark:border-line/20 dark:bg-line/20 ${cols}`}
       style={{ animationDelay: '0.5s' }}
     >
       {all.map(([v, l], i) => (
-        <div key={i} className="bg-sunk/40 px-4 py-6 backdrop-blur-sm">
+        // A little of the line colour shows through each cell as a tint; it
+        // turns solid for a reader who asked for less transparency or for more
+        // contrast. There is no blur: the stars and the trace stay above the
+        // figures, so it had nothing to soften. On a phone an odd one out takes
+        // the whole last row, or the empty half would show as a block of the
+        // line colour.
+        <div
+          key={i}
+          className={`bg-page/80 px-4 py-6 reduce-transparency:bg-page contrast-more:bg-page ${
+            all.length % 2 === 1 && i === all.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+          }`}
+        >
           <div className="heading-serif text-3xl text-ink">
             <CountUp value={v} />
           </div>
@@ -65,7 +81,7 @@ const NOTE_MARKS = { strong: 'font-semibold text-accent', em: 'not-italic text-a
 export function HeroNote({ text }) {
   return (
     <div className="animate-fade-in" style={{ animationDelay: '0.6s' }}>
-      <Markdown text={text} marks={NOTE_MARKS} className="mx-auto mt-8 max-w-2xl text-sm font-light text-soft/70 sm:text-base" />
+      <Markdown text={text} marks={NOTE_MARKS} className="mx-auto mt-8 max-w-2xl text-sm font-normal text-soft/70 sm:text-base dark:font-light" />
     </div>
   )
 }

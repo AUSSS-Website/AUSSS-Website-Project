@@ -56,7 +56,7 @@ export default function About({ doc, narrow = false }) {
             <Markdown
               text={d.aboutLede}
               marks={LEDE_MARKS}
-              className="heading-serif mt-8 text-2xl font-light leading-snug text-forest/80 sm:text-3xl dark:text-silver/80"
+              className="heading-serif mt-8 text-2xl leading-snug text-forest/80 sm:text-3xl dark:text-silver/80"
             />
           </div>
 
@@ -88,50 +88,56 @@ export default function About({ doc, narrow = false }) {
                     ...label,
                   }
             return (
-              <Wrapper
-                key={i}
-                {...wrapperProps}
-                className={`reveal group block rounded-2xl border border-forest-600/10 bg-white p-8 transition-all duration-500 hover:-translate-y-1.5 hover:border-medical/40 hover:shadow-xl hover:shadow-forest-900/5 dark:border-white/10 dark:bg-forest-900 dark:hover:border-medical/40 dark:hover:shadow-black/30 ${
-                  p.link ? 'cursor-pointer' : ''
-                }`}
-                style={{ transitionDelay: `${i * 90}ms` }}
-              >
-                <span className="grid h-12 w-12 place-items-center rounded-xl bg-leaf text-white transition-colors group-hover:bg-leaf-hover dark:text-silver">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                  >
-                    {ICONS[i]}
-                  </svg>
-                </span>
-                <h3 className="heading-serif mt-6 text-xl text-forest dark:text-medical-light">
-                  {p.title}
-                </h3>
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-forest-900/80 dark:text-silver/65">
-                  {p.body}
-                </p>
-                {p.link && (
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors group-hover:text-ink">
-                    {linkText}
+              // The fade-in on scroll and its stagger sit on this wrapper, and
+              // the card keeps a quick transition of its own. On one element
+              // the 0.9 s reveal took over the hover: the lift was slow and
+              // late, and the border and shadow snapped.
+              <div key={i} className="reveal flex" style={{ transitionDelay: `${i * 90}ms` }}>
+                <Wrapper
+                  {...wrapperProps}
+                  className={`group w-full rounded-2xl border border-forest-600/10 bg-white p-8 transition-[transform,border-color,box-shadow] duration-300 ease-out hover:border-medical/40 hover:shadow-xl hover:shadow-forest-900/5 motion-safe:hover:-translate-y-1.5 dark:border-white/10 dark:bg-forest-900 dark:hover:border-medical/40 dark:hover:shadow-black/30 ${
+                    p.link ? 'cursor-pointer motion-safe:active:scale-[0.99]' : ''
+                  }`}
+                >
+                  <span className="grid h-12 w-12 place-items-center rounded-xl bg-leaf text-white transition-colors group-hover:bg-leaf-hover dark:text-silver">
                     <svg
                       viewBox="0 0 24 24"
-                      className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                      className="h-6 w-6"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="1.6"
+                      aria-hidden="true"
                     >
-                      <path
-                        d="M5 12h14M13 6l6 6-6 6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
+                      {ICONS[i]}
                     </svg>
                   </span>
-                )}
-              </Wrapper>
+                  <h3 className="heading-serif mt-6 text-xl text-forest dark:text-medical-light">
+                    {p.title}
+                  </h3>
+                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-forest-900/80 dark:text-silver/65">
+                    {p.body}
+                  </p>
+                  {p.link && (
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors group-hover:text-ink">
+                      {linkText}
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M5 12h14M13 6l6 6-6 6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  )}
+                </Wrapper>
+              </div>
             )
           })}
         </div>

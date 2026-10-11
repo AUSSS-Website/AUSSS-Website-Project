@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { prefersReducedMotion } from '../lib/motion.js'
 import { useTheme } from '../lib/theme.js'
 
 // Cardiac-monitor ECG sweep for the home hero. A glowing PQRST trace draws
@@ -27,7 +28,9 @@ import { useTheme } from '../lib/theme.js'
 // mobile, glow is layered strokes instead). The trail draws at two alpha
 // levels (bright head, one faded tail step) so the stroke count stays flat
 // regardless of trail length. The RAF loop pauses when the tab is hidden or
-// the hero is scrolled out of view.
+// the hero is scrolled out of view, and never starts for a reader who asked
+// for less motion: they get one still frame, redrawn when the trace is
+// switched on or off.
 
 // PQRST as a sum of Gaussians over normalized beat phase t ∈ [0, 1).
 // Decays to ~0 between beats, giving the flatline for free.
@@ -143,9 +146,7 @@ export default function ECGBackground({
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    const reduced = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
+    const reduced = prefersReducedMotion()
 
     // butt caps, not round: the trail is stroked in alpha buckets that share
     // endpoints, and stacked round caps render as bright dots along the line.
@@ -164,6 +165,9 @@ export default function ECGBackground({
     // peaking, fading out, then respawns somewhere new.
     let stars = []
     let starMaxY = 0
+    // The width and depth of the field the stars were last scattered over.
+    let starsW = 0
+    let starsMaxY = 0
 
     const spawnStar = (born) => ({
       x: Math.random() * width,
@@ -239,15 +243,24 @@ export default function ECGBackground({
       anchorsFired = logoAnchors.map(() => false)
       activeAnchor = null
       starMaxY = Math.max(Math.min(y0 - 60, height * 0.55), 80)
-      const t0 = performance.now()
-      stars = Array.from(
-        { length: Math.min(Math.floor((width * starMaxY) / 6000), 200) },
-        () => {
-          const s = spawnStar(t0)
-          s.born = t0 - Math.random() * s.life // stagger: start mid-life
-          return s
-        },
-      )
+      // The stars are scattered afresh only when their field changes size. A
+      // phone sends a resize each time its address bar slides away, with
+      // nothing changed here, and a whole new set of stars appearing at once
+      // reads as a jump: most of all in the still frame of a reader who asked
+      // for less motion.
+      if (width !== starsW || Math.abs(starMaxY - starsMaxY) >= 1) {
+        starsW = width
+        starsMaxY = starMaxY
+        const t0 = performance.now()
+        stars = Array.from(
+          { length: Math.min(Math.floor((width * starMaxY) / 6000), 200) },
+          () => {
+            const s = spawnStar(t0)
+            s.born = t0 - Math.random() * s.life // stagger: start mid-life
+            return s
+          },
+        )
+      }
       points = []
       headX = 0
       if (reduced) drawStatic()
@@ -476,7 +489,10 @@ export default function ECGBackground({
     }
 
     function updateRunning() {
-      const should = measured && pageVisible && inView
+      // Never under reduced motion: the still frame is all there is. The
+      // settle timer below ends here too, and used to start the loop for
+      // everyone, so the stars twinkled and the trace swept regardless.
+      const should = !reduced && measured && pageVisible && inView
       if (should && !running) {
         running = true
         lastTime = performance.now() // no dt spike → no head teleport

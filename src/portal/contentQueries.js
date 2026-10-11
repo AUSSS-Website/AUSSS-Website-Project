@@ -68,8 +68,20 @@ export function useWriteContentBlock() {
 // A picture for an image field: shrunk in the browser, stored in the public
 // `content-media` bucket under the block's own folder, returned as the
 // address the document keeps.
+//
+// A file the browser cannot read as a picture never reaches the server, and
+// trying again would not help. That error is marked `rejected`, which
+// errorText (src/lib/errorText.js) shows as written; a failed upload is left
+// as the storage answered it.
 export async function uploadContentImage(key, file, maxPx = 1600) {
-  const blob = await resizeImage(file, maxPx)
+  let blob
+  try {
+    blob = await resizeImage(file, maxPx)
+  } catch {
+    const unreadable = new Error('That file could not be read as a picture. Choose a JPEG, PNG or WebP file.')
+    unreadable.rejected = true
+    throw unreadable
+  }
   const path = `${key}/${crypto.randomUUID()}.jpg`
   const { error } = await supabase.storage.from('content-media').upload(path, blob, {
     contentType: 'image/jpeg',

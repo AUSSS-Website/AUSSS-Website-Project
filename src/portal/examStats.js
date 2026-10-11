@@ -10,9 +10,11 @@
 // answers with zeros, nulls or '', never by dividing by nothing.
 //
 // Also here, because every part of the page asks it: where an exam stands on
-// the clock, and how long a page waits before it asks the database again by
-// itself. The time is always handed in (`now`), never read here.
+// the clock, how long a page waits before it asks the database again by
+// itself, and what a page says when a read fails. The time is always handed in
+// (`now`), never read here.
 
+import { errorText } from '../lib/errorText.js'
 import { isoToCairoLocal } from '../lib/eventTime.js'
 import { normalize } from '../lib/text.js'
 import { tidyId } from './examFile.js'
@@ -61,6 +63,20 @@ export function refreshIn(exam, now, every) {
   }
   if (phase === 'finishing' && now < Date.parse(exam.closes_at) + 2 * every) return every
   return false
+}
+
+// ---- a read that failed -----------------------------------------------------
+
+// What a page says when it could not read something: what it was doing, then
+// why, when the reason is one an officer can act on (no connection, no
+// permission, a refusal the database wrote in a sentence). `doing` is the rest
+// of "Couldn’t …", such as 'load the results'. Anything else the database or
+// the browser said is left out: it was not written for people. With no error
+// at all, the read came back empty.
+export function readProblem(doing, err) {
+  if (!err) return `Couldn’t ${doing}: the database sent nothing back.`
+  const why = errorText(err, '')
+  return why ? `Couldn’t ${doing}. ${why}` : `Couldn’t ${doing}.`
 }
 
 // ---- states -----------------------------------------------------------------

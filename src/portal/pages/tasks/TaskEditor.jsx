@@ -1,11 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
 import { findDuplicateTasks, useAssignable, useTaskMutations } from '../../workQueries.js'
 import { todayCairo } from '../../officerQueries.js'
-import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import {
+  ConfirmButton,
+  ErrorText,
+  Field,
+  Panel,
+  SaveStatus,
+  Spinner,
+  inputCls,
+  outlineBtnCls,
+  primaryBtnCls,
+} from '../../portalUi.jsx'
 import { DueLabel, TASK_PRIORITIES, chipBtnCls } from '../../workUi.jsx'
-import { FileChooser } from './TaskFiles.jsx'
+import { FileChooser, UploadStatus } from './TaskFiles.jsx'
 import { Avatar } from '../../Avatar.jsx'
+import { errorText } from '../../../lib/errorText.js'
 import { scrollBehavior } from '../../../lib/motion.js'
 
 // Create or edit a task. `scopes` comes from useWorkScopes(): the committees
@@ -17,28 +29,57 @@ import { scrollBehavior } from '../../../lib/motion.js'
 // open tasks of that committee are checked for one with the same title and the
 // same people; a match is shown with a link and the person decides. It warns
 // and never blocks, since a repeat can be deliberate.
+//
+// The title is checked where it is typed, from the first keystroke in it or
+// the first try at saving. Cancel asks before it throws typed work away, and so
+// does the browser when the tab is closed or reloaded. `onHold` (optional) is
+// told true while the form holds typed work or a save is under way, and false
+// once it does not or the form has gone: the page uses it to keep the form open
+// when a link changes the address under it.
 
 const SOCIETY = 'society'
 
-export default function TaskEditor({ task, scopes, onDone, onCancel }) {
+// On a touch screen a button stands at least a thumb tall; with a mouse it
+// keeps the portal's small pill. In px and not rem, because the root size
+// shrinks on a 320px phone.
+const tapCls = '[@media(pointer:coarse)]:min-h-[44px]'
+
+const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x))
+
+export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
   const editing = Boolean(task)
   const previousAssignees = task ? task.assignees.map((a) => a.profile_id) : []
-  const [scope, setScope] = useState(
-    task ? task.committee_id || SOCIETY : scopes.society ? SOCIETY : scopes.task[0]?.id || '',
-  )
-  const [title, setTitle] = useState(task?.title || '')
-  const [body, setBody] = useState(task?.body || '')
-  const [priority, setPriority] = useState(task?.priority || 'normal')
-  const [dueOn, setDueOn] = useState(task ? task.due_on || '' : todayCairo())
-  const [assignees, setAssignees] = useState(previousAssignees)
+  // The form as it opened, to tell whether anything has been typed since.
+  const [opened] = useState(() => ({
+    scope: task ? task.committee_id || SOCIETY : scopes.society ? SOCIETY : scopes.task[0]?.id || '',
+    title: task?.title || '',
+    body: task?.body || '',
+    priority: task?.priority || 'normal',
+    dueOn: task ? task.due_on || '' : todayCairo(),
+    assignees: previousAssignees,
+  }))
+  const [scope, setScope] = useState(opened.scope)
+  const [title, setTitle] = useState(opened.title)
+  const [body, setBody] = useState(opened.body)
+  const [priority, setPriority] = useState(opened.priority)
+  const [dueOn, setDueOn] = useState(opened.dueOn)
+  const [assignees, setAssignees] = useState(opened.assignees)
   const [files, setFiles] = useState([])
   const [error, setError] = useState('')
+  // The title's own message waits until the title has been typed in, or a save
+  // was tried: nobody is told off for a field they have not reached yet. It
+  // does not wait for the field to be left, because a line that appears as the
+  // pointer goes down on something else moves that thing from under the click.
+  const [titleSeen, setTitleSeen] = useState(false)
+  // Which file is going up, for the line beside the buttons.
+  const [progress, setProgress] = useState(null)
   // Tasks that look like this one; set by the check, cleared by any change to
   // what was checked.
   const [repeats, setRepeats] = useState(null)
   const [checking, setChecking] = useState(false)
   // A second click lands before React has re-rendered the disabled button.
   const saving = useRef(false)
+  const titleInput = useRef(null)
   // The warning sits under a long form; bring it to the person, do not make
   // them find it.
   const warning = useRef(null)
@@ -51,6 +92,26 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
   const { create, update } = useTaskMutations()
   const busy = checking || create.isPending || update.isPending
 
+  const dirty =
+    scope !== opened.scope ||
+    title !== opened.title ||
+    body !== opened.body ||
+    priority !== opened.priority ||
+    dueOn !== opened.dueOn ||
+    files.length > 0 ||
+    !sameSet(assignees, opened.assignees)
+  const holding = dirty || busy
+  useLeaveWarning(holding)
+  useEffect(() => {
+    onHold?.(holding)
+    return () => onHold?.(false)
+  }, [holding, onHold])
+
+  const titleProblem = title.trim() ? '' : 'Give the task a title.'
+  const showTitleProblem = titleSeen && Boolean(titleProblem)
+  // Said, never enforced: a task can be written up after its day.
+  const dueHasPassed = Boolean(dueOn) && dueOn !== opened.dueOn && dueOn < todayCairo()
+
   const changeScope = (next) => {
     setScope(next)
     setAssignees([]) // people differ per committee
@@ -59,6 +120,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
 
   const changeTitle = (next) => {
     setTitle(next)
+    setTitleSeen(true)
     setRepeats(null)
   }
 
@@ -70,8 +132,9 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
   const save = async ({ confirmed = false } = {}) => {
     if (saving.current) return
     setError('')
-    if (!title.trim()) {
-      setError('Give the task a title.')
+    if (titleProblem) {
+      setTitleSeen(true)
+      titleInput.current?.focus()
       return
     }
     saving.current = true
@@ -95,15 +158,19 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
           return
         }
       }
-      const row = await create.mutateAsync({ committee_id: committeeId, ...fields, assignees, files })
-      onDone(
-        row.id,
-        row.fileError && `The task was created, but its files were not attached. ${row.fileError}`,
-      )
+      const row = await create.mutateAsync({
+        committee_id: committeeId,
+        ...fields,
+        assignees,
+        files,
+        onProgress: setProgress,
+      })
+      onDone(row.id, row.notice)
     } catch (err) {
-      setError(err?.message || 'Could not save the task.')
+      setError(errorText(err, 'Could not save the task.'))
     } finally {
       setChecking(false)
+      setProgress(null)
       saving.current = false
     }
   }
@@ -114,7 +181,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
   }
 
   return (
-    <form onSubmit={submit} className="max-w-3xl">
+    <form onSubmit={submit} noValidate className="max-w-3xl">
       <Panel className="space-y-6">
         {!editing && (scopes.task.length > 1 || scopes.society) && (
           <Field label="For" htmlFor="task-scope">
@@ -136,13 +203,22 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
 
         <Field label="Title" htmlFor="task-title">
           <input
+            ref={titleInput}
             id="task-title"
             value={title}
             onChange={(e) => changeTitle(e.target.value)}
             maxLength={200}
+            required
+            aria-invalid={showTitleProblem || undefined}
+            aria-describedby={showTitleProblem ? 'task-title-problem' : undefined}
             placeholder="What needs doing?"
-            className={inputCls}
+            className={`${inputCls} ${tapCls}`}
           />
+          {showTitleProblem && (
+            <div className="mt-2">
+              <ErrorText id="task-title-problem">{titleProblem}</ErrorText>
+            </div>
+          )}
         </Field>
 
         <Field label="Details" htmlFor="task-body" hint="Optional. Links become clickable.">
@@ -163,18 +239,24 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
               type="date"
               value={dueOn}
               onChange={(e) => setDueOn(e.target.value)}
+              aria-describedby={dueHasPassed ? 'task-due-note' : undefined}
               className={inputCls}
             />
+            {dueHasPassed && (
+              <p id="task-due-note" className="mt-2 text-xs text-warn">
+                That day has passed, so the task will show as overdue.
+              </p>
+            )}
           </Field>
           <Field label="Priority">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Priority">
               {TASK_PRIORITIES.map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
                   aria-pressed={priority === value}
                   onClick={() => setPriority(value)}
-                  className={chipBtnCls(priority === value)}
+                  className={`${chipBtnCls(priority === value)} ${tapCls}`}
                 >
                   {label}
                 </button>
@@ -190,26 +272,31 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
           {people.isPending ? (
             <Spinner className="h-5 w-5" />
           ) : people.error ? (
-            <ErrorText>Couldn’t load people: {people.error.message}</ErrorText>
+            <ErrorText>{errorText(people.error, 'Couldn’t load the people there.')}</ErrorText>
           ) : people.data.length === 0 ? (
             <p className="text-sm text-soft/60">
               Nobody with an account holds a position there yet. You can save the task and assign
               it later.
             </p>
           ) : (
-            <ul className="grid gap-2 sm:grid-cols-2">
+            // A column that may shrink (grid-cols-1), and the position under
+            // the name: side by side, a long position title pushed the row off
+            // a phone, and cut the name down to a few letters when held in.
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Assign to">
               {people.data.map((p) => (
-                <li key={p.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line/10 bg-sunk px-3 py-2 text-sm text-ink hover:border-line/25">
+                <li key={p.id} className="min-w-0">
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line/10 bg-sunk px-3 py-2 text-sm text-ink transition-colors hover:border-line/25">
                     <input
                       type="checkbox"
                       checked={assignees.includes(p.id)}
                       onChange={() => toggle(p.id)}
-                      className="h-4 w-4 accent-medical"
+                      className="h-4 w-4 shrink-0 accent-medical"
                     />
                     <Avatar name={p.full_name} src={p.avatar_url} size="sm" />
-                    <span className="min-w-0 flex-1 truncate">{p.full_name || 'No name yet'}</span>
-                    <span className="shrink-0 text-xs text-soft/50">{p.position_title}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{p.full_name || 'No name yet'}</span>
+                      <span className="block truncate text-xs text-soft/50">{p.position_title}</span>
+                    </span>
                   </label>
                 </li>
               ))}
@@ -247,7 +334,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
                   to={`/portal/tasks/${t.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-accent underline decoration-line/20 underline-offset-2 hover:text-ink"
+                  className="font-semibold text-accent underline decoration-line/20 underline-offset-2 transition-colors hover:text-ink"
                 >
                   {t.title}
                 </Link>
@@ -260,11 +347,16 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
               type="button"
               disabled={busy}
               onClick={() => save({ confirmed: true })}
-              className={outlineBtnCls}
+              className={`${outlineBtnCls} ${tapCls}`}
             >
               {create.isPending ? 'Creating…' : 'Create it again'}
             </button>
-            <button type="button" disabled={busy} onClick={() => setRepeats(null)} className={outlineBtnCls}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setRepeats(null)}
+              className={`${outlineBtnCls} ${tapCls}`}
+            >
               Keep editing
             </button>
           </div>
@@ -272,12 +364,25 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
       )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={busy || Boolean(repeats)} className={primaryBtnCls}>
+        <button type="submit" disabled={busy || Boolean(repeats)} className={`${primaryBtnCls} ${tapCls}`}>
           {checking ? 'Checking…' : busy ? 'Saving…' : editing ? 'Save changes' : 'Create task'}
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} className={outlineBtnCls}>
-          Cancel
-        </button>
+        {dirty ? (
+          // Typed work is about to go: the button turns red and asks once more.
+          <ConfirmButton
+            label="Cancel"
+            confirmLabel="Discard changes"
+            onConfirm={onCancel}
+            disabled={busy}
+            className={`${outlineBtnCls} ${tapCls}`}
+          />
+        ) : (
+          <button type="button" onClick={onCancel} disabled={busy} className={`${outlineBtnCls} ${tapCls}`}>
+            Cancel
+          </button>
+        )}
+        <UploadStatus progress={progress} />
+        {editing && <SaveStatus dirty={dirty && !busy} />}
         <ErrorText>{error}</ErrorText>
       </div>
     </form>

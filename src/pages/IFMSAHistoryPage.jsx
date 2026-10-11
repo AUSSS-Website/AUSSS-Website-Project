@@ -202,7 +202,7 @@ export default function IFMSAHistoryPage() {
               <h2 className="heading-serif mt-5 text-3xl text-ink sm:text-4xl">
                 The support divisions
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-base font-light leading-relaxed text-soft/70">
+              <p className="mx-auto mt-4 max-w-2xl text-base font-normal leading-relaxed text-soft/70 dark:font-light">
                 The six standing committees own IFMSA’s health fields. Carrying
                 them is a second set of portfolios: the support divisions, each
                 led by a Vice-President, that keep the federation running.
@@ -211,27 +211,31 @@ export default function IFMSAHistoryPage() {
 
             <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {supportDivisions.map((d) => (
-                <CardLink
-                  key={d.abbr}
-                  href={d.href}
-                  className="reveal rounded-2xl border border-line/10 bg-card p-6 transition-colors hover:border-line/25"
-                >
-                  <div className="flex items-center gap-4">
-                    <span
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xs font-bold tracking-wide text-forest-950"
-                      style={{ backgroundColor: d.accent }}
-                    >
-                      {d.abbr}
-                    </span>
-                    <h3 className="heading-serif text-xl leading-tight text-ink">
-                      {d.name}
-                    </h3>
-                  </div>
-                  <p className="mt-4 text-sm leading-relaxed text-soft/75">
-                    {d.body}
-                  </p>
-                  <ExternalCue />
-                </CardLink>
+                // The fade-in on scroll sits on this wrapper and the card keeps
+                // its own quick transition. On one element the 0.9 s reveal took
+                // the card's place, and the border snapped under the pointer.
+                <div key={d.abbr} className="reveal flex">
+                  <CardLink
+                    href={d.href}
+                    className="w-full rounded-2xl border border-line/10 bg-card p-6 transition-colors hover:border-line/25"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xs font-bold tracking-wide text-forest-950"
+                        style={{ backgroundColor: d.accent }}
+                      >
+                        {d.abbr}
+                      </span>
+                      <h3 className="heading-serif text-xl leading-tight text-ink">
+                        {d.name}
+                      </h3>
+                    </div>
+                    <p className="mt-4 text-sm leading-relaxed text-soft/75">
+                      {d.body}
+                    </p>
+                    <ExternalCue />
+                  </CardLink>
+                </div>
               ))}
             </div>
           </div>
@@ -239,9 +243,11 @@ export default function IFMSAHistoryPage() {
 
         {/* Footer nav */}
         <div className="mt-20 text-center">
+          {/* 44px tall to a finger; the negative margin gives the height back so
+              nothing around it moves. */}
           <Link
             to="/ifmsa"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+            className="-my-[12px] inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
           >
             ← Back to IFMSA at Ain Shams
           </Link>

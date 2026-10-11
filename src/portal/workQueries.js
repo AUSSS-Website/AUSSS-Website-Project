@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
+import { errorText } from '../lib/errorText.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { byPortalOrder, useCommittees } from './officerQueries.js'
 
@@ -202,19 +203,30 @@ async function addAssignees(taskId, ids) {
 }
 
 // fields: { committee_id, title, body, priority, due_on, status }
-// The task is saved before its files go up. If the files then fail the task
-// still stands, and the caller is told through `fileError` instead of an
-// exception, so nobody retries and creates the task twice.
-async function createTask({ assignees = [], files = [], ...fields }) {
+// The task is saved before its people are added and its files go up. If either
+// of those then fails the task still stands, and the caller is told through
+// `notice` (whole sentences, fit to show) instead of an exception, so nobody
+// retries and creates the task twice. `onProgress` is handed to the upload.
+async function createTask({ assignees = [], files = [], onProgress, ...fields }) {
   const row = unwrap(await supabase.from('tasks').insert(fields).select('id').single())
-  await addAssignees(row.id, assignees)
-  if (!files.length) return row
+  const missing = []
   try {
-    await addTaskComment({ task_id: row.id, files })
-    return row
+    await addAssignees(row.id, assignees)
   } catch (err) {
-    return { ...row, fileError: err?.message || 'The files could not be attached.' }
+    missing.push(['nobody was assigned to it', errorText(err, '')])
   }
+  if (files.length) {
+    try {
+      await addTaskComment({ task_id: row.id, files, onProgress })
+    } catch (err) {
+      missing.push(['its files were not attached', errorText(err, '')])
+    }
+  }
+  if (!missing.length) return row
+  const what = missing.map(([part]) => part).join(' and ')
+  // Both usually fail for the one reason; it is said once.
+  const why = [...new Set(missing.map(([, reason]) => reason).filter(Boolean))].join(' ')
+  return { ...row, notice: `The task was created, but ${what}.${why ? ` ${why}` : ''}` }
 }
 
 // `assignees` (when given) is the wanted set; only the difference is written,
@@ -245,10 +257,25 @@ async function deleteTask(id) {
   unwrap(await supabase.from('tasks').delete().eq('id', id))
 }
 
+// The error for a file that did not go up: which file, and why when the reason
+// is one worth showing (no connection, no permission). The storage service's
+// own words are not. It is marked `rejected`, so errorText shows the sentence
+// as it is written here.
+function notUploaded(file, error) {
+  const why = errorText(error, '')
+  const err = new Error(why ? `${file.name} was not uploaded. ${why}` : `${file.name} could not be uploaded.`)
+  err.rejected = true
+  return err
+}
+
 // A comment, files, or both. Files are uploaded first and then linked to the
 // task as one timeline row by rpc/attach_task_files; if the link fails the
 // uploads are taken back so nothing is stored that no task points to.
-async function addTaskComment({ task_id, body = '', files = [] }) {
+//
+// The files go up one after the other. `onProgress` is called as each one
+// starts, with { index, total, name } (index counts from 1), and with null once
+// the last is up, so the page can say "Uploading 2 of 5: minutes.pdf".
+async function addTaskComment({ task_id, body = '', files = [], onProgress }) {
   if (!files.length) {
     unwrap(await supabase.from('task_updates').insert({ task_id, body }))
     return
@@ -256,13 +283,15 @@ async function addTaskComment({ task_id, body = '', files = [] }) {
   const bucket = supabase.storage.from(TASK_FILES_BUCKET)
   const uploaded = []
   try {
-    for (const file of files) {
+    for (const [i, file] of files.entries()) {
+      onProgress?.({ index: i + 1, total: files.length, name: file.name })
       const type = fileType(file)
       const path = `${task_id}/${crypto.randomUUID()}.${type.ext}`
       const { error } = await bucket.upload(path, file, { contentType: type.mime, upsert: false })
-      if (error) throw new Error(`${file.name}: ${error.message}`)
+      if (error) throw notUploaded(file, error)
       uploaded.push({ path, name: file.name })
     }
+    onProgress?.(null)
     unwrap(
       await supabase.rpc('attach_task_files', { p_task: task_id, p_files: uploaded, p_body: body }),
     )
@@ -312,16 +341,52 @@ export function useAssignable(committeeId, enabled = true) {
 // One hook for every task write: they all invalidate the same two caches.
 export function useTaskMutations() {
   const qc = useQueryClient()
-  const onSettled = (_d, _e, vars) => {
+  // The promise is of the one task being read again. A write that returns it
+  // from onSettled is not over until the page shows what was saved, so
+  // "Saving…" and "Posting…" last until then, and the page never shows the old
+  // task for a moment after them.
+  const settle = (id) => {
     qc.invalidateQueries({ queryKey: ['tasks'] })
-    const id = typeof vars === 'string' ? vars : vars?.id || vars?.task_id
-    if (id) qc.invalidateQueries({ queryKey: workKeys.task(id) })
+    return id ? qc.invalidateQueries({ queryKey: workKeys.task(id) }) : undefined
   }
   return {
-    create: useMutation({ mutationFn: createTask, onSettled }),
-    update: useMutation({ mutationFn: updateTask, onSettled }),
-    remove: useMutation({ mutationFn: deleteTask, onSettled }),
-    comment: useMutation({ mutationFn: addTaskComment, onSettled }),
+    // Not waited for: the page leaves for the new task as soon as it exists.
+    create: useMutation({
+      mutationFn: createTask,
+      onSettled: () => {
+        settle()
+      },
+    }),
+    update: useMutation({
+      mutationFn: updateTask,
+      // A change of status alone shows at once: the chip moves on the press,
+      // the answer confirms it, and a refusal puts it back where it was.
+      onMutate: async ({ id, status }) => {
+        if (!status) return undefined
+        const key = workKeys.task(id)
+        await qc.cancelQueries({ queryKey: key })
+        const before = qc.getQueryData(key)
+        if (!before) return undefined
+        qc.setQueryData(key, {
+          ...before,
+          status,
+          completed_at: status === 'done' ? before.completed_at || new Date().toISOString() : null,
+        })
+        return { before }
+      },
+      onError: (_e, { id }, shown) => {
+        if (shown?.before) qc.setQueryData(workKeys.task(id), shown.before)
+      },
+      onSettled: (_d, _e, vars) => settle(vars.id),
+    }),
+    // Not waited for: the page leaves for the list as soon as the task is gone.
+    remove: useMutation({
+      mutationFn: deleteTask,
+      onSettled: (_d, _e, id) => {
+        settle(id)
+      },
+    }),
+    comment: useMutation({ mutationFn: addTaskComment, onSettled: (_d, _e, vars) => settle(vars.task_id) }),
     removeFile: useMutation({
       mutationFn: deleteTaskFile,
       onSettled: (_d, _e, file) => qc.invalidateQueries({ queryKey: workKeys.task(file.task_id) }),
@@ -376,6 +441,39 @@ export function isPostLive(post, now = Date.now()) {
     Date.parse(post.publish_at) <= now &&
     (!post.expires_at || Date.parse(post.expires_at) > now)
   )
+}
+
+// What is wrong with the two times of an update about to be saved: a sentence
+// for each field, '' where nothing is. `timing` is the editor's choice ('now',
+// 'at' for a scheduled time, or 'draft'); `publishAt` and `expiresAt` are ISO
+// strings, or null for an empty field.
+//
+// A scheduled update has to go out later than now, and anything that is taken
+// down has to come down after it goes out. A take-down time that has passed is
+// a slip on an update nobody has seen yet: it would never show. Two updates
+// are let through with one. An update that is already out and stays out
+// (`alreadyOut`) is taken down at once that way, which is the only way to
+// retire it without deleting it. And an update that has already expired must
+// still open and save: `expiryChanged` false says the time is the one the
+// update already had, and it is then left alone.
+export function postTimeProblems(
+  { timing, publishAt, expiresAt, expiryChanged = true, alreadyOut = false },
+  now = Date.now(),
+) {
+  const problems = { publishAt: '', expiresAt: '' }
+  const goesOut = timing === 'at' && publishAt ? Date.parse(publishAt) : NaN
+  if (timing === 'at') {
+    if (Number.isNaN(goesOut)) problems.publishAt = 'Pick when it should go out.'
+    else if (goesOut <= now) problems.publishAt = 'That time has passed. Pick a later one.'
+  }
+  if (expiresAt) {
+    const comesDown = Date.parse(expiresAt)
+    if (comesDown <= goesOut) problems.expiresAt = 'Pick a time after the update goes out.'
+    else if (comesDown <= now && expiryChanged && !alreadyOut) {
+      problems.expiresAt = 'That time has passed. Pick a later one, or leave this empty.'
+    }
+  }
+  return problems
 }
 
 export function usePosts() {

@@ -10,6 +10,12 @@ import { useEffect } from 'react'
 //
 //   usePageTitle('Join AUSSS')                         // title only
 //   usePageTitle('Join AUSSS', 'Apply to AUSSS…')      // + description
+//
+// A page that stands in for a missing one passes `noindex`, which asks search
+// engines to leave the address out of their results. The tag is in the head
+// only while that page is shown, so it never rides along to a real page.
+//
+//   usePageTitle('Page not found', undefined, { noindex: true })
 const BASE_TITLE = "AUSSS, Ain Shams University Students' Scientific Society"
 
 function metaDescriptionEl() {
@@ -29,7 +35,7 @@ function canonicalEl() {
   return el
 }
 
-export default function usePageTitle(title, description) {
+export default function usePageTitle(title, description, { noindex = false } = {}) {
   useEffect(() => {
     document.title = title ? `${title} · AUSSS` : BASE_TITLE
 
@@ -43,10 +49,21 @@ export default function usePageTitle(title, description) {
       canon.setAttribute('href', window.location.origin + window.location.pathname)
     }
 
+    // A tag of this page's own, so taking it away again cannot touch one that
+    // index.html may carry some day.
+    let robots = null
+    if (noindex) {
+      robots = document.createElement('meta')
+      robots.setAttribute('name', 'robots')
+      robots.setAttribute('content', 'noindex')
+      document.head.appendChild(robots)
+    }
+
     return () => {
       document.title = BASE_TITLE
       if (descEl && baseDesc != null) descEl.setAttribute('content', baseDesc)
       if (canon && baseHref != null) canon.setAttribute('href', baseHref)
+      robots?.remove()
     }
-  }, [title, description])
+  }, [title, description, noindex])
 }

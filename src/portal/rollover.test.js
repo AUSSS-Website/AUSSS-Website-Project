@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boardKept, examLoss, formatBytes, formatDay, termProblem, workAccountState } from './rollover.js'
+import { boardKept, examLoss, formatBytes, formatDay, startBlocker, termProblem, workAccountState } from './rollover.js'
 
 const current = { label: '2026-27', starts_on: '2026-09-01', ends_on: '2027-08-31' }
 
@@ -48,6 +48,42 @@ describe('boardKept', () => {
     expect(boardKept([officer, president])).toBe(true)
     expect(boardKept([officer, webmasterWaiting])).toBe(false)
     expect(boardKept([])).toBe(false)
+  })
+})
+
+describe('startBlocker', () => {
+  const ready = { problem: '', board: true, label: '2027-28' }
+
+  it('lets the button be pressed once the name is typed exactly', () => {
+    expect(startBlocker({ ...ready, typed: '2027-28' })).toBe('')
+  })
+
+  it('does not count spaces around the name, on either side', () => {
+    expect(startBlocker({ ...ready, typed: ' 2027-28 ' })).toBe('')
+    expect(startBlocker({ ...ready, label: ' 2027-28 ', typed: '2027-28' })).toBe('')
+  })
+
+  it('asks for the name while nothing, or only its start, is typed', () => {
+    expect(startBlocker({ ...ready, typed: '' })).toBe('Type 2027-28 in the box to use the button.')
+    expect(startBlocker({ ...ready, typed: '2027-' })).toBe('Type 2027-28 in the box to use the button.')
+    expect(startBlocker({ ...ready })).toBe('Type 2027-28 in the box to use the button.')
+  })
+
+  it('says so when what is typed is not the name', () => {
+    // An en dash for the hyphen, the current term, and one character too many.
+    for (const typed of ['2027–28', '2026-27', '2027-289']) {
+      expect(startBlocker({ ...ready, typed })).toBe('That is not 2027-28. Type the name exactly as part 1 has it.')
+    }
+  })
+
+  it('puts a problem with the term first, whatever is typed', () => {
+    expect(startBlocker({ ...ready, problem: 'Name the term like 2027-28.', label: 'next year', typed: 'next year' })).toBe(
+      'Part 1 is not ready. Name the term like 2027-28.',
+    )
+  })
+
+  it('then the board, before the typing', () => {
+    expect(startBlocker({ ...ready, board: false, typed: '2027-28' })).toMatch(/^Nobody on the board would keep their access/)
   })
 })
 

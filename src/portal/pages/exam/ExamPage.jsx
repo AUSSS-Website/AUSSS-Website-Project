@@ -1,9 +1,21 @@
 import { useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import useTabParam from '../../../hooks/useTabParam.js'
+import { pressCls } from '../../../lib/motion.js'
 import { useExam } from '../../examQueries.js'
+import { readProblem } from '../../examStats.js'
 import { ErrorText, PageHeader, PageLoading, Panel } from '../../portalUi.jsx'
-import { ExamGate, StatusChip, examStanding, opensWords, useIsExamOfficer } from './ExamsPage.jsx'
+import {
+  ExamGate,
+  StatusChip,
+  examStanding,
+  examTabId,
+  opensWords,
+  tapCls,
+  tapLinkCls,
+  useIsExamOfficer,
+} from './ExamsPage.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import QuestionsPanel from './QuestionsPanel.jsx'
 import RegisteredPanel from './RegisteredPanel.jsx'
@@ -35,16 +47,40 @@ const KEPT = [
   ['list', RegisteredPanel],
 ]
 
-const tabId = (key) => `exam-tab-${key}`
+const tabId = examTabId
 const panelId = (key) => `exam-part-${key}`
+
+// The arrow keys walk along the tabs and round the ends, and Home and End go
+// to the first and the last, as a row of tabs is expected to answer. They move
+// the keyboard only: Enter or the space bar opens the part, so walking past
+// Results does not start its reads. Every tab can still be reached with Tab.
+function walkTabs(e) {
+  // With a key held beside it an arrow is the browser's own (Alt and the left
+  // arrow go back a page).
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+  const from = TABS.findIndex(([key]) => tabId(key) === e.target.id)
+  if (from === -1) return
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key]
+  let to = -1
+  if (e.key === 'Home') to = 0
+  else if (e.key === 'End') to = TABS.length - 1
+  else if (step) to = (from + step + TABS.length) % TABS.length
+  if (to === -1) return
+  e.preventDefault()
+  document.getElementById(tabId(TABS[to][0]))?.focus()
+}
+
+const backLinkCls = `${tapLinkCls} mt-4 text-sm font-semibold text-accent hover:text-ink`
 
 // `refreshError` is a read of the exam that failed after one that worked (a
 // dropped connection in the hall): the page stays as it is, with everything
 // typed into it, and says so in one line.
 function ExamView({ exam, refreshError }) {
-  const [params, setParams] = useSearchParams()
-  const requested = params.get('tab')
-  const tab = TABS.some(([key]) => key === requested) ? requested : 'setup'
+  // The open part is ?tab= in the address. Choosing one replaces the address
+  // in place, so the browser's Back leaves the exam and does not walk back
+  // through the parts, and the rest of the address stays (the paper open on
+  // the Results part is still open on the way back to it).
+  const [tab, setTab] = useTabParam(TABS, 'setup')
   const [opened, setOpened] = useState([tab])
   if (!opened.includes(tab)) setOpened([...opened, tab])
   const standing = examStanding(exam)
@@ -53,7 +89,7 @@ function ExamView({ exam, refreshError }) {
     <>
       <PageHeader
         eyebrow={
-          <Link to="/portal/exam" className="hover:text-ink">
+          <Link to="/portal/exam" className={`${tapLinkCls} transition-colors hover:text-ink`}>
             &larr; All exams
           </Link>
         }
@@ -70,12 +106,14 @@ function ExamView({ exam, refreshError }) {
 
       {refreshError && (
         <div className="mb-6">
-          <ErrorText>Couldn’t refresh the exam: {refreshError.message}</ErrorText>
+          <ErrorText>{readProblem('refresh the exam', refreshError)}</ErrorText>
           <p className="mt-1 text-xs text-soft/60">What you see is the last read. Nothing you typed is lost.</p>
         </div>
       )}
 
-      <div role="tablist" aria-label="Exam" className="mb-8 flex flex-wrap gap-2">
+      {/* Both kinds of tab have a border, so the row does not shift by a
+          pixel when another is chosen. */}
+      <div role="tablist" aria-label="Exam" onKeyDown={walkTabs} className="mb-8 flex flex-wrap gap-2">
         {TABS.map(([key, label]) => (
           <button
             key={key}
@@ -84,9 +122,9 @@ function ExamView({ exam, refreshError }) {
             id={tabId(key)}
             aria-selected={tab === key}
             aria-controls={panelId(key)}
-            onClick={() => setParams({ tab: key })}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-              tab === key ? 'bg-cta text-on-cta' : 'border border-line/15 text-soft/70 hover:text-ink'
+            onClick={() => setTab(key)}
+            className={`inline-flex items-center rounded-full border px-4 py-1.5 text-xs font-semibold ${pressCls} ${tapCls} ${
+              tab === key ? 'border-transparent bg-cta text-on-cta' : 'border-line/15 text-soft/70 hover:text-ink'
             }`}
           >
             {label}
@@ -131,8 +169,8 @@ export default function ExamPage() {
   if (exam.error && !exam.data) {
     return (
       <Panel>
-        <ErrorText>Couldn’t load the exam: {exam.error.message}</ErrorText>
-        <Link to="/portal/exam" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
+        <ErrorText>{readProblem('load the exam', exam.error)}</ErrorText>
+        <Link to="/portal/exam" className={backLinkCls}>
           &larr; All exams
         </Link>
       </Panel>
@@ -142,7 +180,7 @@ export default function ExamPage() {
     return (
       <Panel>
         <p className="text-sm text-soft/70">No exam here. It may have been deleted.</p>
-        <Link to="/portal/exam" className="mt-4 inline-block text-sm font-semibold text-accent hover:text-ink">
+        <Link to="/portal/exam" className={backLinkCls}>
           &larr; All exams
         </Link>
       </Panel>

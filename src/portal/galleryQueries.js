@@ -1,5 +1,7 @@
+import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
+import { errorText } from '../lib/errorText.js'
 import { photoUrl } from '../lib/gallery.js'
 
 // Gallery editor reads and writes (PNSD officers and the EB). Same shape as
@@ -30,6 +32,99 @@ function unwrap({ data, error }) {
 }
 
 export { photoUrl }
+
+// A caught error as a sentence to show an editor. errorText does the choosing
+// (src/lib/errorText.js): no connection, no permission, a refusal the database
+// wrote, or `fallback`, the caller's own words for what failed. The gallery's
+// database functions word a refusal with no capital and no full stop ("the
+// link /gallery/aswan already belongs to another album"), so the sentence is
+// finished here.
+export function galleryError(err, fallback) {
+  const said = errorText(err, fallback)
+  const text = said.charAt(0).toUpperCase() + said.slice(1)
+  return /[.!?]$/.test(text) ? text : `${text}.`
+}
+
+// An error in words of our own, for the editor to read: errorText shows it as
+// written, where any other thrown Error would give way to the fallback.
+function refusal(message) {
+  return Object.assign(new Error(message), { rejected: true })
+}
+
+// ---- changes that show at once -----------------------------------------------
+
+// `rows` with each entry of `changes` (a Map of row id to fields) laid over
+// its row.
+function overlay(rows, changes) {
+  return rows.map((r) => (changes.has(r.id) ? { ...r, ...changes.get(r.id) } : r))
+}
+
+// The options of a mutation that shows its change before it is saved, for a
+// switch that should answer the click and not the server: a photo hidden, an
+// album published. It is called with { id, patch }, and optionally `shown`,
+// fields that go with the patch on screen only (a joined label).
+//
+// The cached list under `queryKey` is changed first. If the save fails the
+// change is put back, field by field, unless a later change has shown
+// something else in that field since, in which case that one stands. Changes
+// are sent one at a time, in the order they were made, so two quick changes to
+// one row cannot land the wrong way round; and the list is read again only
+// after the last of them, since a read taken in between would show the row
+// without the ones still on their way.
+//
+// `ripple(rows, id, patch)` names the other rows the database will change with
+// this one, as [id, fields] pairs; `arrange` puts a changed list back in the
+// order it is read in; `reload` reads everything the change touches again.
+function shownAtOnce(qc, { queryKey, mutationKey, write, ripple, arrange = (rows) => rows, reload }) {
+  return {
+    mutationKey,
+    scope: { id: mutationKey.join('/') },
+    mutationFn: ({ id, patch }) => write(id, patch),
+    onMutate: async ({ id, patch, shown }) => {
+      await qc.cancelQueries({ queryKey })
+      const rows = qc.getQueryData(queryKey)
+      if (!rows?.some((r) => r.id === id)) return undefined
+      const changes = new Map(ripple ? ripple(rows, id, patch) : [])
+      changes.set(id, { ...patch, ...shown })
+      // What each of those fields held, to put back if the save fails.
+      const was = new Map()
+      for (const r of rows) {
+        if (changes.has(r.id)) was.set(r.id, Object.fromEntries(Object.keys(changes.get(r.id)).map((k) => [k, r[k]])))
+      }
+      qc.setQueryData(queryKey, arrange(overlay(rows, changes)))
+      return { was }
+    },
+    onError: (_err, _change, context) => {
+      const rows = qc.getQueryData(queryKey)
+      if (!context?.was || !rows) return
+      // What the changes made after this one, and still on their way, noted
+      // down to go back to. Oldest first; the ones before it have all landed.
+      const later = qc
+        .getMutationCache()
+        .findAll({ mutationKey, exact: true, status: 'pending' })
+        .map((m) => m.state.context?.was)
+        .filter((theirs) => theirs && theirs !== context.was)
+      // A field no later change has touched goes back now. Where one has, its
+      // value stands; but what that change noted down to go back to is the
+      // value this one showed, which was never saved. It is handed what this
+      // one had noted instead, so that if it fails as well the field ends on
+      // what the database holds.
+      const back = new Map()
+      for (const [rowId, fields] of context.was) {
+        for (const [field, before] of Object.entries(fields)) {
+          const next = later.find((theirs) => theirs.has(rowId) && field in theirs.get(rowId))
+          if (next) next.get(rowId)[field] = before
+          else back.set(rowId, { ...back.get(rowId), [field]: before })
+        }
+      }
+      if (back.size > 0) qc.setQueryData(queryKey, arrange(overlay(rows, back)))
+    },
+    // This change still counts as on its way here: 1 means it is the last.
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey }) === 1) reload()
+    },
+  }
+}
 
 // ---- albums ----------------------------------------------------------------
 
@@ -116,12 +211,53 @@ async function reorderAlbums(ids) {
   return ids
 }
 
+const albumSetKey = [...galleryKeys.albums(), 'set']
+
+// Reads the shelf again after something other than `set` (below) changed it.
+// While a change from `set` is still on its way this does nothing: a read
+// taken now would show the album without that change, the Published switch
+// flipping back for a moment, and the change reads the shelf again itself once
+// it has landed.
+function reloadAlbums(qc) {
+  if (qc.isMutating({ mutationKey: albumSetKey, exact: true }) === 0) qc.invalidateQueries({ queryKey: galleryKeys.albums() })
+}
+
 export function useAlbumMutations() {
   const qc = useQueryClient()
-  const done = () => qc.invalidateQueries({ queryKey: galleryKeys.albums() })
-  const create = useMutation({ mutationFn: createAlbum, onSuccess: done })
-  const update = useMutation({ mutationFn: ({ id, patch }) => updateAlbum(id, patch), onSuccess: done })
-  const remove = useMutation({ mutationFn: deleteAlbum, onSuccess: done })
+  const shelf = galleryKeys.albums()
+  const done = () => reloadAlbums(qc)
+  // create, update and remove put what the database answered straight onto the
+  // cached shelf, and none of them waits for the shelf to be read again. The
+  // page can then go on at once (open the new album, say "Saved."), and it
+  // goes on rightly even if that read is slow or fails: with no connection a
+  // read is tried again for many seconds before it gives up.
+  const create = useMutation({
+    mutationFn: createAlbum,
+    onSuccess: (row) => {
+      qc.setQueryData(shelf, (rows) =>
+        rows && !rows.some((a) => a.id === row.id) ? [...rows, { ...row, photoCount: 0, visibleCount: 0, cover: null }] : rows,
+      )
+      done()
+    },
+  })
+  // Only the fields that were sent are taken from the row handed back: it also
+  // carries the settings `set` looks after, as they stood before a change of
+  // theirs that may still be on its way.
+  const update = useMutation({
+    mutationFn: ({ id, patch }) => updateAlbum(id, patch),
+    onSuccess: (row, { patch }) => {
+      const kept = Object.fromEntries(Object.keys(patch).map((field) => [field, row[field]]))
+      qc.setQueryData(shelf, (rows) => rows?.map((a) => (a.id === row.id ? { ...a, ...kept } : a)))
+      done()
+    },
+  })
+  const remove = useMutation({
+    mutationFn: deleteAlbum,
+    onSuccess: (id) => {
+      qc.setQueryData(shelf, (rows) => rows?.filter((a) => a.id !== id))
+      done()
+    },
+  })
   // The list shows the new order the moment a row is dropped: the cached shelf
   // is put in that order first, and put back if the save fails. Either way the
   // shelf is read again afterwards, so the screen ends on what the database holds.
@@ -146,7 +282,22 @@ export function useAlbumMutations() {
     },
     onSettled: done,
   })
-  return { create, update, remove, reorder }
+  // One setting of an album that takes effect the moment it is changed: the
+  // Published switch, the cover, the archive it is filed under. It shows at
+  // once and goes back if the save fails (see shownAtOnce). `update` above is
+  // for the details form, which waits for the row the database hands back: the
+  // link in it is tidied there, and may be refused.
+  const set = useMutation(
+    shownAtOnce(qc, {
+      queryKey: shelf,
+      mutationKey: albumSetKey,
+      write: updateAlbum,
+      // Called by the last change on its way, which still counts as one: it
+      // reads the shelf whatever reloadAlbums would say.
+      reload: () => qc.invalidateQueries({ queryKey: shelf }),
+    }),
+  )
+  return { create, update, remove, reorder, set }
 }
 
 // ---- photos ----------------------------------------------------------------
@@ -227,15 +378,62 @@ export async function purgeExpired(albumId) {
   return (rows || []).length
 }
 
+// The order fetchPhotos asks the database for, for a list that was changed
+// here before it is read again: the featured photo first, then by place.
+function inDisplayOrder(photos) {
+  return [...photos].sort(
+    (a, b) =>
+      Number(b.featured) - Number(a.featured) ||
+      a.sort_order - b.sort_order ||
+      (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0),
+  )
+}
+
+const photoChangeKey = (albumId) => [...galleryKeys.photos(albumId), 'update']
+
+// The database keeps one featured photo to an album (the single_featured_photo
+// trigger): featuring one takes the banner from whichever had it.
+function unfeatureOthers(photos, id, patch) {
+  if (!patch.featured) return []
+  return photos.filter((p) => p.featured && p.id !== id).map((p) => [p.id, { featured: false }])
+}
+
 export function usePhotoMutations(albumId) {
   const qc = useQueryClient()
-  const done = () => {
+  // The shelf is read again too, for its photo counts and cover.
+  const done = useCallback(() => {
     qc.invalidateQueries({ queryKey: galleryKeys.photos(albumId) })
-    qc.invalidateQueries({ queryKey: galleryKeys.albums() })
-  }
-  const update = useMutation({ mutationFn: ({ id, patch }) => updatePhoto(id, patch), onSuccess: done })
-  const purge = useMutation({ mutationFn: purgePhoto, onSuccess: done })
-  return { update, purge }
+    reloadAlbums(qc)
+  }, [qc, albumId])
+  // Everything an editor does to a photo short of deleting it for good (hide,
+  // feature, label, to the bin and back) shows at once: see shownAtOnce.
+  const update = useMutation(
+    shownAtOnce(qc, {
+      queryKey: galleryKeys.photos(albumId),
+      mutationKey: photoChangeKey(albumId),
+      write: updatePhoto,
+      ripple: unfeatureOthers,
+      arrange: inDisplayOrder,
+      reload: done,
+    }),
+  )
+  // Reads the album again after something other than `update` changed it (an
+  // upload, a delete). While a change from `update` is still on its way this
+  // does nothing: a read taken now would show the photo without that change,
+  // and the change reads everything again itself once it has landed.
+  const reload = useCallback(() => {
+    if (qc.isMutating({ mutationKey: photoChangeKey(albumId) }) === 0) done()
+  }, [qc, albumId, done])
+  // Deleting for good is not shown before it has happened. Once it has, the
+  // photo leaves the list without waiting for the list to be read again.
+  const purge = useMutation({
+    mutationFn: purgePhoto,
+    onSuccess: (id) => {
+      qc.setQueryData(galleryKeys.photos(albumId), (rows) => rows?.filter((p) => p.id !== id))
+      reload()
+    },
+  })
+  return { update, purge, reload }
 }
 
 // ---- upload ----------------------------------------------------------------
@@ -260,7 +458,7 @@ async function decodeImage(file) {
     }
     img.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('That file could not be read as an image'))
+      reject(refusal('That file could not be read as an image'))
     }
     img.src = url
   })
@@ -279,7 +477,7 @@ function scaled(source, maxWidth, quality) {
   ctx.drawImage(source, 0, 0, w, h)
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve({ blob, w, h }) : reject(new Error('Could not encode the image'))),
+      (blob) => (blob ? resolve({ blob, w, h }) : reject(refusal('Could not encode the image'))),
       'image/jpeg',
       quality,
     )

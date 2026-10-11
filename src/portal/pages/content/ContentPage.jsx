@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { contentSchema } from '../../../content/index.js'
+import { errorText } from '../../../lib/errorText.js'
 import { useContentBlocks } from '../../contentQueries.js'
 import { when } from '../../workUi.jsx'
-import { ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel } from '../../portalUi.jsx'
 
 // /portal/content. The parts of the public site this person may edit: every
 // one for the EB, and for an officer the ones that name their committee. The
@@ -42,12 +43,10 @@ export default function ContentPage() {
       />
 
       {blocks.isPending ? (
-        <div className="py-16 text-center">
-          <Spinner />
-        </div>
+        <PageLoading />
       ) : blocks.error ? (
         <Panel>
-          <ErrorText>Couldn’t load the list: {blocks.error.message}</ErrorText>
+          <ErrorText>{errorText(blocks.error, 'We couldn’t load the list.')}</ErrorText>
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { pressCls } from '../lib/motion.js'
 
 // A small social "share" row for the magazine page and the event pages.
 // `label` follows the title in the shared text ("World Health Day, AUSSS
@@ -15,6 +16,10 @@ export default function ShareBar({ url, title, label = 'AUSSS Magazine', heading
   const [resolvedUrl, setResolvedUrl] = useState(url || '')
   const [canNativeShare, setCanNativeShare] = useState(false)
   const [copied, setCopied] = useState(false)
+  // The timer that puts "Copy link" back. Kept so that a second copy starts
+  // the two seconds again, and so that leaving the page cancels it.
+  const copiedTimer = useRef(0)
+  useEffect(() => () => clearTimeout(copiedTimer.current), [])
 
   useEffect(() => {
     if (!url && typeof window !== 'undefined') {
@@ -86,15 +91,16 @@ export default function ShareBar({ url, title, label = 'AUSSS Magazine', heading
 
     if (ok) {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000)
     } else if (typeof window !== 'undefined') {
       // Last resort: surface the URL so the user can copy it by hand.
       window.prompt('Copy this link:', target)
     }
   }
 
-  const pill =
-    'inline-flex items-center gap-2 rounded-full border border-line/15 bg-card px-4 py-2 text-sm font-medium text-soft/80 transition-colors hover:border-medical/40 hover:text-ink'
+  // 44px tall: on a phone these are pressed with a thumb.
+  const pill = `inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/15 bg-card px-4 py-2 text-sm font-medium text-soft/80 hover:border-medical/40 hover:text-ink ${pressCls}`
 
   return (
     <div className={className}>
@@ -107,7 +113,7 @@ export default function ShareBar({ url, title, label = 'AUSSS Magazine', heading
             type="button"
             onClick={handleNativeShare}
             aria-label="Share"
-            className="inline-flex items-center gap-2 rounded-full bg-cta px-4 py-2 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-4 py-2 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
           >
             <ShareIcon />
             Share
@@ -135,6 +141,11 @@ export default function ShareBar({ url, title, label = 'AUSSS Magazine', heading
           <CopyIcon />
           {copied ? 'Copied!' : 'Copy link'}
         </button>
+        {/* Always in the page, so a screen reader hears the copy succeed: a
+            changed label on the button that has focus is not always read out. */}
+        <span role="status" className="sr-only">
+          {copied ? 'Link copied' : ''}
+        </span>
       </div>
     </div>
   )

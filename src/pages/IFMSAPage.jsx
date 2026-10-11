@@ -162,7 +162,7 @@ export default function IFMSAPage() {
               View the timeline
               <svg
                 viewBox="0 0 24 24"
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -199,7 +199,7 @@ export default function IFMSAPage() {
               Read the document
               <svg
                 viewBox="0 0 24 24"
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -219,9 +219,11 @@ export default function IFMSAPage() {
         <section className="reveal text-center">
           <IfmsaLinks links={ifmsa.links} />
           <div className="mt-12">
+            {/* 44px tall to a finger; the negative margin gives the height back
+                so nothing around it moves. */}
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+              className="-my-[12px] inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
             >
               ← Back to AUSSS home
             </Link>

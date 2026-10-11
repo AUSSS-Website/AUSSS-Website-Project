@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import useTabParam from '../../../hooks/useTabParam.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useNames, useTasks, useWorkScopes } from '../../workQueries.js'
-import { ErrorText, PageHeader, PageLoading, Panel, primaryBtnCls } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel, panelTitleCls, primaryBtnCls } from '../../portalUi.jsx'
 import {
   CommitteeTag,
   DueLabel,
@@ -16,11 +17,18 @@ import {
 } from '../../workUi.jsx'
 import TaskEditor from './TaskEditor.jsx'
 import { byPortalOrder } from '../../officerQueries.js'
+import { errorText } from '../../../lib/errorText.js'
+import { pressCls } from '../../../lib/motion.js'
 
 // /portal/tasks. Everything the database lets this person see: tasks assigned
 // to them, tasks they created, and (officers, EB) their committees' tasks.
 // Filters are client-side; a committee runs tens of tasks a term, not
 // thousands.
+//
+// What is on screen is kept in the address: the new-task form (?tab=new), and
+// each filter that is not where this person usually has it (?show=, ?view=,
+// ?committee=, ?done=). So Back from a task returns to the same list, a reload
+// keeps it, and a link sent to a colleague opens it.
 
 const EMPTY = []
 
@@ -30,9 +38,27 @@ const SCOPES = [
   ['all', 'Everything I can see'],
 ]
 
-function remember(key, fallback) {
+const LAYOUTS = [
+  ['list', 'List'],
+  ['board', 'Board'],
+]
+
+// The page itself, or the form that takes its place.
+const VIEWS = ['tasks', 'new']
+
+// Whether the finished tasks under the list are folded away.
+const DONE = ['hidden', 'shown']
+
+// On a touch screen a button stands at least a thumb tall; with a mouse it
+// keeps the portal's small pill. In px and not rem, because the root size
+// shrinks on a 320px phone.
+const tapCls = '[@media(pointer:coarse)]:min-h-[44px]'
+
+// The choice this browser last made, when it is still one of `choices`.
+function remember(key, choices, fallback) {
   try {
-    return localStorage.getItem(key) || fallback
+    const saved = localStorage.getItem(key)
+    return choices.some(([value]) => value === saved) ? saved : fallback
   } catch {
     return fallback
   }
@@ -61,7 +87,7 @@ function TaskCard({ task, names, compact }) {
     <li>
       <Link
         to={`/portal/tasks/${task.id}`}
-        className="block rounded-2xl border border-line/10 bg-card p-4 transition-colors hover:border-line/25"
+        className="block rounded-2xl border border-line/10 bg-card p-4 transition-colors hover:border-line/25 active:border-line/40"
       >
         <div className="flex flex-wrap items-center gap-2">
           <CommitteeTag committee={task.committee} />
@@ -94,13 +120,28 @@ export default function TasksPage() {
   const tasks = useTasks()
   const canCreate = scopes.society || scopes.task.length > 0
 
-  const [creating, setCreating] = useState(false)
+  const [tab, setTab] = useTabParam(VIEWS, 'tasks')
+  // The form says when it holds typed work. While it does it stays open
+  // whatever the address says, and the address is put back: the Tasks link in
+  // the header leads to this same page without ?tab=new, and would otherwise
+  // close a half-written task without a word. Cancel is the way out, and asks.
+  const [holding, setHolding] = useState(false)
+  useEffect(() => {
+    if (holding && tab !== 'new') setTab('new')
+  }, [holding, tab, setTab])
+  const creating = (tab === 'new' || holding) && canCreate
+  // What this person last chose here, read once as the page opens. The address
+  // can say otherwise (Back from a task, a link from a colleague) and then it
+  // wins; only a choice made on this page is remembered.
+  const [usual] = useState(() => ({
+    scope: remember('ausss-tasks-scope', SCOPES, ''),
+    view: remember('ausss-tasks-view', LAYOUTS, 'list'),
+  }))
   // people who only ever receive tasks start on theirs; officers start wide
-  const [scope, setScope] = useState(() => remember('ausss-tasks-scope', ''))
-  const [view, setView] = useState(() => remember('ausss-tasks-view', 'list'))
-  const [committee, setCommittee] = useState('')
-  const [showDone, setShowDone] = useState(false)
-  const activeScope = scope || (canCreate ? 'all' : 'mine')
+  const [activeScope, setScope] = useTabParam(SCOPES, usual.scope || (canCreate ? 'all' : 'mine'), 'show')
+  const [view, setView] = useTabParam(LAYOUTS, usual.view, 'view')
+  const [done, setDone] = useTabParam(DONE, 'hidden', 'done')
+  const showDone = done === 'shown'
 
   const rows = tasks.data || EMPTY
   const committees = useMemo(() => {
@@ -108,6 +149,10 @@ export default function TasksPage() {
     for (const t of rows) if (t.committee) map.set(t.committee.id, t.committee)
     return [...map.values()].sort(byPortalOrder)
   }, [rows])
+  // Named by its slug in the address. Until the tasks have loaded there is no
+  // committee to match, and the filter waits for them.
+  const committeeSlugs = useMemo(() => committees.map((c) => c.slug), [committees])
+  const [committee, setCommittee] = useTabParam(committeeSlugs, '', 'committee')
 
   const visible = useMemo(
     () =>
@@ -115,14 +160,14 @@ export default function TasksPage() {
         .filter((t) => {
           if (activeScope === 'mine' && !t.assignees.some((a) => a.profile_id === user.id)) return false
           if (activeScope === 'created' && t.created_by !== user.id) return false
-          if (committee && t.committee_id !== committee) return false
+          if (committee && t.committee?.slug !== committee) return false
           return true
         })
         .sort(byUrgency),
     [rows, activeScope, committee, user.id],
   )
   const open = visible.filter((t) => t.status !== 'done')
-  const done = visible.filter((t) => t.status === 'done')
+  const finished = visible.filter((t) => t.status === 'done')
 
   const names = useNames(useMemo(() => rows.flatMap((t) => t.assignees.map((a) => a.profile_id)), [rows]))
 
@@ -132,8 +177,18 @@ export default function TasksPage() {
         <PageHeader eyebrow="Tasks" title="New task" subtitle="Hand out a piece of work and follow it to done." />
         <TaskEditor
           scopes={scopes}
-          onCancel={() => setCreating(false)}
-          onDone={(id, notice) => navigate(`/portal/tasks/${id}`, notice ? { state: { notice } } : undefined)}
+          onHold={setHolding}
+          onCancel={() => {
+            setHolding(false)
+            setTab('tasks')
+          }}
+          onDone={(id, notice) => {
+            setHolding(false)
+            // The form leaves the address first, so Back from the new task
+            // returns to the list and not to an empty form.
+            setTab('tasks')
+            navigate(`/portal/tasks/${id}`, notice ? { state: { notice } } : undefined)
+          }}
         />
       </>
     )
@@ -151,7 +206,7 @@ export default function TasksPage() {
         }
         action={
           canCreate && (
-            <button type="button" onClick={() => setCreating(true)} className={primaryBtnCls}>
+            <button type="button" onClick={() => setTab('new')} className={`${primaryBtnCls} ${tapCls}`}>
               New task
             </button>
           )
@@ -169,17 +224,14 @@ export default function TasksPage() {
                 setScope(value)
                 persist('ausss-tasks-scope', value)
               }}
-              className={chipBtnCls(activeScope === value)}
+              className={`${chipBtnCls(activeScope === value)} ${tapCls}`}
             >
               {label}
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Layout">
-          {[
-            ['list', 'List'],
-            ['board', 'Board'],
-          ].map(([value, label]) => (
+          {LAYOUTS.map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -188,7 +240,7 @@ export default function TasksPage() {
                 setView(value)
                 persist('ausss-tasks-view', value)
               }}
-              className={chipBtnCls(view === value)}
+              className={`${chipBtnCls(view === value)} ${tapCls}`}
             >
               {label}
             </button>
@@ -198,16 +250,21 @@ export default function TasksPage() {
 
       {committees.length > 1 && (
         <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Committee">
-          <button type="button" aria-pressed={!committee} onClick={() => setCommittee('')} className={chipBtnCls(!committee)}>
+          <button
+            type="button"
+            aria-pressed={!committee}
+            onClick={() => setCommittee('')}
+            className={`${chipBtnCls(!committee)} ${tapCls}`}
+          >
             All committees
           </button>
           {committees.map((c) => (
             <button
               key={c.id}
               type="button"
-              aria-pressed={committee === c.id}
-              onClick={() => setCommittee(c.id)}
-              className={chipBtnCls(committee === c.id)}
+              aria-pressed={committee === c.slug}
+              onClick={() => setCommittee(c.slug)}
+              className={`${chipBtnCls(committee === c.slug)} ${tapCls}`}
             >
               {c.abbr}
             </button>
@@ -219,7 +276,7 @@ export default function TasksPage() {
         <PageLoading />
       ) : tasks.error ? (
         <Panel>
-          <ErrorText>Couldn’t load tasks: {tasks.error.message}</ErrorText>
+          <ErrorText>{errorText(tasks.error, 'Couldn’t load the tasks.')}</ErrorText>
         </Panel>
       ) : visible.length === 0 ? (
         <Panel>
@@ -237,7 +294,7 @@ export default function TasksPage() {
             const column = visible.filter((t) => t.status === status)
             return (
               <section key={status} aria-label={label} className="rounded-2xl border border-line/10 bg-sunk/60 p-3">
-                <p className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+                <p className={`px-1 pb-3 ${panelTitleCls}`}>
                   {label} <span className="text-soft/40">{column.length}</span>
                 </p>
                 {column.length === 0 ? (
@@ -266,19 +323,21 @@ export default function TasksPage() {
               ))}
             </ul>
           )}
-          {done.length > 0 && (
-            <div className="mt-8">
+          {finished.length > 0 && (
+            // The button is one line of small type with a thumb's 44px to land
+            // on; the margins here take its extra 14px above and below away.
+            <div className="mt-[18px]">
               <button
                 type="button"
                 aria-expanded={showDone}
-                onClick={() => setShowDone((v) => !v)}
-                className="text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
+                onClick={() => setDone(showDone ? 'hidden' : 'shown')}
+                className={`inline-flex min-h-[44px] items-center text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 ${pressCls} hover:text-ink`}
               >
-                {showDone ? 'Hide' : 'Show'} done ({done.length})
+                {showDone ? 'Hide' : 'Show'} done ({finished.length})
               </button>
               {showDone && (
-                <ul className="mt-4 space-y-3">
-                  {done.map((t) => (
+                <ul className="mt-0.5 space-y-3">
+                  {finished.map((t) => (
                     <TaskCard key={t.id} task={t} names={names} />
                   ))}
                 </ul>

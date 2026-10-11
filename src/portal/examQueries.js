@@ -125,9 +125,15 @@ export function useExamMutations() {
   const create = useMutation({ mutationFn: createExam, onSettled: done })
   const update = useMutation({ mutationFn: ({ id, patch }) => updateExam(id, patch), onSettled: done })
   // Not waited for: the page leaves for the list as soon as the row is gone,
-  // and has no use for one more read of an exam that is not there.
+  // and has no use for one more read of an exam that is not there. The list
+  // it leaves for is the one kept from before, shown at once while it is read
+  // again: the exam is taken out of that copy first, so the list never shows
+  // it beside the line that says it was deleted.
   const remove = useMutation({
     mutationFn: deleteExam,
+    onSuccess: (id) => {
+      qc.setQueryData(examKeys.list(), (rows) => (Array.isArray(rows) ? rows.filter((row) => row.id !== id) : rows))
+    },
     onSettled: () => {
       done()
     },
@@ -203,8 +209,13 @@ async function deleteQuestion(id) {
 async function reorderQuestions({ examId, ids }) {
   const stored = await fetchQuestions(examId)
   if (stored.length !== ids.length || stored.some((q) => !ids.includes(q.id))) {
-    // Another officer added or removed a question in the meantime.
-    throw new Error('The questions changed while you were moving one. The list has been read again: move it once more.')
+    // Another officer added or removed a question in the meantime. The mark
+    // says the sentence is written for the officer: errorText
+    // (src/lib/errorText.js) then shows it as it is.
+    throw Object.assign(
+      new Error('The questions changed while you were moving one. The list has been read again: move it once more.'),
+      { rejected: true },
+    )
   }
   const results = await Promise.all(
     sortChanges(stored, ids).map(({ id, sort }) => supabase.from('exam_questions').update({ sort }).eq('id', id)),

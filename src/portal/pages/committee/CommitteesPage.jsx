@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
+import { errorText } from '../../../lib/errorText.js'
+import { pressCls } from '../../../lib/motion.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useCommittees } from '../../officerQueries.js'
 import { ErrorText, PageHeader, PageLoading, Panel } from '../../portalUi.jsx'
@@ -11,18 +13,21 @@ import { ErrorText, PageHeader, PageLoading, Panel } from '../../portalUi.jsx'
 function CommitteeTile({ c }) {
   return (
     <li>
+      {/* The whole tile is the link, so it answers a press as a button does. */}
       <Link
         to={`/portal/committees/${c.slug}`}
-        className="group flex h-full w-full flex-col items-center gap-3 rounded-2xl border border-line/10 bg-card p-5 text-center transition-colors hover:border-medical/40"
+        className={`group flex h-full w-full flex-col items-center gap-3 rounded-2xl border border-line/10 bg-card p-5 text-center hover:border-medical/40 ${pressCls}`}
       >
-        {/* Committee logo PNGs are solid white, show them on a dark chip
-            (accent border), not a white one, so they're visible. */}
+        {/* The committee logos are drawn in white: logo-ink turns them dark
+            on a light page. The abbreviation is printed under the logo, so
+            the picture needs no words of its own. */}
         <span
           className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl border bg-page p-1.5"
           style={{ borderColor: c.color || 'rgb(var(--c-line) / 0.15)' }}
+          aria-hidden="true"
         >
           {c.logo ? (
-            <img src={c.logo} alt={c.abbr} className="logo-ink h-full w-full object-contain" />
+            <img src={c.logo} alt="" className="logo-ink h-full w-full object-contain" />
           ) : (
             <span className="heading-serif text-lg text-ink">{c.abbr}</span>
           )}
@@ -62,7 +67,7 @@ export default function CommitteesPage() {
         <PageLoading />
       ) : all.error ? (
         <Panel>
-          <ErrorText>Couldn’t load committees: {all.error.message}</ErrorText>
+          <ErrorText>{errorText(all.error, 'Couldn’t load committees.')}</ErrorText>
         </Panel>
       ) : mine.length === 0 ? (
         <Panel>

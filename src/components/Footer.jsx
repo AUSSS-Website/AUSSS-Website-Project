@@ -8,10 +8,18 @@ import { FindUs, SocialIconLinks } from './ContactDetails.jsx'
 // shows on /magazine, so load it lazily instead of in every page's bundle.
 const GalleryAurora = lazy(() => import('./GalleryAurora.jsx'))
 
+// One footer link: a line of small text to the eye, 44px high for a finger
+// (in px: the root size shrinks on a small phone, and a rem would shrink with
+// it). The rows of links would otherwise sit 12px apart on a phone, where the
+// neighbour is easier to hit than the link.
+const linkCls = 'inline-flex min-h-[44px] items-center transition-colors hover:text-ink'
+
 export default function Footer() {
   // On the magazine page only, a faint aurora (bright at the top, fading down)
   // lets the page's glow leak a little way over the top of the footer before
   // settling back into the footer's own colour. The footer stays its own section.
+  // A reader who asked for more contrast gets the plain footer: the glow sits
+  // behind the footer's text.
   const onMagazine = useLocation().pathname === '/magazine'
   // Motto, address, map pin and channels: edited by the EB in the portal.
   const contact = useContentBlock(siteContact)
@@ -19,7 +27,7 @@ export default function Footer() {
     <footer className="relative overflow-hidden border-t border-line/10 bg-sunk py-14 dark:bg-page">
       {onMagazine && (
         <Suspense fallback={null}>
-          <GalleryAurora opacityClass="opacity-30" amplitude={1.1} blend={0.55} />
+          <GalleryAurora opacityClass="opacity-30 contrast-more:hidden" amplitude={1.1} blend={0.55} />
         </Suspense>
       )}
       <div className="container-prose relative z-10">
@@ -43,26 +51,29 @@ export default function Footer() {
             <SocialIconLinks socials={contact.socials} />
           </div>
 
+          {/* The links' own height takes the place of the gap between rows; the
+              negative margin gives back what it adds above and below. The
+              lookup is named as it is in the header, apart from the portal. */}
           <nav
             aria-label="Footer"
-            className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-soft/70"
+            className="-my-3 flex flex-wrap justify-center gap-x-8 text-sm text-soft/70"
           >
-            <Link to="/" className="transition-colors hover:text-ink">Home</Link>
-            <Link to="/merch" className="transition-colors hover:text-ink">Merch</Link>
-            <Link to="/ifmsa" className="transition-colors hover:text-ink">IFMSA</Link>
-            <Link to="/events" className="transition-colors hover:text-ink">Events</Link>
-            <Link to="/magazine" className="transition-colors hover:text-ink">Magazine</Link>
-            <Link to="/contact" className="transition-colors hover:text-ink">Contact</Link>
-            <Link to="/members" className="transition-colors hover:text-ink">Members</Link>
-            <Link to="/constitution" className="transition-colors hover:text-ink">
+            <Link to="/" className={linkCls}>Home</Link>
+            <Link to="/merch" className={linkCls}>Merch</Link>
+            <Link to="/ifmsa" className={linkCls}>IFMSA</Link>
+            <Link to="/events" className={linkCls}>Events</Link>
+            <Link to="/magazine" className={linkCls}>Magazine</Link>
+            <Link to="/contact" className={linkCls}>Contact</Link>
+            <Link to="/members" className={linkCls}>Check membership</Link>
+            <Link to="/constitution" className={linkCls}>
               Constitution
             </Link>
-            <Link to="/join" className="transition-colors hover:text-ink">Join</Link>
-            <Link to="/sorting" className="transition-colors hover:text-ink">Sorting quiz</Link>
-            <Link to="/portal/sign-in" className="transition-colors hover:text-ink">
+            <Link to="/join" className={linkCls}>Join</Link>
+            <Link to="/sorting" className={linkCls}>Sorting quiz</Link>
+            <Link to="/portal/sign-in" className={linkCls}>
               Members portal
             </Link>
-            <Link to="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
+            <Link to="/privacy" className={linkCls}>Privacy</Link>
           </nav>
         </div>
 

@@ -21,6 +21,7 @@ import {
   useEvents,
 } from '../lib/events.js'
 import { markdownToText } from '../lib/markdown.js'
+import { pressCls } from '../lib/motion.js'
 
 // /events (what is coming up), /events/archive (what is over, by term) and
 // /events/<slug> (one event). The events come from the database
@@ -38,6 +39,12 @@ export default function EventsPage({ archive = false }) {
   return archive ? <ArchiveView /> : <UpcomingView />
 }
 
+// The links that close a page are one line of text to the eye. This gives a
+// finger 44px to land on (in px, since the root size shrinks on a 320px phone)
+// and takes back whatever that adds to the line (1.25rem at text-sm) with a
+// negative margin, so nothing moves.
+const tapLinkCls = '-my-[calc((44px_-_1.25rem)/2)] inline-flex min-h-[44px] items-center'
+
 function Spinner({ label }) {
   return (
     <div className="flex justify-center py-10">
@@ -47,6 +54,19 @@ function Spinner({ label }) {
         aria-label={label}
       />
     </div>
+  )
+}
+
+// One event's page, or its calendar file, opened before the list has
+// answered. The wait is shown where the page will be: a bare spinner at the
+// top of the page would turn behind the fixed header, unseen.
+function LoadingEvent() {
+  return (
+    <article className="bg-page">
+      <div className="container-prose flex min-h-[60vh] items-center justify-center pt-32 sm:pt-40">
+        <Spinner label="Loading the event" />
+      </div>
+    </article>
   )
 }
 
@@ -68,7 +88,7 @@ function PageHead({ eyebrow, title, lead, children }) {
           <span className="h-px w-8 bg-medical" />
         </span>
         <h1 className="heading-serif mt-6 text-4xl text-ink sm:text-6xl">{title}</h1>
-        <p className="mx-auto mt-5 max-w-2xl text-base font-light leading-relaxed text-soft/80 sm:text-lg">{lead}</p>
+        <p className="mx-auto mt-5 max-w-2xl text-base font-normal leading-relaxed text-soft/80 dark:font-light sm:text-lg">{lead}</p>
         {children}
       </div>
     </header>
@@ -114,11 +134,11 @@ function UpcomingView() {
 
         <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
           {hasPast && (
-            <Link to="/events/archive" className="font-semibold text-accent transition-colors hover:text-ink">
+            <Link to="/events/archive" className={`${tapLinkCls} font-semibold text-accent transition-colors hover:text-ink`}>
               Past events →
             </Link>
           )}
-          <Link to="/" className="font-semibold text-soft/60 transition-colors hover:text-ink">
+          <Link to="/" className={`${tapLinkCls} font-semibold text-soft/60 transition-colors hover:text-ink`}>
             AUSSS home
           </Link>
         </div>
@@ -172,10 +192,10 @@ function ArchiveView() {
         )}
 
         <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
-          <Link to="/events" className="font-semibold text-accent transition-colors hover:text-ink">
+          <Link to="/events" className={`${tapLinkCls} font-semibold text-accent transition-colors hover:text-ink`}>
             ← Upcoming events
           </Link>
-          <Link to="/" className="font-semibold text-soft/60 transition-colors hover:text-ink">
+          <Link to="/" className={`${tapLinkCls} font-semibold text-soft/60 transition-colors hover:text-ink`}>
             AUSSS home
           </Link>
         </div>
@@ -186,8 +206,7 @@ function ArchiveView() {
 
 // ───────────────────────── One event ─────────────────────────
 
-const btnBase =
-  'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-colors'
+const btnBase = `inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold ${pressCls}`
 
 function EventPage({ slug }) {
   const { events, loading } = useEvents()
@@ -197,7 +216,7 @@ function EventPage({ slug }) {
 
   // A link shared before the event's link was changed still opens it.
   if (redirectTo) return <Navigate to={`/events/${redirectTo}`} replace />
-  if (!event) return loading ? <Spinner label="Loading the event" /> : <NotFound />
+  if (!event) return loading ? <LoadingEvent /> : <NotFound />
   return <EventView ev={event} events={events} />
 }
 
@@ -210,10 +229,10 @@ function NotFound() {
         lead="This event may have been taken down, or the link is mistyped."
       >
         <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm">
-          <Link to="/events" className="font-semibold text-accent hover:text-ink">
+          <Link to="/events" className={`${tapLinkCls} font-semibold text-accent transition-colors hover:text-ink`}>
             Upcoming events
           </Link>
-          <Link to="/events/archive" className="font-semibold text-soft/60 hover:text-ink">
+          <Link to="/events/archive" className={`${tapLinkCls} font-semibold text-soft/60 transition-colors hover:text-ink`}>
             Past events
           </Link>
         </div>
@@ -240,9 +259,12 @@ function EventView({ ev, events }) {
         {/* Centred like the committee pages: the site's floating Back button
             sits at the top left on a phone. */}
         <div className="container-prose relative max-w-4xl text-center">
+          {/* 44px for a finger. The margins take back what that adds to the
+              1rem line, worked out from the root size so the 2rem gap below
+              holds on a small phone and a wide screen alike. */}
           <Link
             to={upcoming ? '/events' : '/events/archive'}
-            className="mb-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
+            className="-mt-[calc((44px_-_1rem)/2)] mb-[calc(2rem_-_(44px_-_1rem)/2)] inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -255,7 +277,12 @@ function EventView({ ev, events }) {
             style={accent ? { color: accent } : undefined}
           >
             {committee ? (
-              <Link to={`/committees/${ev.committee}`} className="hover:underline">
+              // The ::after reaches above and below the 1rem line until the
+              // two make 44px, for a finger.
+              <Link
+                to={`/committees/${ev.committee}`}
+                className="relative inline-block hover:underline after:absolute after:inset-x-0 after:-inset-y-[calc((44px_-_1rem)/2)] after:content-['']"
+              >
                 {committee.abbr} · {committee.name}
               </Link>
             ) : (
@@ -306,7 +333,7 @@ function EventView({ ev, events }) {
                   href={googleCalendarUrl(ev, { url: pageUrl, details })}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-2 text-sm font-semibold text-soft/65 transition-colors hover:text-ink"
+                  className="inline-flex min-h-[44px] items-center px-2 text-sm font-semibold text-soft/65 transition-colors hover:text-ink"
                 >
                   Google Calendar ↗
                 </a>
@@ -357,10 +384,10 @@ function EventView({ ev, events }) {
         )}
 
         <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-sm">
-          <Link to="/events" className="font-semibold text-accent transition-colors hover:text-ink">
+          <Link to="/events" className={`${tapLinkCls} font-semibold text-accent transition-colors hover:text-ink`}>
             All events
           </Link>
-          <Link to="/events/archive" className="font-semibold text-soft/60 transition-colors hover:text-ink">
+          <Link to="/events/archive" className={`${tapLinkCls} font-semibold text-soft/60 transition-colors hover:text-ink`}>
             Past events
           </Link>
         </div>
@@ -435,7 +462,7 @@ function CalendarFile({ slug }) {
     if (href) linkRef.current?.click()
   }, [href])
 
-  if (!target) return loading ? <Spinner label="Loading the event" /> : <NotFound />
+  if (!target) return loading ? <LoadingEvent /> : <NotFound />
   return (
     <article className="bg-page">
       <PageHead eyebrow="Add to calendar" title={target.title} lead="Your calendar file is on its way. Open it to add the event.">
@@ -449,7 +476,7 @@ function CalendarFile({ slug }) {
             <CalendarIcon />
             Download it again
           </a>
-          <Link to={`/events/${target.slug}`} className="font-semibold text-accent hover:text-ink">
+          <Link to={`/events/${target.slug}`} className="inline-flex min-h-[44px] items-center font-semibold text-accent transition-colors hover:text-ink">
             Back to the event
           </Link>
         </div>

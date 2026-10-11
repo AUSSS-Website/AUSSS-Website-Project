@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { pressCls } from '../lib/motion.js'
 import { MEMBERSHIP_LABELS } from './constants.js'
@@ -60,15 +60,18 @@ export function AuthCard({ eyebrow, title, subtitle, children }) {
   )
 }
 
+// The small blue capitals a panel is titled with. Exported for a heading that
+// opens a section without being a field's label (Field below is for those), so
+// it reads as the same kind of title wherever it stands:
+//
+//   <p className={panelTitleCls}>Wide designs</p>
+export const panelTitleCls = 'text-xs font-semibold uppercase tracking-[0.2em] text-accent'
+
 // Content panel used on the dashboard and profile pages.
 export function Panel({ title, children, className = '' }) {
   return (
     <section className={`min-w-0 rounded-2xl border border-line/10 bg-card p-5 ${className}`}>
-      {title && (
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          {title}
-        </p>
-      )}
+      {title && <p className={panelTitleCls}>{title}</p>}
       {children}
     </section>
   )
@@ -172,12 +175,138 @@ export function Toggle({ checked, onChange, label, disabled }) {
   )
 }
 
+// A tick box with its label, for a choice inside a form that waits for Save.
+// A switch (Toggle above) is for a setting that takes effect the moment it is
+// flipped. A choice that only counts once the form is saved is a tick box, so
+// the two kinds never look alike.
+//
+//   <CheckField checked={digest} onChange={setDigest} label="Email me a daily digest" hint="At most one email a day." />
+//
+// `onChange` is handed the new value, true or false, as Toggle's is. The label
+// and the hint are both part of what a finger can land on, and the row is at
+// least 44px tall, in px and not rem, because the root size shrinks on a 320px
+// phone. `id` names the input, for a page that points at it. The box is drawn
+// here from the theme's colours; where the system forces its own colours, the
+// browser's own tick box takes its place.
+const checkBoxCls =
+  'peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-line/40 bg-sunk transition-[background-color,border-color,transform] duration-150 ease-out checked:border-cta checked:bg-cta group-hover/check:border-line/60 checked:group-hover/check:border-cta-hover checked:group-hover/check:bg-cta-hover motion-safe:group-active/check:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed forced-colors:appearance-auto'
+
+export function CheckField({ checked, onChange, label, hint, disabled = false, id, className = '' }) {
+  const auto = useId()
+  const inputId = id || auto
+  const labelId = `${inputId}-label`
+  const hintId = `${inputId}-hint`
+  return (
+    <label
+      className={`grid min-h-[44px] grid-cols-[auto_minmax(0,1fr)] content-center items-start gap-x-3 gap-y-0.5 py-3 ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'group/check cursor-pointer'
+      } ${className}`}
+    >
+      <span className="relative flex h-5 w-5 shrink-0">
+        <input
+          id={inputId}
+          type="checkbox"
+          checked={Boolean(checked)}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
+          // The name is the label alone; the hint is read after it, as a description.
+          aria-labelledby={labelId}
+          aria-describedby={hint ? hintId : undefined}
+          className={checkBoxCls}
+        />
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 m-auto h-3.5 w-3.5 text-on-cta opacity-0 transition-opacity duration-150 peer-checked:opacity-100 forced-colors:hidden"
+        >
+          <path d="M3.5 8.5l3 3 6-6.5" />
+        </svg>
+      </span>
+      <span id={labelId} className="text-sm font-medium text-ink">
+        {label}
+      </span>
+      {hint && (
+        <span id={hintId} className="col-start-2 text-xs text-soft/55">
+          {hint}
+        </span>
+      )}
+    </label>
+  )
+}
+
 // Inline error line.
 export function ErrorText({ id, children }) {
   if (!children) return null
   return (
     <p id={id} role="alert" className="text-sm text-danger">
       {children}
+    </p>
+  )
+}
+
+// Where a form stands, in one line beside its Save button: "Unsaved changes"
+// while there is something to save, otherwise what the last save said,
+// otherwise nothing. A "Saved." left up after the next keystroke hid the fact
+// that there was something new to save; here the two cannot show together.
+//
+//   <SaveStatus dirty={dirty} saved={saved} />
+//   <SaveStatus dirty={dirty} saved={msg} />
+//
+// `saved` is true for "Saved." (`savedText` gives other words for it, such as
+// "Published."), or it is the sentence to show, for a page that keeps its
+// message in state. `unsavedText` replaces "Unsaved changes".
+//
+// The line is a polite status, so a screen reader says it when it changes.
+// For that it has to be in the page before it has anything to say: with
+// nothing to say it is still rendered, out of sight and taking up no room.
+export function SaveStatus({ dirty = false, saved = false, savedText = 'Saved.', unsavedText = 'Unsaved changes', className = '' }) {
+  const text = dirty ? unsavedText : saved === true ? savedText : saved || ''
+  return (
+    <p
+      role="status"
+      className={text ? `flex min-w-0 items-center gap-1.5 text-xs ${dirty ? 'text-soft/70' : 'text-ok'} ${className}` : 'sr-only'}
+    >
+      {dirty && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />}
+      {text}
+    </p>
+  )
+}
+
+// A quiet line that says what has just happened and offers to take it back: a
+// row that left the list it was in, an album sent to the archive, a line
+// removed from a form. It stands in for asking first, so nothing is confirmed
+// and a slip costs one click.
+//
+//   <UndoLine onUndo={() => move(row.id, was)}>Moved to Contacted.</UndoLine>
+//
+// `undoLabel` replaces "Undo". While `busy` the button is off and shows
+// `busyLabel` ("Undoing…"). Without `onUndo` it is the sentence alone.
+//
+// Like SaveStatus it is a polite status: keep it in the page and give it no
+// children while there is nothing to undo, and a screen reader says the line
+// when it comes. The button has a thumb's 44px to land on although the line
+// stays one line of small text: its ::after carries the extra, centred on the
+// word.
+const undoBtnCls = `relative inline-flex shrink-0 items-center rounded font-semibold text-accent ${pressCls} hover:text-ink disabled:opacity-40 after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[calc(100%+1rem)] after:min-w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`
+
+export function UndoLine({ children, onUndo, undoLabel = 'Undo', busyLabel = 'Undoing…', busy = false, className = '' }) {
+  const said = children != null && children !== false && children !== ''
+  return (
+    <p
+      role="status"
+      className={said ? `flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-soft/70 ${className}` : 'sr-only'}
+    >
+      {said && <span className="min-w-0">{children}</span>}
+      {said && onUndo && (
+        <button type="button" onClick={onUndo} disabled={busy} className={undoBtnCls}>
+          {busy ? busyLabel : undoLabel}
+        </button>
+      )}
     </p>
   )
 }

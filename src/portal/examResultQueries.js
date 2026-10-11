@@ -75,11 +75,24 @@ export function useExamQuestionStats(examId, { live = false, exam = null } = {})
 // and the counts on the list of exams, so both families of keys are read
 // again, whether the delete went through or not: a refusal usually means the
 // paper is already gone. The reads are not waited for, so the page can leave
-// the paper as soon as it is deleted.
+// the paper as soon as it is deleted. The ranking it goes back to is the one
+// kept from before, shown at once while it is read again: the paper is taken
+// out of that copy first, so its row is not there to be opened beside the line
+// that says it was deleted. The ranks are the database's and stay as they were
+// until the new read brings them.
 export function useDeleteAttempt() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (attemptId) => unwrap(await supabase.rpc('exam_delete_attempt', { p_attempt: attemptId })),
+    onSuccess: (_answer, attemptId) => {
+      // Of the three things kept under this root, only a ranking has a list of
+      // papers; a paper's own sheet and the question figures are left alone.
+      qc.setQueriesData({ queryKey: RESULTS_ROOT }, (kept) =>
+        Array.isArray(kept?.attempts)
+          ? { ...kept, attempts: kept.attempts.filter((row) => row?.attempt_id !== attemptId) }
+          : kept,
+      )
+    },
     onSettled: () => {
       refreshExamData(qc)
     },

@@ -4,6 +4,7 @@ import usePageTitle from '../hooks/usePageTitle.js'
 import PdfReader from '../components/PdfReader.jsx'
 import DocumentCard from '../components/DocumentCard.jsx'
 import { society } from '../data/society.js'
+import { pressCls } from '../lib/motion.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
 
 const CONSTITUTION_PDF = '/assets/docs/AUSSS-Constitution-and-Bylaws.pdf'
@@ -50,7 +51,10 @@ export default function ConstitutionPage() {
 
   return (
     <article className="bg-page">
-      <header className="relative overflow-hidden pb-10 pt-32 sm:pt-40">
+      {/* pt-44 on a phone: this header opens with a link at the left edge,
+          where the site's floating Back button sits, and at pt-32 the button
+          covered the start of it. */}
+      <header className="relative overflow-hidden pb-10 pt-44 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
@@ -61,11 +65,13 @@ export default function ConstitutionPage() {
         />
         <div className="container-prose relative">
           <div>
+            {/* A thumb's height to press; the margin takes the padding back,
+                so the line sits where it did. */}
             <Link
               to="/members"
-              className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
+              className="-my-3.5 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
             >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Membership status
@@ -81,7 +87,7 @@ export default function ConstitutionPage() {
           <h1 className="heading-serif mt-4 text-4xl text-ink sm:text-6xl">
             Constitution &amp; Bylaws
           </h1>
-          <p className="mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
+          <p className="mt-5 max-w-2xl text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
             The document that governs AUSSS: membership, the Executive Board,
             committees and how the society is run. Read it in full below, or
             search it for a word.
@@ -92,7 +98,7 @@ export default function ConstitutionPage() {
               href={CONSTITUTION_PDF}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
             >
               <PdfIcon />
               Open in a new tab
@@ -100,7 +106,7 @@ export default function ConstitutionPage() {
             <a
               href={CONSTITUTION_PDF}
               download
-              className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
             >
               Download PDF
             </a>
@@ -182,7 +188,7 @@ export default function ConstitutionPage() {
             </p>
             <a
               href={`mailto:${secGenEmail}`}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
+              className={`mt-5 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid hover:bg-solid-hover ${pressCls}`}
             >
               Email the Secretary General
             </a>

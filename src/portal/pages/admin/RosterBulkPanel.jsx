@@ -7,7 +7,19 @@ import {
 } from '../../rosterQueries.js'
 import { parseCsv } from '../../rosterFile.js'
 import { ROSTER_STATUSES } from '../../constants.js'
-import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { errorText } from '../../../lib/errorText.js'
+import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
+import {
+  ConfirmButton,
+  ErrorText,
+  Field,
+  Panel,
+  Spinner,
+  inputCls,
+  outlineBtnCls,
+  panelTitleCls,
+  primaryBtnCls,
+} from '../../portalUi.jsx'
 import { when } from '../../workUi.jsx'
 import { unitLabelForSlug } from '../../rosterUnits.js'
 
@@ -98,8 +110,11 @@ function ReviewRow({ item, choice, onChoose }) {
 function History() {
   const log = useBulkUpdates()
   const undo = useUndoBulkUpdate()
-  const [confirmId, setConfirmId] = useState(null)
-  const [note, setNote] = useState(null) // { id, text }
+  // What the last undo did, under the update it was for: { id, text, tone }.
+  // The tone is 'ok' when everything went back, 'warn' when some rows were
+  // left alone (a later change must not be destroyed) and 'error' when the
+  // undo did not happen. A clean undo is a success, and reads as one.
+  const [note, setNote] = useState(null)
   if (!log.data?.length) return null
 
   const onUndo = async (id) => {
@@ -109,12 +124,11 @@ function History() {
       const kept = r.skipped?.length || 0
       setNote({
         id,
+        tone: kept ? 'warn' : 'ok',
         text: `${r.restored} put back${kept ? `, ${kept} left alone (${r.skipped.map((s) => `${s.full_name}: ${s.reason}`).join('; ')})` : ''}.`,
       })
     } catch (e) {
-      setNote({ id, text: e?.message || 'Could not undo.' })
-    } finally {
-      setConfirmId(null)
+      setNote({ id, tone: 'error', text: errorText(e, 'Could not undo that update.') })
     }
   }
 
@@ -122,37 +136,44 @@ function History() {
     <div className="mt-6 border-t border-line/10 pt-5">
       <p className="text-sm font-semibold text-ink">Recent bulk updates</p>
       <ul className="mt-3 space-y-3">
-        {log.data.map((b) => (
-          <li key={b.id} className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 text-sm text-soft/75">
-              <p className={b.undone_at ? 'line-through opacity-60' : ''}>
-                <span className="font-semibold text-ink">{b.label}</span> · {b.changes.length}{' '}
-                {b.changes.length === 1 ? 'member' : 'members'} ·{' '}
-                {effect(b.action, b.value)}
-              </p>
-              <p className="text-xs text-soft/50">
-                {when(b.at)}
-                {b.undone_at ? ` · undone ${when(b.undone_at)}` : ''}
-              </p>
-              {note?.id === b.id && <p className="mt-1 text-xs text-warn">{note.text}</p>}
-            </div>
-            {!b.undone_at &&
-              (confirmId === b.id ? (
-                <span className="flex items-center gap-2">
-                  <button type="button" disabled={undo.isPending} onClick={() => onUndo(b.id)} className={`${outlineBtnCls} border-red-400/50 text-danger`}>
-                    {undo.isPending ? 'Undoing…' : `Yes, undo for ${b.changes.length}`}
-                  </button>
-                  <button type="button" disabled={undo.isPending} onClick={() => setConfirmId(null)} className={outlineBtnCls}>
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button type="button" onClick={() => setConfirmId(b.id)} className={outlineBtnCls}>
-                  Undo
-                </button>
-              ))}
-          </li>
-        ))}
+        {log.data.map((b) => {
+          const mine = note?.id === b.id ? note : null
+          const said = mine && mine.tone !== 'error' ? mine.text : ''
+          return (
+            <li key={b.id} className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0 text-sm text-soft/75">
+                <p className={b.undone_at ? 'line-through opacity-60' : ''}>
+                  <span className="font-semibold text-ink">{b.label}</span> · {b.changes.length}{' '}
+                  {b.changes.length === 1 ? 'member' : 'members'} ·{' '}
+                  {effect(b.action, b.value)}
+                </p>
+                <p className="text-xs text-soft/50">
+                  {when(b.at)}
+                  {b.undone_at ? ` · undone ${when(b.undone_at)}` : ''}
+                </p>
+                {/* Kept in the page while it has nothing to say, so that a
+                    screen reader says the sentence when it comes. */}
+                <p role="status" className={said ? `mt-1 text-xs ${mine.tone === 'warn' ? 'text-warn' : 'text-ok'}` : 'sr-only'}>
+                  {said}
+                </p>
+                {mine?.tone === 'error' && (
+                  <div className="mt-1">
+                    <ErrorText>{mine.text}</ErrorText>
+                  </div>
+                )}
+              </div>
+              {!b.undone_at && (
+                <ConfirmButton
+                  label="Undo"
+                  busyLabel="Undoing…"
+                  busy={undo.isPending && undo.variables === b.id}
+                  disabled={undo.isPending}
+                  onConfirm={() => onUndo(b.id)}
+                />
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -181,6 +202,12 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
   }, [items])
   const repeats = Object.values(choices).filter(Boolean).length - selectedIds.length
 
+  // A review in progress is work: every "pick one" answered by hand. The
+  // browser asks before a reload or a closed tab throws it away, and Close
+  // below asks twice.
+  const reviewing = Boolean(items)
+  useLeaveWarning(reviewing || apply.isPending)
+
   const reset = () => {
     setItems(null)
     setChoices({})
@@ -196,7 +223,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
       const fromFile = (await fileToLines(file)).map((l) => l.trim()).filter(Boolean)
       setText((t) => [t.trim(), ...fromFile].filter(Boolean).join('\n'))
     } catch (err) {
-      setError(err?.message || 'Could not read that file.')
+      setError(errorText(err, 'Could not read that file.'))
     }
   }
 
@@ -211,7 +238,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
       // Certain and likely matches start selected; the rest start as "skip".
       setChoices(Object.fromEntries(res.map((it, i) => [i, it.match?.id || ''])))
     } catch (err) {
-      setError(err?.message || 'Could not match the list.')
+      setError(errorText(err, 'Could not match the list.'))
     } finally {
       setMatching(false)
     }
@@ -232,7 +259,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
       setText('')
       setLabel('')
     } catch (err) {
-      setError(err?.message || 'Could not apply the update.')
+      setError(errorText(err, 'Could not apply the update.'))
     }
   }
 
@@ -247,9 +274,20 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
           membership status, or their committee. You review every match before anything changes,
           and each update can be undone.
         </p>
-        <button type="button" onClick={onClose} className={outlineBtnCls}>
-          Close
-        </button>
+        {reviewing ? (
+          // It grows to the left when it turns red, so nothing beside it moves.
+          <ConfirmButton
+            label="Close"
+            confirmLabel="Click again to discard the review"
+            keepWidth={false}
+            disabled={apply.isPending}
+            onConfirm={onClose}
+          />
+        ) : (
+          <button type="button" onClick={onClose} className={outlineBtnCls}>
+            Close
+          </button>
+        )}
       </div>
 
       {!items ? (
@@ -308,13 +346,6 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
             />
           </Field>
           <ErrorText>{error}</ErrorText>
-          {done && (
-            <p className="text-sm text-ok" role="status">
-              Updated {done.updated} {done.updated === 1 ? 'member' : 'members'}.
-              {done.skipped?.length > 0 &&
-                ` Left alone: ${done.skipped.map((s) => `${s.full_name} (${s.reason})`).join('; ')}.`}
-            </p>
-          )}
           <div className="flex flex-wrap items-center gap-3">
             <button type="submit" disabled={matching || lines.length === 0} className={`${primaryBtnCls} px-5 py-2 text-xs`}>
               {matching ? 'Matching…' : `Match ${lines.length || ''} ${lines.length === 1 ? 'line' : 'lines'} to the roster`}
@@ -339,7 +370,7 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
 
           {review.length > 0 && (
             <>
-              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Needs a look</p>
+              <p className={`mt-5 ${panelTitleCls}`}>Needs a look</p>
               <ul className="mt-3 space-y-2">
                 {review.map(({ it, i }) => (
                   <ReviewRow key={i} item={it} choice={choices[i] || ''} onChoose={(id) => setChoices((c) => ({ ...c, [i]: id }))} />
@@ -355,17 +386,23 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
               </summary>
               <ul className="mt-3 space-y-1 text-xs text-soft/60">
                 {certain.map(({ it, i }) => (
-                  <li key={i} className="flex flex-wrap items-center justify-between gap-2">
-                    <span>
-                      {it.line} → <span className="text-soft/85">{describe(it.match)}</span>
-                    </span>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(choices[i])}
-                        onChange={(e) => setChoices((c) => ({ ...c, [i]: e.target.checked ? it.match.id : '' }))}
-                      />
-                      Include
+                  <li key={i}>
+                    {/* The whole line is the tick box's label, so each box is
+                        named for its person, and on a touch screen the line is
+                        44px tall. With a mouse the list stays close-set. */}
+                    <label className="flex cursor-pointer flex-wrap items-center justify-between gap-2 [@media(pointer:coarse)]:min-h-[44px]">
+                      <span>
+                        {it.line} → <span className="text-soft/85">{describe(it.match)}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(choices[i])}
+                          onChange={(e) => setChoices((c) => ({ ...c, [i]: e.target.checked ? it.match.id : '' }))}
+                          className="h-4 w-4 accent-medical"
+                        />
+                        Include
+                      </span>
                     </label>
                   </li>
                 ))}
@@ -386,6 +423,19 @@ export default function RosterBulkPanel({ onClose, initialAction = 'lga', commit
           </div>
         </div>
       )}
+
+      {/* What the last update did. It stands outside the form, which is put
+          back into the page once an update is applied: a status that arrives
+          together with its surroundings is not read out. */}
+      <p role="status" className={done ? 'mt-5 text-sm text-ok' : 'sr-only'}>
+        {done
+          ? `Updated ${done.updated} ${done.updated === 1 ? 'member' : 'members'}.${
+              done.skipped?.length > 0
+                ? ` Left alone: ${done.skipped.map((s) => `${s.full_name} (${s.reason})`).join('; ')}.`
+                : ''
+            }`
+          : ''}
+      </p>
 
       <History />
     </Panel>

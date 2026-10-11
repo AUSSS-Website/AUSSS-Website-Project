@@ -1,6 +1,7 @@
 import { restRpc, restUpload } from './supabaseRest.js'
 import { makeReference } from './reference.js'
 import { resizeImage } from './resizeImage.js'
+import { errorText } from './errorText.js'
 
 // Merch order submission (/merch/checkout), in three steps:
 //   1. rpc/submit_order   the database prices the cart from its own price book
@@ -16,9 +17,17 @@ import { resizeImage } from './resizeImage.js'
 //
 // Resolves to { ok: true, reference, receiptAttached } on success (an order
 // without its receipt is still an order: the buyer is told to send it on),
-// { ok: false, error } on a failure.
+// { ok: false, error } on a failure. `error` is one whole sentence to show as
+// it is: the database's own when it refused the order ("Orders are closed at
+// the moment."), a plain one when the request never got an answer, and
+// otherwise the words below.
 
 const RECEIPT_MAX_PX = 1600
+
+// For a failure that is nobody's sentence: a fault on the server, or an answer
+// in the API's own words. Trying again can help here, which it cannot after a
+// refusal, so the advice lives in this sentence and not on the page.
+const NOT_SENT = 'We couldn’t send your order. Please try again, or contact us if it keeps failing.'
 
 // payload: { contact: {name, email, phone, isMember, lc, year, notes, website},
 //            items: [{productId, size, design, qty}], subtotal, paymentMethod,
@@ -48,7 +57,7 @@ export async function submitOrder(payload) {
       website: c.website || '',
     })
   } catch (err) {
-    return { ok: false, error: err.message || 'Network error' }
+    return { ok: false, error: errorText(err, NOT_SENT) }
   }
 
   const ref = order?.ref || reference

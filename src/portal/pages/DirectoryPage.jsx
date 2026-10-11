@@ -1,16 +1,22 @@
 import { useMemo, useState } from 'react'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useDirectory } from '../queries.js'
-import { PageHeader, PageLoading, Panel, inputCls } from '../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel, inputCls, outlineBtnCls } from '../portalUi.jsx'
 import { Avatar } from '../Avatar.jsx'
 import { normalize } from '../../lib/text.js'
+import { errorText } from '../../lib/errorText.js'
 
 // /portal/directory. Every member with an account, with the positions they
 // hold this term. Name, photo and positions only: no contact details.
 // rpc/directory answers verified members and position holders, and lists the
-// same people; anyone else gets its refusal, shown as is.
+// same people; anyone else gets its refusal, which this page puts in its own
+// words. Any other failure can be tried again from here.
 
 const EMPTY = []
+
+// The portal's pills are under 44px tall to the eye. This ::after gives a
+// finger the difference without changing how they look.
+const tapCls = "relative after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
 
 function positionLine(p) {
   return p.committee ? `${p.committee} · ${p.title}` : p.title
@@ -43,11 +49,18 @@ export default function DirectoryPage() {
         <PageLoading />
       ) : directory.error ? (
         <Panel>
-          <p className="text-sm text-soft/70">
-            {directory.error.code === '42501'
-              ? 'The directory is for verified members. Once your membership is verified it opens here.'
-              : `Couldn’t load the directory: ${directory.error.message}`}
-          </p>
+          {directory.error.code === '42501' ? (
+            <p className="text-sm text-soft/70">
+              The directory is for verified members. Once your membership is verified it opens here.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <ErrorText>{errorText(directory.error, 'Couldn’t load the directory.')}</ErrorText>
+              <button type="button" onClick={() => directory.refetch()} className={`${outlineBtnCls} ${tapCls}`}>
+                Try again
+              </button>
+            </div>
+          )}
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>

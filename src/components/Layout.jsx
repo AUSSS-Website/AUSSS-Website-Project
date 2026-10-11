@@ -17,7 +17,9 @@ export default function Layout() {
       <ScrollManager />
       <Navbar />
       <BackButton />
-      <main id="main-content" tabIndex={-1}>
+      {/* The skip link's target takes focus so the next Tab starts in the page.
+          It is not a control, so it draws no focus ring round the whole page. */}
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
         <Outlet />
       </main>
       <Footer />

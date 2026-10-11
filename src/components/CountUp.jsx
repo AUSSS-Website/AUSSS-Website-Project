@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { prefersReducedMotion } from '../lib/motion.js'
 
 // Parses "581" → {prefix:'', num:581, suffix:''},
 // "300+" → {num:300, suffix:'+'}, "1.5M+" → {num:1.5, suffix:'M+'},
@@ -37,25 +38,35 @@ export default function CountUp({ value, duration = 1400, className }) {
   const { prefix, num, suffix, decimals, grouped } = parse(value)
   const ref = useRef(null)
   // Pre-rendered HTML (scripts/prerender.mjs) shows the final figure: a
-  // crawler must not read "0 Members". In the browser the count starts at 0.
-  const [display, setDisplay] = useState(() => {
+  // crawler must not read "0 Members". So does the first paint for a reader
+  // who asked for less motion. For everyone else the count starts at 0.
+  const first = () => {
     if (num == null) return value
-    if (typeof window === 'undefined') return prefix + fmt(num, decimals, grouped) + suffix
+    if (typeof window === 'undefined' || prefersReducedMotion()) {
+      return prefix + fmt(num, decimals, grouped) + suffix
+    }
     return prefix + '0' + suffix
-  })
+  }
+  const [display, setDisplay] = useState(first)
+  // A figure that is replaced (the live content arriving, an edit in the
+  // portal preview) starts from its own first frame, in the same render. The
+  // count below only begins once the figure is on screen, and a figure made of
+  // words never counts, so without this the old text would stay up.
+  const [shownFor, setShownFor] = useState(value)
+  if (!Object.is(shownFor, value)) {
+    setShownFor(value)
+    setDisplay(first())
+  }
 
   useEffect(() => {
     if (num == null) return
     const el = ref.current
     if (!el) return
 
-    const reduce =
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const settle = () =>
       setDisplay(prefix + fmt(num, decimals, grouped) + suffix)
 
-    if (reduce || !('IntersectionObserver' in window)) {
+    if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
       settle()
       return
     }

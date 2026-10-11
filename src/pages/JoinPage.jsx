@@ -3,6 +3,7 @@ import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { committees, slugFor } from '../data/society.js'
 import { chipAccent, rgba } from '../lib/color.js'
+import { pressCls } from '../lib/motion.js'
 import SignupForm from '../components/SignupForm.jsx'
 import { WAITLIST_OPEN } from '../data/signupsConfig.js'
 import FAQ from '../components/FAQ.jsx'
@@ -44,7 +45,7 @@ function CommitteeRow({ list }) {
           <Link
             key={c.abbr}
             to={`/committees/${slugFor(c)}`}
-            className="flex flex-col rounded-2xl border border-line/10 bg-card p-6 transition-colors hover:border-line/25"
+            className="flex flex-col rounded-2xl border border-line/10 bg-card p-6 transition-[border-color,transform] duration-150 ease-out hover:border-line/25 motion-safe:active:scale-[0.99]"
           >
             <span
               className="self-start rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em]"
@@ -94,7 +95,7 @@ export default function JoinPage() {
           <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
             Join AUSSS
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
+          <p className="mx-auto mt-5 max-w-2xl text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
             A community that turns medical students into life savers and change
             makers, open to every Faculty of Medicine student at Ain Shams
             University.
@@ -135,7 +136,7 @@ export default function JoinPage() {
           <div className="mt-6 flex justify-center">
             <Link
               to="/sorting"
-              className="inline-flex items-center gap-2 rounded-full border border-medical/40 bg-medical/10 px-6 py-2.5 text-sm font-semibold text-accent transition-colors hover:border-medical hover:text-ink"
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-medical/40 bg-medical/10 px-6 py-2.5 text-sm font-semibold text-accent hover:border-medical hover:text-ink ${pressCls}`}
             >
               Not sure where you fit? Take the Sorting quiz
               <span aria-hidden="true">→</span>
@@ -189,10 +190,12 @@ export default function JoinPage() {
                 />
               </div>
             )}
+            {/* The link is a line of text with a thumb's height to press: the
+                padding is taken back by the margin, so nothing around it moves. */}
             <div className="relative mt-6 flex flex-wrap justify-center gap-4">
               <Link
                 to="/contact"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+                className="-my-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
               >
                 Or follow our channels →
               </Link>
@@ -211,7 +214,7 @@ export default function JoinPage() {
         <div className="reveal text-center">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+            className="-my-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
           >
             ← Back to AUSSS home
           </Link>

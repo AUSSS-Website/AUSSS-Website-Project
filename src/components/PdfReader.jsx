@@ -1,5 +1,6 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import PdfFrame from './PdfFrame.jsx'
+import { pressCls } from '../lib/motion.js'
 import { MIN_QUERY, buildPageIndex, matchRanges, searchDocument, snippet } from '../lib/pdfSearch.js'
 import './PdfReader.css'
 
@@ -34,6 +35,10 @@ const NEAR = '900px 0px' // pages this close to view are drawn
 const FAR = '3200px 0px' // pages beyond this are let go
 const LIST_MAX = 200 // rows in the list of results
 const NO_MATCHES = { query: '', matches: [], more: false }
+
+// The pages that hold a reader are pre-rendered in Node, where a layout effect
+// has nothing to do and React says so.
+const useBeforePaint = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 async function loadPdfJs() {
   const [pdfjs, worker] = await Promise.all([
@@ -387,8 +392,13 @@ class Engine {
   }
 }
 
-const barBtn =
-  'inline-flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full border border-line/15 bg-card px-2.5 text-sm font-medium text-soft/80 transition-colors hover:border-medical/40 hover:text-ink disabled:opacity-40 disabled:hover:border-line/15 disabled:hover:text-soft/80'
+// The bar's buttons are 44px, a thumb's width: the reader is used on phones.
+// A button that reaches its own end under the reader's hand (the two zoom
+// buttons) is marked aria-disabled and not `disabled`: the browser takes the
+// focus away from a button that is switched off and leaves it on the page
+// itself, so a keyboard pressing "Larger" to the last step would be thrown out
+// of the bar.
+const barBtn = `inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full border border-line/15 bg-card px-2.5 text-sm font-medium text-soft/80 hover:border-medical/40 hover:text-ink disabled:opacity-40 disabled:hover:border-line/15 disabled:hover:text-soft/80 aria-disabled:pointer-events-none aria-disabled:opacity-40 ${pressCls}`
 
 export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startPage = 1, large = false }) {
   const id = useId()
@@ -396,6 +406,8 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
   const scrollerRef = useRef(null)
   const engineRef = useRef(null)
   const revealedFor = useRef('')
+  const placeRef = useRef({ page: 1, into: 0, above: 0 }) // where the reader is (see notePlace)
+  const sizedAt = useRef(0) // the page width that place was last laid out at
 
   const [near, setNear] = useState(false) // close enough to the screen to start loading
   const [status, setStatus] = useState('waiting') // waiting | loading | ready | failed
@@ -509,7 +521,31 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
     }
   }, [near, src, title, large])
 
-  // Hand the page boxes to the engine, and open on the page asked for.
+  // Where the reader is: the page across the top edge of the window and how
+  // far down it, as a share of its height. In the gap above a page it is that
+  // page and the pixels above it, since the gaps do not grow with the pages.
+  const notePlace = useCallback(() => {
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    const top = scroller.scrollTop
+    for (const el of scroller.querySelectorAll('[data-page]')) {
+      if (el.offsetTop + el.offsetHeight > top) {
+        const down = top - el.offsetTop
+        placeRef.current = {
+          page: Number(el.dataset.page),
+          into: down > 0 ? down / el.offsetHeight : 0,
+          above: down < 0 ? -down : 0,
+        }
+        return
+      }
+    }
+  }, [])
+
+  // Hand the page boxes to the engine, and open on the page asked for. The
+  // place is noted here and now: the scroll event of that move comes a frame
+  // later, and the pages can change width before it does (a scrollbar appears
+  // with the pages and takes its room from them), which would put the reader
+  // back at the place noted before, the top of page 1.
   useEffect(() => {
     const engine = engineRef.current
     if (status !== 'ready' || !engine || !pages) return
@@ -517,7 +553,8 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
     if (startPage > 1 && startPage <= pages && !engine.opened) engine.goTo(startPage)
     engine.opened = true
     engine.trackPage()
-  }, [status, pages, startPage])
+    notePlace()
+  }, [status, pages, startPage, notePlace])
 
   // Draw at the width there is: at once the first time, then after a short
   // wait, so dragging a window's edge does not redraw at every step.
@@ -532,6 +569,45 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
     const t = setTimeout(() => engine.setWidth(width), 120)
     return () => clearTimeout(t)
   }, [status, width, pages])
+
+  // The place is noted again as the reader scrolls.
+  useEffect(() => {
+    const scroller = scrollerRef.current
+    if (status !== 'ready' || !scroller) return undefined
+    let frame = 0
+    const onScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        notePlace()
+      })
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      scroller.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [status, notePlace])
+
+  // Keep that place when the pages change size (the zoom buttons, a turned
+  // phone, a window's edge dragged). Left alone, the window stays the same
+  // number of pixels down a column that has just grown or shrunk: pressing
+  // "Larger" on page 20 showed page 16, under a label still saying 20. Done
+  // before the browser paints, so the other page is never seen.
+  useBeforePaint(() => {
+    const scroller = scrollerRef.current
+    if (status !== 'ready' || !width || !scroller) {
+      sizedAt.current = 0
+      return
+    }
+    const was = sizedAt.current
+    sizedAt.current = width
+    if (!was || was === width) return
+    const { page, into, above } = placeRef.current
+    const el = scroller.querySelector(`[data-page="${page}"]`)
+    if (el) scroller.scrollTop = Math.max(0, el.offsetTop - above + into * el.offsetHeight)
+    engineRef.current?.trackPage()
+  }, [status, width])
 
   // Search once typing has paused; an emptied box clears at once.
   useEffect(() => {
@@ -598,6 +674,11 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
         ? 'Searching…'
         : 'No matches'
   const zoomAt = ZOOMS.indexOf(zoom)
+  // One step smaller or larger; nothing at either end.
+  const zoomBy = (step) => {
+    const next = ZOOMS[zoomAt + step]
+    if (next) setZoom(next)
+  }
 
   return (
     <div ref={wrapRef}>
@@ -645,7 +726,7 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
                 autoComplete="off"
                 spellCheck={false}
                 disabled={status !== 'ready'}
-                className="h-9 w-full rounded-full border border-line/15 bg-sunk pl-9 pr-3 text-base text-ink placeholder:text-soft/55 focus:border-medical focus:outline-none sm:text-sm"
+                className="h-11 w-full rounded-full border border-line/15 bg-sunk pl-9 pr-3 text-base text-ink placeholder:text-soft/55 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 sm:text-sm"
               />
             </div>
             <button type="button" className={barBtn} onClick={() => step(-1)} disabled={matches.length < 2} aria-label="Previous match">
@@ -675,8 +756,9 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
             <button
               type="button"
               className={barBtn}
-              onClick={() => setZoom(ZOOMS[zoomAt - 1])}
-              disabled={status !== 'ready' || zoomAt <= 0}
+              onClick={() => zoomBy(-1)}
+              disabled={status !== 'ready'}
+              aria-disabled={zoomAt <= 0}
               aria-label="Smaller"
             >
               −
@@ -684,8 +766,9 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
             <button
               type="button"
               className={barBtn}
-              onClick={() => setZoom(ZOOMS[zoomAt + 1])}
-              disabled={status !== 'ready' || zoomAt === ZOOMS.length - 1}
+              onClick={() => zoomBy(1)}
+              disabled={status !== 'ready'}
+              aria-disabled={zoomAt === ZOOMS.length - 1}
               aria-label="Larger"
             >
               +
@@ -707,14 +790,18 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
                     type="button"
                     onClick={() => jump(i)}
                     aria-current={here ? 'true' : undefined}
-                    className={`flex w-full gap-3 rounded-lg px-2 py-1.5 text-left text-xs leading-relaxed transition-colors hover:bg-veil/10 ${
+                    className={`flex min-h-11 w-full gap-3 rounded-lg px-2 py-3 text-left text-xs leading-relaxed transition-colors hover:bg-veil/10 ${
                       here ? 'bg-veil/10' : ''
                     }`}
                   >
                     <span className="w-12 shrink-0 font-semibold text-accent">p. {m.page}</span>
                     <span className="min-w-0 break-words text-soft/80">
                       {s.before}
-                      <mark className="rounded bg-amber-300/60 px-0.5 text-ink">{s.hit}</mark>
+                      {/* On the dark theme the word is dark on a full amber: white
+                          on the see-through amber came to under 3:1. */}
+                      <mark className="rounded bg-amber-300/60 px-0.5 text-ink dark:bg-amber-300/90 dark:text-forest-950">
+                        {s.hit}
+                      </mark>
                       {s.after}
                     </span>
                   </button>

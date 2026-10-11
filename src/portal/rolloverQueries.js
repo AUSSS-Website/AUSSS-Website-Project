@@ -30,7 +30,12 @@ export function useRollOverTerm() {
         }),
       ),
     // Everything the portal holds belongs to the old term now, the signed-in
-    // person's own positions included.
-    onSuccess: () => qc.invalidateQueries(),
+    // person's own positions included. It is asked for again but not waited
+    // for (nothing is returned): the switch is over once the database has
+    // answered. A page that waited would keep saying "Switching…" until every
+    // list had loaded, with its form already measured against the new term.
+    onSuccess: () => {
+      qc.invalidateQueries()
+    },
   })
 }

@@ -7,6 +7,7 @@
 // intensity turns to grey smoke.
 import { Renderer, Program, Mesh, Color, Triangle } from 'ogl'
 import { useEffect, useRef } from 'react'
+import { prefersReducedMotion } from '../lib/motion.js'
 
 import './Aurora.css'
 
@@ -148,6 +149,9 @@ export default function Aurora(props) {
       renderer.setSize(width, height)
       if (program) {
         program.uniforms.uResolution.value = [width, height]
+        // A new size empties the canvas, and under reduced motion no loop is
+        // running to fill it again.
+        if (reduceMotion) drawFrame(0)
       }
     }
     window.addEventListener('resize', resize)
@@ -205,9 +209,7 @@ export default function Aurora(props) {
 
     // Don't burn the GPU when the canvas is scrolled off-screen or the tab is
     // hidden. Honour prefers-reduced-motion by drawing a single static frame.
-    const reduceMotion = window.matchMedia?.(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
+    const reduceMotion = prefersReducedMotion()
     let inView = true
     const running = () => animateId !== 0
     const start = () => {
@@ -233,12 +235,9 @@ export default function Aurora(props) {
     const onVisibility = () => sync()
     document.addEventListener('visibilitychange', onVisibility)
 
+    // Under reduced motion this draws the one static frame, and no loop starts.
     resize()
-    if (reduceMotion) {
-      drawFrame(0) // one static frame, no loop
-    } else {
-      sync()
-    }
+    if (!reduceMotion) sync()
 
     return () => {
       stop()

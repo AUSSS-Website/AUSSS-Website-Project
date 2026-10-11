@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { lookupMember, adviceFor, NOT_A_MEMBER } from '../lib/membership.js'
 import { splitPositions } from '../lib/text.js'
-import { scrollBehavior } from '../lib/motion.js'
+import { errorText, UNREACHED } from '../lib/errorText.js'
+import { chipAccent, readableAccent, rgba } from '../lib/color.js'
+import { prefersReducedMotion, pressCls, scrollBehavior } from '../lib/motion.js'
 import SpecialResult from '../components/SpecialResult.jsx'
 import {
   matchPosition,
@@ -36,12 +38,36 @@ function parseGA(value) {
   return { display: s, num, atLeast, known: true }
 }
 
+// What a failed lookup says. lookupMember hands back the caught error's
+// message and nothing else, so its kind is read from the words: a request
+// given up on, the roster's own refusal ("Too many lookups right now, please
+// retry in a few minutes.", a whole sentence written for people, shown as
+// written), or the server's own words ("Request failed (500)"), which are
+// never shown.
+const GAVE_UP = /timed out|aborted/i
+const WHOLE_SENTENCE = /^[A-Z].*[.!?]$/s
+function lookupErrorText(message) {
+  const said = String(message ?? '').trim()
+  if (GAVE_UP.test(said)) return UNREACHED
+  return errorText(
+    { message: said, rejected: WHOLE_SENTENCE.test(said) },
+    'Please try again in a moment.',
+  )
+}
+
 function ProgressRow({ label, have, need }) {
   const { display, num, atLeast, known } = parseGA(have)
   // ">2" with a need of 2 means the requirement is met.
   const effective = atLeast ? Math.max(num, need) : num
   const done = known && effective >= need
   const pct = Math.max(0, Math.min(100, (effective / need) * 100))
+  // The bar starts empty and fills to its mark once it is on the page. For a
+  // reader who asked for less motion it is at its mark from the start.
+  const [filled, setFilled] = useState(prefersReducedMotion)
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setFilled(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [])
   return (
     <div>
       <div className="flex justify-between text-xs text-soft/70">
@@ -51,20 +77,29 @@ function ProgressRow({ label, have, need }) {
           {done ? ' ✓' : ''}
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-veil/10">
+      {/* The fill is as wide as the track and slides in from the left (a
+          transform, which costs no layout, where a changing width does); the
+          track clips what has not arrived. The figures above say the same. */}
+      <div
+        className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-veil/10"
+        aria-hidden="true"
+      >
         <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{
-            width: `${pct}%`,
-            background: done ? '#0f7a53' : '#5B8DB8',
-          }}
+          className={`h-full rounded-full transition-transform duration-700 ease-out motion-reduce:transition-none ${
+            done ? 'bg-ok' : 'bg-accent'
+          }`}
+          style={{ transform: `translateX(${(filled ? pct : 0) - 100}%)` }}
         />
       </div>
     </div>
   )
 }
 
-function GuidanceCard({ advice, accent }) {
+// `color` is the status colour as it comes (a hex). As text it goes through
+// readableAccent, and the discs that number the steps are tinted with it and
+// take chipAccent, the shade that reads on that tint.
+function GuidanceCard({ advice, color }) {
+  const accent = readableAccent(color)
   return (
     <div className="mt-6 rounded-2xl border border-line/10 bg-card p-7 text-left">
       {advice.next ? (
@@ -93,7 +128,7 @@ function GuidanceCard({ advice, accent }) {
           <li key={i} className="flex gap-3 text-sm leading-relaxed text-soft/80">
             <span
               className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-2xs font-bold"
-              style={{ background: 'rgba(91,141,184,0.2)', color: accent }}
+              style={{ background: rgba(color, 0.2), color: chipAccent(color) }}
             >
               {i + 1}
             </span>
@@ -116,8 +151,9 @@ function GuidanceCard({ advice, accent }) {
 // offered only for near-complete spellings (the database decides); a roster
 // email is never shown, only a masked hint the owner would recognise.
 function DidYouMean({ suggestions, form, busy, onRetry }) {
-  const btn =
-    'rounded-full border border-medical/50 px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-medical/15 disabled:opacity-50'
+  // Tall enough for a thumb, and a long address wraps inside its pill on a
+  // narrow phone.
+  const btn = `inline-flex min-h-11 max-w-full items-center rounded-full [overflow-wrap:anywhere] border border-medical/50 px-4 py-1.5 text-sm font-semibold text-accent hover:bg-medical/15 disabled:opacity-50 ${pressCls}`
   return (
     <div className="mt-4 rounded-2xl border border-medical/30 bg-medical/[0.07] p-5" role="status">
       <p className="text-sm font-semibold text-ink">Did you mean…</p>
@@ -164,10 +200,16 @@ export default function MembersPage() {
     }
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [])
+  const uid = useId()
   const [form, setForm] = useState({ name: '', email: '' })
+  // True once "Check my status" was pressed with both fields empty, until
+  // either is typed in.
+  const [missing, setMissing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const [reveal, setReveal] = useState(false) // "show status anyway" on special pages
+  const nameRef = useRef(null)
+  const submitRef = useRef(null)
   const resultRef = useRef(null)
   // After a fresh result lands, glide down to it. Adaptive, if the card
   // fits in the viewport beneath the sticky header, vertically centre it so
@@ -178,8 +220,10 @@ export default function MembersPage() {
     const id = window.requestAnimationFrame(() => {
       const el = resultRef.current
       if (!el) return
-      // Matches the `scroll-padding-top: 7rem` from index.css base layer.
-      const headerOffset = 7 * 16
+      // Matches the `scroll-padding-top: 7rem` from index.css base layer. A
+      // rem follows the screen and the reader's text size, so it is measured.
+      const rem = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16
+      const headerOffset = 7 * rem
       const rect = el.getBoundingClientRect()
       const usable = window.innerHeight - headerOffset
       let top = window.scrollY + rect.top - headerOffset
@@ -198,14 +242,29 @@ export default function MembersPage() {
   }
 
   // A "did you mean" click: put the suggestion in the form, so what is on
-  // screen is what was looked up, and look again.
+  // screen is what was looked up, and look again. The suggestion that was
+  // pressed goes with the old result, so the focus is handed to the form's
+  // button first: left on a button that is gone, it would fall to the top of
+  // the page.
   const retry = (next, opts) => {
     setForm(next)
+    submitRef.current?.focus({ preventScroll: true })
     run(next, opts)
   }
 
+  const edit = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    setMissing(false)
+  }
+
   const run = async (query, { acceptNear = false } = {}) => {
-    if (!query.name.trim() && !query.email.trim()) return
+    if (!query.name.trim() && !query.email.trim()) {
+      // Nothing to look up: say so at the fields and put the cursor in the
+      // first, where a silent button looked broken.
+      setMissing(true)
+      nameRef.current?.focus()
+      return
+    }
     // Guard re-entry: an Enter-key submit can fire while a lookup is already
     // running, and two in-flight lookups could land out of order.
     if (busy) return
@@ -267,9 +326,35 @@ export default function MembersPage() {
   const found = !!statusRecord
   const advice = found ? adviceFor(statusRecord) : null
   const tierLabel = found ? advice.tierLabel : null
-  const accent =
+  // The status colours are fixed hues, several of them too pale to read on a
+  // white card or too deep for a dark one, so as text each goes through
+  // readableAccent, which keeps the hue and finds the shade for the theme.
+  const statusColor =
     STATUS_COLOR[tierLabel] ||
     (result?.state === 'not-found' ? STATUS_COLOR['Not yet a member'] : '#5B8DB8')
+  const accent = readableAccent(statusColor)
+
+  // One short line for a screen reader: the lookup has started, then what
+  // came back. The cards below hold the detail. A failure is not here, since
+  // its card is an alert and speaks for itself.
+  const announce = busy
+    ? 'Checking…'
+    : found
+      ? `Membership status: ${statusRecord.status || tierLabel}.`
+      : special
+        ? 'Your result is below.'
+        : {
+            'not-found': 'No matching member found.',
+            ambiguous: 'More than one member shares this name.',
+            'not-connected': 'The lookup is unavailable right now.',
+          }[result?.state] || ''
+
+  // While the message is up both fields keep the red edge, the one with the
+  // cursor in it too, and the ring shows where the cursor is. The ring is the
+  // strength the site's other forms use: at 20% it was hard to see.
+  const fieldCls =
+    'w-full rounded-xl border bg-veil/5 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/30 focus:ring-2 focus:ring-medical/60'
+  const fieldBorder = missing ? 'border-danger/70' : 'border-line/10 focus:border-medical'
 
   return (
     <article className="bg-page">
@@ -283,9 +368,21 @@ export default function MembersPage() {
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Check your membership
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
+          <p className="mx-auto mt-4 max-w-2xl text-lg font-normal text-soft/75 dark:font-light">
             Enter the name <em>or</em> email you registered with to see your
             current membership status and what it takes to advance.
+          </p>
+          {/* The way into the portal for someone who came here to sign in:
+              this page only looks a membership up. */}
+          <p className="mt-3 text-sm text-soft/70">
+            Here to sign in?{' '}
+            <Link
+              to="/portal"
+              className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent underline-offset-2 transition-colors hover:text-ink hover:underline"
+            >
+              Members portal
+              <span aria-hidden="true">→</span>
+            </Link>
           </p>
         </div>
       </header>
@@ -297,35 +394,61 @@ export default function MembersPage() {
             onSubmit={submit}
             className="reveal rounded-3xl border border-line/12 bg-sunk/60 p-8 sm:p-10"
           >
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft/60">
+            <label
+              htmlFor={`${uid}-name`}
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft/60"
+            >
               Full name
             </label>
             <input
+              ref={nameRef}
+              id={`${uid}-name`}
               type="text"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => edit('name', e.target.value)}
               placeholder="As registered with AUSSS"
-              className="mb-4 w-full rounded-xl border border-line/10 bg-veil/5 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
+              autoComplete="name"
+              aria-invalid={missing}
+              aria-describedby={missing ? `${uid}-missing` : undefined}
+              className={`mb-4 ${fieldCls} ${fieldBorder}`}
             />
             <div className="mb-4 flex items-center gap-3 text-2xs uppercase tracking-[0.2em] text-soft/35">
               <span className="h-px flex-1 bg-veil/10" />
               or
               <span className="h-px flex-1 bg-veil/10" />
             </div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft/60">
+            <label
+              htmlFor={`${uid}-email`}
+              className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-soft/60"
+            >
               Email
             </label>
             <input
+              id={`${uid}-email`}
               type="email"
               value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              onChange={(e) => edit('email', e.target.value)}
               placeholder="The email you registered with"
-              className="mb-6 w-full rounded-xl border border-line/10 bg-veil/5 px-4 py-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/30 focus:border-medical focus:ring-2 focus:ring-medical/20"
+              autoComplete="email"
+              aria-invalid={missing}
+              aria-describedby={missing ? `${uid}-missing` : undefined}
+              className={`${fieldCls} ${fieldBorder}`}
             />
+            {missing && (
+              <p id={`${uid}-missing`} role="alert" className="mt-2 text-xs text-danger">
+                Please enter your name or your email.
+              </p>
+            )}
+            {/* Not `disabled` while checking: the browser takes the focus away
+                from a button that is switched off and leaves it on the page
+                itself, so a keyboard would start again from the top of the
+                page once the answer is in. It says it is unavailable, and
+                run() ignores a second press. */}
             <button
+              ref={submitRef}
               type="submit"
-              disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-solid py-4 text-sm font-semibold text-on-solid transition-all duration-300 hover:bg-solid-hover disabled:opacity-60"
+              aria-disabled={busy}
+              className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-solid py-4 text-sm font-semibold text-on-solid hover:bg-solid-hover aria-disabled:pointer-events-none aria-disabled:opacity-60 ${pressCls}`}
             >
               {busy ? 'Checking…' : 'Check my status'}
             </button>
@@ -339,6 +462,11 @@ export default function MembersPage() {
               </Link>
             </p>
           </form>
+
+          {/* Always on the page, so that a change in it is read out. */}
+          <p role="status" className="sr-only">
+            {announce}
+          </p>
 
           {/* Result */}
           {result && (
@@ -416,7 +544,7 @@ export default function MembersPage() {
                       .
                     </p>
                   </div>
-                  <GuidanceCard advice={advice} accent={accent} />
+                  <GuidanceCard advice={advice} color={statusColor} />
                 </>
               )}
 
@@ -439,7 +567,7 @@ export default function MembersPage() {
                   </p>
                   <GuidanceCard
                     advice={{ ...NOT_A_MEMBER, progress: [], steps: NOT_A_MEMBER.steps }}
-                    accent={accent}
+                    color={statusColor}
                   />
                 </div>
               )}
@@ -475,12 +603,12 @@ export default function MembersPage() {
               )}
 
               {result.state === 'error' && (
-                <div className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
+                <div role="alert" className="rounded-3xl border border-line/12 bg-sunk/60 p-8">
                   <p className="heading-serif text-2xl text-ink">
                     Something went wrong
                   </p>
                   <p className="mt-2 text-sm text-soft/65">
-                    Please try again in a moment. ({result.message})
+                    {lookupErrorText(result.message)}
                   </p>
                 </div>
               )}
@@ -505,14 +633,14 @@ export default function MembersPage() {
             <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 to="/constitution"
-                className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.03] sm:w-auto"
+                className={`w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid hover:bg-solid-hover motion-safe:hover:scale-[1.03] sm:w-auto ${pressCls}`}
               >
                 View document
               </Link>
               <a
                 href={CONSTITUTION_PDF}
                 download
-                className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
+                className={`w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink hover:bg-veil/10 sm:w-auto ${pressCls}`}
               >
                 Download PDF
               </a>

@@ -4,12 +4,17 @@ import usePageTitle from '../../hooks/usePageTitle.js'
 import { useClearNotifications, useMarkNotificationsRead, useNames, useNotifications } from '../workQueries.js'
 import { ConfirmButton, ErrorText, PageHeader, PageLoading, Panel, outlineBtnCls } from '../portalUi.jsx'
 import { UnreadDot, describeNotification, notificationTarget, when } from '../workUi.jsx'
+import { errorText } from '../../lib/errorText.js'
 
 // /portal/notifications. What happened on tasks this person is part of. Rows
 // are written by database triggers (never for your own actions); opening one
 // marks it read and goes to the task.
 
 const EMPTY = []
+
+// The portal's pills are under 44px tall to the eye. This ::after gives a
+// finger the difference without changing how they look.
+const tapCls = "relative after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
 
 export default function NotificationsPage() {
   usePageTitle('Notifications')
@@ -27,6 +32,20 @@ export default function NotificationsPage() {
     if (to) navigate(to)
   }
 
+  // Both buttons leave the page once they have worked (nothing is unread, or
+  // nothing is left), so what they did is also said in words: a line a screen
+  // reader speaks, and an error where the eye already is when one fails.
+  const actionError = clear.error
+    ? errorText(clear.error, 'Couldn’t clear your notifications.')
+    : markRead.error
+      ? errorText(markRead.error, 'Couldn’t mark your notifications as read.')
+      : ''
+  const done = clear.isSuccess
+    ? 'Notifications cleared.'
+    : markRead.isSuccess && markRead.variables === undefined
+      ? 'All notifications marked as read.'
+      : ''
+
   return (
     <>
       <PageHeader
@@ -35,9 +54,17 @@ export default function NotificationsPage() {
         subtitle="Activity on your tasks, and what came in through the website forms."
         action={
           rows.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-5">
               {unread > 0 && (
-                <button type="button" disabled={markRead.isPending} onClick={() => markRead.mutate(undefined)} className={outlineBtnCls}>
+                <button
+                  type="button"
+                  disabled={markRead.isPending}
+                  onClick={() => {
+                    clear.reset()
+                    markRead.mutate(undefined)
+                  }}
+                  className={`${outlineBtnCls} ${tapCls}`}
+                >
                   Mark all as read
                 </button>
               )}
@@ -45,18 +72,37 @@ export default function NotificationsPage() {
                 label="Clear all"
                 busyLabel="Clearing…"
                 busy={clear.isPending}
-                onConfirm={() => clear.mutate()}
+                onConfirm={() => {
+                  markRead.reset()
+                  clear.mutate()
+                }}
+                className={`${outlineBtnCls} ${tapCls}`}
+                keepWidth
               />
             </div>
           )
         }
       />
 
+      <p role="status" className="sr-only">
+        {done}
+      </p>
+      {actionError && (
+        <div className="max-w-3xl pb-4">
+          <ErrorText>{actionError}</ErrorText>
+        </div>
+      )}
+
       {feed.isPending ? (
         <PageLoading />
       ) : feed.error ? (
         <Panel>
-          <ErrorText>Couldn’t load notifications: {feed.error.message}</ErrorText>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <ErrorText>{errorText(feed.error, 'Couldn’t load your notifications.')}</ErrorText>
+            <button type="button" onClick={() => feed.refetch()} className={`${outlineBtnCls} ${tapCls}`}>
+              Try again
+            </button>
+          </div>
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
@@ -71,7 +117,10 @@ export default function NotificationsPage() {
                 <button
                   type="button"
                   onClick={() => open(n)}
-                  className={`flex w-full items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:border-line/25 ${
+                  // A row is the full width of the list, so it sinks by a hair
+                  // where a pill sinks by 3%; the border darkens with it, and
+                  // alone when the reader has asked for less motion.
+                  className={`flex w-full items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-[border-color,transform] duration-150 ease-out hover:border-line/25 active:border-line/40 motion-safe:active:scale-[0.99] ${
                     n.read_at ? 'border-line/10' : 'border-medical/50'
                   }`}
                 >

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import HTMLFlipBook from 'react-pageflip'
 import useMediaQuery from '../hooks/useMediaQuery.js'
+import { pressCls } from '../lib/motion.js'
 
 // A page-flipping reader: the magazine's pre-rendered page images turned into a
 // book with a real page-curl, a two-page spread on desktop, a single page on
@@ -15,13 +16,21 @@ export default function Flipbook({ pages, title, onPage }) {
   const isMobile = useMediaQuery('(max-width: 767px)')
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const bookRef = useRef(null)
+  // Whether the book shows one page at a time. The library decides that from
+  // the room it has, and again when the window changes, so it is asked and
+  // not guessed from the screen's width: a wide phone gets a spread.
+  const [single, setSingle] = useState(isMobile)
+
+  // The furthest page now showing, counted from 1. Page 0 is the cover alone;
+  // from then on a spread shows two pages.
+  const furthest = single || page === 0 ? page + 1 : Math.min(pages.length, page + 2)
+  const atStart = page === 0
+  const atEnd = furthest >= pages.length
 
   useEffect(() => {
     if (!onPage || !ratio) return
-    // Page 0 is the cover alone; from then on a desktop spread shows two pages.
-    const visible = isMobile || page === 0 ? page + 1 : Math.min(pages.length, page + 2)
-    onPage(visible)
-  }, [onPage, page, isMobile, pages.length, ratio])
+    onPage(furthest)
+  }, [onPage, furthest, ratio])
 
   // Lock the book's proportions to the real page shape before rendering it.
   useEffect(() => {
@@ -66,6 +75,8 @@ export default function Flipbook({ pages, title, onPage }) {
       ) {
         return
       }
+      // Alt with an arrow is the browser's Back and Forward.
+      if (e.altKey || e.ctrlKey || e.metaKey) return
       if (e.key === 'ArrowLeft') bookRef.current?.pageFlip()?.flipPrev()
       else if (e.key === 'ArrowRight') bookRef.current?.pageFlip()?.flipNext()
     }
@@ -124,6 +135,8 @@ export default function Flipbook({ pages, title, onPage }) {
           // Reduced motion: the page still turns, but at once.
           flippingTime={reduceMotion ? 120 : 700}
           onFlip={(e) => setPage(e.data)}
+          onInit={(e) => setSingle(e.data.mode === 'portrait')}
+          onChangeOrientation={(e) => setSingle(e.data === 'portrait')}
           className="mx-auto"
         >
           {pages.map((url, i) => {
@@ -148,11 +161,16 @@ export default function Flipbook({ pages, title, onPage }) {
         </HTMLFlipBook>
       </div>
 
+      {/* At the front cover there is nothing before, and at the back nothing
+          after: the button says so and stays where it is, so a reader using
+          the keyboard does not lose their place (a disabled button would drop
+          the focus). */}
       <div className="mt-6 flex items-center gap-3">
         <button
           type="button"
           onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
           aria-label="Previous page"
+          aria-disabled={atStart}
           className={navBtn}
         >
           ‹ Prev
@@ -161,6 +179,7 @@ export default function Flipbook({ pages, title, onPage }) {
           type="button"
           onClick={() => bookRef.current?.pageFlip()?.flipNext()}
           aria-label="Next page"
+          aria-disabled={atEnd}
           className={navBtn}
         >
           Next ›
@@ -170,11 +189,13 @@ export default function Flipbook({ pages, title, onPage }) {
         Drag a corner or use the arrows to flip.
       </p>
       <p className="sr-only" role="status" aria-live="polite">
-        Page {page + 1} of {pages.length}
+        {furthest > page + 1
+          ? `Pages ${page + 1} and ${furthest} of ${pages.length}`
+          : `Page ${page + 1} of ${pages.length}`}
       </p>
     </div>
   )
 }
 
-const navBtn =
-  'inline-flex items-center gap-2 rounded-full border border-line/15 bg-card px-4 py-2 text-sm font-medium text-soft/80 transition-colors hover:border-medical/40 hover:text-ink'
+// 44px tall for a thumb, in px because the root size shrinks on a 320px phone.
+const navBtn = `inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/15 bg-card px-4 py-2 text-sm font-medium text-soft/80 hover:border-medical/40 hover:text-ink aria-disabled:pointer-events-none aria-disabled:opacity-40 ${pressCls}`

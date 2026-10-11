@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
+import useLeaveWarning from '../hooks/useLeaveWarning.js'
 import { submitStory } from '../lib/stories.js'
 import { STORIES_OPEN } from '../data/storiesConfig.js'
+import { pressCls, scrollBehavior } from '../lib/motion.js'
 
 const PROGRAMME_OPTIONS = [
   'SCOPE: Professional (clinical) exchange',
@@ -12,6 +14,37 @@ const PROGRAMME_OPTIONS = [
 ]
 
 const MAX_STORY_LENGTH = 2500
+
+// One rule for each field that can be wrong. Each answers with the words to
+// show under the field, or with nothing when the field is fine. The same rules
+// run when a field is left, while a flagged field is being put right, and for
+// the whole form on Send.
+const RULES = {
+  name: (f) => (f.name.trim() ? '' : 'Required'),
+  email: (f) =>
+    f.email.trim() && /^\S+@\S+\.\S+$/.test(f.email) ? '' : 'Enter a valid email',
+  phone: (f) =>
+    f.phone.trim() && f.phone.replace(/\D/g, '').length >= 8
+      ? ''
+      : 'Enter a valid phone / WhatsApp number',
+  story: (f) => {
+    if (f.story.length > MAX_STORY_LENGTH) return `Keep it under ${MAX_STORY_LENGTH} characters`
+    return f.story.trim().length >= 30
+      ? ''
+      : 'Tell us a little more, at least a couple of sentences'
+  },
+}
+// The order the fields come in on the page, to find the first one in error.
+const FIELD_ORDER = ['name', 'email', 'phone', 'story']
+
+// The two pills of this page: the green one and the outlined one. Colours ease
+// and the pill sinks a little when pressed (pressCls); the small growth under
+// the pointer is left out for a reader who asked for less motion. The least
+// height is in px: the padding is in rem, and the root size shrinks on a 320px
+// phone, which left a pill a little under the 44px a thumb needs.
+const pillCls = 'inline-flex min-h-[44px] items-center justify-center rounded-full text-sm font-semibold'
+const solidPillCls = `${pillCls} bg-solid text-on-solid hover:bg-solid-hover ${pressCls} motion-safe:hover:scale-[1.02]`
+const outlinePillCls = `${pillCls} border border-line/25 text-ink hover:bg-veil/10 ${pressCls}`
 
 export default function ShareStoryPage() {
   usePageTitle('Share your story')
@@ -31,6 +64,10 @@ export default function ShareStoryPage() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState(null) // { ok, reference, error }
 
+  // A story takes a while to write: ask before a reload or a closed tab throws
+  // it away. Once it has been sent there is nothing left to lose.
+  useLeaveWarning(STORIES_OPEN && form.story.trim() !== '' && !result?.ok)
+
   if (!STORIES_OPEN) {
     return <StoriesClosed />
   }
@@ -39,26 +76,70 @@ export default function ShareStoryPage() {
     return <StorySuccess result={result} name={form.name} />
   }
 
-  const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
+  // Sets or clears one field's error and leaves the others as they are.
+  const mark = (key, message) =>
+    setErrors((prev) => {
+      if ((prev[key] || '') === message) return prev
+      const next = { ...prev }
+      if (message) next[key] = message
+      else delete next[key]
+      return next
+    })
+
+  const update = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    // A field already marked wrong is checked again on every change, so its
+    // error goes the moment it is put right.
+    if (errors[key]) mark(key, RULES[key]({ ...form, [key]: value }))
+  }
+
+  // Leaving a field checks it there and then, without waiting for Send. An
+  // empty one is left alone: tabbing past a field is not a mistake yet, and
+  // Send catches whatever is still missing.
+  const check = (key) => {
+    if (form[key].trim()) mark(key, RULES[key](form))
+  }
+
+  // What the form's own markup cannot say about a field: that it is in error,
+  // and which line of text says why.
+  const fieldProps = (key) => ({
+    onBlur: () => check(key),
+    'aria-invalid': errors[key] ? true : undefined,
+    'aria-describedby': errors[key] ? `${key}-error` : undefined,
+  })
 
   const validate = () => {
     const next = {}
-    if (!form.name.trim()) next.name = 'Required'
-    if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email))
-      next.email = 'Enter a valid email'
-    if (!form.phone.trim() || form.phone.replace(/\D/g, '').length < 8)
-      next.phone = 'Enter a valid phone / WhatsApp number'
-    if (!form.story.trim() || form.story.trim().length < 30)
-      next.story = 'Tell us a little more, at least a couple of sentences'
-    if (form.story.length > MAX_STORY_LENGTH)
-      next.story = `Keep it under ${MAX_STORY_LENGTH} characters`
+    for (const key of FIELD_ORDER) {
+      const message = RULES[key](form)
+      if (message) next[key] = message
+    }
     setErrors(next)
-    return Object.keys(next).length === 0
+    return next
+  }
+
+  // Bring the first field in error into view and put the caret in it; on a
+  // phone it is often off the top of the screen when Send is tapped.
+  const focusFirstError = (next) => {
+    const first = FIELD_ORDER.find((k) => next[k])
+    const el = first ? document.getElementById(first) : null
+    if (!el) return
+    el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' })
+    el.focus({ preventScroll: true })
   }
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    if (!validate()) return
+    // The button is disabled while sending, but Enter in a field can still
+    // submit the form a second time.
+    if (submitting) return
+    const invalid = validate()
+    if (Object.keys(invalid).length > 0) {
+      focusFirstError(invalid)
+      return
+    }
+    // Take the last failure off the page, so a second one is read out again.
+    setResult(null)
     setSubmitting(true)
     const res = await submitStory(form)
     setSubmitting(false)
@@ -77,7 +158,7 @@ export default function ShareStoryPage() {
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-5xl">
             Share your exchange story
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/75">
+          <p className="mx-auto mt-4 max-w-xl text-base font-normal text-soft/75 dark:font-light">
             Been on a SCOPE or SCORE exchange with AUSSS? Tell us what it was
             like. With your permission, we may feature it on the exchange pages
             for the next round of students.
@@ -104,8 +185,10 @@ export default function ShareStoryPage() {
                   id="name"
                   type="text"
                   autoComplete="name"
+                  required
                   value={form.name}
                   onChange={(e) => update('name', e.target.value)}
+                  {...fieldProps('name')}
                   className={inputClass(errors.name)}
                 />
               </Field>
@@ -116,8 +199,10 @@ export default function ShareStoryPage() {
                   type="email"
                   inputMode="email"
                   autoComplete="email"
+                  required
                   value={form.email}
                   onChange={(e) => update('email', e.target.value)}
+                  {...fieldProps('email')}
                   className={inputClass(errors.email)}
                 />
               </Field>
@@ -129,8 +214,10 @@ export default function ShareStoryPage() {
                   inputMode="tel"
                   autoComplete="tel"
                   placeholder="01x xxxx xxxx"
+                  required
                   value={form.phone}
                   onChange={(e) => update('phone', e.target.value)}
+                  {...fieldProps('phone')}
                   className={inputClass(errors.phone)}
                 />
               </Field>
@@ -193,10 +280,12 @@ export default function ShareStoryPage() {
                   rows={8}
                   maxLength={MAX_STORY_LENGTH}
                   placeholder="What did you do, what did you learn, what surprised you? The little moments are the best ones."
+                  required
                   value={form.story}
                   onChange={(e) =>
                     update('story', e.target.value.slice(0, MAX_STORY_LENGTH))
                   }
+                  {...fieldProps('story')}
                   className={inputClass(errors.story) + ' resize-y'}
                 />
                 <span className="self-end text-2xs text-soft/55">
@@ -206,23 +295,28 @@ export default function ShareStoryPage() {
             </div>
           </fieldset>
 
+          {/* The sentence comes whole from src/lib/stories.js: nothing is
+              added after it. */}
           {result?.ok === false && (
-            <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger">
-              {result.error}. Please try again or email us if it keeps failing.
+            <p
+              role="alert"
+              className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-danger"
+            >
+              {result.error}
             </p>
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link
               to="/exchange"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-soft/70 transition-colors hover:text-ink"
+              className="inline-flex min-h-[44px] items-center gap-1 self-start text-sm font-semibold text-soft/70 transition-colors hover:text-ink sm:self-auto"
             >
               ← Back to exchange
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-solid px-8 py-3.5 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
+              className={`gap-2 px-8 py-3.5 disabled:cursor-wait disabled:opacity-70 disabled:hover:scale-100 ${solidPillCls}`}
             >
               {submitting ? (
                 <>
@@ -242,28 +336,32 @@ export default function ShareStoryPage() {
 
 // ── Bits ─────────────────────────────────────────────────────────────────
 
+// Under a finger a field is at least 44px tall (in px, not rem, since the root
+// size shrinks on a 320px phone); under a mouse it keeps the height it had.
 function inputClass(error) {
-  return `w-full rounded-lg border bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-soft/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 ${
+  return `w-full rounded-lg border bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-soft/40 transition-colors focus:outline-none focus:ring-2 focus:ring-medical/60 [@media(pointer:coarse)]:min-h-[44px] ${
     error ? 'border-red-400/50' : 'border-line/15 hover:border-line/25'
   }`
 }
 
+// The label holds the field's name and nothing else. When it wrapped the whole
+// block, the error and the character count were read out as part of the name.
 function Field({ label, htmlFor, error, span = 1, children }) {
   return (
-    <label
-      htmlFor={htmlFor}
-      className={`flex flex-col gap-1.5 ${span === 2 ? 'sm:col-span-2' : ''}`}
-    >
-      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-soft/70">
+    <div className={`flex flex-col gap-1.5 ${span === 2 ? 'sm:col-span-2' : ''}`}>
+      <label
+        htmlFor={htmlFor}
+        className="text-xs font-semibold uppercase tracking-[0.14em] text-soft/70"
+      >
         {label}
-      </span>
+      </label>
       {children}
       {error && (
         <span id={`${htmlFor}-error`} role="alert" className="text-xs text-danger">
           {error}
         </span>
       )}
-    </label>
+    </div>
   )
 }
 
@@ -302,16 +400,31 @@ function Spinner() {
 }
 
 function StorySuccess({ result, name }) {
+  // The form, and the Send button that had the focus, are gone. The heading
+  // takes the focus, so a screen reader says the story went through and the
+  // page stands at this card and not where the long form had been scrolled to.
+  // A jump, not a glide: this is another screen, not a place further up the
+  // same one.
+  const headingRef = useRef(null)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    headingRef.current?.focus({ preventScroll: true })
+  }, [])
+
   return (
     <article className="bg-page">
       <div className="container-prose pt-32 pb-24 sm:pt-40">
         <div className="mx-auto max-w-xl rounded-2xl border border-medical/30 bg-sunk p-8 text-center sm:p-12">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-medical/15 text-accent">
-            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M5 12l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="heading-serif mt-6 text-3xl text-ink sm:text-4xl">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="heading-serif mt-6 text-3xl text-ink focus:outline-none sm:text-4xl"
+          >
             Thank you for sharing
           </h1>
           <p className="mt-4 text-base text-soft/75">
@@ -327,16 +440,10 @@ function StorySuccess({ result, name }) {
             </span>
           </div>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link
-              to="/exchange"
-              className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02] sm:w-auto"
-            >
+            <Link to="/exchange" className={`w-full px-6 py-3 sm:w-auto ${solidPillCls}`}>
               Back to exchange
             </Link>
-            <Link
-              to="/"
-              className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
-            >
+            <Link to="/" className={`w-full px-6 py-3 sm:w-auto ${outlinePillCls}`}>
               Home
             </Link>
           </div>
@@ -358,10 +465,7 @@ function StoriesClosed() {
             We&rsquo;re not collecting new exchange stories right now. Follow
             our channels to hear when submissions open again.
           </p>
-          <Link
-            to="/exchange"
-            className="mt-7 inline-flex rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.02]"
-          >
+          <Link to="/exchange" className={`mt-7 px-6 py-3 ${solidPillCls}`}>
             Back to exchange
           </Link>
         </div>

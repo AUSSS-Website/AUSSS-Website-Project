@@ -3,6 +3,7 @@ import { committeeBySlug } from '../data/society.js'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import { dateTile, eventWhen } from '../lib/eventTime.js'
 import { upcomingEvents, useEvents } from '../lib/events.js'
+import { pressCls } from '../lib/motion.js'
 import { SectionLabel } from './committeeUi.jsx'
 
 // The pieces every list of events shares: the card (on /events, the archive,
@@ -52,7 +53,7 @@ export default function EventCard({ ev, past = false, headingLevel = 3 }) {
   return (
     <Link
       to={`/events/${ev.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/10 bg-card transition-colors hover:border-medical/40"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/10 bg-card transition-colors hover:border-medical/40 active:border-medical/40"
     >
       {ev.image ? (
         <div className="dark relative aspect-[16/9] overflow-hidden bg-sunk">
@@ -60,7 +61,7 @@ export default function EventCard({ ev, past = false, headingLevel = 3 }) {
             src={ev.image}
             alt=""
             loading="lazy"
-            className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 ${
+            className={`h-full w-full object-cover transition-transform duration-700 motion-safe:group-hover:scale-105 ${
               past ? 'grayscale-[35%]' : ''
             }`}
           />
@@ -77,7 +78,7 @@ export default function EventCard({ ev, past = false, headingLevel = 3 }) {
             src={committee?.logo || '/assets/brand/ausss-icon-white.png'}
             alt=""
             loading="lazy"
-            className={`logo-ink h-16 w-auto max-w-[40%] object-contain opacity-80 transition-transform duration-700 group-hover:scale-105 sm:h-20 ${
+            className={`logo-ink h-16 w-auto max-w-[40%] object-contain opacity-80 transition-transform duration-700 motion-safe:group-hover:scale-105 sm:h-20 ${
               past ? 'grayscale-[35%]' : ''
             }`}
           />
@@ -122,9 +123,12 @@ export function CommitteeEvents({ slug, abbr, accent }) {
           </li>
         ))}
       </ul>
+      {/* 44px for a finger. The margins take back what that adds to the
+          1.25rem line, worked out from the root size so the 2rem gap above
+          holds on a small phone and a wide screen alike. */}
       <Link
         to="/events"
-        className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
+        className="-mb-[calc((44px_-_1.25rem)/2)] mt-[calc(2rem_-_(44px_-_1.25rem)/2)] inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-ink"
       >
         All AUSSS events →
       </Link>
@@ -151,7 +155,7 @@ export function HomeEvents() {
           </div>
           <Link
             to="/events"
-            className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
           >
             All events →
           </Link>

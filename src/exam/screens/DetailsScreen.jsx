@@ -15,6 +15,9 @@ import { ExamCard, Problem, tapLinkCls, tapPrimaryCls } from '../examUi.jsx'
 //   onCancel  set when there is a screen to go back to
 const inputId = { full_name: 'exam-name', faculty_year: 'exam-year', phone: 'exam-phone', student_id: 'exam-student-id' }
 const PROBLEM_ID = 'exam-details-problem'
+// The field a problem is about (aria-invalid) has a red edge, so the eye
+// finds it as the focus does.
+const fieldCls = `${authInputCls} aria-[invalid=true]:border-danger`
 
 export default function DetailsScreen({ word, me, email, held = false, notice = '', onSaved, onCancel, onSignOut }) {
   const [fullName, setFullName] = useState(me?.full_name || '')
@@ -57,6 +60,17 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
   // on the list, no connection) is spoken once by the line itself.
   const about = (field) => (fault === field ? { 'aria-invalid': true, 'aria-describedby': PROBLEM_ID } : {})
 
+  // What a field does with a change. Typing in the field at fault takes its
+  // problem away: the sentence would go on asking for what is being given,
+  // and a screen reader would go on calling the field wrong. A problem that
+  // is about no field stays until the next save.
+  const edit = (field, set) => (e) => {
+    set(e.target.value)
+    if (fault !== field) return
+    setFault(null)
+    setProblem('')
+  }
+
   return (
     <ExamCard
       title="Your details"
@@ -69,13 +83,13 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
           <input
             id={inputId.full_name}
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={edit('full_name', setFullName)}
             autoComplete="name"
             autoCapitalize="words"
             maxLength={120}
             aria-required="true"
             {...about('full_name')}
-            className={authInputCls}
+            className={fieldCls}
           />
         </Field>
 
@@ -83,10 +97,10 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
           <select
             id={inputId.faculty_year}
             value={facultyYear}
-            onChange={(e) => setFacultyYear(e.target.value)}
+            onChange={edit('faculty_year', setFacultyYear)}
             aria-required="true"
             {...about('faculty_year')}
-            className={authInputCls}
+            className={fieldCls}
           >
             <option value="">Choose your year</option>
             {EXAM_YEARS.map((year) => (
@@ -103,12 +117,12 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
             type="tel"
             inputMode="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={edit('phone', setPhone)}
             autoComplete="tel"
             maxLength={30}
             aria-required="true"
             {...about('phone')}
-            className={authInputCls}
+            className={fieldCls}
           />
         </Field>
 
@@ -120,7 +134,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
           <input
             id={inputId.student_id}
             value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
+            onChange={edit('student_id', setStudentId)}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="characters"
@@ -130,7 +144,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
             aria-required="true"
             {...about('student_id')}
             // Locked, and still easy to read: no fading, a dashed edge instead.
-            className={`${authInputCls} ${held ? 'cursor-not-allowed border-dashed !bg-transparent !text-soft' : ''}`}
+            className={`${fieldCls} ${held ? 'cursor-not-allowed border-dashed !bg-transparent !text-soft' : ''}`}
           />
         </Field>
 

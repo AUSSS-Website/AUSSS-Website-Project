@@ -7,16 +7,21 @@ import { usePublicEmail } from '../hooks/useSiteSettings.js'
 import { useContentBlock } from '../lib/content.js'
 import siteContact from '../content/schemas/siteContact.js'
 import { SocialCards } from '../components/ContactDetails.jsx'
+import Button from '../components/ui/Button.jsx'
 
 const isSupport = (g) => /support|division|psd|pnsd|cbsd/i.test(g || '')
 
 function EmailValue({ email }) {
   if (!email)
     return <span className="text-sm italic text-soft/35">Email TBA</span>
+  // The ::after makes the address 44px tall to a finger, in px because the
+  // line itself shrinks with the root size on a 320px phone. The reach stays
+  // inside the row's own padding, so two rows never share a tap. On a phone
+  // the link is as wide as the address, not the whole row.
   return (
     <a
       href={`mailto:${email}`}
-      className="text-sm text-accent underline-offset-4 transition-colors hover:text-ink hover:underline"
+      className="relative self-start text-sm text-accent underline-offset-4 transition-colors after:absolute after:inset-x-0 after:inset-y-[calc(50%-22px)] after:content-[''] hover:text-ink hover:underline sm:self-auto"
     >
       {email}
     </a>
@@ -99,12 +104,9 @@ export default function ContactPage() {
             {contact.contactIntro}
           </p>
           {contactEmail && (
-            <a
-              href={`mailto:${contactEmail}`}
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-colors hover:bg-solid-hover"
-            >
+            <Button href={`mailto:${contactEmail}`} className="mt-8">
               {contactEmail}
-            </a>
+            </Button>
           )}
         </div>
       </header>

@@ -4,8 +4,9 @@
 //   <ErrorText>{save.error ? errorText(save.error, 'Could not save.') : ''}</ErrorText>
 //
 // It reads both kinds of error the site meets: the ones src/lib/supabaseRest.js
-// throws on the public pages (`status`, `rejected`) and the ones supabase-js
-// hands back in the portal (`code`, the database's SQLSTATE). What comes out:
+// throws on the public pages (`status`, `rejected`, and the answer's `code`
+// when it had one) and the ones supabase-js hands back in the portal (`code`,
+// the database's SQLSTATE). What comes out:
 //
 //   no answer     the request never got one (offline, a dropped connection, a
 //                 timeout): UNREACHED, whatever the browser called it
@@ -57,7 +58,14 @@ export function errorText(err, fallback = WENT_WRONG) {
     return !forbidden && SENTENCE.test(message) ? message : NO_PERMISSION
   }
 
-  const refused = err.rejected === true || REFUSAL_CODES.has(err.code)
+  // An error that carries a code is judged by the code alone. supabaseRest.js
+  // marks every 4xx answer `rejected`, and PostgREST answers 4xx in its own
+  // words as well ("Could not find the function … in the schema cache", a
+  // not-null violation); the code is what tells those from a sentence a
+  // database function raised. An error with no code is a refusal when it is
+  // marked one: a sentence the site's own code threw, or a 4xx with no code.
+  const code = typeof err.code === 'string' ? err.code : ''
+  const refused = code ? REFUSAL_CODES.has(code) : err.rejected === true
   if (refused && message && !NOT_FOR_SHOWING.test(message)) return message
 
   return fallback

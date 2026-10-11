@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { committees, slugFor } from '../data/society.js'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
-import { scrollBehavior } from '../lib/motion.js'
+import { prefersReducedMotion, pressCls, scrollBehavior } from '../lib/motion.js'
 import {
   QUESTIONS,
   QUIZ_BASIS,
@@ -38,9 +38,11 @@ function saveResult(abbr) {
   }
 }
 
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+// A text-sized control keeps a thumb's 44px to land on: an unseen ::after
+// reaches above and below the words. In px, not rem, since the root size
+// shrinks on a 320px phone.
+const tapAreaCls =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
 
 export default function SortingPage() {
   usePageTitle('Sorting quiz')
@@ -62,6 +64,19 @@ export default function SortingPage() {
     if (window.scrollY > 120) window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }, [qIndex, stage])
 
+  // Each step swaps the card, and the button that was pressed goes with it,
+  // which left a keyboard reader back at the top of the page. Focus moves to
+  // the new step's heading instead (to Skip while Dash deliberates), and a
+  // screen reader reads it out. Only when the step has changed: on arrival
+  // nothing was pressed, and the page keeps its focus where it was.
+  const focusRef = useRef(null)
+  const lastStep = useRef({ stage, qIndex })
+  useEffect(() => {
+    if (lastStep.current.stage === stage && lastStep.current.qIndex === qIndex) return
+    lastStep.current = { stage, qIndex }
+    focusRef.current?.focus({ preventScroll: true })
+  }, [stage, qIndex])
+
   const begin = () => {
     setAnswers([])
     setQIndex(0)
@@ -69,10 +84,16 @@ export default function SortingPage() {
     setStage('quiz')
   }
 
+  // The short wait that shows the pick before the next question arrives. It
+  // is dropped when the page is left, and when Back is pressed inside it:
+  // otherwise it fired after Back and moved the quiz forward again.
+  const flashTimer = useRef()
+  useEffect(() => () => window.clearTimeout(flashTimer.current), [])
+
   const choose = (optIdx) => {
     if (picked !== null) return // ignore double-taps during the flash
     setPicked(optIdx)
-    window.setTimeout(() => {
+    flashTimer.current = window.setTimeout(() => {
       setPicked(null)
       setAnswers((prev) => [...prev.slice(0, qIndex), optIdx])
       if (qIndex + 1 < QUESTIONS.length) {
@@ -84,6 +105,8 @@ export default function SortingPage() {
   }
 
   const goBack = () => {
+    window.clearTimeout(flashTimer.current)
+    setPicked(null)
     if (qIndex === 0) setStage('intro')
     else setQIndex(qIndex - 1)
   }
@@ -111,7 +134,7 @@ export default function SortingPage() {
           }}
         />
         <div className="container-prose relative">
-          {stage === 'intro' && <Intro saved={saved} onBegin={begin} />}
+          {stage === 'intro' && <Intro saved={saved} onBegin={begin} focusRef={focusRef} />}
           {stage === 'quiz' && (
             <Question
               qIndex={qIndex}
@@ -119,11 +142,18 @@ export default function SortingPage() {
               picked={picked}
               onChoose={choose}
               onBack={goBack}
+              focusRef={focusRef}
             />
           )}
-          {stage === 'reveal' && <Reveal onDone={() => setStage('result')} />}
+          {stage === 'reveal' && <Reveal onDone={() => setStage('result')} focusRef={focusRef} />}
           {stage === 'result' && winner && (
-            <Result winner={winner} ranked={ranked} answers={answers} onRetake={begin} />
+            <Result
+              winner={winner}
+              ranked={ranked}
+              answers={answers}
+              onRetake={begin}
+              focusRef={focusRef}
+            />
           )}
         </div>
       </div>
@@ -131,7 +161,7 @@ export default function SortingPage() {
   )
 }
 
-function Intro({ saved, onBegin }) {
+function Intro({ saved, onBegin, focusRef }) {
   const savedCommittee = saved ? byAbbr(saved.abbr) : null
   return (
     <div className="mx-auto max-w-2xl text-center animate-fade-up">
@@ -140,10 +170,14 @@ function Intro({ saved, onBegin }) {
         The Sorting Ceremony
         <span className="h-px w-8 bg-medical" />
       </span>
-      <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
+      <h1
+        ref={focusRef}
+        tabIndex={-1}
+        className="heading-serif mt-8 text-4xl text-ink focus:outline-none sm:text-6xl"
+      >
         Where do you belong?
       </h1>
-      <p className="mx-auto mt-6 max-w-xl text-lg font-light leading-relaxed text-soft/75">
+      <p className="mx-auto mt-6 max-w-xl text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
         Six standing committees, four support divisions. Find out which one is
         yours.
       </p>
@@ -154,8 +188,9 @@ function Intro({ saved, onBegin }) {
         care of the sorting.
       </p>
       <button
+        type="button"
         onClick={onBegin}
-        className="mt-10 inline-flex items-center gap-2 rounded-full bg-cta px-8 py-3.5 text-sm font-semibold text-on-cta shadow-lg shadow-medical/20 transition-colors hover:bg-cta-hover"
+        className={`mt-10 inline-flex items-center gap-2 rounded-full bg-cta px-8 py-3.5 text-sm font-semibold text-on-cta shadow-lg shadow-medical/20 hover:bg-cta-hover ${pressCls}`}
       >
         Begin the Sorting
         <span aria-hidden="true">→</span>
@@ -164,11 +199,13 @@ function Intro({ saved, onBegin }) {
         It takes about two minutes. Dash is gentle.
       </p>
       {savedCommittee && (
-        <p className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-line/10 bg-card/80 px-5 py-2.5 text-sm text-soft/70">
+        // The link is one short word, so the whole pill is its place to land:
+        // the ::after is laid over the pill, not over the word.
+        <p className="relative mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-line/10 bg-card/80 px-5 py-2.5 text-sm text-soft/70">
           Last time, Dash said
           <Link
             to={`/committees/${slugFor(savedCommittee)}`}
-            className="font-bold transition-opacity hover:opacity-80"
+            className="font-bold transition-opacity after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-[''] hover:opacity-80"
             style={{ color: readableAccent(savedCommittee.color) }}
           >
             {savedCommittee.abbr}
@@ -179,70 +216,92 @@ function Intro({ saved, onBegin }) {
   )
 }
 
-function Question({ qIndex, answers, picked, onChoose, onBack }) {
+function Question({ qIndex, answers, picked, onChoose, onBack, focusRef }) {
   const q = QUESTIONS[qIndex]
-  const progress = (qIndex / QUESTIONS.length) * 100
+  const progress = qIndex / QUESTIONS.length
   return (
-    <div key={qIndex} className="mx-auto max-w-2xl animate-fade-up">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-soft/60">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
-        >
-          <span aria-hidden="true">←</span> Back
-        </button>
-        <span>
-          Question {qIndex + 1} of {QUESTIONS.length}
-        </span>
-      </div>
-      <div
-        className="mt-4 h-1 overflow-hidden rounded-full bg-veil/10"
-        role="progressbar"
-        aria-valuenow={qIndex + 1}
-        aria-valuemin={1}
-        aria-valuemax={QUESTIONS.length}
-        aria-label={`Question ${qIndex + 1} of ${QUESTIONS.length}`}
-      >
+    // The site's own floating Back button (BackButton.jsx) is fixed at the top
+    // left of every page, above everything. It sat on top of this card's Back:
+    // a tap meant for "the question before" left the quiz and lost the answers.
+    // Room at the top keeps the two apart on a phone only until the page is
+    // scrolled a little, so below lg, where this card reaches the left edge,
+    // its Back is at the right end of the row and can never be under the
+    // other. From lg the card is clear of that corner and Back is on the left.
+    <div className="mx-auto max-w-2xl pt-12 sm:pt-0">
+      {/* The header stays where it is from one question to the next, so the
+          bar can run on to its new length. Only the question below it is
+          swapped (the key) and fades up again. */}
+      <div className="animate-fade-up">
+        <div className="flex flex-row-reverse items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-soft/60 lg:flex-row">
+          <button
+            type="button"
+            onClick={onBack}
+            className={`inline-flex items-center gap-1.5 uppercase hover:text-ink ${pressCls} ${tapAreaCls}`}
+          >
+            <span aria-hidden="true">←</span> Back
+          </button>
+          <span>
+            Question {qIndex + 1} of {QUESTIONS.length}
+          </span>
+        </div>
         <div
-          className="h-full rounded-full bg-medical transition-[width] duration-500"
-          style={{ width: `${progress}%` }}
-        />
+          className="mt-4 h-1 overflow-hidden rounded-full bg-veil/10"
+          role="progressbar"
+          aria-valuenow={qIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={QUESTIONS.length}
+          aria-label={`Question ${qIndex + 1} of ${QUESTIONS.length}`}
+        >
+          {/* A full-length bar scaled from its left end: the browser moves it
+              without laying the page out again, which a changing width asks
+              for. With reduced motion it steps to its new length. */}
+          <div
+            className="h-full origin-left bg-medical motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out"
+            style={{ transform: `scaleX(${progress})` }}
+          />
+        </div>
       </div>
 
-      <h2
-        aria-live="polite"
-        className="heading-serif mt-10 text-2xl leading-snug text-ink sm:text-3xl"
-      >
-        {q.question}
-      </h2>
-      {q.note && <p className="mt-3 text-sm italic text-accent/80">{q.note}</p>}
+      <div key={qIndex} className="animate-fade-up">
+        {/* The heading takes the focus when a question arrives (see
+            focusRef in SortingPage), which is also what reads it out. */}
+        <h2
+          ref={focusRef}
+          tabIndex={-1}
+          className="heading-serif mt-10 text-2xl leading-snug text-ink focus:outline-none sm:text-3xl"
+        >
+          {q.question}
+        </h2>
+        {q.note && <p className="mt-3 text-sm italic text-accent">{q.note}</p>}
 
-      <div className="mt-8 grid gap-3">
-        {q.options.map((opt, i) => {
-          const isPicked = picked === i
-          const wasChosen = picked === null && answers[qIndex] === i
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onChoose(i)}
-              className={`rounded-2xl border p-5 text-left text-base leading-relaxed transition-all duration-200 ${
-                isPicked || wasChosen
-                  ? 'border-medical bg-medical/15 text-ink'
-                  : 'border-line/10 bg-card text-soft/85 hover:border-line/30 hover:bg-card/70'
-              }`}
-            >
-              {opt.text}
-            </button>
-          )
-        })}
+        <div className="mt-8 grid gap-3">
+          {q.options.map((opt, i) => {
+            const isPicked = picked === i
+            const wasChosen = picked === null && answers[qIndex] === i
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onChoose(i)}
+                className={`rounded-2xl border p-5 text-left text-base leading-relaxed transition-[color,background-color,border-color,transform] duration-200 ease-out motion-safe:active:scale-[0.985] ${
+                  isPicked || wasChosen
+                    ? 'border-medical bg-medical/15 text-ink'
+                    : 'border-line/10 bg-card text-soft/85 hover:border-line/30 hover:bg-card/70'
+                }`}
+              >
+                {opt.text}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
 }
 
-function Reveal({ onDone }) {
+// Dash deliberating, line by line. A reader who asked for less motion never
+// comes here: `choose` sends them straight to the result.
+function Reveal({ onDone, focusRef }) {
   const [lineIdx, setLineIdx] = useState(0)
   const done = useRef(onDone)
   done.current = onDone
@@ -273,6 +332,7 @@ function Reveal({ onDone }) {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
+          aria-hidden="true"
         >
           <path
             d="M5 3v5a4 4 0 0 0 8 0V3M9 12v3a5 5 0 0 0 10 0v-1"
@@ -282,15 +342,21 @@ function Reveal({ onDone }) {
           <circle cx="19" cy="11" r="2" />
         </svg>
       </span>
-      <p
-        key={lineIdx}
-        className="mt-10 animate-reveal font-serif text-2xl italic leading-relaxed text-soft/85 sm:text-3xl"
-      >
-        {REVEAL_LINES[lineIdx]}
-      </p>
+      {/* The wrapper stays while the lines change inside it, so each new line
+          is read out. */}
+      <div aria-live="polite">
+        <p
+          key={lineIdx}
+          className="mt-10 animate-reveal font-serif text-2xl italic leading-relaxed text-soft/85 sm:text-3xl"
+        >
+          {REVEAL_LINES[lineIdx]}
+        </p>
+      </div>
       <button
+        ref={focusRef}
+        type="button"
         onClick={() => done.current()}
-        className="mt-12 text-xs font-semibold uppercase tracking-[0.2em] text-soft/40 transition-colors hover:text-ink"
+        className={`mt-12 text-xs font-semibold uppercase tracking-[0.2em] text-soft/40 hover:text-ink ${pressCls} ${tapAreaCls}`}
       >
         Skip
       </button>
@@ -298,7 +364,7 @@ function Reveal({ onDone }) {
   )
 }
 
-function Result({ winner, ranked, answers, onRetake }) {
+function Result({ winner, ranked, answers, onRetake, focusRef }) {
   const accent = readableAccent(winner.color)
   const runnersUp = ranked.slice(1, 3).map(byAbbr).filter(Boolean)
   const profile = useMemo(() => profileFor(answers), [answers])
@@ -340,7 +406,12 @@ function Result({ winner, ranked, answers, onRetake }) {
         />
       </div>
 
-      <h1 className="heading-serif mt-8 text-5xl sm:text-7xl" style={{ color: accent }}>
+      <h1
+        ref={focusRef}
+        tabIndex={-1}
+        className="heading-serif mt-8 text-5xl focus:outline-none sm:text-7xl"
+        style={{ color: accent }}
+      >
         {winner.abbr}!
       </h1>
       <p className="mt-3 text-lg text-ink">
@@ -364,17 +435,22 @@ function Result({ winner, ranked, answers, onRetake }) {
       <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
         <Link
           to={`/committees/${slugFor(winner)}`}
-          className="rounded-full px-7 py-3 text-sm font-semibold text-page transition-opacity hover:opacity-85"
+          className="inline-flex min-h-[44px] items-center rounded-full px-7 py-3 text-sm font-semibold text-page transition-[opacity,transform] duration-150 ease-out hover:opacity-85 motion-safe:active:scale-[0.97]"
           style={{ background: accent }}
         >
           Meet your committee
         </Link>
         <button
+          type="button"
           onClick={share}
-          className="rounded-full border border-line/20 px-7 py-3 text-sm font-semibold text-ink transition-colors hover:border-line/45"
+          className={`min-h-[44px] rounded-full border border-line/20 px-7 py-3 text-sm font-semibold text-ink hover:border-line/45 ${pressCls}`}
         >
           {copied ? 'Copied!' : 'Share your result'}
         </button>
+        {/* A button's changed label is not read out by itself. */}
+        <span className="sr-only" role="status">
+          {copied ? 'Copied' : ''}
+        </span>
       </div>
 
       {runnersUp.length > 0 && (
@@ -387,7 +463,7 @@ function Result({ winner, ranked, answers, onRetake }) {
               <Link
                 key={c.abbr}
                 to={`/committees/${slugFor(c)}`}
-                className="inline-flex items-center gap-2 rounded-full border border-line/10 bg-sunk/70 px-4 py-2 text-sm text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/10 bg-sunk/70 px-4 py-2 text-sm text-soft/80 hover:border-line/30 hover:text-ink ${pressCls}`}
               >
                 <span
                   className="rounded-full px-2 py-0.5 text-3xs font-bold uppercase tracking-[0.12em]"
@@ -439,7 +515,7 @@ function Result({ winner, ranked, answers, onRetake }) {
           </span>
           <span
             aria-hidden="true"
-            className="text-accent transition-transform duration-300 group-open:rotate-180"
+            className="text-accent group-open:rotate-180 motion-safe:transition-transform motion-safe:duration-300"
           >
             ▾
           </span>
@@ -456,7 +532,7 @@ function Result({ winner, ranked, answers, onRetake }) {
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-semibold text-accent transition-colors hover:text-ink"
+                  className={`inline-block text-sm font-semibold text-accent transition-colors hover:text-ink ${tapAreaCls}`}
                 >
                   {s.label} ↗
                 </a>
@@ -469,14 +545,15 @@ function Result({ winner, ranked, answers, onRetake }) {
 
       <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm">
         <button
+          type="button"
           onClick={onRetake}
-          className="font-semibold text-accent transition-colors hover:text-ink"
+          className={`font-semibold text-accent hover:text-ink ${pressCls} ${tapAreaCls}`}
         >
           Retake the Sorting
         </button>
         <Link
           to="/join"
-          className="font-semibold text-accent transition-colors hover:text-ink"
+          className={`font-semibold text-accent transition-colors hover:text-ink ${tapAreaCls}`}
         >
           How to join AUSSS →
         </Link>

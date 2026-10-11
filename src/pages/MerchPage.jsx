@@ -1,35 +1,58 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import useReveal from '../hooks/useReveal.js'
+import useFocusTrap from '../hooks/useFocusTrap.js'
 import { useWatchOrderSection } from '../lib/orderSectionView.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { merchPages, merchPdf } from '../data/merch.js'
 import { useMerchCatalogue } from '../lib/merch.js'
+import { pressCls } from '../lib/motion.js'
 import ProductCard from '../components/ProductCard.jsx'
 
 // The top offset of each desktop booklet column: alternate columns drop, so
 // the four columns keep the two-column zigzag's stagger.
 const BOOKLET_COLUMNS = ['', 'pt-24', '', 'pt-24']
 
+// The round buttons laid over the two viewers (close, previous, next). The
+// pressed colour is what answers a finger where nothing hovers and, with
+// reduced motion, nothing sinks (the gallery's viewer has the same).
+const viewerBtnCls = `grid place-items-center rounded-full bg-veil/10 text-ink hover:bg-veil/20 active:bg-veil/20 ${pressCls}`
+
+// The dimming layer of the two viewers. It fades in (enter-scrim), and for a
+// reader who asked for fewer see-through surfaces it is solid, with no blur.
+const scrimCls =
+  'enter-scrim dark fixed inset-0 flex items-center justify-center bg-page/95 p-4 backdrop-blur-sm reduce-transparency:bg-page reduce-transparency:backdrop-filter-none'
+
 function BookletThumb({ page, idx, onOpen }) {
   return (
-    <button
-      onClick={() => onOpen(idx)}
-      className="reveal group block w-full overflow-hidden rounded-xl ring-1 ring-line/10 transition-all duration-500 hover:ring-medical/50"
-      aria-label={`Open page ${idx + 1} full screen`}
-    >
-      <img
-        src={page.src}
-        alt={`Merch booklet page ${idx + 1}`}
-        width={page.w}
-        height={page.h}
-        loading={idx < 2 ? 'eager' : 'lazy'}
-        className="w-full transition-transform duration-700 group-hover:scale-[1.01]"
-      />
-    </button>
+    // The scroll-in fade (.reveal) is on this wrapper. On the button itself
+    // its 0.9 s transition took the place of the button's own, so the ring
+    // under the pointer snapped.
+    <div className="reveal">
+      <button
+        type="button"
+        onClick={() => onOpen(idx)}
+        className="group block w-full overflow-hidden rounded-xl ring-1 ring-line/10 transition-[box-shadow,transform] duration-200 ease-out hover:ring-medical/50 motion-safe:active:scale-[0.98]"
+        aria-label={`Open page ${idx + 1} full screen`}
+      >
+        <img
+          src={page.src}
+          alt={`Merch booklet page ${idx + 1}`}
+          width={page.w}
+          height={page.h}
+          loading={idx < 2 ? 'eager' : 'lazy'}
+          className="w-full transition-transform duration-700 motion-safe:group-hover:scale-[1.01]"
+        />
+      </button>
+    </div>
   )
 }
 
 function Lightbox({ index, onClose, onPrev, onNext }) {
+  // Focus goes into the viewer and stays there, and returns to the thumbnail
+  // that opened it when it closes. Without this the three buttons were at the
+  // far end of the page for anyone using the keyboard.
+  const trapRef = useFocusTrap(true, onClose)
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose()
@@ -47,56 +70,80 @@ function Lightbox({ index, onClose, onPrev, onNext }) {
   const page = merchPages[index]
   return (
     <div
-      className="dark fixed inset-0 z-[60] flex items-center justify-center bg-page/95 p-4 backdrop-blur-sm"
+      ref={trapRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Merch booklet, page ${index + 1} of ${merchPages.length}`}
+      className={`${scrimCls} z-[60]`}
       onClick={onClose}
     >
       <button
+        type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20"
+        className={`absolute right-5 top-5 z-10 h-11 w-11 ${viewerBtnCls}`}
       >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
         </svg>
       </button>
       <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation()
           onPrev()
         }}
         aria-label="Previous page"
-        className="absolute left-3 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20 sm:left-6"
+        className={`absolute left-3 z-10 h-12 w-12 sm:left-6 ${viewerBtnCls}`}
       >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+      {/* The page rises into place as the viewer opens (enter-panel). It is
+          the same element from page to page, so turning a page does not play
+          the entry again. */}
       <img
         src={page.src}
         alt={`Merch booklet page ${index + 1}`}
-        className="max-h-[90vh] w-auto rounded-lg shadow-2xl"
+        className="enter-panel max-h-[90vh] w-auto rounded-lg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       />
       <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation()
           onNext()
         }}
         aria-label="Next page"
-        className="absolute right-3 grid h-12 w-12 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20 sm:right-6"
+        className={`absolute right-3 z-10 h-12 w-12 sm:right-6 ${viewerBtnCls}`}
       >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <span className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-veil/10 px-4 py-1 text-xs font-medium text-ink">
-        {index + 1} / {merchPages.length}
+      {/* Turning a page leaves the focus on the arrow that was pressed, so a
+          screen reader hears nothing unless the count says it has changed.
+          The words are for it; the figures are what is seen. */}
+      <span
+        role="status"
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-veil/10 px-4 py-1 text-xs font-medium text-ink"
+      >
+        <span className="sr-only">
+          Page {index + 1} of {merchPages.length}
+        </span>
+        <span aria-hidden="true">
+          {index + 1} / {merchPages.length}
+        </span>
       </span>
     </div>
   )
 }
 
 function SizeChartModal({ product, onClose }) {
+  // Focus goes to the close button and returns to "Size chart" on closing.
+  const trapRef = useFocusTrap(true, onClose)
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose()
@@ -111,19 +158,24 @@ function SizeChartModal({ product, onClose }) {
 
   return (
     <div
-      className="dark fixed inset-0 z-[70] flex items-center justify-center bg-page/95 p-4 backdrop-blur-sm"
+      ref={trapRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${product.name} size chart`}
+      className={`${scrimCls} z-[70]`}
       onClick={onClose}
     >
       <button
+        type="button"
         onClick={onClose}
         aria-label="Close size chart"
-        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-veil/10 text-ink transition-colors hover:bg-veil/20"
+        className={`absolute right-5 top-5 z-10 h-11 w-11 ${viewerBtnCls}`}
       >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
         </svg>
       </button>
-      <figure className="max-h-[90vh] max-w-3xl" onClick={(e) => e.stopPropagation()}>
+      <figure className="enter-panel max-h-[90vh] max-w-3xl" onClick={(e) => e.stopPropagation()}>
         <img
           src={product.sizeChart}
           alt={`${product.name} size chart`}
@@ -150,6 +202,9 @@ export default function MerchPage() {
   useWatchOrderSection(orderRef)
 
   const closePage = useCallback(() => setOpenPage(null), [])
+  // Kept the same from render to render: the size chart's focus trap starts
+  // over whenever its onClose changes.
+  const closeChart = useCallback(() => setChartFor(null), [])
   const prevPage = useCallback(
     () => setOpenPage((i) => (i <= 0 ? merchPages.length - 1 : i - 1)),
     [],
@@ -179,7 +234,7 @@ export default function MerchPage() {
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Merch 2025–26
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
+          <p className="mx-auto mt-4 max-w-2xl text-lg font-normal text-soft/75 dark:font-light">
             Life Savers, Change Makers. Every piece in this drop is{' '}
             <strong className="text-ink">made to order</strong>: we collect
             orders, then run production, then coordinate pickup. What you pay
@@ -200,23 +255,26 @@ export default function MerchPage() {
             <h2 className="heading-serif mt-5 text-3xl text-ink sm:text-4xl">
               Flip through the 25–26 booklet
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/70">
+            <p className="mx-auto mt-4 max-w-xl text-base font-normal text-soft/70 dark:font-light">
               Designs, photoshoots, and the story behind the 55th anniversary
               drop.
             </p>
+            {/* The least height is in px: the padding is in rem, and the root
+                size shrinks on a 320px phone, which left the two pills a
+                little under the 44px a thumb needs. */}
             <div className="mt-7 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <a
                 href={merchPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid transition-transform hover:scale-[1.03] sm:w-auto"
+                className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-solid px-6 py-3 text-sm font-semibold text-on-solid hover:bg-solid-hover motion-safe:hover:scale-[1.02] sm:w-auto ${pressCls}`}
               >
                 Open full booklet (PDF)
               </a>
               <a
                 href={merchPdf}
                 download
-                className="w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10 sm:w-auto"
+                className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink hover:bg-veil/10 sm:w-auto ${pressCls}`}
               >
                 Download
               </a>
@@ -310,7 +368,7 @@ export default function MerchPage() {
             <h2 className="heading-serif mt-5 text-3xl text-ink sm:text-4xl">
               Order what you love
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base font-light text-soft/70">
+            <p className="mx-auto mt-4 max-w-xl text-base font-normal text-soft/70 dark:font-light">
               Pick your size, drop it in the cart, and we&rsquo;ll confirm
               pickup once production wraps.
             </p>
@@ -354,9 +412,7 @@ export default function MerchPage() {
           onNext={nextPage}
         />
       )}
-      {chartFor && (
-        <SizeChartModal product={chartFor} onClose={() => setChartFor(null)} />
-      )}
+      {chartFor && <SizeChartModal product={chartFor} onClose={closeChart} />}
     </article>
   )
 }

@@ -42,6 +42,11 @@ function unwrap({ data, error }) {
   return data
 }
 
+// A sentence of this file's own, thrown as an error. It is marked `rejected`
+// so that errorText (src/lib/errorText.js) shows it as written: an error it
+// does not know is taken for a fault and replaced by the page's fallback.
+const refusal = (message) => Object.assign(new Error(message), { rejected: true })
+
 // The whole roster, in name order. A few hundred rows (about 100 KB): the page
 // searches it in the browser (rosterSearch.js) so typing never waits on the
 // network. PostgREST caps a response at 1000 rows, hence the loop.
@@ -126,11 +131,16 @@ const setSheet = async (sheet) => unwrap(await supabase.rpc('set_roster_sheet', 
 async function syncSheetNow() {
   const { data, error } = await supabase.functions.invoke('roster-sheet-sync', { body: {} })
   if (error) {
-    // FunctionsHttpError keeps the JSON body on .context (a Response).
+    // FunctionsHttpError keeps the JSON body on .context (a Response). What the
+    // function says there is why the sync failed ("The sheet is not readable
+    // by link…"), which is what whoever pressed the button needs to read.
     const body = await error.context?.json?.().catch(() => null)
-    throw new Error(body?.error || error.message)
+    if (body?.error) throw refusal(body.error)
+    // A request that got no answer has the browser's own error on .context,
+    // and errorText knows that one for what it is.
+    throw error.context instanceof Error ? error.context : error
   }
-  if (!data?.ok) throw new Error(data?.error || data?.skipped || 'The sync did not run.')
+  if (!data?.ok) throw refusal(data?.error || data?.skipped || 'The sync did not run.')
   return data.result
 }
 
@@ -187,7 +197,7 @@ const inviteToPosition = async ({ email, position }) =>
 // the policy filtered out with no rows and no error, hence the check.
 const withdrawInvite = async (id) => {
   const rows = unwrap(await supabase.from('invites').delete().eq('id', id).select('id'))
-  if (!rows?.length) throw new Error('That invite could not be withdrawn.')
+  if (!rows?.length) throw refusal('That invite could not be withdrawn.')
 }
 
 const removePosition = async (assignment) =>
@@ -215,7 +225,7 @@ async function setWorkEmail({ position_id, email }) {
   const inserted = unwrap(
     await supabase.from('position_work_emails').insert({ position_id, email }).select('position_id'),
   )
-  if (!inserted?.length) throw new Error('That work email could not be saved.')
+  if (!inserted?.length) throw refusal('That work email could not be saved.')
 }
 
 // ---- position types ---------------------------------------------------------
@@ -270,7 +280,7 @@ const updatePosition = async ({ id, patch }) =>
 // the roster's own trigger. A delete the policy filtered out returns no rows.
 const deletePosition = async (id) => {
   const rows = unwrap(await supabase.from('positions').delete().eq('id', id).select('id'))
-  if (!rows?.length) throw new Error('That position could not be removed.')
+  if (!rows?.length) throw refusal('That position could not be removed.')
 }
 
 const NOTE_COLUMNS = 'id, roster_entry_id, committee_id, author_id, body, created_at, updated_at'
@@ -317,22 +327,59 @@ const byTarget = (rows) => {
 
 // One logged (and undoable) bulk update per target status. The minute in the
 // label keeps two approvals on the same day apart, since a label applies once.
+// Answers { updated, logs }: how many statuses changed, and the bulk updates
+// they were logged as, which is what undoApproveUpgrades takes.
 async function approveUpgrades(rows) {
   const stamp = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  const done = { updated: 0, logs: [] }
   for (const [next, ids] of byTarget(rows)) {
-    await bulkUpdateRoster({ ids, action: 'status', value: next, label: `Upgrade to ${next} · ${stamp}` })
+    const result = await bulkUpdateRoster({ ids, action: 'status', value: next, label: `Upgrade to ${next} · ${stamp}` })
+    done.updated += result?.updated || 0
+    if (result?.log_id != null) done.logs.push(result.log_id)
   }
+  return done
 }
 
+// Takes an approval back the way "Undo" under Recent bulk updates does.
+// Answers how many members got their earlier status back.
+async function undoApproveUpgrades(logs) {
+  let restored = 0
+  for (const log of logs) restored += (await undoBulkUpdate(log))?.restored || 0
+  return restored
+}
+
+const DISMISSAL = 'id, upgrade_dismissed_for, upgrade_dismissed_at'
+
 // "Not now": remembered per target, for the academic year it was said in.
+// Answers what each row held before ([{ id, upgrade_dismissed_for,
+// upgrade_dismissed_at }]), which is what undoDismissUpgrades puts back.
 async function dismissUpgrades(rows) {
   const at = new Date().toISOString()
+  const before = []
   for (const [next, ids] of byTarget(rows)) {
+    before.push(...(unwrap(await supabase.from('roster_entries').select(DISMISSAL).in('id', ids)) || []))
     unwrap(
       await supabase
         .from('roster_entries')
         .update({ upgrade_dismissed_for: next, upgrade_dismissed_at: at })
         .in('id', ids),
+    )
+  }
+  return before
+}
+
+// Takes "Not now" back: every row gets the answer it held before, which for
+// nearly all of them is none. One write per earlier answer.
+async function undoDismissUpgrades(before) {
+  const groups = new Map()
+  for (const row of before) {
+    const was = JSON.stringify([row.upgrade_dismissed_for, row.upgrade_dismissed_at])
+    groups.set(was, [...(groups.get(was) || []), row.id])
+  }
+  for (const [was, ids] of groups) {
+    const [upgrade_dismissed_for, upgrade_dismissed_at] = JSON.parse(was)
+    unwrap(
+      await supabase.from('roster_entries').update({ upgrade_dismissed_for, upgrade_dismissed_at }).in('id', ids),
     )
   }
 }
@@ -443,7 +490,9 @@ export const useRevokeToken = () => useRosterMutation(revokeToken)
 export const useBulkUpdateRoster = () => useRosterMutation(bulkUpdateRoster)
 export const useUndoBulkUpdate = () => useRosterMutation(undoBulkUpdate)
 export const useApproveUpgrades = () => useRosterMutation(approveUpgrades)
+export const useUndoApproveUpgrades = () => useRosterMutation(undoApproveUpgrades)
 export const useDismissUpgrades = () => useRosterMutation(dismissUpgrades)
+export const useUndoDismissUpgrades = () => useRosterMutation(undoDismissUpgrades)
 export const useSetSheet = () => useRosterMutation(setSheet)
 export const useSyncSheetNow = () => useRosterMutation(syncSheetNow)
 export const useAssignRosterMember = () => useRosterMutation(assignRosterMember)

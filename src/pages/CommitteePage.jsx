@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useParams, Navigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
+import { pressCls } from '../lib/motion.js'
 import { committeeBySlug, slugFor } from '../data/society.js'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import { driveImg } from '../lib/img.js'
@@ -12,19 +13,26 @@ import { PersonCard, SectionLabel } from '../components/committeeUi.jsx'
 import CallCard from '../components/CallCard.jsx'
 import ApplyModal from '../components/ApplyModal.jsx'
 import { CommitteeEvents } from '../components/EventCard.jsx'
+import NotFoundPage from './NotFoundPage.jsx'
 
+// An address that names no committee gets the site's "not found" page. The
+// committee's own page is a component of its own below, so only one of the two
+// sets the page title, and nothing is fetched for a committee that isn't there.
 export default function CommitteePage() {
   const { slug } = useParams()
   const c = committeeBySlug(slug)
-  usePageTitle(c?.name || 'Committees')
+  if (!c) return <NotFoundPage />
+  return <CommitteeView c={c} />
+}
+
+function CommitteeView({ c }) {
+  usePageTitle(c.name)
   const { overrides } = useOfficerOverrides()
   const { calls } = useCalls()
   const people = usePeople()
   // The call whose application form is open, if any.
   const [applyingTo, setApplyingTo] = useState(null)
   useReveal()
-
-  if (!c) return <Navigate to="/" replace />
 
   // Live officer edits (photo, tagline, bio, what-we-do, members) merged on
   // top of the static society.js committee. Empty when there is no override.
@@ -77,8 +85,10 @@ export default function CommitteePage() {
 
   return (
     <article className="bg-page">
-      {/* Brand hero */}
-      <header className="relative overflow-hidden pb-20 pt-32 sm:pt-40">
+      {/* Brand hero. More room above it on a phone than from sm up: the floating
+          Back button (BackButton.jsx) sat on the arrow of the centred link
+          below and took the taps meant for it. */}
+      <header className="relative overflow-hidden pb-20 pt-44 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
@@ -88,11 +98,15 @@ export default function CommitteePage() {
           }}
         />
         <div className="container-prose relative text-center">
+          {/* One line of small capitals to the eye, 44px high for a finger (in
+              px, so it does not shrink with the root size on a small phone);
+              the margins give back the height that adds, so nothing below
+              moves. */}
           <Link
             to="/#officials"
-            className="mb-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
+            className="-mt-3.5 mb-[1.125rem] inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
           >
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M19 12H5M11 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             All committees and divisions
@@ -130,7 +144,7 @@ export default function CommitteePage() {
             </p>
           )}
           {(tagline || c.officer) && (
-            <p className="mx-auto mt-4 max-w-2xl text-lg font-light text-soft/75">
+            <p className="mx-auto mt-4 max-w-2xl text-lg font-normal text-soft/75 dark:font-light">
               {tagline || c.officer}
             </p>
           )}
@@ -197,7 +211,7 @@ export default function CommitteePage() {
                 >
                   &ldquo;
                 </span>
-                <p className="-mt-3 text-xl font-light italic leading-relaxed text-soft/90 sm:text-2xl">
+                <p className="-mt-3 text-xl font-normal italic leading-relaxed text-soft/90 dark:font-light sm:text-2xl">
                   {c.ifmsa.mission}
                 </p>
               </blockquote>
@@ -344,7 +358,7 @@ export default function CommitteePage() {
         <div className="reveal text-center">
           <Link
             to="/#officials"
-            className="inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
           >
             Back to all committees and divisions
           </Link>

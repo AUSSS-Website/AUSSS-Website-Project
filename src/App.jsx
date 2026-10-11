@@ -28,6 +28,7 @@ const EventsPage = lazy(() => import('./pages/EventsPage.jsx'))
 const JoinPage = lazy(() => import('./pages/JoinPage.jsx'))
 const SortingPage = lazy(() => import('./pages/SortingPage.jsx'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'))
 // The members portal (Supabase auth + react-query) is its own tree with its
 // own chrome. Lazy so supabase-js never lands in the public bundle.
 const PortalRoot = lazy(() => import('./portal/PortalRoot.jsx'))
@@ -77,6 +78,9 @@ export default function App() {
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/committees/:slug" element={<CommitteePage />} />
+                {/* There is no page that lists the committees; the address
+                    people will guess goes to their section of the home page. */}
+                <Route path="/committees" element={<Navigate to="/#officials" replace />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/exchange" element={<ExchangePage />} />
                 <Route
@@ -127,7 +131,15 @@ export default function App() {
                 <Route path="/account" element={<Navigate to="/portal/committees" replace />} />
                 {/* Social merged into Contact, keep the old URL working. */}
                 <Route path="/social" element={<Navigate to="/contact" replace />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                {/* The home page's file, which the server also answers by its
+                    own name: it stays the home page, as it was before unknown
+                    addresses got a page of their own. */}
+                <Route path="/index.html" element={<Navigate to="/" replace />} />
+                {/* Any other address says so, inside the site's own header and
+                    footer, instead of landing on the home page without a word.
+                    The portal and the exam never reach this: their routes
+                    above take every address under /portal and /exam. */}
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           }

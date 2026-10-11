@@ -3,6 +3,7 @@ import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { exchange } from '../data/society.js'
 import { useContentBlock } from '../lib/content.js'
+import { pressCls } from '../lib/motion.js'
 import outgoingsSchema from '../content/schemas/exchangeOutgoings.js'
 import ExchangeTracks from '../components/ExchangeTracks.jsx'
 import ExchangeStories from '../components/ExchangeStories.jsx'
@@ -28,10 +29,12 @@ import {
 // src/content/schemas/exchangeOutgoings.js. The section headings are fixed, in
 // OUTGOINGS_COPY (src/components/IncomingsSections.jsx).
 
-const primaryCls =
-  'inline-flex items-center gap-2 rounded-full bg-cta px-6 py-3 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover'
-const quietCls =
-  'inline-flex items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-veil/10'
+// The two pills of this page. Colours ease and the pill sinks a little when
+// pressed (pressCls). The least height is in px: the padding is in rem, and
+// the root size shrinks on a 320px phone, which left them a little under the
+// 44px a thumb needs.
+const primaryCls = `inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-6 py-3 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`
+const quietCls = `inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-6 py-3 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`
 
 export default function ExchangeOutgoingsPage() {
   const d = exchange.directions.outgoing
@@ -57,7 +60,7 @@ export default function ExchangeOutgoingsPage() {
             <span className="h-px w-8 bg-medical" />
           </span>
           <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">{d.title}</h1>
-          <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-lg font-light leading-relaxed text-soft/75">
+          <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
             {doc.intro}
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">

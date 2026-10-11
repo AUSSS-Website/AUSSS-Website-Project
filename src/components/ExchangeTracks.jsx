@@ -25,9 +25,13 @@ export default function ExchangeTracks({ audience = 'outgoing' }) {
           <Link
             key={t.abbr}
             to={`/committees/${t.slug}`}
-            className="group relative overflow-hidden rounded-3xl border border-line/10 bg-card p-8 transition-colors hover:border-line/25"
+            // The card answers a press at once (a stronger border, and a
+            // slight sink for a reader who has not asked for less motion): on
+            // a phone there is no pointer to hover with.
+            className="group relative overflow-hidden rounded-3xl border border-line/10 bg-card p-8 transition-[border-color,transform] duration-200 ease-out hover:border-line/25 active:border-line/40 motion-safe:active:scale-[0.985]"
           >
             <span
+              aria-hidden="true"
               className="absolute -right-12 -top-12 h-40 w-40 rounded-full blur-3xl"
               style={{ background: rgba(t.color, 0.25) }}
             />
@@ -45,7 +49,7 @@ export default function ExchangeTracks({ audience = 'outgoing' }) {
             </p>
             <span className="relative mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent">
               {incoming ? `Meet our ${t.abbr} committee` : `Explore ${t.abbr}`}
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>

@@ -14,7 +14,8 @@ import { Problem, focusCls, tapPrimaryCls } from '../examUi.jsx'
 // Two taps closer together than this are one slip of the thumb.
 const DOUBLE_TAP_MS = 400
 
-const numberCls = `inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-line/15 bg-card px-2 text-sm font-semibold text-ink ${focusCls}`
+// A number darkens under the thumb (active:bg-sunk), as the paper's page steps do.
+const numberCls = `inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-line/15 bg-card px-2 text-sm font-semibold text-ink active:bg-sunk ${focusCls}`
 
 function Numbers({ title, numbers, none, go }) {
   return (

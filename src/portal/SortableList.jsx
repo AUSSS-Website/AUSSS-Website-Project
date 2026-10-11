@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { prefersReducedMotion } from '../lib/motion.js'
 
 // A vertical list whose rows are put in order by dragging.
 //
@@ -12,9 +13,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 //
 // Each row is dragged by its handle (renderItem decides where it sits), with a
 // mouse, a finger or a pen: the row follows the pointer, the others make room,
-// and letting go calls onReorder with every id in the new order. With the
+// and letting go calls onReorder with every id in the new order. Escape while
+// a row is in the air puts it back where it was and changes nothing. With the
 // handle focused, the up and down arrow keys move the row one place, so the
 // order can be changed without a pointer; a screen reader hears each move.
+//
+// A row that is let go, put back or moved by a key glides to its place from
+// where it was drawn, and does not jump there. A reader who has asked for less
+// motion gets the jump, and the rows that make room during a drag do so at
+// once.
 //
 // The list shows the new order at once and keeps it until the parent passes a
 // new `items` array (the saved order, or the old one if saving failed), so the
@@ -48,10 +55,31 @@ export function moveId(ids, from, to) {
   return next
 }
 
+// How far each row has to travel to settle after the order has changed.
+// `before` and `after` map a row's id to its top edge, in px: where it was
+// drawn just before the change (in the air, or part-way through an earlier
+// glide) and where the new order lays it out. A row that has less than half a
+// px to go, or that is in only one of the two, is left out. Each entry is
+// [id, how far above (negative) or below (positive) its place the row starts].
+export function settleOffsets(before, after) {
+  const moves = []
+  for (const [id, top] of after) {
+    const was = before.get(id)
+    if (was == null) continue
+    const dy = was - top
+    if (Math.abs(dy) >= 0.5) moves.push([id, dy])
+  }
+  return moves
+}
+
 // How close to the top or bottom of the window the pointer starts scrolling
 // the page, and how fast at the very edge (px per frame).
 const EDGE = 72
 const SPEED = 14
+
+// The glide into place: quick off the mark and slowing in, with no overshoot.
+const SETTLE_MS = 200
+const SETTLE_EASING = 'cubic-bezier(0.2, 0, 0, 1)'
 
 function Grip() {
   return (
@@ -78,13 +106,20 @@ export default function SortableList({
 }) {
   // The order shown while a save is on its way: ids, or null to follow `items`.
   const [pending, setPending] = useState(null)
-  // The row in the air: { id, from, to, dy, shift }.
+  // The row in the air: { id, from, to, dy, shift, calm }. `calm` is true for
+  // a reader who has asked for less motion.
   const [drag, setDrag] = useState(null)
   const [said, setSaid] = useState('')
+  const list = useRef(null)
   const rows = useRef(new Map())
   const handles = useRef(new Map())
   const live = useRef(null) // measurements of the drag in progress
   const refocus = useRef(null)
+  // For the glide into place: { at, lifted }, where each row was drawn just
+  // before the order changed (see `tops`) and the id of the row that was moved,
+  // which stays above the rows it passes. Null when no glide is due.
+  const drawn = useRef(null)
+  const glides = useRef([]) // the glides still running
 
   // A new array from the parent is the truth again.
   useEffect(() => setPending(null), [items])
@@ -99,8 +134,61 @@ export default function SortableList({
     refocus.current = null
   })
 
-  // Stop a drag that is still running if the list goes away.
-  useEffect(() => () => cancelAnimationFrame(live.current?.frame), [])
+  const stopGlides = () => {
+    for (const glide of glides.current) glide.cancel()
+    glides.current = []
+  }
+
+  // Each row's top edge as it is drawn at this moment: in the air, moved
+  // aside to make room, or part-way through a glide. Measured from the top of
+  // the list itself, so nothing that scrolls in between changes it (giving a
+  // handle the keyboard can scroll the page).
+  const tops = () => {
+    const from = list.current?.getBoundingClientRect().top ?? 0
+    const at = new Map()
+    for (const [id, el] of rows.current) at.set(id, el.getBoundingClientRect().top - from)
+    return at
+  }
+
+  // The glide. A handler that is about to change what the list shows leaves
+  // the rows' places in `drawn`; once the list is laid out again, each row
+  // that is somewhere else starts from where it was and moves to where it now
+  // belongs. A glide still running is ended first, so that the rows are
+  // measured where they belong and the new one takes over from where the old
+  // one had got to. A browser too old to animate shows the jump, as before.
+  useLayoutEffect(() => {
+    const before = drawn.current
+    if (!before) return
+    drawn.current = null
+    stopGlides()
+    if (prefersReducedMotion()) return
+    for (const [id, dy] of settleOffsets(before.at, tops())) {
+      const el = rows.current.get(id)
+      if (typeof el?.animate !== 'function') continue
+      glides.current.push(
+        el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], {
+          duration: SETTLE_MS,
+          easing: SETTLE_EASING,
+        }),
+      )
+      // The row that was moved stays on top until it has landed, as it was
+      // while it hung in the air. Kept apart from the movement, which the
+      // browser can then run without laying the page out again.
+      if (id === before.lifted) {
+        const above = { zIndex: 20, position: 'relative' }
+        glides.current.push(el.animate([above, above], { duration: SETTLE_MS }))
+      }
+    }
+  })
+
+  // Stop a drag or a glide that is still running if the list goes away.
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(live.current?.frame)
+      for (const glide of glides.current) glide.cancel()
+    },
+    [],
+  )
 
   const commit = (next, label, to) => {
     setPending(next)
@@ -136,21 +224,38 @@ export default function SortableList({
   const start = (id, e) => {
     if (disabled || live.current || (e.pointerType === 'mouse' && e.button !== 0)) return
     const from = ids.indexOf(id)
+    // A row caught while it is still gliding is picked up where it is drawn,
+    // not where it was heading: `rest` is how far it still had to go, and the
+    // drag begins that far from the row's place so nothing jumps under the
+    // pointer.
+    const caught = rows.current.get(id)?.getBoundingClientRect().top
+    stopGlides()
     const rects = ids.map((x) => rows.current.get(x)?.getBoundingClientRect())
     if (from === -1 || rects.some((r) => !r)) return
     e.preventDefault()
     e.currentTarget.setPointerCapture?.(e.pointerId)
     const gap = rects.length > 1 ? Math.max(0, rects[1].top - rects[0].bottom) : 0
+    const rest = caught - rects[from].top
+    const centers = rects.map((r) => r.top + window.scrollY + r.height / 2)
     live.current = {
       pointer: e.pointerId,
+      handle: e.currentTarget,
       id,
       from,
-      startPageY: e.clientY + window.scrollY,
+      label: getLabel(byId.get(id)),
+      startPageY: e.clientY + window.scrollY - rest,
       clientY: e.clientY,
-      centers: rects.map((r) => r.top + window.scrollY + r.height / 2),
+      centers,
       frame: requestAnimationFrame(tick),
     }
-    setDrag({ id, from, to: from, dy: 0, shift: rects[from].height + gap })
+    setDrag({
+      id,
+      from,
+      to: dropIndex(centers, from, centers[from] + rest),
+      dy: rest,
+      shift: rects[from].height + gap,
+      calm: prefersReducedMotion(),
+    })
   }
 
   const move = (e) => {
@@ -160,12 +265,22 @@ export default function SortableList({
     update()
   }
 
+  // Ends the drag in progress and hands back its measurements. Where each row
+  // is drawn at this moment is kept, so that the row in the air and any row
+  // still making room glide from there to where they belong.
+  const land = () => {
+    const m = live.current
+    cancelAnimationFrame(m.frame)
+    live.current = null
+    drawn.current = { at: tops(), lifted: m.id }
+    setDrag(null)
+    return m
+  }
+
   const end = (e, cancelled) => {
     const m = live.current
     if (!m || e.pointerId !== m.pointer) return
-    cancelAnimationFrame(m.frame)
-    live.current = null
-    setDrag(null)
+    land()
     if (cancelled) return
     // Worked out from the pointer itself, not from the last drawn frame.
     const dy = e.clientY + window.scrollY - m.startPageY
@@ -173,6 +288,34 @@ export default function SortableList({
     if (to === m.from) return
     commit(moveId(ids, m.from, to), getLabel(byId.get(m.id)), to)
   }
+
+  // Escape while a row is in the air puts it back and changes nothing. The key
+  // is listened for on the whole page, since the keyboard need not be on the
+  // handle the pointer is holding, and it goes no further: it has cancelled the
+  // drag, and should not also close whatever the list stands in.
+  const dragging = drag != null
+  useEffect(() => {
+    if (!dragging) return undefined
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || !live.current) return
+      e.preventDefault()
+      e.stopPropagation()
+      const m = land()
+      // The pointer is still down. It is let go of, and what it does next is
+      // no part of this drag.
+      try {
+        m.handle.releasePointerCapture?.(m.pointer)
+      } catch {
+        // The browser had already let go of it.
+      }
+      setSaid(`${m.label} was put back at position ${m.from + 1} of ${m.centers.length}.`)
+    }
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
+    // `land` only reads refs and sets state, so the one from the render that
+    // began the drag is as good as any later one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging])
 
   const key = (id, e) => {
     if (disabled || drag) return
@@ -183,6 +326,7 @@ export default function SortableList({
     const to = from + step
     if (to < 0 || to >= ids.length) return
     refocus.current = id
+    drawn.current = { at: tops(), lifted: id }
     commit(moveId(ids, from, to), getLabel(byId.get(id)), to)
   }
 
@@ -194,12 +338,13 @@ export default function SortableList({
     let y = 0
     if (drag.to < drag.from && index >= drag.to && index < drag.from) y = drag.shift
     if (drag.to > drag.from && index > drag.from && index <= drag.to) y = -drag.shift
-    return { transform: `translateY(${y}px)`, transition: 'transform 160ms ease' }
+    // The rows make room with a short slide, or at once when `calm`.
+    return { transform: `translateY(${y}px)`, transition: drag.calm ? undefined : 'transform 160ms ease' }
   }
 
   return (
     <>
-      <ul className={className}>
+      <ul ref={list} className={className}>
         {ids.map((id, index) => {
           const item = byId.get(id)
           const label = getLabel(item)
@@ -216,7 +361,9 @@ export default function SortableList({
               onKeyDown={(e) => key(id, e)}
               aria-label={`Reorder ${label}: position ${index + 1} of ${ids.length}. Drag it, or press the up or down arrow key.`}
               title="Drag to reorder"
-              className={`grid h-10 w-8 shrink-0 touch-none select-none place-items-center rounded-lg text-soft/45 transition-colors hover:bg-veil/10 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 disabled:opacity-30 ${
+              // The grip is narrow to the eye; its ::after gives a finger 44px
+              // each way, in px because the root size shrinks on a 320px phone.
+              className={`relative grid h-10 w-8 shrink-0 touch-none select-none place-items-center rounded-lg text-soft/45 transition-colors after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] hover:bg-veil/10 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 disabled:opacity-30 ${
                 lifted ? 'cursor-grabbing text-ink' : 'cursor-grab'
               }`}
             >
@@ -228,7 +375,9 @@ export default function SortableList({
               key={id}
               ref={(el) => (el ? rows.current.set(id, el) : rows.current.delete(id))}
               style={styleOf(id, index)}
-              className={`${itemClassName} ${lifted ? 'shadow-xl shadow-black/25 ring-1 ring-medical/50' : ''}`}
+              // The lifted row's shadow and ring fade in as it is picked up
+              // and out as it settles, in step with the glide.
+              className={`${itemClassName} transition-shadow duration-200 ease-out ${lifted ? 'shadow-xl shadow-black/25 ring-1 ring-medical/50' : ''}`}
             >
               {renderItem(item, handle)}
             </li>

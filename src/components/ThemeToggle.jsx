@@ -1,24 +1,30 @@
 import { useTheme } from '../lib/theme.js'
+import { pressCls } from '../lib/motion.js'
 
 // `tone` matches the Navbar's `solid` state: the bar is clear over the home
 // hero and solid once scrolled. Both tones follow the theme.
+//
+// The circle is 40px, 36px in the phone row and smaller still on a 320px
+// phone, where the root size shrinks. An unseen ::after, 44px square and in px
+// for that reason, sits centred on it, so a finger gets the full target
+// without the bar's row growing (the portal header does the same).
 export default function ThemeToggle({ tone = 'solid', className = '' }) {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
-  const base =
-    'grid h-10 w-10 place-items-center rounded-full border transition-colors'
+  const base = `relative grid h-10 w-10 place-items-center rounded-full border after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] ${pressCls}`
   const skin =
     tone === 'solid'
       ? 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/15 dark:text-silver dark:hover:bg-white/5'
       : 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10'
 
+  // The label names what a press will do, so the button is not also marked as
+  // pressed: "Switch to light mode, pressed" says two things at once.
   return (
     <button
       type="button"
       onClick={toggleTheme}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      aria-pressed={isDark}
       className={`${base} ${skin} ${className}`}
     >
       {isDark ? (

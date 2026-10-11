@@ -1,20 +1,23 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useAuth } from '../../auth/AuthProvider.jsx'
-import { useProfilePhoto, useUpdateProfile } from '../queries.js'
+import { useLoadedProfile, useProfilePhoto, useUpdateProfile } from '../queries.js'
 import { resizeImageToBlob } from '../officerQueries.js'
 import { Avatar } from '../Avatar.jsx'
 import { FACULTY_YEARS } from '../constants.js'
 import {
+  CheckField,
+  ConfirmButton,
   ErrorText,
   Field,
   PageHeader,
   Panel,
-  Toggle,
+  SaveStatus,
   inputCls,
   outlineBtnCls,
   primaryBtnCls,
 } from '../portalUi.jsx'
+import { errorText } from '../../lib/errorText.js'
 
 // /portal/profile. Only the columns the database lets a member write are
 // editable here; membership status, tier and joined year are EB-only, and the
@@ -24,19 +27,36 @@ import {
 // the portal and, for whoever holds an officer or board position, the public
 // pages (src/lib/people.js).
 
+// The portal's pills are under 44px tall to the eye. This ::after gives a
+// finger the difference without changing how they look.
+const tapCls = "relative after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
+
 export default function ProfilePage() {
   usePageTitle('Your profile')
-  const { user, profile } = useAuth()
+  const { user, profile, profileError } = useAuth()
+  // The row the sign-in check read, held here to ask for it again.
+  const row = useLoadedProfile(user.id)
 
   if (!profile) {
     return (
       <>
         <PageHeader eyebrow="Profile" title="Your profile" />
         <Panel>
-          <p className="text-sm text-soft/70">
-            Your profile hasn’t been created yet. Sign out and back in; if it
-            still doesn’t appear, tell the webmaster.
-          </p>
+          {profileError ? (
+            // A profile that failed to load is not one that was never made.
+            // Asking again puts the sign-in check's spinner up until it answers.
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <ErrorText>{errorText(profileError, 'We couldn’t load your profile. Try again in a moment.')}</ErrorText>
+              <button type="button" onClick={() => row.refetch()} className={`${outlineBtnCls} ${tapCls}`}>
+                Try again
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-soft/70">
+              Your profile hasn’t been created yet. Sign out and back in; if it
+              still doesn’t appear, tell the webmaster.
+            </p>
+          )}
         </Panel>
       </>
     )
@@ -52,35 +72,67 @@ export default function ProfilePage() {
 function PhotoPanel({ user, profile }) {
   const photo = useProfilePhoto(user.id)
   const inputRef = useRef(null)
+  const chooseRef = useRef(null)
   const [error, setError] = useState('')
-  const busy = photo.set.isPending || photo.clear.isPending
+  // What the last change did, said under the buttons until the next one starts.
+  const [done, setDone] = useState('')
+  // From the moment a file is chosen: the picture is made smaller before it is
+  // sent, and on a slow phone that takes a moment of its own.
+  const [saving, setSaving] = useState(false)
+  const busy = saving || photo.clear.isPending
+
+  // Remove takes itself away once it has worked, and the keyboard's place with
+  // it. The focus goes to the button left beside it, once that button is live
+  // again, and only if nothing else has taken the focus meanwhile.
+  const refocus = useRef(false)
+  const hasPhoto = Boolean(profile.photo_path)
+  useEffect(() => {
+    if (!refocus.current || hasPhoto || busy) return
+    refocus.current = false
+    if (document.activeElement === document.body) chooseRef.current?.focus()
+  }, [hasPhoto, busy])
 
   const pick = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
     setError('')
+    setDone('')
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
       setError('Choose a JPEG, PNG or WebP image.')
       return
     }
+    setSaving(true)
     try {
-      const blob = await resizeImageToBlob(file, 512, 0.85)
+      // A file the browser cannot open as a picture fails here, before
+      // anything is sent.
+      const blob = await resizeImageToBlob(file, 512, 0.85).catch(() => null)
+      if (!blob) {
+        setError('That image could not be read. Choose another one.')
+        return
+      }
       await photo.set.mutateAsync({ blob, previousPath: profile.photo_path })
+      setDone('Photo saved.')
     } catch (err) {
-      setError(err?.message || 'Could not save the photo.')
+      setError(errorText(err, 'Could not save the photo.'))
+    } finally {
+      setSaving(false)
     }
   }
 
   const remove = async () => {
     setError('')
+    setDone('')
+    refocus.current = true
     try {
       await photo.clear.mutateAsync({
         previousPath: profile.photo_path,
         fallbackUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
       })
+      setDone('Photo removed.')
     } catch (err) {
-      setError(err?.message || 'Could not remove the photo.')
+      refocus.current = false
+      setError(errorText(err, 'Could not remove the photo.'))
     }
   }
 
@@ -88,13 +140,15 @@ function PhotoPanel({ user, profile }) {
     <Panel className="mb-6 max-w-2xl">
       <div className="flex flex-wrap items-center gap-5">
         <Avatar name={profile.full_name} src={profile.avatar_url} size="lg" />
-        <div className="min-w-0 flex-1">
+        {/* Never narrower than 12rem: on a small phone the words and the
+            buttons go under the photo, where they have the panel's width. */}
+        <div className="min-w-[12rem] flex-1">
           <p className="text-sm font-medium text-ink">Your photo</p>
           <p className="mt-1 max-w-md text-xs text-soft/55">
             Shown beside your name in the portal and in the members directory. If you hold an
             officer or board position, it is also your photo on the public website.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-5">
             <input
               ref={inputRef}
               type="file"
@@ -104,16 +158,31 @@ function PhotoPanel({ user, profile }) {
               tabIndex={-1}
               aria-label="Choose a photo"
             />
-            <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className={outlineBtnCls}>
-              {photo.set.isPending ? 'Saving…' : profile.photo_path ? 'Change photo' : 'Choose a photo'}
+            <button
+              ref={chooseRef}
+              type="button"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+              className={`${outlineBtnCls} ${tapCls}`}
+            >
+              {saving ? 'Saving…' : profile.photo_path ? 'Change photo' : 'Choose a photo'}
             </button>
+            {/* Removing deletes the stored file, so it asks twice, like every
+                other remove in the portal. */}
             {profile.photo_path && (
-              <button type="button" disabled={busy} onClick={remove} className={outlineBtnCls}>
-                {photo.clear.isPending ? 'Removing…' : 'Remove'}
-              </button>
+              <ConfirmButton
+                label="Remove"
+                busyLabel="Removing…"
+                busy={photo.clear.isPending}
+                disabled={busy}
+                onConfirm={remove}
+                className={`${outlineBtnCls} ${tapCls}`}
+                keepWidth
+              />
             )}
           </div>
           <div className="mt-2">
+            <SaveStatus saved={done} />
             <ErrorText>{error}</ErrorText>
           </div>
         </div>
@@ -122,11 +191,33 @@ function PhotoPanel({ user, profile }) {
   )
 }
 
-function ProfileForm({ user, profile }) {
+// What the form holds for a profile row, and what Save sends for a form.
+function formFrom(profile) {
+  return {
+    fullName: profile.full_name || '',
+    phone: profile.phone || '',
+    facultyYear: profile.faculty_year || '',
+    digest: profile.email_digest !== false,
+  }
+}
+
+function patchFrom(form) {
+  return {
+    full_name: form.fullName.trim() || null,
+    phone: form.phone.trim() || null,
+    faculty_year: form.facultyYear || null,
+    email_digest: form.digest,
+  }
+}
+
+function ProfileForm({ user, profile: given }) {
   const save = useUpdateProfile(user.id)
-  const [fullName, setFullName] = useState(profile.full_name || '')
-  const [phone, setPhone] = useState(profile.phone || '')
-  const [facultyYear, setFacultyYear] = useState(profile.faculty_year || '')
+  // The form reads the row for itself, so the render that follows its own
+  // save already holds the saved row. Handed down from the sign-in check, the
+  // row arrives a moment later, and in a browser whose timers wait a
+  // millisecond (Safari) the status line said "Unsaved changes" before "Saved.".
+  const profile = useLoadedProfile(user.id).data ?? given
+  const [form, setForm] = useState(() => formFrom(profile))
   // A year saved before the list changed on 2026-10-11 ("Year 6", "Intern")
   // shows as it is, not as "Not set", until the member chooses again.
   const [years] = useState(() =>
@@ -134,20 +225,30 @@ function ProfileForm({ user, profile }) {
       ? [profile.faculty_year, ...FACULTY_YEARS]
       : FACULTY_YEARS,
   )
-  const [digest, setDigest] = useState(profile.email_digest !== false)
-  const [msg, setMsg] = useState('')
+  const [saved, setSaved] = useState(false)
+  const change = (key, value) => {
+    setSaved(false)
+    setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  // There is something to save when what Save would send differs from the
+  // row. Follow the row when it changes elsewhere (another tab, the EB),
+  // unless there are unsaved edits here.
+  const base = JSON.stringify(patchFrom(formFrom(profile)))
+  const current = JSON.stringify(patchFrom(form))
+  const dirty = current !== base
+  const lastBase = useRef(base)
+  useEffect(() => {
+    if (base !== lastBase.current && current === lastBase.current) setForm(formFrom(profile))
+    lastBase.current = base
+  }, [base, current, profile])
 
   const submit = async (e) => {
     e.preventDefault()
-    setMsg('')
+    setSaved(false)
     try {
-      await save.mutateAsync({
-        full_name: fullName.trim() || null,
-        phone: phone.trim() || null,
-        faculty_year: facultyYear || null,
-        email_digest: digest,
-      })
-      setMsg('Saved.')
+      await save.mutateAsync(patchFrom(form))
+      setSaved(true)
     } catch {
       // save.error is rendered below.
     }
@@ -166,8 +267,8 @@ function ProfileForm({ user, profile }) {
           <Field label="Full name" htmlFor="pf-name">
             <input
               id="pf-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={form.fullName}
+              onChange={(e) => change('fullName', e.target.value)}
               autoComplete="name"
               className={inputCls}
             />
@@ -191,8 +292,8 @@ function ProfileForm({ user, profile }) {
             <input
               id="pf-phone"
               type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              value={form.phone}
+              onChange={(e) => change('phone', e.target.value)}
               autoComplete="tel"
               placeholder="+20 1x xxxx xxxx"
               className={inputCls}
@@ -202,8 +303,8 @@ function ProfileForm({ user, profile }) {
           <Field label="Faculty year" htmlFor="pf-year">
             <select
               id="pf-year"
-              value={facultyYear}
-              onChange={(e) => setFacultyYear(e.target.value)}
+              value={form.facultyYear}
+              onChange={(e) => change('facultyYear', e.target.value)}
               className={inputCls}
             >
               <option value="">Not set</option>
@@ -215,29 +316,25 @@ function ProfileForm({ user, profile }) {
             </select>
           </Field>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line/10 pt-6">
-            <div className="max-w-md">
-              <p className="text-sm font-medium text-ink">Email me a daily digest</p>
-              <p className="mt-1 text-xs text-soft/55">
-                At most one email a day, only when a task or an update is waiting
-                for you. Everything stays in the portal either way.
-              </p>
-            </div>
-            <Toggle
-              checked={digest}
-              onChange={setDigest}
+          {/* A tick box, not a switch: it counts once the form is saved, like
+              the fields above it. The row pads itself by 12px above and
+              below, which the pt-3 and the -mb-3 here allow for. */}
+          <div className="-mb-3 border-t border-line/10 pt-3">
+            <CheckField
+              checked={form.digest}
+              onChange={(on) => change('digest', on)}
               label="Email me a daily digest"
-              disabled={save.isPending}
+              hint="At most one email a day, only when a task or an update is waiting for you. Everything stays in the portal either way."
             />
           </div>
         </Panel>
 
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <button type="submit" disabled={save.isPending} className={primaryBtnCls}>
+          <button type="submit" disabled={save.isPending} className={`${primaryBtnCls} ${tapCls}`}>
             {save.isPending ? 'Saving…' : 'Save changes'}
           </button>
-          {msg && <p className="text-sm text-soft/70">{msg}</p>}
-          <ErrorText>{save.error ? save.error.message || 'Could not save.' : ''}</ErrorText>
+          <SaveStatus dirty={dirty && !save.isPending} saved={saved} />
+          <ErrorText>{save.error ? errorText(save.error, 'Could not save your profile.') : ''}</ErrorText>
         </div>
       </form>
     </>

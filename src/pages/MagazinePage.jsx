@@ -9,6 +9,7 @@ import MagazineEngagement from '../components/MagazineEngagement.jsx'
 import { useMagazineEngagement } from '../hooks/useMagazineEngagement.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
 import GalleryAurora from '../components/GalleryAurora.jsx'
+import { pressCls } from '../lib/motion.js'
 
 // The flipbook pulls in react-pageflip and preloads every page image, so it is
 // lazy-loaded: the page shell paints first and the reader streams in after.
@@ -33,7 +34,14 @@ export default function MagazinePage() {
 function IssueSwitcher({ issues, currentId, onSelect }) {
   if (!issues || issues.length < 2) return null
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-2" role="group" aria-label="Choose an edition">
+    // On a phone the pills wrap onto several rows. The rows sit 44px apart
+    // (a pill is 1.75rem and its border tall), so each pill's reach, its
+    // ::after below, meets the next row's and never lies over it.
+    <div
+      className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-[max(0.5rem,calc(42px_-_1.75rem))]"
+      role="group"
+      aria-label="Choose an edition"
+    >
       {issues.map((it) => {
         const active = it.id === currentId
         const missing = isMissing(it)
@@ -49,7 +57,9 @@ function IssueSwitcher({ issues, currentId, onSelect }) {
             onClick={() => onSelect(it.id)}
             aria-pressed={active}
             title={missing ? 'We’re still looking for this edition' : undefined}
-            className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${style}`}
+            // The pill is 30px tall to the eye; its ::after gives a finger
+            // 44px, measured from inside the border (1.75rem of the pill).
+            className={`relative rounded-full border px-4 py-1.5 text-xs font-semibold after:absolute after:inset-x-0 after:-inset-y-[max(0px,calc((44px_-_1.75rem)/2))] after:content-[''] ${pressCls} ${style}`}
           >
             {it.switcherLabel || it.title}
           </button>
@@ -139,7 +149,7 @@ function IssueView({ issue, issues, onSelect }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={engagement.download}
-                  className="inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
                 >
                   <DownloadIcon />
                   Download (full quality)
@@ -150,7 +160,7 @@ function IssueView({ issue, issues, onSelect }) {
                   href={issue.canva}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-veil/10"
+                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
                 >
                   <ExternalIcon />
                   Open on Canva
@@ -215,7 +225,7 @@ function MissingPanel({ issue }) {
           href={`mailto:${email}?subject=${encodeURIComponent(
             `AUSSS Magazine: ${issue.title}`,
           )}`}
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta transition-colors hover:bg-cta-hover"
+          className={`mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
         >
           Contact {team}
         </a>
@@ -248,18 +258,23 @@ class ReaderBoundary extends Component {
           <MagazineIcon />
         </span>
         <p className="mt-4 max-w-sm text-sm text-soft/60">
-          The in-page reader couldn’t start in this browser.{' '}
+          The in-page reader couldn’t start in this browser.
+          {/* The link brings its own full stop, so an edition with no file
+              to open does not end on a stray one. */}
           {href && (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
-            >
-              Open the magazine in a new tab
-            </a>
+            <>
+              {' '}
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-accent underline-offset-2 hover:text-ink hover:underline"
+              >
+                Open the magazine in a new tab
+              </a>
+              .
+            </>
           )}
-          .
         </p>
       </div>
     )
@@ -268,8 +283,11 @@ class ReaderBoundary extends Component {
 
 function ReaderLoading() {
   return (
-    <div className="reveal flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-line/10 bg-card">
-      <span className="h-8 w-8 animate-spin rounded-full border-2 border-line/15 border-t-accent" />
+    <div
+      role="status"
+      className="reveal flex aspect-[4/3] w-full flex-col items-center justify-center rounded-2xl border border-line/10 bg-card"
+    >
+      <span aria-hidden="true" className="h-8 w-8 animate-spin rounded-full border-2 border-line/15 border-t-accent" />
       <p className="mt-4 text-sm text-soft/60">Preparing the reader…</p>
     </div>
   )
@@ -282,6 +300,7 @@ function ShelfLoading() {
       <div className="container-prose flex min-h-[60vh] items-center justify-center pt-32 sm:pt-40">
         <span
           className="h-10 w-10 animate-spin rounded-full border-2 border-line/15 border-t-accent"
+          role="status"
           aria-label="Loading the magazine"
         />
       </div>
