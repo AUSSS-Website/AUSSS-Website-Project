@@ -171,8 +171,7 @@ export default function PrivacyPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
             What we collect on this site and in the members portal, who can see
-            it, and how IFMSA handles exchange data. Written to be read, not
-            skimmed past.
+            it, and how IFMSA handles exchange data. Written to be read.
           </p>
           <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-soft/45">
             Last updated {LAST_UPDATED}

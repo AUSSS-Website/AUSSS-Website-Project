@@ -32,7 +32,7 @@ const WHY = [
   },
   {
     title: 'A community',
-    body: 'Six standing committees and four support divisions: a place to contribute, grow and belong throughout medical school.',
+    body: 'Six standing committees and four support divisions: a place to contribute and belong throughout medical school.',
   },
 ]
 

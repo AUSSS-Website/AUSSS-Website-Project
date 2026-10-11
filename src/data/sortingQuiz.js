@@ -314,7 +314,7 @@ export const QUIZ_BASIS =
   'using survey data openly shared by hundreds of thousands of real people. The ' +
   'questions are borrowed from the public-domain International Personality Item ' +
   'Pool, and every committee sits in that same trait space, so your answers do ' +
-  'the matching, not a label we stuck on you. All of it is for fun and a bit of ' +
+  'the matching. All of it is for fun and a bit of ' +
   'self-reflection, not a diagnosis, so wear the result lightly.'
 
 export const QUIZ_SOURCES = [

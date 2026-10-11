@@ -92,7 +92,7 @@ export default function IFMSAHistoryPage() {
           <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
             IFMSA grew committee by committee. Each standing committee owns a
             field of global health, and each has its own story, founding year
-            and, for some, a trail of name changes. Here is how they came to be.
+            and, for some, a trail of name changes.
           </p>
         </div>
       </header>
