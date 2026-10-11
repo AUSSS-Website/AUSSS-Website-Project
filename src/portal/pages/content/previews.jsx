@@ -93,7 +93,7 @@ export const previews = {
         {doc.mapQuery && <FindUs doc={doc} />}
         <div className="border-t border-line/10 pt-10 text-center">
           <p className="text-2xs font-semibold uppercase tracking-[0.22em] text-soft/45">Contact page</p>
-          <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-lg font-light text-soft/75">{doc.contactIntro}</p>
+          <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-lg font-normal text-soft/75 dark:font-light">{doc.contactIntro}</p>
         </div>
         <div>
           <h2 className="heading-serif text-2xl text-ink sm:text-3xl">Follow AUSSS</h2>
@@ -129,7 +129,7 @@ export const previews = {
   // history link are not part of the block.
   'ifmsa.page': ({ doc }) => (
     <div className="space-y-12">
-      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-light leading-relaxed text-soft/75">
+      <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
         {doc.intro}
       </p>
       <p className="mx-auto max-w-2xl whitespace-pre-line text-center text-base leading-relaxed text-soft/75">

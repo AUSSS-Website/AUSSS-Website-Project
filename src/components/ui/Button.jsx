@@ -8,30 +8,45 @@ import { pressCls } from '../../lib/motion.js'
 //
 //   <Button to="/join">Join</Button>
 //   <Button variant="accent" size="lg" type="submit">Sign in</Button>
-//   <Button as="button" variant="outline" onClick={…}>Cancel</Button>
+//   <Button variant="outline" onClick={…}>Cancel</Button>
 //
 // It grows a little under the pointer and sinks a little when pressed
 // (pressCls), and its colours ease between states. With reduced motion it
 // stays the same size and only the colours ease.
+//
+// Each variant also has a colour for the moment it is pressed, the one it
+// takes under the pointer. On a phone nothing hovers, and with reduced motion
+// nothing sinks, so without it a press there showed nothing at all.
 
 const VARIANTS = {
   // White pill, forest text, the primary site CTA (hero, product add).
-  primary:
-    'bg-solid text-on-solid hover:bg-solid-hover focus-visible:ring-line/70',
+  primary: 'bg-solid text-on-solid hover:bg-solid-hover active:bg-solid-hover',
   // Scientific-blue pill, secondary emphasis (magazine, auth, quiz).
-  accent:
-    'bg-cta text-on-cta hover:bg-cta-hover focus-visible:ring-medical/60',
+  accent: 'bg-cta text-on-cta hover:bg-cta-hover active:bg-cta-hover',
   // Green pill on the light theme, the blue button on the dark one.
   forest:
-    'bg-leaf text-white hover:bg-leaf-hover focus-visible:ring-forest/50 dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover',
+    'bg-leaf text-white hover:bg-leaf-hover active:bg-leaf-hover dark:bg-cta dark:text-on-cta dark:hover:bg-cta-hover dark:active:bg-cta-hover',
   // Hairline outline, tertiary action over dark/hero backgrounds.
-  outline:
-    'border border-line/25 text-ink hover:bg-veil/10 focus-visible:ring-line/50',
+  outline: 'border border-line/25 text-ink hover:bg-veil/10 active:bg-veil/20',
 }
 
+// The keyboard's ring is the same on every variant: the theme's blue, set off
+// from the button by a gap that shows whatever is behind it. A ring in the
+// button's own colour drawn against its edge, as each variant had, could not
+// be told from the button: round the white pill on the dark theme it only
+// made the pill look 2px larger.
+const focusCls = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+
+// sm is 36px tall, and md is 44px only where the root size is 16px: on a
+// 320px phone it is 41px. Both carry an unseen ::after, 44px high (in px for
+// that reason) and centred on the button, so a finger has the full target and
+// the button looks no bigger.
+const reachCls =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
+
 const SIZES = {
-  sm: 'px-5 py-2 text-sm',
-  md: 'px-6 py-3 text-sm',
+  sm: `px-5 py-2 text-sm ${reachCls}`,
+  md: `px-6 py-3 text-sm ${reachCls}`,
   lg: 'px-8 py-4 text-sm',
 }
 
@@ -44,7 +59,7 @@ export default function Button({
   children,
   ...rest
 }) {
-  const classes = `inline-flex items-center justify-center gap-2 rounded-full font-semibold ${pressCls} motion-safe:hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40 ${
+  const classes = `inline-flex items-center justify-center gap-2 rounded-full font-semibold ${pressCls} motion-safe:hover:scale-[1.02] ${focusCls} disabled:pointer-events-none disabled:opacity-40 ${
     VARIANTS[variant] || VARIANTS.primary
   } ${SIZES[size] || SIZES.md} ${className}`
 

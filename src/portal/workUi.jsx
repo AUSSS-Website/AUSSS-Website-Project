@@ -1,5 +1,6 @@
 import { pressCls } from '../lib/motion.js'
 import { todayCairo } from './officerQueries.js'
+import { tapCls } from './portalUi.jsx'
 
 // Small shared pieces for the tasks, updates and notifications pages: labels
 // for the database's status / priority / kind values, due-date wording, and
@@ -198,13 +199,20 @@ export function UnreadDot({ label = 'Unread' }) {
 }
 
 // The ring shows which field the keyboard is in, as on inputCls in portalUi.jsx.
+// On a touch screen the field stands a thumb tall (tapCls), as that one does.
 export const smallInputCls =
-  'w-full rounded-lg border border-line/15 bg-page px-3 py-2 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
+  `w-full rounded-lg border border-line/15 bg-page px-3 py-2 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 ${tapCls}`
 
-// A filter chip. It sinks a little when pressed, like the other buttons (pressCls).
+// A filter chip. It sinks a little when pressed, like the other buttons
+// (pressCls), and takes a fill while pressed: on a phone nothing hovers, and
+// the sinking is left out for a reader who asked for less motion. The fill is
+// kept off a chip that is switched off, as on the pills in portalUi.jsx. On a
+// touch screen the chip stands a thumb tall (tapCls). A <button> keeps its
+// label in the middle of that height by itself; a link styled as a chip would
+// need `inline-flex items-center` from the page.
 export const chipBtnCls = (active) =>
-  `rounded-full border px-3.5 py-1.5 text-xs font-semibold ${pressCls} ${
+  `rounded-full border px-3.5 py-1.5 text-xs font-semibold ${pressCls} ${tapCls} ${
     active
-      ? 'border-medical bg-medical/15 text-ink'
-      : 'border-line/15 text-soft/65 hover:border-line/30 hover:text-ink'
+      ? 'border-medical bg-medical/15 text-ink [&:not(:disabled)]:active:bg-medical/25'
+      : 'border-line/15 text-soft/65 hover:border-line/30 hover:text-ink [&:not(:disabled)]:active:border-line/30 [&:not(:disabled)]:active:bg-veil/10 [&:not(:disabled)]:active:text-ink'
   }`

@@ -29,7 +29,7 @@ import {
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
-import { StatusChip, confirmReachCls, countOf, tapCls, tapReachCls } from './ExamsPage.jsx'
+import { StatusChip, countOf, tapCls, tapReachCls } from './ExamsPage.jsx'
 
 // The Questions part of /portal/exam/:id. The questions in the officers' order
 // with the right option marked, one form to add or change a question, removing
@@ -462,7 +462,9 @@ function QuestionRow({ exam, question, number, handle, editing, onEdit, onDone, 
             {exam.started ? 'Correct the answer' : 'Edit'}
           </button>
           {!exam.started && (
-            <span className={confirmReachCls}>
+            // No wider reach from outside here: on a phone the red pill wraps under
+            // Edit, and ConfirmButton's own smaller reach keeps clear of it.
+            <span className="inline-flex">
               <ConfirmButton
                 variant="text"
                 label="Remove"

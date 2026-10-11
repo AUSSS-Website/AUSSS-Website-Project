@@ -142,7 +142,7 @@ function History() {
           return (
             <li key={b.id} className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 text-sm text-soft/75">
-                <p className={b.undone_at ? 'line-through opacity-60' : ''}>
+                <p className={b.undone_at ? 'line-through [&>span]:font-normal [&>span]:text-soft/75' : ''}>
                   <span className="font-semibold text-ink">{b.label}</span> · {b.changes.length}{' '}
                   {b.changes.length === 1 ? 'member' : 'members'} ·{' '}
                   {effect(b.action, b.value)}

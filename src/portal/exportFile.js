@@ -83,14 +83,19 @@ async function loadFonts() {
   return fontFiles
 }
 
+// A sentence of this file's own, thrown as an error. It is marked `rejected`
+// so that errorText (src/lib/errorText.js) shows it as written, where any
+// other thrown Error gives way to the caller's fallback.
+const refusal = (message) => Object.assign(new Error(message), { rejected: true })
+
 async function fetchBase64(url) {
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`Could not load the PDF font (${res.status})`)
+  if (!res.ok) throw refusal(`Could not load the PDF font (${res.status}).`)
   const blob = await res.blob()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result).split(',')[1] || '')
-    reader.onerror = () => reject(reader.error || new Error('Could not read the PDF font'))
+    reader.onerror = () => reject(reader.error || refusal('Could not read the PDF font.'))
     reader.readAsDataURL(blob)
   })
 }

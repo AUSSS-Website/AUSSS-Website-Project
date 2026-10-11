@@ -1,4 +1,5 @@
 import { restRpc, supabaseRestEnabled } from './supabaseRest.js'
+import { errorText } from './errorText.js'
 import { normalize } from './text.js'
 
 // The membership check reads the live roster in Supabase through
@@ -50,7 +51,8 @@ function fixEmailDomain(email) {
 //        one roster email is a typo away, or { fixedEmail } when the domain
 //        itself looks mistyped (computed here, no roster involved)
 //   { state: 'not-connected' }       build without the Supabase env vars
-//   { state: 'error', message }
+//   { state: 'error', message }      message: a whole sentence, to be shown
+//        as it is (src/lib/errorText.js)
 // `role` is the one fixed value the RPC accepts ('supervising-council'), for
 // the holder whose name is spelt too many ways to match by name.
 // acceptNear: the visitor confirmed the masked email hint.
@@ -69,7 +71,14 @@ export async function lookupMember({ name = '', email = '', role = null, acceptN
     const suggestions = fixedEmail ? { fixedEmail } : d?.suggestions || null
     return { state: 'not-found', suggestions }
   } catch (e) {
-    return { state: 'error', message: e.message }
+    // The roster's own refusal ("Too many lookups right now, please retry in a
+    // few minutes.") is shown as written, and a request that got no answer
+    // says so; anything else is ours to word. The page prints the sentence
+    // under a heading of its own, so this one says what failed.
+    return {
+      state: 'error',
+      message: errorText(e, 'We couldn’t check the membership list. Please try again in a moment.'),
+    }
   }
 }
 

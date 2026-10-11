@@ -161,7 +161,7 @@ export default function SignInPage() {
           <Button
             type="button"
             variant="primary"
-            className="mt-6 min-h-[44px] w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light"
+            className="mt-6 min-h-[44px] w-full border border-[#747775] !bg-white !font-medium !text-[#1F1F1F] hover:!bg-silver-light active:!bg-silver-light"
             onClick={google}
             disabled={Boolean(busy)}
             aria-describedby={googleError ? 'portal-google-error' : undefined}

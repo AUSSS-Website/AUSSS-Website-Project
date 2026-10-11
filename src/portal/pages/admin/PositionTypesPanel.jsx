@@ -104,7 +104,7 @@ function TypeRow({ position, fallback, abbr, onRemoved }) {
         onChange={(e) => setTitle(e.target.value)}
         maxLength={120}
         aria-label={`Title of ${position.title}`}
-        className={`${inputCls} max-w-sm ${position.active ? '' : 'line-through opacity-60'}`}
+        className={`${inputCls} max-w-sm ${position.active ? '' : 'line-through !text-soft/70'}`}
       />
       {title.trim() && title.trim() !== position.title && (
         <button

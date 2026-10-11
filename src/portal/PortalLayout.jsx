@@ -12,7 +12,11 @@ import { contentSchemas } from '../content/index.js'
 // <Layout/> (navbar, footer) so signed-in pages stay quiet and the public
 // shell never has to know about auth. The top bar keeps the public navbar's
 // dimensions (height, logo, type, side padding), so moving between the site
-// and the portal does not feel like changing product.
+// and the portal does not feel like changing product. It steps up where that
+// bar does (src/components/Navbar.jsx): the side padding widens at 1100px, and
+// the larger type, pill and logo start at 1920px. Between 1024 and 1099px the
+// bar therefore stands a little wider than the page under it, as it does on
+// the public site.
 
 // The header's controls are 40px to the eye and its links one line of text,
 // and both are smaller still on a 320px phone, where the root size shrinks.
@@ -30,7 +34,7 @@ const tapCls = `${tapBaseCls} after:w-full after:min-w-[44px]`
 // Under the pointer a quieter link takes the ink and a fainter bar grows out
 // from the left (it only fades in for a reader who asked for less motion).
 // The bar is scaled, never resized, so nothing is laid out again as it moves.
-const linkCls = `group grid shrink-0 justify-items-center py-1 text-sm 2xl:text-base ${tapBaseCls} after:w-[calc(100%+1.5rem)]`
+const linkCls = `group grid shrink-0 justify-items-center py-1 text-sm min-[1920px]:text-base ${tapBaseCls} after:w-[calc(100%+1.5rem)]`
 
 function linkFace(label, here) {
   return (
@@ -167,7 +171,7 @@ export default function PortalLayout() {
   }
 
   const name = displayName(profile, user)
-  const logoCls = 'h-14 w-auto sm:h-16 2xl:h-[4.5rem]'
+  const logoCls = 'h-14 w-auto sm:h-16 min-[1920px]:h-[4.5rem]'
 
   return (
     <div className="min-h-screen bg-page text-soft">
@@ -178,7 +182,7 @@ export default function PortalLayout() {
       </a>
       <header className="border-b border-line/10 bg-page">
         {/* The bar: full width with the navbar's height and side padding. */}
-        <div className="flex h-24 w-full items-center justify-between gap-3 px-6 sm:px-10 lg:px-16 min-[1920px]:px-24">
+        <div className="flex h-24 w-full items-center justify-between gap-3 px-6 sm:px-10 min-[1100px]:px-16 min-[1920px]:px-24">
           <Link to="/portal" className="flex min-w-0 items-center gap-4" aria-label="Portal home">
             <img
               src="/assets/brand/ausss-icon-black.png"
@@ -193,7 +197,7 @@ export default function PortalLayout() {
               decoding="async"
               className={`${logoCls} hidden dark:block`}
             />
-            <span className="hidden text-xs font-semibold uppercase tracking-[0.22em] text-soft/60 sm:inline 2xl:text-sm">
+            <span className="hidden text-xs font-semibold uppercase tracking-[0.22em] text-soft/60 sm:inline min-[1920px]:text-sm">
               Members portal
             </span>
           </Link>
@@ -206,7 +210,7 @@ export default function PortalLayout() {
               title="Your profile"
               aria-label="Your profile"
               className={({ isActive }) =>
-                `flex min-w-0 items-center gap-2.5 rounded-full text-sm font-medium transition-colors 2xl:text-base ${tapCls} ${
+                `flex min-w-0 items-center gap-2.5 rounded-full text-sm font-medium transition-colors min-[1920px]:text-base ${tapCls} ${
                   isActive ? 'text-ink' : 'text-soft/80 hover:text-ink'
                 }`
               }
@@ -231,19 +235,21 @@ export default function PortalLayout() {
               type="button"
               onClick={handleSignOut}
               disabled={busy}
-              className={`hidden rounded-full border border-line/20 px-5 py-2 text-sm font-semibold text-ink ${pressCls} ${tapCls} hover:bg-veil/10 disabled:opacity-40 sm:block 2xl:px-6 2xl:py-2.5 2xl:text-base`}
+              className={`hidden rounded-full border border-line/20 px-5 py-2 text-sm font-semibold text-ink ${pressCls} ${tapCls} hover:bg-veil/10 [&:not(:disabled)]:active:bg-veil/20 disabled:opacity-40 sm:block min-[1920px]:px-6 min-[1920px]:py-2.5 min-[1920px]:text-base`}
             >
               {busy ? 'Signing out…' : 'Sign out'}
             </button>
             {/* A phone has no room for the words: the same action as a round
-                button the size of the others. */}
+                button the size of the others. Both take a fill while pressed,
+                as the portal's pills do: a phone has no hover to show, and
+                with reduced motion the button does not sink. */}
             <button
               type="button"
               onClick={handleSignOut}
               disabled={busy}
               aria-label="Sign out"
               title="Sign out"
-              className={`grid h-10 w-10 place-items-center rounded-full border border-line/20 text-soft/80 ${pressCls} ${tapCls} hover:bg-veil/10 hover:text-ink disabled:opacity-40 sm:hidden`}
+              className={`grid h-10 w-10 place-items-center rounded-full border border-line/20 text-soft/80 ${pressCls} ${tapCls} hover:bg-veil/10 hover:text-ink [&:not(:disabled)]:active:bg-veil/20 [&:not(:disabled)]:active:text-ink disabled:opacity-40 sm:hidden`}
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4" />
@@ -263,7 +269,7 @@ export default function PortalLayout() {
         <nav aria-label="Portal" className="border-t border-line/10">
           <div
             ref={linksRef}
-            className="flex items-center gap-x-6 overflow-x-auto whitespace-nowrap px-6 py-4 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] sm:px-10 md:flex-wrap md:gap-y-4 md:overflow-visible lg:gap-x-7 lg:px-16 xl:gap-x-8 2xl:gap-x-10 min-[1920px]:px-24 [&::-webkit-scrollbar]:hidden"
+            className="flex items-center gap-x-6 overflow-x-auto whitespace-nowrap px-6 py-4 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] sm:px-10 md:flex-wrap md:gap-y-4 md:overflow-visible lg:gap-x-7 min-[1100px]:px-16 xl:gap-x-8 2xl:gap-x-10 min-[1920px]:px-24 [&::-webkit-scrollbar]:hidden"
           >
             {groups.map((group, i) => (
               <div

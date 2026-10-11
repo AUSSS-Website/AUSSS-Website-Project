@@ -19,7 +19,9 @@ import { pressCls, scrollBehavior } from '../lib/motion.js'
 //             better wider than the card)
 //   children  the words about it
 
-const quietCls = `inline-flex min-h-11 items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`
+// The pills are at least 44px tall, in px: the root size is 15px on a 320px
+// phone, where a height in rem (min-h-11) came to 41px.
+const quietCls = `inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`
 
 export default function DocumentCard({
   id,
@@ -73,7 +75,7 @@ export default function DocumentCard({
             onClick={() => setOpenAt((at) => (at ? 0 : 1))}
             aria-expanded={Boolean(openAt)}
             aria-controls={`${id}-reader`}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M7 3h7l5 5v13H7V3Z" strokeLinejoin="round" />

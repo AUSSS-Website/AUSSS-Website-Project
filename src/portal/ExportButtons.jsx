@@ -1,32 +1,18 @@
 import { useState } from 'react'
-import { UNREACHED, errorText } from '../lib/errorText.js'
+import { errorText } from '../lib/errorText.js'
 import { outlineBtnCls } from './portalUi.jsx'
 import { dateStamp, downloadText, exportPdf, toCsv } from './exportFile.js'
-
-// The two sentences exportFile.js writes itself, about the font it puts into
-// every PDF ("Could not load the PDF font (404)"). They are thrown as plain
-// errors with no mark on them, which errorText would take for something not
-// meant to be read, so they are known here by how they begin.
-const OWN_WORDS = /^Could not (load|read) the PDF font/
-// What a browser says when it could not fetch the code that builds the PDF,
-// which is loaded when the button is first pressed (Chrome, Firefox, Safari).
-// It is the same trouble as a request that got no answer, in other words.
-const NO_CODE = /dynamically imported module|importing a module script failed/i
-
-// What to say when an export fails: exportFile.js's own sentence as written
-// (given the full stop it lacks), the usual line when the server could not be
-// reached, and otherwise that the export failed. Never the words of whatever
-// broke inside the PDF library.
-function exportError(err) {
-  const message = typeof err?.message === 'string' ? err.message : ''
-  if (OWN_WORDS.test(message)) return message.endsWith('.') ? message : `${message}.`
-  if (NO_CODE.test(message)) return UNREACHED
-  return errorText(err, 'The export failed.')
-}
 
 // "Export PDF" (and, unless csv is false, "Export CSV") for a list. The rows
 // are whatever the screen currently shows, filters included, so people get
 // the list they are looking at. See exportFile.js for the column shape.
+//
+// What is said when an export fails is errorText's choice: the sentence
+// exportFile.js wrote itself, about the font it puts into every PDF ("Could
+// not load the PDF font (404)."); the usual line when the server could not be
+// reached, which covers the code that builds the PDF, fetched when the button
+// is first pressed; and otherwise that the export failed. Never the words of
+// whatever broke inside the PDF library.
 export default function ExportButtons({
   title,
   subtitle,
@@ -50,7 +36,7 @@ export default function ExportButtons({
     try {
       await fn()
     } catch (e) {
-      setError(exportError(e))
+      setError(errorText(e, 'The export failed.'))
     } finally {
       setBusy('')
     }

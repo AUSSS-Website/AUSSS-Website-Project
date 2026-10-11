@@ -41,7 +41,7 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 // the positions and notes of both.
 
 const tagCls =
-  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
+  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/70'
 
 // Delete and Remove are one word of small text beside what they act on. An
 // unseen ::after gives a finger 44px to land on, in px because the root size
@@ -266,15 +266,19 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
   const isSelf = member.profile_id && member.profile_id === user?.id
   return (
     <li className="rounded-2xl border border-line/10 bg-card p-5">
+      {/* The whole header opens the row, so it answers a pointer and a press
+          with a tint, as the roster's rows do (RosterPage.jsx). Its negative
+          margin lets the tint reach a little past the text without moving
+          anything. */}
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 text-left"
+        className="-m-2 flex w-[calc(100%+1rem)] flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-xl p-2 text-left transition-colors duration-150 ease-out hover:bg-veil/5 active:bg-veil/10"
       >
         <span className="min-w-0">
           <span className="block truncate text-base font-semibold text-ink">{member.full_name}</span>
-          <span className="block truncate text-sm text-soft/60">{member.email || 'No email on file'}</span>
+          <span className="block truncate text-sm text-soft/70">{member.email || 'No email on file'}</span>
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-soft/70">
           {/* The roster's status as people word it: a sheet that holds the

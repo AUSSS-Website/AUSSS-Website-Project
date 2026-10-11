@@ -40,7 +40,7 @@ import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
 const NO_EMAILS = {}
 
 const tagCls =
-  'inline-flex shrink-0 items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
+  'inline-flex min-w-0 max-w-full items-center rounded-2xl border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/70'
 const textBtnCls = 'text-xs font-semibold transition-colors disabled:opacity-40'
 // Withdraw and Remove are one word of small text at the end of a row. An
 // unseen ::after gives a finger 44px to land on, in px because the root size
