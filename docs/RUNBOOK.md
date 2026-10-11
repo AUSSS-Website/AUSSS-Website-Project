@@ -381,8 +381,10 @@ at `/portal/verify`. Two ways to decide:
   `decide_verification` RPC, which checks `app.is_eb()` inside the database.
   Approve is one click; Decline turns red and asks for a second. A decided
   request stays in the list until the page is left, with what happened written
-  in its row ("Approved. … is now an active member."). Nothing on the page
-  takes a decision back: `decide_verification` accepts a pending request only.
+  in its row ("Approved. … is now an active member.") and an Undo beside it.
+  Undo calls the `undo_verification_decision` RPC (see "Taking a decision
+  back" below); the row then has its buttons again and can be decided a second
+  time. A decision another board member made is shown without an Undo.
 - **SQL**, as `postgres`, when the portal is unavailable:
 
   ```sql
@@ -412,6 +414,62 @@ at `/portal/verify`. Two ways to decide:
 Check the Members Officer agrees before approving anyone you cannot place. The
 EB-only RPC `public.set_membership_status(profile_id, status, tier)` changes a
 status without a request, for example to mark alumni.
+
+### Taking a decision back
+
+Since migration `20261011120001_verification_undo.sql` a decision keeps what it
+found, on the request's own row: `member_status_before`, `member_tier_before`
+and `member_joined_year_before` (the member's membership fields as the decision
+found them) and `member_status_after` (the status the decision left; after a
+decline it is the same one, because a decline changes nothing on the profile).
+All four are empty while a request is pending, and a check constraint keeps a
+member from filing a request with a "before" already in it.
+
+`public.undo_verification_decision(request_id)` is for the Executive Board, as
+deciding is (`app.is_eb()`). It puts the request back to `pending`, clears
+`decided_by`, `decided_at` and the four kept columns and, after an approval,
+sets the member's `membership_status` back to `member_status_before`. An
+approval changes nothing else on the profile, so the profile is then what it
+was. It refuses with a sentence the portal shows as it is (errcode `22023`):
+
+| When | The sentence |
+| --- | --- |
+| The request is not decided (still waiting, or undone already) | "This request is waiting for a decision, so there is nothing to undo." |
+| The decision was made before the migration, or by the direct `update` above, so nothing was kept | "This decision was made before decisions could be undone. The webmaster can change the status of the member by hand." |
+| The member has sent a newer request since the decision | "This member has sent a newer request since the decision. Decide that request instead." |
+| After an approval the member's status, tier or joining year changed again (the roster, or `set_membership_status`) | "The membership of this member has changed since the approval, so the approval cannot be undone." |
+| The approval lifted an unverified member who is by now on the roster (a linked row that is not archived or suspended) or holds an active position | "This member is now on the roster or holds a position, which verifies them, so the approval cannot be undone." |
+| The request is gone | "That verification request no longer exists." |
+
+The last but one is there because the roster and a position each lift an
+unverified account once, when the link or the assignment is made, and found
+this account approved already: taken back to `unverified` it would stay there.
+An edit of the member's own details (name, phone, photo) since the approval
+does not stand in the way, because the undo writes none of them.
+
+No notification and no email is sent when a request is decided, so there is
+none to take back and the undo sends none: the member's `/portal/verify` page
+reads the request and shows "Request pending" again. Nothing is removed from
+the audit log. The audit triggers record the undo as they recorded the
+decision: one `UPDATE` on `verification_requests` (approved to pending) and,
+after an approval, one on `profiles` (the status going back), each with the
+board member who undid it as the actor. `/portal/admin/audit` shows both under
+their tables.
+
+For a decision that kept nothing, as `postgres`:
+
+```sql
+-- What the profile's status was before: the audit log has the approval's own row.
+select at, actor, before ->> 'membership_status' as was, after ->> 'membership_status' as became
+from public.audit_log
+where table_name = 'profiles' and row_id = '<profile uuid>' and action = 'UPDATE'
+order by at desc limit 5;
+
+update public.profiles set membership_status = '<what it was>' where id = '<profile uuid>';
+update public.verification_requests
+set status = 'pending', decided_by = null, decided_at = null
+where id = '<request uuid>';
+```
 
 ## 10. Term rollover (database part)
 
@@ -538,10 +596,35 @@ unsettled, and officers can still prepare calls in the portal). See section 27.
 The committee editor keeps its place in the address (`useTabParam`, section 24):
 the open tab as `?tab=` (`events`, `calls`, `members` or `invites`; the
 Committee page tab is the plain address), an open call as `?call=` (`new`, or
-the call's id) and its applications as `?view=applications`. A reload, or a
-link sent to another officer, opens the same place. A tab stays loaded once it
-has been opened, so a half-written call survives a look at another tab, and
-Cancel and "Back to calls" ask "Discard changes" once something was typed.
+the call's id) and its applications as `?view=applications`. The applications
+of a removed call open as `?removed=` followed by the title the call had (see
+below). A reload, or a link sent to another officer, opens the same place. A
+tab stays loaded once it has been opened, so a half-written call survives a
+look at another tab, and Cancel and "Back to calls" ask "Discard changes" once
+something was typed.
+
+Removing a call keeps what people sent to it. `applications.call_id` is set
+to null when the call's row is deleted, and each application keeps its
+committee and the title its call had (`call_title`). The Open calls tab lists
+them under "Removed calls", further down the same page, one entry for each
+such title (`groupByRemovedCall` in `src/portal/officerQueries.js`), and an
+entry opens the same list a live call's applications have: the answers, the
+status picker, the notes and the export. The line that comes after Remove
+says how many applications were kept and where they are. This needed nothing
+new in the database: the policies on `applications` go by the application's
+own `committee_id`, so the committee's officers and the EB could always read
+and update such a row (the last part of
+`supabase/tests/350-verification-undo.sql` checks it). Two things to know. The removed call's id is gone, so two removed calls
+that had the same title are one entry. And only the EB can delete an
+application, with SQL, so an entry stays until then:
+
+```sql
+-- A committee's applications whose call was removed, by the title the call had.
+select a.call_title, count(*), max(a.created_at) as latest
+from public.applications a join public.committees m on m.id = a.committee_id
+where m.slug = 'scope' and a.call_id is null
+group by a.call_title order by latest desc;
+```
 
 The call form checks a call before the database does (`callProblems` in
 `src/portal/officerQueries.js`) and says each problem under its own field: no
@@ -1781,6 +1864,20 @@ stands 24 px wider on each side than the page under it, whose padding widens at 
 as the public bar does. In the portal's row of links the page a person is on is in
 semibold ink with a blue bar under it, and the other links are a shade quieter.
 
+**The Back button** (`BackButton.jsx`) is on every public page but the home page, and has
+two places; CSS shows one of them at a time. Below 1024 px it is in the public bar, ahead
+of the logo (`Navbar.jsx`): the arrow alone on a phone, a circle the size of the cart and
+theme buttons with an unseen 44 px target, and with the word "Back" from 640 px. From
+1024 px, where the bar is full of links, it floats under the bar at the top left as it
+always has (`Layout.jsx`). It used to float at every width, and on a phone it sat on the
+first line of most pages and on whatever scrolled under it, so a few pages made room for
+it one by one. Nothing passes under the bar, so below 1024 px a page needs no room for it
+and that padding is gone: the usual `pt-32 sm:pt-40` is all a page needs. From 1024 px
+keep a control out of the top left corner of a page, where the pill is (24 px in, about
+92 px wide, from 112 to 150 px down at the usual root size). Under 360 px the bar cannot
+hold Back, the logo and the cart's grown pill together, so the logo steps aside while the
+order section of `/merch` is on screen.
+
 **The magazine reader's depth** (`Flipbook.jsx`, the `.flipbook` rules in `index.css`):
 the gutter shading and the page edges are CSS on the classes the page-flip library puts
 on each page (`--simple`, `--left`, `--right`); the edges grow on the side that has been
@@ -2754,6 +2851,16 @@ the hall does not begin with 400 first sign-ins at once.
   the page itself cannot load again, because it is never served from the phone's cache.
 - **A second tab.** A sitting is kept to one tab of a browser. A second tab says "This exam is
   open in another tab" and offers **Use this tab**; the first tab then stops.
+- **A double tap.** For 400 ms after the page of questions changes (Next, Previous, a page's
+  number, a question's number on the review, the phone's back button, or the paper first
+  appearing), a tap on that page's options, "Clear answer", "Undo" or the flag does nothing, so
+  the second half of a double tap cannot change an answer (`strayTap` in `src/exam/examFlow.js`).
+  Only a finger, a mouse or a pen is held back: the keyboard and a screen reader choose at once.
+- **A hand-in in doubt.** While the bar says "Checking whether your exam was handed in. You cannot
+  change answers until then.", the **Hand in** button is off and reads "Checking…", and no second
+  hand-in is sent. The page asks the database again after 2, 5 and 10 seconds and then every 15,
+  and the button is back as soon as it answers: with "Your exam was not handed in. Tap “Hand in”
+  again." if the exam is still running.
 - **A student on the wrong account.** Their ID is held by the account they signed in with first,
   and the right account is told the ID is in use. On the Registered list tab find the ID and press
   **Release**, twice. The student presses "Not you? Sign out", signs in with the right account and

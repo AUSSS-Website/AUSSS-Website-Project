@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { errorText } from '../../../lib/errorText.js'
-import { useDecideVerification, usePendingVerifications } from '../../queries.js'
+import { useDecideVerification, usePendingVerifications, useUndoVerification } from '../../queries.js'
 import {
   ConfirmButton,
   ErrorText,
@@ -9,6 +9,7 @@ import {
   PageLoading,
   Panel,
   StatusBadge,
+  UndoLine,
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
@@ -20,11 +21,17 @@ import ExportButtons from '../../ExportButtons.jsx'
 // member active; decline leaves them unverified. Both go through the
 // decide_verification RPC so the request and the profile change together.
 //
-// Neither can be taken back from this page, so Decline, which sits beside
-// Approve, asks for a second click. A decided request stays where it was for
-// the rest of the visit, with what happened written where its buttons were.
-// Said above the list, it would be out of sight for every row but the first
-// few; and a row that left the list would take the keyboard's place with it.
+// Decline, which sits beside Approve, asks for a second click. A decided
+// request stays where it was for the rest of the visit, with what happened
+// written where its buttons were. Said above the list, it would be out of
+// sight for every row but the first few; and a row that left the list would
+// take the keyboard's place with it.
+//
+// That sentence has an Undo beside it, for a decision made on this visit: the
+// undo_verification_decision RPC puts the request back to pending and the
+// member's status back to what it was, and the row gets its buttons again. The
+// database refuses when undoing would overwrite something newer, and its
+// sentence is shown under the row.
 
 // On a touch screen the two buttons are at least a thumb tall; with a mouse
 // they keep the portal's small pill.
@@ -42,6 +49,13 @@ function outcome(req, decision, byOther = false) {
     : `Declined. ${name ? `${name}’s` : 'Their'} membership status has not changed.`
 }
 
+// What a row says once its decision has been taken back.
+function undone(req, byOther = false) {
+  const name = req.profile?.full_name || req.profile?.email
+  const waiting = `${name ? `${name}’s` : 'The'} request is waiting for a decision again.`
+  return byOther ? `Someone else had already undone that decision. ${waiting}` : `Decision undone. ${waiting}`
+}
+
 // 'approved' or 'declined' when the database refused because the request was
 // decided in the meantime (by another board member, or in another tab), else
 // ''. Its own words for that hold the request's id and are not for the page.
@@ -51,25 +65,33 @@ function decidedElsewhere(err) {
 }
 
 // Each row decides for itself, with a write of its own: its buttons are busy
-// while it saves and the other rows stay as they are. `done` is how the
-// request was decided on this visit ({ decision, byOther }), once it has been.
-// `lastPressed` is the page's note of the row whose button was pressed last.
-function Row({ req, done, lastPressed, onDecided }) {
+// while it saves and the other rows stay as they are. `done` is what has
+// happened to the request on this visit, once something has: { decision,
+// byOther } after a decision, and { decision: '', undone: true, byOther } once
+// that decision has been taken back. `lastPressed` is the page's note of the
+// row whose button was pressed last.
+function Row({ req, done, lastPressed, onDecided, onUndone, isPendingAgain }) {
   const p = req.profile || {}
   const decide = useDecideVerification()
+  const undo = useUndoVerification()
   const [error, setError] = useState('')
   const sending = decide.isPending ? decide.variables?.decision : ''
-  // The buttons go once the request is decided. If the keyboard was on one of
-  // them it is now nowhere, and the next Tab would start from the top of the
-  // page: put it on the sentence that took their place. Only the row pressed
-  // last does this, and only while the keyboard is nowhere, so a person who
-  // has gone on to another row while this one was saving is left where they
-  // are.
+  const decided = Boolean(done?.decision)
+  // The buttons go once the request is decided, and Undo goes once it is
+  // pressed. If the keyboard was on one of them it is now nowhere, and the next
+  // Tab would start from the top of the page: put it on the sentence that says
+  // what happened. After a decision the next Tab is then Undo, and after an
+  // undo it is Decline. Only the row pressed last does this, and only while
+  // the keyboard is nowhere, so a person who has gone on to another row while
+  // this one was saving is left where they are.
   const said = useRef(null)
+  const saidUndone = useRef(null)
   useEffect(() => {
     if (!done || lastPressed.current !== req.id) return
     const active = document.activeElement
-    if (!active || active === document.body) said.current?.focus({ preventScroll: true })
+    if (active && active !== document.body) return
+    const line = done.decision ? said.current : saidUndone.current
+    line?.focus({ preventScroll: true })
   }, [done, lastPressed, req.id])
 
   const run = async (decision) => {
@@ -86,6 +108,22 @@ function Row({ req, done, lastPressed, onDecided }) {
       const already = decidedElsewhere(err)
       if (already) onDecided(req, already, true)
       else setError(errorText(err, 'We couldn’t save that decision.'))
+    }
+  }
+
+  const takeBack = async () => {
+    lastPressed.current = req.id
+    setError('')
+    try {
+      await undo.mutateAsync(req.id)
+      onUndone(req)
+    } catch (err) {
+      // The database refuses an undo of a request that is pending, which is
+      // what this one is if another board member has just undone the same
+      // decision. The queue is read again to find out, and the row then says
+      // so; any other refusal is shown as the database worded it.
+      if (err?.code === '22023' && (await isPendingAgain(req))) onUndone(req, true)
+      else setError(errorText(err, 'We couldn’t undo that decision.'))
     }
   }
 
@@ -107,12 +145,23 @@ function Row({ req, done, lastPressed, onDecided }) {
               {req.message}
             </blockquote>
           )}
+          {/* That the decision was taken back. It stands before the buttons,
+              which are back with it, so the next Tab from here is Decline.
+              Always in the row, so a screen reader hears it when it comes. */}
+          <p
+            ref={saidUndone}
+            role="status"
+            tabIndex={-1}
+            className={done?.undone ? 'mt-3 text-sm text-soft/75 focus:outline-none' : 'sr-only'}
+          >
+            {done?.undone ? undone(req, done.byOther) : ''}
+          </p>
         </div>
         {/* Decline is as wide as its "Click again" wording from the start, so
             nothing moves when it asks. Where a narrow phone has no room for
             the pair on one line, each button takes a line of its own, edge to
             edge (`grow` does nothing while they fit side by side). */}
-        {!done && (
+        {!decided && (
           <div className="flex flex-wrap items-center gap-2">
             <ConfirmButton
               label="Decline"
@@ -137,17 +186,21 @@ function Row({ req, done, lastPressed, onDecided }) {
             </button>
           </div>
         )}
-        {/* What happened, where the buttons were. Always in the row, so a
-            screen reader hears the sentence when it comes; out of sight until
-            there is one. */}
-        <p
-          ref={said}
-          role="status"
-          tabIndex={-1}
-          className={done ? 'max-w-xs text-sm text-soft/75 focus:outline-none' : 'sr-only'}
-        >
-          {done ? outcome(req, done.decision, done.byOther) : ''}
-        </p>
+        {/* What happened, where the buttons were, with the way to take it
+            back. The line is always in the row, so a screen reader hears the
+            sentence when it comes; out of sight until there is one, and out of
+            the row's layout with it. A decision someone else made is not this
+            person's to undo from a list that was out of date, so it gets the
+            sentence alone. Only this line is busy while the undo is sent. */}
+        <div ref={said} tabIndex={-1} className={decided ? 'max-w-xs focus:outline-none' : 'sr-only'}>
+          <UndoLine
+            onUndo={done?.byOther ? undefined : takeBack}
+            busy={undo.isPending}
+            className="py-1 text-sm"
+          >
+            {decided ? outcome(req, done.decision, done.byOther) : null}
+          </UndoLine>
+        </div>
       </div>
       {error && (
         <div className="mt-3">
@@ -172,17 +225,32 @@ export default function VerificationQueuePage() {
   // The requests decided on this visit, by id, each with its row as it was.
   // The list is fetched again a moment after a decision and no longer holds
   // them; the page goes on showing them where they stood, without their
-  // buttons.
+  // buttons. A request whose decision was taken back stays here too, marked
+  // `undone`: its row has its buttons again at once, without waiting for the
+  // list to be fetched with it back in.
   const [decided, setDecided] = useState(() => new Map())
-  // The id of the request whose Approve or Decline was pressed last (see Row).
+  // The id of the request whose button was pressed last (see Row).
   const lastPressed = useRef(null)
-  const waiting = (pending.data || []).filter((req) => !decided.has(req.id))
-  const rows = [...waiting, ...[...decided.values()].map((d) => d.req)].sort(byRequested)
+  const unseen = (pending.data || []).filter((req) => !decided.has(req.id))
+  const rows = [...unseen, ...[...decided.values()].map((d) => d.req)].sort(byRequested)
+  // The requests still to be decided: what the export holds, and what
+  // "Nothing waiting" is said about.
+  const waiting = rows.filter((req) => !decided.get(req.id)?.decision)
 
   const onDecided = (req, decision, byOther = false) => {
     setDecided((prev) => new Map(prev).set(req.id, { req, decision, byOther }))
     // Decided elsewhere, the list here is out of date: other rows may be too.
     if (byOther) pending.refetch()
+  }
+  const onUndone = (req, byOther = false) => {
+    setDecided((prev) => new Map(prev).set(req.id, { req, decision: '', undone: true, byOther }))
+  }
+  // Whether the queue, read again now, holds this request. A read that fails
+  // still hands back the list from before, which proves nothing, so it
+  // answers no and the row shows what the undo itself was told.
+  const isPendingAgain = async (req) => {
+    const read = await pending.refetch()
+    return !read.isError && Array.isArray(read.data) && read.data.some((r) => r.id === req.id)
   }
 
   return (
@@ -221,6 +289,8 @@ export default function VerificationQueuePage() {
                   done={decided.get(req.id)}
                   lastPressed={lastPressed}
                   onDecided={onDecided}
+                  onUndone={onUndone}
+                  isPendingAgain={isPendingAgain}
                 />
               ))}
             </ul>

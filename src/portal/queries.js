@@ -135,6 +135,14 @@ async function decideVerification({ request_id, decision, new_status }) {
   return unwrap(await supabase.rpc('decide_verification', args))
 }
 
+// Takes a decision back: the request is pending again and, after an approval,
+// the member's status is what it was before. The database refuses in a
+// sentence when there is nothing to undo, and when undoing would overwrite
+// something newer (migration 20261011120001).
+async function undoVerification(requestId) {
+  return unwrap(await supabase.rpc('undo_verification_decision', { request_id: requestId }))
+}
+
 // ---- hooks ----------------------------------------------------------------
 
 export function useProfile(uid) {
@@ -238,14 +246,28 @@ export function useRequestVerification(uid) {
   })
 }
 
+// What a decision changes, and so what an undo changes back: the queue, the
+// member's own view of their request, and their profile.
+function afterVerificationChange(qc) {
+  qc.invalidateQueries({ queryKey: keys.pendingVerification() })
+  qc.invalidateQueries({ queryKey: ['verification', 'mine'] })
+  qc.invalidateQueries({ queryKey: ['profile'] })
+}
+
 export function useDecideVerification() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: decideVerification,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.pendingVerification() })
-      qc.invalidateQueries({ queryKey: ['verification', 'mine'] })
-      qc.invalidateQueries({ queryKey: ['profile'] })
-    },
+    onSuccess: () => afterVerificationChange(qc),
+  })
+}
+
+// mutate(requestId). The page that offers the undo keeps the request's row
+// itself, so nothing is written into the cache here.
+export function useUndoVerification() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: undoVerification,
+    onSuccess: () => afterVerificationChange(qc),
   })
 }

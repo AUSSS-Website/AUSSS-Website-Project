@@ -12,6 +12,9 @@ const officerKeys = {
   committee: (slug) => ['committee', slug],
   calls: (slug) => ['calls', slug],
   applications: (callId) => ['applications', callId],
+  // A committee's applications whose call has been removed. A call's id is a
+  // uuid, so 'removed' never stands where one could.
+  removedApplications: (committeeId) => ['applications', 'removed', committeeId],
 }
 
 function unwrap({ data, error }) {
@@ -349,14 +352,20 @@ export function useCommitteeCalls(slug, committeeId) {
   })
 }
 
-// One hook, four mutations; all of them invalidate the committee's list.
+// One hook, four mutations; all of them invalidate the committee's list. A
+// removal also leaves the call's applications behind with no call (the
+// database sets their call_id to null), so the list of those is read again.
 export function useCallMutations(slug, committeeId) {
   const qc = useQueryClient()
   const done = () => qc.invalidateQueries({ queryKey: officerKeys.calls(slug) })
+  // Handed back as one promise, as `done` is, so a mutation is over only once
+  // the lists have been read again.
+  const removed = () =>
+    Promise.all([done(), qc.invalidateQueries({ queryKey: officerKeys.removedApplications(committeeId) })])
   const create = useMutation({ mutationFn: (fields) => createCall(committeeId, fields), onSuccess: done })
   const update = useMutation({ mutationFn: ({ id, fields }) => updateCall(id, fields), onSuccess: done })
   const status = useMutation({ mutationFn: ({ id, status }) => setCallStatus(id, status), onSuccess: done })
-  const remove = useMutation({ mutationFn: (id) => deleteCall(id), onSuccess: done })
+  const remove = useMutation({ mutationFn: (id) => deleteCall(id), onSuccess: removed })
   return { create, update, status, remove }
 }
 
@@ -395,13 +404,65 @@ export function useApplications(callId) {
   })
 }
 
+// The applications a removed call left behind. Removing a call keeps what
+// people sent to it: the row stays, with its committee and the title the call
+// had, and only its call_id goes. Row-level security lets the committee's
+// officers read and change an application by its own committee, so these
+// need nothing the applications of a live call do not.
+async function fetchRemovedCallApplications(committeeId) {
+  const rows = unwrap(
+    await supabase
+      .from('applications')
+      .select(APPLICATION_SELECT)
+      .eq('committee_id', committeeId)
+      .is('call_id', null)
+      .order('created_at', { ascending: false }),
+  )
+  return rows || []
+}
+
+export function useRemovedCallApplications(committeeId) {
+  return useQuery({
+    queryKey: officerKeys.removedApplications(committeeId),
+    queryFn: () => fetchRemovedCallApplications(committeeId),
+    enabled: Boolean(committeeId),
+  })
+}
+
+// What stands for a removed call that had no title to leave: in the address
+// (as the group's key) and on the page (as its title).
+const UNTITLED_KEY = 'untitled'
+const UNTITLED_TITLE = 'Untitled call'
+
+// The applications of removed calls, gathered under the call each was sent
+// to: [{ key, title, latest, applications }]. The call's row is gone and its
+// id with it, so the title each application kept is all that says which call
+// it was: two removed calls with the same title are one group here. `key` is
+// what the address names the group by (?removed=) and is the title as it was
+// kept, apart from the spaces around it. Inside a group the applications keep
+// the order they came in (the newest first, as they are read), and the groups
+// are in the order of their newest application.
+export function groupByRemovedCall(applications) {
+  const groups = new Map()
+  for (const app of applications || []) {
+    const title = String(app.call_title ?? '').trim()
+    const key = title || UNTITLED_KEY
+    if (!groups.has(key)) groups.set(key, { key, title: title || UNTITLED_TITLE, latest: '', applications: [] })
+    const group = groups.get(key)
+    group.applications.push(app)
+    if ((app.created_at || '') > group.latest) group.latest = app.created_at || ''
+  }
+  // Array.prototype.sort is stable, so groups with no date keep their order.
+  return [...groups.values()].sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0))
+}
+
 // The list shows the change at once and the database is told after: a status
 // select that waited for the answer sprang back to the old value in between.
 // If the write fails, that one application goes back to what it was (the rest
-// of the list may have moved on meanwhile, so it is left as it is).
-export function useUpdateApplication(callId) {
+// of the list may have moved on meanwhile, so it is left as it is). `key` is
+// the cached list the application is shown from.
+function useApplicationUpdater(key) {
   const qc = useQueryClient()
-  const key = officerKeys.applications(callId)
   const putRow = (row) =>
     qc.setQueryData(key, (prev) =>
       Array.isArray(prev) ? prev.map((a) => (a.id === row.id ? row : a)) : prev,
@@ -421,4 +482,14 @@ export function useUpdateApplication(callId) {
     },
     onSuccess: putRow,
   })
+}
+
+// For the applications of one live call, and for those of a committee's
+// removed calls. Both are mutate({ id, patch }).
+export function useUpdateApplication(callId) {
+  return useApplicationUpdater(officerKeys.applications(callId))
+}
+
+export function useUpdateRemovedCallApplication(committeeId) {
+  return useApplicationUpdater(officerKeys.removedApplications(committeeId))
 }
