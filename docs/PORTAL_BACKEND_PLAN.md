@@ -577,6 +577,11 @@ new headers in a signed-in browser the same day (RUNBOOK section 21); its
 scripted walk with screenshots waits for a `--login` and is needed for 5c. The backlinks stay with the
 President and the VPE (section 12.5).
 
+**Update, 2026-10-11:** the webmaster reported that Bing is indexing the two
+addresses added since the sitemap was first submitted, `/exchange/incomings`
+and `/events`, which closes the Bing Webmaster Tools line above. The Search
+Console indexing requests for the same two pages are not reported yet.
+
 1. **Start the search clocks (request 2, the Phase 4 search follow-ups, and
    the `robots.txt` part of request 7).** The site does not appear on
    DuckDuckGo. DuckDuckGo takes most of its results from Bing, and
@@ -801,6 +806,11 @@ RUNBOOK section 22 says which lines to delete. Nobody should be invited
 before that is done. Three dashboard lines of the checklist (two-step
 verification on every account, GitHub secret scanning) are still the
 webmaster's to tick.
+
+**Update, 2026-10-11:** the webmaster reported the redirect list done, so
+the gate's failed line is cleared and the pilot of step 2 can start. The
+dashboard lines (two-step verification, GitHub secret scanning) are still
+to tick.
 
 1. **Gate before inviting anyone.** Re-run the security checklist over what
    5b added (attachments, invites, the directory), confirm the nightly backup
@@ -1270,26 +1280,29 @@ earlier sessions and are listed so the roadmap is whole; none is scheduled.
 
 Waiting on people:
 
-- **Backlinks** from IFMSA-Egypt's LC list (requested by the President or
-  the VPE) and the faculty site (5a step 1).
+- **Backlinks** from IFMSA-Egypt (requested by the President or the VPE)
+  and the faculty site (5a step 1). IFMSA-Egypt's website has no list of
+  local committees (the webmaster, 2026-10-11), so the page to ask for the
+  link on is its exchange page, `https://www.ifmsa-egypt.org.eg/exchange/`,
+  which names no local committee today. Our Incomings and Outgoings pages
+  link to that page.
 - **Role addresses on the domain:** built behind the site setting `domainEmailsLive`, waiting
   on the forwarding rules at the registrar and each inbox owner's
   verification (RUNBOOK section 19).
-- **The exchange portal link:** changed by the exchange officers when the
-  incomings page goes live (phase 6, step 2).
+- **The exchange portal link:** done. The webmaster reported on 2026-10-11
+  that the LC's link in the exchange portal points at `/exchange/incomings`
+  (phase 6, step 2).
 - **The exchange exam:** its real questions, from the exchange officers.
   Phase 8 is built and rehearsed on mock questions and does not wait for
   them; the date the officers set themselves in the portal.
 - **The exchange exam, the webmaster's steps** (RUNBOOK section 30 has them
   as a checklist). The branch was merged with its two migrations on
   2026-10-11, and the webmaster added the exam's callback address to the
-  redirect list the same day. Before students get the address, that list
-  should hold the three exact `/exam/callback` addresses and none of the
-  wildcard lines (5d step 1). Switch "Confirm
-  email" on for the Email sign-in provider, so that a made-up address gets
-  no session to hold student IDs with. Read the token refresh rate limit on
-  Supabase, raise it before the day of an exam and put it back after. Hold
-  the sitting in the hall with a test group.
+  redirect list the same day. The webmaster reported on 2026-10-11 that the
+  redirect list is done (5d step 1), that "Confirm email" is on, so that a
+  made-up address gets no session to hold student IDs with, and that the
+  token refresh rate limit on Supabase is raised; put it back after the day
+  of an exam. Left: the sitting in the hall with a test group.
 
 Parked:
 
