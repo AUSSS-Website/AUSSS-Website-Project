@@ -85,7 +85,7 @@ export default {
     intro:
       'The International Federation of Medical Students’ Associations (IFMSA) is one of the world’s oldest and largest student-run organisations. Founded in 1951, it represents, connects, and engages over a million medical students through National Member Organisations across more than 130 countries.',
     membership:
-      'AUSSS is an autonomous affiliate member of IFMSA-Egypt, the National Member Organisation representing Egyptian medical students within IFMSA. Through IFMSA-Egypt, AUSSS is connected to a global federation of over a million medical students.',
+      'IFMSA-Egypt is the National Member Organisation representing Egyptian medical students within IFMSA. Through IFMSA-Egypt, AUSSS is connected to a global federation of over a million medical students.',
     worldwide: [
       { value: '1.5M+', label: 'Medical students' },
       { value: '133+', label: 'National organisations' },

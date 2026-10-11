@@ -85,7 +85,7 @@ export const committees = [
     mascot: {
       emoji: '🐧',
       animal: 'Penguin',
-      body: 'SCOPE’s community calls itself the SCOPEnguins, a nickname worn proudly across SCOPE channels worldwide. Penguins are some of nature’s great travellers: deeply social birds that journey far from home yet always move as one colony. A fitting emblem for the committee built on sending students across the world on exchange and folding them into a global family wherever they land.',
+      body: 'SCOPE’s community calls itself the SCOPEnguins, a nickname worn proudly across SCOPE channels worldwide. Penguins are some of nature’s great travellers: deeply social birds that journey far from home yet always move as one colony. They suit a committee built on sending students across the world on exchange and folding them into a global family wherever they land.',
       sources: [
         { label: 'IFMSA SCOPE', href: 'https://ifmsa.org/standing-committees/professional-exchanges/' },
         { label: 'IFMSA SCOPE team', href: 'https://ifmsa.org/teams/scope-team/' },
@@ -183,7 +183,7 @@ export const committees = [
     mascot: {
       emoji: '🐼',
       animal: 'Panda',
-      body: 'SCOME members are the SCOMEdians, and the committee’s mascot is a panda named Minshi, a name said to mean “wisdom”, reflecting SCOME’s drive to safeguard academic quality in every corner of medical education. Calm, studious and quietly determined, the panda mirrors a committee that works patiently to shape how the world’s medical students are taught.',
+      body: 'SCOME members are the SCOMEdians, and the committee’s mascot is a panda named Minshi, a name said to mean “wisdom”, reflecting SCOME’s drive to safeguard academic quality in every corner of medical education. Calm, studious and determined, the panda mirrors a committee that works patiently to shape how the world’s medical students are taught.',
       sources: [
         { label: 'IFMSA SCOME', href: 'https://ifmsa.org/standing-committees/medical-education/' },
         { label: 'ASCEMCOL SCOME', href: 'https://www.ascemcol.org/committees-and-divisions/active-standing-committee/cpem-scome' },
@@ -280,7 +280,7 @@ export const committees = [
     mascot: {
       emoji: '🦸',
       animal: 'Hero',
-      body: 'SCOPH members are the SCOPHeroes. Here the metaphor is the mascot. Dressed in SCOPH’s signature orange, SCOPHeroes set out to “save the nation” from public-health issues, running health-promotion, education and policy work across their communities. Every member is cast as an everyday hero for public health.',
+      body: 'SCOPH members are the SCOPHeroes. Here the metaphor is the mascot. Dressed in SCOPH’s signature orange, SCOPHeroes set out to “save the nation” from public-health issues, running health-promotion, education and policy work across their communities.',
       sources: [
         { label: 'IFMSA-Egypt SCOPH', href: 'https://www.ifmsa-egypt.org.eg/standing-committees/scoph/' },
         { label: 'IFMSA SCOPH', href: 'https://ifmsa.org/standing-committees/public-health/' },
@@ -510,7 +510,7 @@ export const ifmsaHistory = {
   founded: {
     year: '1951',
     href: 'https://ifmsa.org/our-story/',
-    body: 'The International Federation of Medical Students’ Associations is founded in Copenhagen in May 1951, one of the many international student organisations set up to rebuild cross-border cooperation in the wake of the Second World War. Nine European medical students’ associations (Denmark, England, Austria, West Germany, Finland, Norway, Sweden, the Netherlands and Switzerland) came together around a simple goal: to connect medical students across borders, empower them, and improve the world from a medical perspective. Student exchange became the federation’s founding pillar. From the start the work was organised through standing committees, each owning a field of global health, and they were not all born at once: IFMSA grew committee by committee over the following four decades.',
+    body: 'The International Federation of Medical Students’ Associations is founded in Copenhagen in May 1951, one of the many international student organisations set up to rebuild cross-border cooperation in the wake of the Second World War. Nine European medical students’ associations (Denmark, England, Austria, West Germany, Finland, Norway, Sweden, the Netherlands and Switzerland) came together around a simple goal: to connect medical students across borders, empower them, and improve the world from a medical perspective. Student exchange became the federation’s founding pillar. From the start the work was organised through standing committees, each owning a field of global health. IFMSA grew committee by committee over the following four decades.',
   },
   // Chronological, ordered by founding year.
   committees: [
@@ -751,7 +751,7 @@ export const exchange = {
         email: 'loreausss@gmail.com',
         alias: 'lore',
         about:
-          'The research side of exchange. Handles SCORE rather than clinical placements, matching students to laboratories and mentors abroad, and hosting incoming research students here at Ain Shams.',
+          'The research side of exchange. Handles SCORE: matching students to laboratories and mentors abroad, and hosting incoming research students here at Ain Shams.',
       },
     ],
     // The bottom tier, and the widest one: the contact persons look after the
@@ -769,7 +769,7 @@ export const exchange = {
       // accent rather than implying it belongs to one of them.
       color: '#5B8DB8',
       about:
-        'Every student arriving at Ain Shams, clinical through SCOPE or research through SCORE, is looked after by our contact persons for their month here. They work as a team, not one to one: they meet the students, keep them oriented around the hospital and the city, and make the social programme actually happen. Recruited fresh each exchange season, and the most common first role in exchange.',
+        'Every student arriving at Ain Shams, clinical through SCOPE or research through SCORE, is looked after by our contact persons for their month here. They work as a team, not one to one: they meet the students, keep them oriented around the hospital and the city, and make the social programme happen. Recruited fresh each exchange season, and the most common first role in exchange.',
     },
     // None of the assistants belong to a single committee: the LORE runs
     // research exchange in both directions, so every one of them works to the
