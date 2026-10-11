@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DOUBLE_TAP_MS,
   EXAM_YEARS,
   HAND_IN_CHECKING,
   callbackProblem,
@@ -8,6 +9,7 @@ import {
   connectionNote,
   detailField,
   detailsProblem,
+  handInWait,
   handInWords,
   hashFor,
   inAppBrowser,
@@ -23,6 +25,7 @@ import {
   startLine,
   startProblem,
   startingYear,
+  strayTap,
   timeUpWords,
 } from './examFlow.js'
 
@@ -322,6 +325,81 @@ describe('a hand-in that did not go through', () => {
 
   it('says to tap again once the database has said it did not arrive', () => {
     expect(handInWords('not_yet')).toBe('Your exam was not handed in. Tap “Hand in” again.')
+  })
+})
+
+describe('the hand-in button while it is off', () => {
+  it('can be tapped when no hand-in is on its way or in doubt', () => {
+    expect(handInWait(false, '')).toBe('')
+    expect(handInWait(false, undefined)).toBe('')
+  })
+
+  it('is off, and says so, while a hand-in is on its way', () => {
+    expect(handInWait(true, '')).toBe('Handing in…')
+  })
+
+  it('is off, and says so, while nobody knows whether a hand-in arrived', () => {
+    expect(handInWait(false, 'checking')).toBe('Checking…')
+  })
+
+  it('comes back with every other outcome, so that the taker can tap again', () => {
+    // it was never sent, or the database has said it did not arrive
+    for (const note of ['offline', 'not_yet']) expect(handInWait(false, note)).toBe('')
+  })
+
+  it('is off whenever the bar says the page is checking, and for no other note', () => {
+    for (const note of ['', 'offline', 'checking', 'not_yet']) {
+      expect(handInWait(false, note) !== '', note).toBe(note === 'checking')
+    }
+  })
+})
+
+describe('the second half of a double tap', () => {
+  const changedAt = 5000 // the page of questions changed at this reading of the clock
+  const finger = 1 // a finger, a mouse and a pen count their clicks from 1
+  const keyboard = 0 // the keyboard and a screen reader's own "activate" send 0
+
+  it('goes by the same 400 ms as the review’s hand-in', () => {
+    expect(DOUBLE_TAP_MS).toBe(400)
+  })
+
+  it('is a press on the questions within 400 ms of the page changing', () => {
+    for (const after of [0, 1, 150, 399, 399.9]) expect(strayTap(changedAt, changedAt + after, finger), `${after} ms`).toBe(true)
+  })
+
+  it('is not the first press after the 400 ms', () => {
+    for (const after of [400, 401, 1000, 60000]) expect(strayTap(changedAt, changedAt + after, finger), `${after} ms`).toBe(false)
+  })
+
+  it('is never a press of the keyboard or of a screen reader, however soon', () => {
+    for (const after of [0, 1, 150, 399]) expect(strayTap(changedAt, changedAt + after, keyboard), `${after} ms`).toBe(false)
+  })
+
+  it('counts a double click and a press that does not say how it was made as a finger’s', () => {
+    expect(strayTap(changedAt, changedAt + 100, 2)).toBe(true)
+    expect(strayTap(changedAt, changedAt + 100, undefined)).toBe(true)
+    expect(strayTap(changedAt, changedAt + 400, 2)).toBe(false)
+    expect(strayTap(changedAt, changedAt + 400, undefined)).toBe(false)
+  })
+
+  it('holds from the newest change when the page changes twice in a row', () => {
+    // "Next" tapped at 5000 and again at 5300: the page that counts is the second
+    expect(strayTap(5300, 5450, finger)).toBe(true)
+    expect(strayTap(5300, 5700, finger)).toBe(false)
+  })
+
+  it('holds nothing back when the clock cannot be read, or has not run forwards', () => {
+    // a paper that takes no answer would be far worse than a slip
+    expect(strayTap(NaN, 100, finger)).toBe(false)
+    expect(strayTap(changedAt, NaN, finger)).toBe(false)
+    expect(strayTap(undefined, 100, finger)).toBe(false)
+    expect(strayTap(changedAt, changedAt - 1, finger)).toBe(false)
+  })
+
+  it('holds at the very start of the page’s life, when the clock reads next to nothing', () => {
+    expect(strayTap(0, 0, finger)).toBe(true)
+    expect(strayTap(0, 399, finger)).toBe(true)
+    expect(strayTap(0, 400, finger)).toBe(false)
   })
 })
 

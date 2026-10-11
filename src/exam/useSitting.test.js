@@ -834,6 +834,128 @@ describe('handing in', () => {
     expect(await again).toEqual({ ok: true })
     tab.sitting.stop()
   })
+
+  it('sends no second hand-in while the first is in doubt, and keeps the doubt', async () => {
+    let connected = true
+    const { db, tab } = await open({ online: () => connected })
+    tab.sitting.choose('q1', 0)
+    const handed = tab.sitting.handIn()
+    db.lose(T0 + 5 * SECOND) // the database has the hand-in; the phone hears nothing
+    expect(await handed).toEqual({ ok: false, reason: 'unsure' })
+    const sent = db.calls.length
+    const told = tab.changes
+    // the page's button is off meanwhile; a tap that gets through all the same
+    expect(await tab.sitting.handIn()).toEqual({ ok: false, reason: 'unsure' })
+    // and one from a phone that says it has no connection, which must not
+    // turn the doubt into "not sent" and open the answers again
+    connected = false
+    expect(await tab.sitting.handIn()).toEqual({ ok: false, reason: 'unsure' })
+    connected = true
+    expect(db.calls).toHaveLength(sent)
+    expect(db.pending).toHaveLength(0)
+    expect(tab.changes).toBe(told)
+    expect(tab.view).toMatchObject({ status: 'sitting', handInNote: 'checking', locked: true, handingIn: false })
+    tab.sitting.choose('q2', 1)
+    expect(tab.view.answers.q2).toBeUndefined()
+    // the page's own question ends the doubt, and it carries no hand-in
+    await vi.advanceTimersByTimeAsync(2 * SECOND)
+    expect(db.calls).toHaveLength(sent + 1)
+    expect(db.calls.at(-1).final).toBe(false)
+    db.answer(T0 + 8 * SECOND)
+    await settle()
+    expect(tab.view).toMatchObject({ status: 'over', why: 'handed_in', handInNote: '' })
+    tab.sitting.stop()
+  })
+
+  it('asks again for as long as the doubt lasts, and ends it the moment the database answers', async () => {
+    const { db, tab, pass } = await open()
+    tab.sitting.choose('q1', 0)
+    const handed = tab.sitting.handIn()
+    db.drop() // it never reached the database, which the phone cannot know
+    expect(await handed).toEqual({ ok: false, reason: 'unsure' })
+    // The check itself gets no answer, is given up as too slow, or is turned
+    // away for its session. The doubt stays, and another try is always due:
+    // the button is never left off with nothing on its way.
+    for (const [wait, kind] of [[2, 'offline'], [5, 'offline'], [10, 'signed_out'], [15, 'offline']]) {
+      expect(tab.view).toMatchObject({ status: 'sitting', handInNote: 'checking', locked: true, handingIn: false })
+      expect(db.pending).toHaveLength(0)
+      await pass(wait * SECOND)
+      expect(db.pending).toHaveLength(1)
+      expect(db.calls.at(-1).final).toBe(false)
+      db.drop(kind)
+      await settle()
+    }
+    expect(tab.view.handInNote).toBe('checking')
+    await pass(15 * SECOND)
+    db.answer(T0 + 47 * SECOND)
+    await settle()
+    // the exam is still running: the button is back, and answers are taken
+    expect(tab.view).toMatchObject({ status: 'sitting', handInNote: 'not_yet', locked: false, handingIn: false })
+    const again = tab.sitting.handIn()
+    expect(db.calls.at(-1).final).toBe(true)
+    db.answer(T0 + 50 * SECOND)
+    expect(await again).toEqual({ ok: true })
+    tab.sitting.stop()
+  })
+
+  it('ends the doubt when the database no longer knows the sitting', async () => {
+    const { db, tab, pass } = await open()
+    tab.sitting.handIn()
+    db.drop()
+    await settle()
+    expect(tab.view.handInNote).toBe('checking')
+    await pass(2 * SECOND)
+    db.refuse('You have not started this exam.')
+    await settle()
+    expect(tab.view).toMatchObject({ status: 'gone', handInNote: '', locked: false, problem: 'You have not started this exam.' })
+    tab.sitting.stop()
+  })
+
+  it('ends the doubt when the time runs out before the database has answered', async () => {
+    const { db, tab, pass } = await open({ deadline: T0 + 4 * SECOND })
+    tab.sitting.choose('q1', 0)
+    tab.sitting.handIn()
+    db.drop()
+    await settle()
+    expect(tab.view.handInNote).toBe('checking')
+    await pass(2 * SECOND) // the check is in flight ...
+    await pass(2 * SECOND) // ... when the clock reaches zero
+    expect(tab.view).toMatchObject({ status: 'ending', why: 'time' })
+    db.answer(db.deadline)
+    await settle()
+    expect(tab.view).toMatchObject({ status: 'over', why: 'time', unsent: 0, handInNote: '', locked: false })
+    expect(db.rows).toEqual({ q1: { c: 0, f: false } })
+    tab.sitting.stop()
+  })
+
+  it('does not carry the doubt into a sitting that another tab gave back', async () => {
+    const clock = { wall: T0, mono: 1000 }
+    const db = makeDb({ deadline: T0 + 60 * MINUTE })
+    const store = makeStore()
+    const locks = makeLocks()
+    const a = makeTab({ db, store, clock, locks })
+    a.sitting.start()
+    await settle()
+    db.answer(T0)
+    await settle()
+    a.sitting.handIn()
+    db.drop()
+    await settle()
+    expect(a.view.handInNote).toBe('checking')
+
+    const b = makeTab({ db, store, clock, locks })
+    b.sitting.start()
+    await settle()
+    b.sitting.takeOver()
+    await settle()
+    expect(a.view.status).toBe('elsewhere')
+    b.sitting.stop()
+    a.sitting.pageShown()
+    await settle()
+    // begun afresh from the phone's copy, with the database asked behind it
+    expect(a.view).toMatchObject({ status: 'sitting', handInNote: '', locked: false, handingIn: false })
+    a.sitting.stop()
+  })
 })
 
 describe('after the time ran out', () => {
