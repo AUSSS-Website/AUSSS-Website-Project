@@ -201,6 +201,17 @@ export function handInWords(note, onPhone = true) {
 // 320px phone, and a third would push every question down.
 export const HAND_IN_CHECKING = 'Checking whether your exam was handed in. You cannot change answers until then.'
 
+// What the "Hand in" button says while it is switched off, or '' when it can
+// be tapped. `handingIn` and `note` are the sitting's handingIn and
+// handInNote. The button is off for a hand-in on its way and for one in
+// doubt: a tap during either would send a second hand-in on top of the
+// first. It follows the sitting's own state and keeps none of its own, so it
+// is back the moment the doubt ends, whichever way the database answers.
+export function handInWait(handingIn, note) {
+  if (handingIn) return 'Handing in…'
+  return note === 'checking' ? 'Checking…' : ''
+}
+
 // The sign-in card for a taker whose session ended under them (not one who
 // pressed "Sign out"). `kept` is true when this phone holds their paper.
 export function signedOutWords(kept = false) {
@@ -246,6 +257,39 @@ export function receivedWords(why, unsent = 0) {
     }
   }
   return { title: 'Time is up. Your answers were received.', note: '' }
+}
+
+// ---- a slip of the thumb --------------------------------------------------------
+
+// Two taps closer together than this are one slip of the thumb. The review's
+// hand-in and the paper's questions both go by it.
+export const DOUBLE_TAP_MS = 400
+
+// Whether a press on the paper's questions is the second half of a double tap.
+// A taker who taps "Next", "Previous" or a page's number twice lands the
+// second tap on whatever the new page has put under the thumb, and that can
+// be an answer. So a press this soon after the page changed is not counted.
+//   changedAt  when the page of questions last changed
+//   now        the moment of the press
+//   detail     the press's own count of clicks (the event's `detail`)
+// Both times are read from the clock that only runs forwards
+// (performance.now()), since the phone's wall clock can be set back in the
+// middle of an exam.
+//
+// Only a press made with a finger, a mouse or a pen can be such a slip, and
+// those count their clicks from 1. The keyboard sends 0 (Space on an option,
+// the arrow keys between options), and so does a screen reader that works
+// the control itself. They are never held back: after a page change the
+// focus is on the page's heading or on a question, never on an option, so a
+// second press of Enter chooses nothing. A press that does not say how it
+// was made is treated as a finger's.
+//
+// With no clock to read, nothing is held back. A paper that takes no answer
+// would be far worse than a slip.
+export function strayTap(changedAt, now, detail) {
+  if (detail === 0) return false
+  const since = now - changedAt
+  return since >= 0 && since < DOUBLE_TAP_MS
 }
 
 // ---- the clock ------------------------------------------------------------------

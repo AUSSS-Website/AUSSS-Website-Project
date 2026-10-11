@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import ExamLayout from '../ExamLayout.jsx'
 import {
@@ -10,6 +10,7 @@ import {
   pageLabel,
   placeFromHash,
   saveWords,
+  strayTap,
 } from '../examFlow.js'
 import { FlagIcon, focusCls, focusTargetCls, moveFocus, noteScreen, tapLinkCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
 import { answerOf, formatClock } from '../sitting.js'
@@ -28,7 +29,10 @@ import ReviewScreen from './ReviewScreen.jsx'
 //     mark (a button changes colour, and may sink a little, only while it is
 //     pressed);
 //   - one tap can never lose work: a cleared answer can be put back, and
-//     handing in asks twice (ReviewScreen).
+//     handing in asks twice (ReviewScreen);
+//   - the second half of a double tap changes nothing: for a moment after the
+//     page of questions changes, a press on the questions is not counted
+//     (strayTap in examFlow.js, and `tapGuard` below).
 // `sitting` is what useSitting returns while its status is 'sitting'.
 
 // ---- the bar that stays in view -------------------------------------------------
@@ -258,7 +262,11 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
 
 const headingCls = `heading-serif rounded-lg text-2xl text-ink ${focusTargetCls}`
 
-function PaperPage({ sitting, place, headingRef }) {
+// `tapGuard` is the pair of handlers that turns a stray press away (see
+// SittingScreen). It sits round every question, so it covers the options and
+// the three buttons under them alike: a slip on "Clear answer" would change
+// an answer as surely as one on an option.
+function PaperPage({ sitting, place, headingRef, tapGuard }) {
   const { questionsOn, answers, total, pageCount, pages, locked, setAnswer, clearAnswer, toggleFlag } = sitting
   const questions = useMemo(() => questionsOn(place.page), [questionsOn, place.page])
   const row = pages[place.page - 1]
@@ -270,7 +278,7 @@ function PaperPage({ sitting, place, headingRef }) {
         </span>
         {row && row.from < row.to ? `Questions ${row.from} to ${row.to}` : `Question ${row ? row.from : 1}`}
       </h1>
-      <div className="mt-2">
+      <div className="mt-2" {...tapGuard}>
         {questions.map((q) => (
           <Question
             key={q.id}
@@ -408,6 +416,41 @@ export default function SittingScreen({ sitting, title }) {
     if (moved || place.question) bringToTop(target)
   }, [place.view, place.page, place.question])
 
+  // When the page of questions last changed, on the clock that only runs
+  // forwards. It is noted for every way the place can change ("Next",
+  // "Previous", a page's number, a question's number in the review, the
+  // phone's back button) and when the paper first appears, which a double tap
+  // on "Start the exam" can also land on. A layout effect, because it runs as
+  // the new page is put on screen and so before the browser can hand over
+  // the next press. An ordinary effect may run after that press.
+  const changedAt = useRef(0)
+  useLayoutEffect(() => {
+    changedAt.current = performance.now()
+  }, [place.view, place.page, place.question])
+
+  // A press on the questions too soon after that is the second half of a
+  // double tap (strayTap in examFlow.js), and it must do nothing at all.
+  const tapGuard = useMemo(
+    () => ({
+      // A press moves the focus to what is under it before any click is sent.
+      // A stray one leaves the focus on the heading the page change gave it.
+      onMouseDownCapture(event) {
+        if (strayTap(changedAt.current, performance.now(), event.detail)) event.preventDefault()
+      },
+      // Caught on the way down, before the row or the button hears of it.
+      // Prevented, a click on an option's row is not passed on to its radio
+      // button, and one on the radio button itself is undone by the browser
+      // before anything is drawn. Stopped, it reaches no handler under here,
+      // so nothing is chosen, cleared, flagged or sent.
+      onClickCapture(event) {
+        if (!strayTap(changedAt.current, performance.now(), event.detail)) return
+        event.preventDefault()
+        event.stopPropagation()
+      },
+    }),
+    [],
+  )
+
   return (
     <ExamLayout
       title={title}
@@ -422,7 +465,7 @@ export default function SittingScreen({ sitting, title }) {
       {place.view === 'review' ? (
         <ReviewScreen sitting={sitting} go={go} headingRef={headingRef} headingCls={headingCls} />
       ) : (
-        <PaperPage sitting={sitting} place={place} headingRef={headingRef} />
+        <PaperPage sitting={sitting} place={place} headingRef={headingRef} tapGuard={tapGuard} />
       )}
       <PageNav place={place} pages={pages} go={go} />
     </ExamLayout>

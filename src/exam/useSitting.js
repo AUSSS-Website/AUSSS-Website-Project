@@ -795,6 +795,15 @@ export function createSitting({
     handIn() {
       if (!alive || status !== 'sitting') return Promise.resolve({ ok: status === 'over', reason: status })
       if (handIn) return handIn.promise
+      // One hand-in is in doubt and the database is being asked whether it
+      // arrived (the retries in `fail`). A second is not sent on top of it,
+      // and the doubt is not lifted here. On a phone that says it has no
+      // connection the lines below would swap 'checking' for 'offline', and
+      // answers would be taken again that the first hand-in may already have
+      // closed. The page switches its button off meanwhile (handInWait in
+      // examFlow.js). This holds whatever the page does, for the instant
+      // between the doubt and the next draw.
+      if (handInNote === 'checking') return Promise.resolve({ ok: false, reason: 'unsure' })
       if (!online()) {
         // The phone itself says it has no connection: nothing is sent, so
         // nothing is in doubt.
@@ -884,7 +893,10 @@ const LOADING = Object.freeze({
 //   clock                  for useTimeLeft
 //   handingIn              a hand-in is on its way
 //   handInNote             '' | 'offline' | 'checking' | 'not_yet': a hand-in
-//                          that did not go through (handInWords in examFlow.js)
+//                          that did not go through (handInWords in examFlow.js).
+//                          'checking' lasts until the database answers a save
+//                          ('not_yet', or the exam is over), refuses, or the
+//                          sitting begins afresh. handIn() sends nothing meanwhile.
 //   locked                 answers are not taken just now (a hand-in is on its
 //                          way, or nobody knows yet whether it arrived)
 //   unsent                 once over: answers the database never received
