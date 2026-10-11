@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // checks here are of what it works out by itself, so the client is left out.
 vi.mock('../lib/supabase.js', () => ({ supabase: null, supabaseEnabled: false }))
 
-import { callProblems, todayCairo } from './officerQueries.js'
+import { callProblems, groupByRemovedCall, todayCairo } from './officerQueries.js'
 
 const TODAY = '2026-10-11'
 const YESTERDAY = '2026-10-10'
@@ -122,5 +122,56 @@ describe('callProblems: what it is given', () => {
 describe('todayCairo', () => {
   it('is a day written year first', () => {
     expect(todayCairo()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+})
+
+describe('groupByRemovedCall', () => {
+  // An application as the list reads it, newest first: only what the grouping looks at.
+  const sent = (id, call_title, created_at) => ({ id, call_title, created_at })
+
+  it('has no groups for no applications', () => {
+    expect(groupByRemovedCall([])).toEqual([])
+    expect(groupByRemovedCall(undefined)).toEqual([])
+  })
+
+  it('gathers the applications under the title their call had, in the order they came in', () => {
+    const rows = [
+      sent('a3', 'Welcome booklet team', '2026-10-03T10:00:00Z'),
+      sent('a2', 'Airport rota', '2026-10-02T10:00:00Z'),
+      sent('a1', 'Welcome booklet team', '2026-10-01T10:00:00Z'),
+    ]
+    expect(groupByRemovedCall(rows)).toEqual([
+      { key: 'Welcome booklet team', title: 'Welcome booklet team', latest: '2026-10-03T10:00:00Z', applications: [rows[0], rows[2]] },
+      { key: 'Airport rota', title: 'Airport rota', latest: '2026-10-02T10:00:00Z', applications: [rows[1]] },
+    ])
+  })
+
+  it('puts the group with the newest application first, whatever order the rows come in', () => {
+    const groups = groupByRemovedCall([
+      sent('a1', 'Older call', '2026-09-01T10:00:00Z'),
+      sent('a2', 'Newer call', '2026-10-01T10:00:00Z'),
+      sent('a3', 'Older call', '2026-09-20T10:00:00Z'),
+    ])
+    expect(groups.map((g) => [g.key, g.latest])).toEqual([
+      ['Newer call', '2026-10-01T10:00:00Z'],
+      ['Older call', '2026-09-20T10:00:00Z'],
+    ])
+  })
+
+  it('takes a title with spaces around it as the same call', () => {
+    const groups = groupByRemovedCall([sent('a1', ' Airport rota ', '2026-10-02T10:00:00Z'), sent('a2', 'Airport rota', '2026-10-01T10:00:00Z')])
+    expect(groups).toHaveLength(1)
+    expect(groups[0].applications.map((a) => a.id)).toEqual(['a1', 'a2'])
+  })
+
+  it('keeps titles that differ only by their capitals apart', () => {
+    expect(groupByRemovedCall([sent('a1', 'Airport rota', ''), sent('a2', 'airport rota', '')]).map((g) => g.key)).toEqual(['Airport rota', 'airport rota'])
+  })
+
+  it('gives a call that left no title a name and a key of its own', () => {
+    const groups = groupByRemovedCall([sent('a1', '', '2026-10-02T10:00:00Z'), sent('a2', null, '2026-10-01T10:00:00Z'), sent('a3', '   ')])
+    expect(groups).toEqual([
+      { key: 'untitled', title: 'Untitled call', latest: '2026-10-02T10:00:00Z', applications: [expect.objectContaining({ id: 'a1' }), expect.objectContaining({ id: 'a2' }), expect.objectContaining({ id: 'a3' })] },
+    ])
   })
 })

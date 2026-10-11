@@ -286,6 +286,11 @@ const sampleApplications = [
   }),
   application('ap-2', 'shortlisted', 'Second Applicant', 'applicant2@example.com', { positions: ['Contact person'], motivation: 'I would like to help.', notes: 'Met at orientation. Speaks German.', created_at: iso(2) }),
   application('ap-3', 'declined', 'Third Applicant', 'applicant3@example.com', { year: 'Year 1', created_at: iso(2.5) }),
+  // What two removed calls left behind: an application keeps its committee
+  // and the title its call had, and no call. One title is long enough to wrap.
+  application('ap-4', 'accepted', 'Fourth Applicant', 'applicant4@example.com', { call_id: null, call_title: 'Welcome week buddies', year: 'Year 2', motivation: 'I would like to show the new students round.', notes: 'Starts on the first Sunday.', created_at: iso(40) }),
+  application('ap-5', 'new', 'Fifth Applicant With A Rather Long Four Part Name', 'a.very.long.address.for.a.phone@students.example.edu.eg', { call_id: null, call_title: 'Welcome week buddies', positions: ['Buddy'], motivation: 'I was shown round by a buddy last year and want to do the same.', created_at: iso(42) }),
+  application('ap-6', 'shortlisted', 'Sixth Applicant', 'applicant6@example.com', { call_id: null, call_title: 'Translators for the exchange conditions booklet, Arabic to English and back, summer 2026', motivation: 'I translate for the faculty magazine.', created_at: iso(90) }),
 ]
 
 // ---- the gallery and the magazine -----------------------------------------------
@@ -740,6 +745,10 @@ const rpcs = {
   magazine_insights: ({ issue }) => insightsOf(issue),
   // Site settings: when the public pages were last rebuilt, with a change waiting.
   site_rebuild_status: { requested_at: iso(0.01), fired_at: iso(0.2), hook: true },
+  // A verification request decided, and the decision taken back: both land,
+  // and neither answers with anything.
+  decide_verification: null,
+  undo_verification_decision: null,
   // The exam for its officers. Only ex-1 has a list and papers.
   exam_registration_list: ({ p_exam }) => (p_exam === 'ex-1' ? examList : []),
   exam_results: ({ p_exam }) => ({
@@ -773,6 +782,8 @@ const ROUTES = [
   '/portal/committees/scope', '/portal/committees/scope?tab=events', '/portal/committees/scope?tab=calls',
   '/portal/committees/scope?tab=calls&call=new', '/portal/committees/scope?tab=calls&call=call-1',
   '/portal/committees/scope?tab=calls&call=call-1&view=applications',
+  // a call just removed, with the line that says where its applications went, and a removed call's applications
+  '/portal/committees/scope?tab=calls#removed', '/portal/committees/scope?tab=calls&removed=Welcome+week+buddies',
   '/portal/committees/scope?tab=members', '/portal/committees/scope?tab=members#member', '/portal/committees/scope?tab=invites',
   // the gallery's shelf, an album with photos and an archived one; the magazine's shelf and two editions
   '/portal/gallery', '/portal/gallery/national-general-assembly-aswan-2026', '/portal/gallery/winter-camp-2026',
@@ -783,7 +794,8 @@ const ROUTES = [
   // the roster, then each of the panels its buttons open, and a member's row opened
   '/portal/admin/roster', '/portal/admin/roster#upgrades', '/portal/admin/roster#register-a-ga', '/portal/admin/roster#position-types',
   '/portal/admin/roster#executive-board', '/portal/admin/roster#member',
-  '/portal/admin/verification', '/portal/admin/rollover',
+  // the verification queue, then with one request approved (the line with its Undo) and one approved and taken back
+  '/portal/admin/verification', '/portal/admin/verification#undo', '/portal/admin/rollover',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
   '/portal/events', '/portal/events/ev-1', '/portal/events/ev-3', '/portal/events/ev-6',
   // the public pages that show events, from the same sample
@@ -833,6 +845,23 @@ const acts = {
   // The member with the long name and address, who is on the list's first page.
   '/portal/admin/roster#member': (page) => page.locator('#roster-row-r-4').click(),
   '/portal/admin/audit#released': (page) => page.locator('details > summary').first().click(),
+  // "Remove" asks twice, and two taps too close together count as one slip.
+  // The sample list still holds the call afterwards; the line above it is
+  // what this screen is for.
+  '/portal/committees/scope?tab=calls#removed': async (page) => {
+    await page.getByRole('button', { name: 'Remove', exact: true }).last().click()
+    await page.waitForTimeout(600)
+    await page.getByRole('button', { name: 'Click again to remove', exact: true }).click()
+  },
+  // The last request approved and taken back, which leaves "Decision undone";
+  // then the first approved, which leaves the line with its Undo.
+  '/portal/admin/verification#undo': async (page) => {
+    await page.getByRole('button', { name: 'Approve', exact: true }).last().click()
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await page.getByText(/^Decision undone\./).waitFor()
+    await page.getByRole('button', { name: 'Approve', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Undo', exact: true }).waitFor()
+  },
   '/portal/exam/ex-1?tab=questions#correct': (page) => page.getByRole('button', { name: 'Correct the answer to question 3', exact: true }).click(),
   '/portal/exam/ex-2?tab=questions#edit': (page) => page.getByRole('button', { name: 'Edit question 2', exact: true }).click(),
   '/exam/sample-details#not-listed': async (page) => {

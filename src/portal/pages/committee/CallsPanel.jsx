@@ -6,11 +6,14 @@ import { errorText } from '../../../lib/errorText.js'
 import { pressCls, scrollBehavior } from '../../../lib/motion.js'
 import {
   callProblems,
+  groupByRemovedCall,
   todayCairo,
   useApplications,
   useCallMutations,
   useCommitteeCalls,
+  useRemovedCallApplications,
   useUpdateApplication,
+  useUpdateRemovedCallApplication,
 } from '../../officerQueries.js'
 import {
   CheckField,
@@ -35,10 +38,16 @@ import ExportButtons from '../../ExportButtons.jsx'
 //   CallEditor        create / edit a call, its positions and its questions
 //   ApplicationsList  who applied, what they said, and how triage is going
 //
+// Removing a call keeps what people sent to it: the applications stay in the
+// database with the title the call had and no call. The list shows them under
+// "Removed calls", one entry for each such title, and ApplicationsList opens
+// them with the same reading, status and notes as a live call's.
+//
 // Which view is open is in the address, beside the page's own ?tab=calls:
 // ?call= names the call ("new" for one not saved yet) and ?view=applications
-// opens its applications where the editor would be. A reload, and a link sent
-// to another officer, open the same view.
+// opens its applications where the editor would be; ?removed= names a removed
+// call by the title it had and opens its applications. A reload, and a link
+// sent to another officer, open the same view.
 //
 // Every read and write goes through officerQueries.js; authorisation lives in
 // the database (row-level security), so a failed write surfaces here as a
@@ -201,6 +210,7 @@ function StatusPill({ call }) {
     expired: ['Closed: deadline passed', 'bg-amber-400/15 text-warn'],
     closed: ['Closed by you', 'bg-veil/10 text-soft/90'],
     draft: ['Draft: not visible', 'bg-veil/10 text-soft/90'],
+    removed: ['Removed', 'bg-veil/10 text-soft/90'],
   }
   const [label, cls] = map[call.effectiveStatus] || map.draft
   return (
@@ -221,10 +231,27 @@ export default function CallsPanel({ committee }) {
   // loaded yet, or removed since the link was made) shows the list.
   const [callKey, setCallKey] = useTabParam([NEW, ...rows.map((r) => r.id)], '', 'call')
   const [view, setView] = useTabParam(['edit', 'applications'], 'edit', 'view')
+  // The applications that removed calls left behind, under the title each
+  // call had. ?removed= names one of those titles; one that is not in the
+  // list (not loaded yet, or never there) shows the list.
+  const orphans = useRemovedCallApplications(committee.id)
+  const updateOrphan = useUpdateRemovedCallApplication(committee.id)
+  const removedCalls = groupByRemovedCall(orphans.data)
+  const [removedKey, setRemovedKey] = useTabParam(removedCalls.map((g) => g.key), '', 'removed')
   const [busyId, setBusyId] = useState('')
   // The last status change or removal that failed: { id, message }, shown on
   // the call it belongs to.
   const [failed, setFailed] = useState(null)
+  // What the last removal left to say: that the call is gone, and where its
+  // applications are now. The removed call's row has left the list, and the
+  // keyboard's place with it, so the line takes the focus when it comes.
+  const [removedNote, setRemovedNote] = useState('')
+  const removedNoteRef = useRef(null)
+  useEffect(() => {
+    if (!removedNote) return
+    const active = document.activeElement
+    if (!active || active === document.body) removedNoteRef.current?.focus({ preventScroll: true })
+  }, [removedNote])
 
   // The button that swaps one view for another goes with the view it was in,
   // and the keyboard's place would go back to the top of the whole page. So
@@ -235,23 +262,35 @@ export default function CallsPanel({ committee }) {
   const topRef = useRef(null)
   const arriving = useRef('')
   useEffect(() => {
-    if (arriving.current !== `${callKey}|${view}`) return
+    if (arriving.current !== `${callKey}|${view}|${removedKey}`) return
     arriving.current = ''
     const top = topRef.current
     if (!top) return
     top.focus({ preventScroll: true })
     if (top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: 'start', behavior: scrollBehavior() })
-  }, [callKey, view])
+  }, [callKey, view, removedKey])
 
+  // Each view has the address to itself: opening a call takes ?removed= out,
+  // and opening a removed call's applications takes ?call= and ?view= out.
   const open = (id, what = 'edit') => {
-    arriving.current = `${id}|${what}`
+    arriving.current = `${id}|${what}|`
+    setRemovedNote('')
+    setRemovedKey('')
     setView(what)
     setCallKey(id)
   }
-  const toList = () => {
-    arriving.current = '|edit'
+  const openRemoved = (key) => {
+    arriving.current = `|edit|${key}`
+    setRemovedNote('')
     setCallKey('')
     setView('edit')
+    setRemovedKey(key)
+  }
+  const toList = () => {
+    arriving.current = '|edit|'
+    setCallKey('')
+    setView('edit')
+    setRemovedKey('')
   }
 
   const changeStatus = async (id, status) => {
@@ -266,19 +305,28 @@ export default function CallsPanel({ committee }) {
     }
   }
 
-  const remove = async (id) => {
-    setBusyId(id)
+  const remove = async (row) => {
+    setBusyId(row.id)
     setFailed(null)
+    setRemovedNote('')
     try {
-      await mutations.remove.mutateAsync(id)
+      await mutations.remove.mutateAsync(row.id)
+      const n = row.applications || 0
+      setRemovedNote(
+        n === 0
+          ? 'Call removed. Nobody had applied to it.'
+          : `Call removed. Its ${n === 1 ? 'application is' : `${n} applications are`} kept under “Removed calls”, further down this page.`,
+      )
     } catch (e) {
-      setFailed({ id, message: errorText(e, 'Could not remove that call.') })
+      setFailed({ id: row.id, message: errorText(e, 'Could not remove that call.') })
     } finally {
       setBusyId('')
     }
   }
 
   const call = rows.find((r) => r.id === callKey) || null
+  // A call in the address comes first, so a link that names both opens the call.
+  const removedCall = callKey ? null : removedCalls.find((g) => g.key === removedKey) || null
 
   if (callKey === NEW || (call && view === 'edit')) {
     return (
@@ -294,10 +342,30 @@ export default function CallsPanel({ committee }) {
   }
 
   if (call && view === 'applications') {
-    return <ApplicationsList key={call.id} call={call} onBack={toList} topRef={topRef} />
+    return <CallApplications key={call.id} call={call} onBack={toList} topRef={topRef} />
+  }
+
+  if (removedCall) {
+    return (
+      <ApplicationsList
+        key={`removed:${removedCall.key}`}
+        title={removedCall.title}
+        removed
+        rows={removedCall.applications}
+        onPatch={(id, patch) => updateOrphan.mutateAsync({ id, patch })}
+        onBack={toList}
+        topRef={topRef}
+      />
+    )
   }
 
   const loadError = calls.error ? errorText(calls.error, 'Could not load the calls.') : ''
+  // Only when nothing was ever read. A read that failed in the background
+  // leaves the removed calls it had on the page.
+  const orphansError =
+    orphans.error && !orphans.data
+      ? errorText(orphans.error, 'Could not load the applications of removed calls.')
+      : ''
 
   return (
     <div ref={topRef} tabIndex={-1} className={`space-y-8 ${viewTopCls}`}>
@@ -316,6 +384,14 @@ export default function CallsPanel({ committee }) {
             <ErrorText>{loadError}</ErrorText>
           </div>
         )}
+
+        {/* What the last removal left to say. A removal cannot be taken back,
+            so the line is the sentence alone. It is always on the page, so a
+            screen reader hears it when it comes, and it can take the focus
+            (see removedNote above). */}
+        <div ref={removedNoteRef} tabIndex={-1} className={removedNote ? 'mt-4 outline-none' : 'sr-only'}>
+          <UndoLine className="text-sm">{removedNote || null}</UndoLine>
+        </div>
 
         <div className="mt-6">
           {calls.isPending && <Spinner />}
@@ -392,9 +468,9 @@ export default function CallsPanel({ committee }) {
                   <ConfirmButton
                     variant="text"
                     label="Remove"
-                    title="Applications already sent are kept."
+                    title="Applications already sent are kept, under “Removed calls” on this page."
                     disabled={busyId === row.id}
-                    onConfirm={() => remove(row.id)}
+                    onConfirm={() => remove(row)}
                     className={`${linkBtnCls} text-soft/60 hover:text-ink`}
                   />
 
@@ -415,6 +491,39 @@ export default function CallsPanel({ committee }) {
           </ul>
         </div>
       </Section>
+
+      {/* Shown once there is something in it, or when it could not be read. */}
+      {(removedCalls.length > 0 || orphansError) && (
+        <Section
+          label="Removed calls"
+          hint="Applications sent to a call that has since been removed are kept here. You can still read them, change their status and write notes."
+        >
+          <ErrorText>{orphansError}</ErrorText>
+          <ul className="space-y-4">
+            {removedCalls.map((group) => (
+              <li key={group.key} className="rounded-2xl border border-line/10 bg-card p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <StatusPill call={{ effectiveStatus: 'removed' }} />
+                    <p className="heading-serif mt-2 break-words text-xl text-ink">{group.title}</p>
+                    {group.latest && (
+                      <p className="mt-1 text-xs text-soft/50">Last application {when(group.latest)}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openRemoved(group.key)}
+                    className={`shrink-0 ${outlineBtnCls} ${pillTapCls}`}
+                  >
+                    {group.applications.length} application
+                    {group.applications.length === 1 ? '' : 's'}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
     </div>
   )
 }
@@ -1155,13 +1264,28 @@ const APPLICATION_COLUMNS = [
   { label: 'Notes', value: (a) => a.notes },
 ]
 
-function ApplicationsList({ call, onBack, topRef }) {
+// The applications of a call that is still in the list: read by the call.
+function CallApplications({ call, onBack, topRef }) {
   const applications = useApplications(call.id)
   const updateApplication = useUpdateApplication(call.id)
-  const rows = applications.data || []
-  const loadError = applications.error
-    ? errorText(applications.error, 'Could not load the applications.')
-    : ''
+  return (
+    <ApplicationsList
+      title={call.title}
+      rows={applications.data || []}
+      pending={applications.isPending}
+      loadError={applications.error ? errorText(applications.error, 'Could not load the applications.') : ''}
+      onPatch={(id, patch) => updateApplication.mutateAsync({ id, patch })}
+      onBack={onBack}
+      topRef={topRef}
+    />
+  )
+}
+
+// The applications of one call, live or removed, each with its own reading
+// and triage. `title` is the call's; `removed` says the call is gone, which
+// changes the words and nothing else. The caller reads the rows and hands in
+// `onPatch(id, patch)`, which writes one application and throws if it fails.
+function ApplicationsList({ title, rows, pending = false, loadError = '', removed = false, onPatch, onBack, topRef }) {
   // The applications whose notes have been typed and not saved. Going back
   // would lose them, so Back asks first while there are any.
   const [unsaved, setUnsaved] = useState([])
@@ -1174,26 +1298,31 @@ function ApplicationsList({ call, onBack, topRef }) {
   )
   useLeaveWarning(unsaved.length > 0)
 
-  const onPatch = (id, patch) => updateApplication.mutateAsync({ id, patch })
-
   return (
     <div ref={topRef} tabIndex={-1} className={`space-y-8 ${viewTopCls}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BackButton onClick={onBack} ask={unsaved.length > 0} />
         <ExportButtons
-          title={`Applications: ${call.title}`}
-          subtitle="Everyone who applied to this call through the website, newest first."
-          filename={`ausss-applications-${(call.title || 'call').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}`}
+          title={`Applications: ${title}`}
+          subtitle={
+            removed
+              ? 'Everyone who applied to this call through the website before it was removed, newest first.'
+              : 'Everyone who applied to this call through the website, newest first.'
+          }
+          filename={`ausss-applications-${(title || 'call').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}`}
           columns={APPLICATION_COLUMNS}
           rows={rows}
           layout="records"
         />
       </div>
 
-      <Section label="Applications" hint={`${call.title}, newest first.`}>
-        {applications.isPending && <Spinner />}
+      <Section
+        label="Applications"
+        hint={removed ? `${title}, newest first. This call has been removed and its applications are kept.` : `${title}, newest first.`}
+      >
+        {pending && <Spinner />}
         <ErrorText>{loadError}</ErrorText>
-        {!applications.isPending && !loadError && rows.length === 0 && (
+        {!pending && !loadError && rows.length === 0 && (
           <p className="rounded-2xl border border-line/10 bg-card p-6 text-sm text-soft/60">
             Nobody has applied yet.
           </p>
