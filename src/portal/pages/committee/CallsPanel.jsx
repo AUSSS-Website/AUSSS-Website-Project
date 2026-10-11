@@ -90,7 +90,7 @@ function StatusPill({ call }) {
   const [label, cls] = map[call.effectiveStatus] || map.draft
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${cls}`}
+      className={`rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em] ${cls}`}
     >
       {label}
     </span>
@@ -191,7 +191,7 @@ export default function CallsPanel({ committee }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill call={call} />
                     {call.kind && (
-                      <span className="text-[11px] uppercase tracking-[0.14em] text-soft/45">
+                      <span className="text-2xs uppercase tracking-[0.14em] text-soft/45">
                         {call.kind}
                       </span>
                     )}
@@ -693,7 +693,7 @@ function ApplicationRow({ app, onPatch }) {
 
       {app.motivation && (
         <div className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">
+          <p className="text-2xs uppercase tracking-[0.16em] text-soft/45">
             Why they want to join
           </p>
           <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">
@@ -704,7 +704,7 @@ function ApplicationRow({ app, onPatch }) {
 
       {answers.map((a, i) => (
         <div key={a.id || i} className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">
+          <p className="text-2xs uppercase tracking-[0.16em] text-soft/45">
             {a.label}
           </p>
           <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">

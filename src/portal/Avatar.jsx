@@ -6,7 +6,7 @@ import { initials } from '../lib/text.js'
 // their profile, otherwise the picture of the account they signed in with.
 
 const SIZES = {
-  sm: 'h-6 w-6 text-[9px]',
+  sm: 'h-6 w-6 text-3xs',
   md: 'h-9 w-9 text-xs',
   nav: 'h-10 w-10 text-xs',
   row: 'h-12 w-12 text-sm',

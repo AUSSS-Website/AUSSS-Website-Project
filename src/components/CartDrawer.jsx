@@ -104,7 +104,7 @@ export default function CartDrawer({ open, onClose }) {
                       <h3 className="text-sm font-semibold text-forest dark:text-white">
                         {p.name}
                       </h3>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.12em] text-forest-900/60 dark:text-silver/60">
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-2xs uppercase tracking-[0.12em] text-forest-900/60 dark:text-silver/60">
                         {it.size && <span>Size: {it.size}</span>}
                         {it.design && <span>Design: {it.design}</span>}
                       </div>

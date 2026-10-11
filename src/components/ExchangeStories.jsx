@@ -59,7 +59,7 @@ export default function ExchangeStories({ audience = 'outgoing' }) {
                 }`}
               >
                 {t.featured && (
-                  <span className="absolute right-4 top-4 rounded-full bg-cta px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-on-cta">
+                  <span className="absolute right-4 top-4 rounded-full bg-cta px-3 py-1 text-3xs font-semibold uppercase tracking-[0.18em] text-on-cta">
                     Featured
                   </span>
                 )}

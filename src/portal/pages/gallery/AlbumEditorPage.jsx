@@ -11,12 +11,11 @@ import {
   usePhotoMutations,
 } from '../../galleryQueries.js'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   Toggle,
   inputCls,
   outlineBtnCls,
@@ -317,12 +316,12 @@ function PhotoCard({ p, isCover, onAction, busy }) {
 }
 
 const smallBtn =
-  'rounded-full border border-line/15 px-2.5 py-1 text-[11px] font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40'
+  'rounded-full border border-line/15 px-2.5 py-1 text-2xs font-semibold text-ink transition-colors hover:bg-veil/10 disabled:opacity-40'
 
 function Badge({ children, tone = 'ok' }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${
+      className={`rounded-full px-2 py-0.5 text-3xs font-bold uppercase tracking-[0.15em] ${
         tone === 'warn' ? 'bg-amber-400/90 text-forest-950' : 'bg-cta text-on-cta'
       }`}
     >
@@ -439,9 +438,7 @@ function AlbumEditor({ album }) {
           </div>
         )}
         {photosQ.isPending ? (
-          <Centered>
-            <Spinner />
-          </Centered>
+          <PageLoading />
         ) : photosQ.error ? (
           <ErrorText>Couldn’t load the photos: {photosQ.error.message}</ErrorText>
         ) : live.length === 0 ? (
@@ -503,9 +500,7 @@ export default function AlbumEditorPage() {
   return (
     <GalleryGate>
       {albums.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : albums.error ? (
         <Panel>
           <ErrorText>Couldn’t load the album: {albums.error.message}</ErrorText>

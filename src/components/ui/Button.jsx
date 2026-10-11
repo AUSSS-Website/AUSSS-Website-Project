@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { pressCls } from '../../lib/motion.js'
 
 // Single source of truth for button styling, so the dozen hand-typed CTAs
 // across the site stop drifting (different padding, hover scales, colours).
@@ -8,6 +9,10 @@ import { Link } from 'react-router-dom'
 //   <Button to="/join">Join</Button>
 //   <Button variant="accent" size="lg" type="submit">Sign in</Button>
 //   <Button as="button" variant="outline" onClick={…}>Cancel</Button>
+//
+// It grows a little under the pointer and sinks a little when pressed
+// (pressCls), and its colours ease between states. With reduced motion it
+// stays the same size and only the colours ease.
 
 const VARIANTS = {
   // White pill, forest text, the primary site CTA (hero, product add).
@@ -39,7 +44,7 @@ export default function Button({
   children,
   ...rest
 }) {
-  const classes = `inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40 ${
+  const classes = `inline-flex items-center justify-center gap-2 rounded-full font-semibold ${pressCls} motion-safe:hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40 ${
     VARIANTS[variant] || VARIANTS.primary
   } ${SIZES[size] || SIZES.md} ${className}`
 

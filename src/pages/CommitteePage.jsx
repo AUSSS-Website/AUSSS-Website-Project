@@ -204,7 +204,7 @@ export default function CommitteePage() {
 
               {c.ifmsa.pillars?.length > 0 && (
                 <>
-                  <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.2em] text-soft/45">
+                  <p className="mt-8 text-2xs font-semibold uppercase tracking-[0.2em] text-soft/45">
                     Objectives and focus areas
                   </p>
                   <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -229,7 +229,7 @@ export default function CommitteePage() {
                 href={c.ifmsa.source}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-8 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors hover:text-ink"
+                className="mt-8 inline-flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors hover:text-ink"
               >
                 Mission and objectives as published by IFMSA
                 <svg
@@ -299,7 +299,7 @@ export default function CommitteePage() {
                   {c.mascot.body}
                 </p>
                 {c.mascot.sources?.length > 0 && (
-                  <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-soft/45">
+                  <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-soft/45">
                     {c.mascot.sources.map((s) => (
                       <a
                         key={s.href}

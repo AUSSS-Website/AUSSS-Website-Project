@@ -38,7 +38,7 @@ export function PersonCard({ person, color }) {
       </span>
       {(person.abbr || person.role) && (
         <span
-          className="mt-1 block text-[11px] font-bold uppercase tracking-[0.18em]"
+          className="mt-1 block text-2xs font-bold uppercase tracking-[0.18em]"
           style={{ color: accent }}
         >
           {person.abbr || person.role}

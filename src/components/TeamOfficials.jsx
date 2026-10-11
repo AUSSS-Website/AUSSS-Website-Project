@@ -121,7 +121,7 @@ function CommitteeCard({ c, i, ov, holders }) {
       />
       {c.officer && (
         <p
-          className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em]"
+          className="mt-3 text-2xs font-semibold uppercase tracking-[0.16em]"
           style={{ color: accent }}
         >
           {c.officer}

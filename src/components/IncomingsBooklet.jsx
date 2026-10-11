@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, lazy, Suspense, Component } from 'react'
 import { incomingsBooklet } from '../data/incomingsBooklet.js'
 import { pageUrls } from '../lib/pageImages.js'
+import { scrollBehavior } from '../lib/motion.js'
 
 // The flipbook drags in react-pageflip and eagerly preloads every page image
 // (~4 MB), so it is both code-split AND only mounted once the reader is opened.
@@ -20,7 +21,7 @@ export default function IncomingsBooklet() {
   // entirely off-screen, so bring it into view once it has mounted.
   useEffect(() => {
     if (!open) return
-    readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    readerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
   }, [open])
 
   if (pages.length === 0) return null

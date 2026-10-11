@@ -69,7 +69,7 @@ function ReviewRow({ item, choice, onChoose }) {
     <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-line/10 bg-sunk px-4 py-3">
       <span className="min-w-0">
         <span className="block truncate text-sm text-ink">{item.line}</span>
-        <span className={`text-[11px] font-semibold uppercase tracking-wider ${item.state === 'none' ? 'text-danger' : 'text-warn'}`}>
+        <span className={`text-2xs font-semibold uppercase tracking-wider ${item.state === 'none' ? 'text-danger' : 'text-warn'}`}>
           {STATE_LABEL[item.state]}
         </span>
       </span>

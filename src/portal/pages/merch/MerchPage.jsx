@@ -10,12 +10,11 @@ import SortableList from '../../SortableList.jsx'
 import OrdersPanel from './OrdersPanel.jsx'
 import PaymentMethodsPanel from './PaymentMethodsPanel.jsx'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   Toggle,
   inputCls,
   outlineBtnCls,
@@ -119,7 +118,7 @@ function NewProductForm({ taken, onDone }) {
             required
           />
         </Field>
-        <Field label="Id" htmlFor="new-product-id" hint="Short and permanent; carts and orders use it. Made from the name when left blank.">
+        <Field label="ID" htmlFor="new-product-id" hint="Short and permanent; carts and orders use it. Made from the name when left blank.">
           <input
             id="new-product-id"
             className={inputCls}
@@ -163,7 +162,7 @@ function ProductRow({ p, handle }) {
         {p.image ? (
           <img src={p.image} alt="" className="h-full w-full object-contain" loading="lazy" />
         ) : (
-          <span className="grid h-full w-full place-items-center text-center text-[9px] uppercase tracking-[0.2em] text-soft/40">
+          <span className="grid h-full w-full place-items-center text-center text-3xs uppercase tracking-[0.2em] text-soft/40">
             No picture
           </span>
         )}
@@ -251,9 +250,7 @@ export default function MerchPage() {
       )}
 
       {products.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : products.error ? (
         <Panel>
           <ErrorText>Couldn’t load the products: {products.error.message}</ErrorText>

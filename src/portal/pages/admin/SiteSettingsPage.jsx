@@ -4,11 +4,10 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useSiteRebuildStatus, useSiteSettingsAdmin, useUpsertSiteSetting } from '../../officerQueries.js'
 import { when } from '../../workUi.jsx'
 import {
-  Centered,
   ErrorText,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   Toggle,
   inputCls,
   primaryBtnCls,
@@ -187,9 +186,7 @@ export default function SiteSettingsPage() {
       />
 
       {settings.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : settings.error ? (
         <Panel>
           <ErrorText>Couldn’t load settings: {settings.error.message}</ErrorText>

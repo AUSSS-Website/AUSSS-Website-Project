@@ -4,12 +4,11 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useAlbumMutations, useAlbums, useCurrentTerm } from '../../galleryQueries.js'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   inputCls,
   outlineBtnCls,
   primaryBtnCls,
@@ -101,7 +100,7 @@ function AlbumRow({ a, handle, onMove, moving }) {
         {a.cover ? (
           <img src={a.cover} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="grid h-full w-full place-items-center text-[10px] uppercase tracking-[0.2em] text-soft/40">
+          <span className="grid h-full w-full place-items-center text-3xs uppercase tracking-[0.2em] text-soft/40">
             No photos
           </span>
         )}
@@ -201,9 +200,7 @@ export default function GalleryPage() {
       )}
 
       {albums.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : albums.error ? (
         <Panel>
           <ErrorText>Couldn’t load the albums: {albums.error.message}</ErrorText>

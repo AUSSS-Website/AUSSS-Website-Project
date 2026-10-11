@@ -138,7 +138,7 @@ function NavMenu({ item, solid }) {
         <div className="grid grid-cols-3 gap-1 rounded-2xl border border-forest-600/15 bg-cream p-2 shadow-xl shadow-forest-950/10 dark:border-white/10 dark:bg-forest-800 dark:shadow-black/40">
           {item.groups.map((g) => (
             <div key={g.label}>
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-forest-900/50 dark:text-silver/45">
+              <p className="px-3 pb-1 pt-2 text-2xs font-semibold uppercase tracking-[0.18em] text-forest-900/50 dark:text-silver/45">
                 {g.label}
               </p>
               <ul>
@@ -378,7 +378,7 @@ export default function Navbar() {
                 </p>
                 {l.groups.map((g) => (
                   <div key={g.label} className="mt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">{g.label}</p>
+                    <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-accent">{g.label}</p>
                     <ul className="grid grid-cols-2 gap-x-4">
                       {g.links.map((c) => (
                         <li key={c.to} className={g.label === 'Exchange' ? 'col-span-2' : ''}>

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useCommittees } from '../../officerQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel } from '../../portalUi.jsx'
 
 // /portal/committees. The committees this person may edit: every one for the
 // EB and webmaster, otherwise the committees where they hold an officer-level
@@ -30,7 +30,7 @@ function CommitteeTile({ c }) {
         <span className="heading-serif text-base text-ink">{c.abbr}</span>
         <span className="text-xs leading-snug text-soft/55">{c.name}</span>
         {c.page && Object.keys(c.page).length > 0 && (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+          <span className="text-3xs font-semibold uppercase tracking-[0.18em] text-accent">
             Customised
           </span>
         )}
@@ -59,9 +59,7 @@ export default function CommitteesPage() {
       />
 
       {all.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : all.error ? (
         <Panel>
           <ErrorText>Couldn’t load committees: {all.error.message}</ErrorText>

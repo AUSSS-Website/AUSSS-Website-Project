@@ -82,6 +82,25 @@
     color: rgb(var(--c-soft));
   }
 
+  /* More contrast, for a reader whose system asks for it. Lines are made
+     stronger until the usual hairline (border-line/10) reaches 3:1 against a
+     page, a band and a card, and muted text is lifted until every step from
+     30% up reaches 7:1 on all three (opacity 30%..100% becomes 86%..100%).
+     These come after both palettes on purpose: on <html class="dark"> the
+     `.dark` rule here must be the last one read. */
+  @media (prefers-contrast: more) {
+    :root {
+      --line-k: 5.5;
+      --soft-c0: 0.8;
+      --soft-c1: 0.2;
+    }
+    .dark {
+      --line-k: 3.6;
+      --soft-c0: 0.8;
+      --soft-c1: 0.2;
+    }
+  }
+
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 7rem;
@@ -131,8 +150,14 @@
     @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-accent dark:text-medical;
   }
 
+  /* Tracking follows the size. A display heading (text-4xl, 2.25rem, and up)
+     keeps the tight -0.025em; below that it eases off, and from text-xl
+     (1.25rem) down the letters sit at their natural spacing, where tight
+     tracking crowds a small serif. One line does it, since rem minus em is a
+     length that grows more negative as the heading grows. */
   .heading-serif {
-    @apply font-serif font-semibold tracking-tight;
+    @apply font-serif font-semibold;
+    letter-spacing: clamp(-0.025em, calc(0.07031rem - 0.05625em), 0em);
   }
 
   /* A logo drawn in white for dark backgrounds. On a light page it is
@@ -194,8 +219,11 @@
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform;
 }
-.heba-photo:hover {
-  transform: scale(1.04);
+/* Only where the pointer can hover: on a phone the scale stayed on after a tap. */
+@media (hover: hover) and (pointer: fine) {
+  .heba-photo:hover {
+    transform: scale(1.04);
+  }
 }
 
 /* Hide the garden's animated SVG bits until GSAP takes over. GSAP loads

@@ -9,7 +9,7 @@ import {
   usePosts,
   useWorkScopes,
 } from '../../workQueries.js'
-import { Centered, ConfirmButton, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { ConfirmButton, ErrorText, PageHeader, PageLoading, Panel, Spinner, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import { CommitteeTag, LEVEL_LABELS, POST_KIND_LABEL, RichText, UnreadDot, personName, when } from '../../workUi.jsx'
 import PostEditor from './PostEditor.jsx'
 import { Avatar } from '../../Avatar.jsx'
@@ -215,9 +215,7 @@ export default function UpdatesPage() {
       )}
 
       {posts.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : posts.error ? (
         <Panel>
           <ErrorText>Couldn’t load updates: {posts.error.message}</ErrorText>

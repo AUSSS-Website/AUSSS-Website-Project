@@ -4,12 +4,11 @@ import usePageTitle from '../../hooks/usePageTitle.js'
 import { useAuth } from '../../auth/AuthProvider.jsx'
 import { useMyVerification, useRequestVerification } from '../queries.js'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   StatusBadge,
   inputCls,
   primaryBtnCls,
@@ -36,13 +35,7 @@ export default function VerifyPage() {
 
   const status = profile?.membership_status || 'unverified'
 
-  if (mine.isPending) {
-    return (
-      <Centered>
-        <Spinner />
-      </Centered>
-    )
-  }
+  if (mine.isPending) return <PageLoading />
 
   const latest = mine.data
 

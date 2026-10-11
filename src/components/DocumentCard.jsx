@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import PdfReader from './PdfReader.jsx'
+import { scrollBehavior } from '../lib/motion.js'
 
 // A PDF offered on a page as a card: what it is, then "Read it here", "Open in
 // a new tab" and "Download PDF". The reader (PdfReader, with its search bar)
@@ -41,7 +42,7 @@ export default function DocumentCard({
   // The reader opens below the card: bring it into view once it is there.
   useEffect(() => {
     if (!openAt) return
-    readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    readerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
   }, [openAt])
 
   return (

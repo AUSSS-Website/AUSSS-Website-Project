@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useNames, useTask, useTaskMutations, useWorkScopes } from '../../workQueries.js'
-import { Centered, ConfirmButton, ErrorText, PageHeader, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
+import { ConfirmButton, ErrorText, PageHeader, PageLoading, Panel, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 import {
   CommitteeTag,
   DueLabel,
@@ -121,13 +121,7 @@ export default function TaskPage() {
   }, [t])
   const names = useNames(ids)
 
-  if (task.isPending) {
-    return (
-      <Centered>
-        <Spinner />
-      </Centered>
-    )
-  }
+  if (task.isPending) return <PageLoading />
   if (task.error || !t) {
     return (
       <>

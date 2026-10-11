@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { useNames, useTasks, useWorkScopes } from '../../workQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner, primaryBtnCls } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel, primaryBtnCls } from '../../portalUi.jsx'
 import {
   CommitteeTag,
   DueLabel,
@@ -216,9 +216,7 @@ export default function TasksPage() {
       )}
 
       {tasks.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : tasks.error ? (
         <Panel>
           <ErrorText>Couldn’t load tasks: {tasks.error.message}</ErrorText>

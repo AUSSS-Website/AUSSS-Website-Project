@@ -8,12 +8,11 @@ import {
   useProducts,
 } from '../../merchQueries.js'
 import {
-  Centered,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   Toggle,
   inputCls,
   outlineBtnCls,
@@ -221,7 +220,7 @@ function PictureSlot({ product, column, label, hint, removable }) {
         {current ? (
           <img src={current} alt="" className="h-full w-full object-contain" />
         ) : (
-          <span className="grid h-full w-full place-items-center text-center text-[10px] uppercase tracking-[0.2em] text-soft/40">
+          <span className="grid h-full w-full place-items-center text-center text-3xs uppercase tracking-[0.2em] text-soft/40">
             None
           </span>
         )}
@@ -354,9 +353,7 @@ export default function ProductEditorPage() {
   return (
     <MerchGate>
       {products.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : products.error ? (
         <Panel>
           <ErrorText>Couldn’t load the product: {products.error.message}</ErrorText>

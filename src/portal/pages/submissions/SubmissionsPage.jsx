@@ -6,7 +6,7 @@ import { itemsSummary, receiptUrl, useSubmissionMutations, useSubmissions } from
 import ExportButtons from '../../ExportButtons.jsx'
 import { paymentMethodLabel } from '../../../data/merchConfig.js'
 import { usePaymentMethods } from '../../merchQueries.js'
-import { Centered, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
+import { ErrorText, PageHeader, PageLoading, Panel, outlineBtnCls } from '../../portalUi.jsx'
 import { chipBtnCls, smallInputCls, when } from '../../workUi.jsx'
 import { ConfirmButton } from '../gallery/galleryUi.jsx'
 
@@ -300,7 +300,7 @@ function OrderCard({ row, onPatch, onRemove, canDelete }) {
 
       {row.notes && (
         <div className="mt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">Buyer&rsquo;s note</p>
+          <p className="text-2xs uppercase tracking-[0.16em] text-soft/45">Buyer&rsquo;s note</p>
           <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">{row.notes}</p>
         </div>
       )}
@@ -416,7 +416,7 @@ function StoryCard({ row, onPatch, onRemove, canDelete }) {
         <p className="text-base font-semibold text-ink">
           {row.name}
           {row.status === 'published' && (
-            <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+            <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-accent">
               {row.featured ? 'Featured' : 'Live'}
             </span>
           )}
@@ -431,7 +431,7 @@ function StoryCard({ row, onPatch, onRemove, canDelete }) {
         </p>
       )}
       <div className="mt-3">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-soft/45">Their story</p>
+        <p className="text-2xs uppercase tracking-[0.16em] text-soft/45">Their story</p>
         <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-soft/80">{row.story}</p>
       </div>
       {row.status === 'published' && <PublishPanel key={row.updated_at} row={row} onPatch={onPatch} />}
@@ -522,13 +522,7 @@ function SubmissionList({ kind, canDelete }) {
   const filterLabel =
     status === 'all' ? '' : STATUSES[kind].find(([v]) => v === status)?.[1]?.toLowerCase() || status
 
-  if (list.isPending) {
-    return (
-      <Centered>
-        <Spinner />
-      </Centered>
-    )
-  }
+  if (list.isPending) return <PageLoading />
   if (list.error) {
     return <ErrorText>{list.error.message || 'Could not load the list.'}</ErrorText>
   }

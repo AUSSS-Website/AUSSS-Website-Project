@@ -107,7 +107,7 @@ function StatusChip({ children, tone = 'soft' }) {
     accent: 'border-medical/60 text-accent',
   }[tone]
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cls}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-2xs font-semibold ${cls}`}>
       {children}
     </span>
   )

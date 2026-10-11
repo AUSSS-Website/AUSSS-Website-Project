@@ -14,6 +14,7 @@ import { useMerchCatalogue } from '../lib/merch.js'
 import { useSiteSettings } from '../hooks/useSiteSettings.js'
 import { submitOrder } from '../lib/orders.js'
 import { paymentMethodsFrom } from '../data/merchConfig.js'
+import { scrollBehavior } from '../lib/motion.js'
 
 // The faculty's years of study (five, then the two intern years; STUDY_YEARS
 // in src/portal/constants.js has the same in the portal's words), and two more
@@ -134,7 +135,7 @@ export default function CheckoutPage() {
     if (!first) return
     const el = document.getElementById(first)
     if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' })
     if (typeof el.focus === 'function') el.focus({ preventScroll: true })
   }
 
@@ -366,7 +367,7 @@ export default function CheckoutPage() {
                     }
                     className={inputClass(errors.notes) + ' resize-y'}
                   />
-                  <span className="self-end text-[11px] text-soft/55">
+                  <span className="self-end text-2xs text-soft/55">
                     {contact.notes.length} / {MAX_NOTES_LENGTH}
                   </span>
                 </Field>
@@ -469,7 +470,7 @@ export default function CheckoutPage() {
                         <span className="text-sm font-semibold text-ink">
                           {p.name}
                         </span>
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] uppercase tracking-[0.12em] text-soft/60">
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-2xs uppercase tracking-[0.12em] text-soft/60">
                           {it.size && <span>Size: {it.size}</span>}
                           {it.design && <span>Design: {it.design}</span>}
                           <span>Qty: {it.qty}</span>
@@ -670,7 +671,7 @@ function CopyableValue({ value }) {
       <button
         type="button"
         onClick={copy}
-        className="inline-flex items-center gap-1.5 rounded-full border border-line/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
+        className="inline-flex items-center gap-1.5 rounded-full border border-line/15 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.14em] text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
       >
         {copied ? (
           <>
@@ -739,7 +740,7 @@ function OrderSuccess({ result, contact }) {
             We&rsquo;ll be in touch shortly to confirm details.
           </p>
           <div className="mt-7 inline-flex flex-col items-center gap-1 rounded-xl border border-line/10 bg-page px-6 py-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-soft/55">
+            <span className="text-2xs font-semibold uppercase tracking-[0.18em] text-soft/55">
               Order reference
             </span>
             <span className="font-mono text-lg text-accent">

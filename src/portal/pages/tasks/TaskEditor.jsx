@@ -6,6 +6,7 @@ import { ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCl
 import { DueLabel, TASK_PRIORITIES, chipBtnCls } from '../../workUi.jsx'
 import { FileChooser } from './TaskFiles.jsx'
 import { Avatar } from '../../Avatar.jsx'
+import { scrollBehavior } from '../../../lib/motion.js'
 
 // Create or edit a task. `scopes` comes from useWorkScopes(): the committees
 // this person may hand work out in, plus `society` for the EB. A task never
@@ -42,7 +43,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel }) {
   // them find it.
   const warning = useRef(null)
   useEffect(() => {
-    if (repeats) warning.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    if (repeats) warning.current?.scrollIntoView({ block: 'center', behavior: scrollBehavior() })
   }, [repeats])
 
   const committeeId = scope === SOCIETY ? null : scope

@@ -1,3 +1,4 @@
+import { pressCls } from '../lib/motion.js'
 import { todayCairo } from './officerQueries.js'
 
 // Small shared pieces for the tasks, updates and notifications pages: labels
@@ -40,7 +41,7 @@ const STATUS_CLS = {
   done: 'bg-emerald-400/15 text-ok',
 }
 
-const pillCls = 'rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]'
+const pillCls = 'rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em]'
 
 export function TaskStatusPill({ status }) {
   return (
@@ -69,7 +70,7 @@ export function CommitteeTag({ committee }) {
   const hex6 = committee?.color && /^#[0-9a-f]{6}$/i.test(committee.color)
   return (
     <span
-      className="inline-flex items-center rounded-full border border-line/15 px-2.5 py-0.5 text-[11px] font-semibold text-ink"
+      className="inline-flex items-center rounded-full border border-line/15 px-2.5 py-0.5 text-2xs font-semibold text-ink"
       style={hex6 ? { borderColor: committee.color, backgroundColor: `${committee.color}22` } : undefined}
       title={committee?.name || 'Whole society'}
     >
@@ -196,11 +197,13 @@ export function UnreadDot({ label = 'Unread' }) {
   return <span role="img" aria-label={label} className="inline-block h-2 w-2 shrink-0 rounded-full bg-medical-light" />
 }
 
+// The ring shows which field the keyboard is in, as on inputCls in portalUi.jsx.
 export const smallInputCls =
-  'w-full rounded-lg border border-line/15 bg-page px-3 py-2 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none'
+  'w-full rounded-lg border border-line/15 bg-page px-3 py-2 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
 
+// A filter chip. It sinks a little when pressed, like the other buttons (pressCls).
 export const chipBtnCls = (active) =>
-  `rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+  `rounded-full border px-3.5 py-1.5 text-xs font-semibold ${pressCls} ${
     active
       ? 'border-medical bg-medical/15 text-ink'
       : 'border-line/15 text-soft/65 hover:border-line/30 hover:text-ink'

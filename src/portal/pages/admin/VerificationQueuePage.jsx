@@ -2,11 +2,10 @@ import { useState } from 'react'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useDecideVerification, usePendingVerifications } from '../../queries.js'
 import {
-  Centered,
   ErrorText,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   StatusBadge,
   outlineBtnCls,
   primaryBtnCls,
@@ -117,9 +116,7 @@ export default function VerificationQueuePage() {
       />
 
       {pending.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : pending.error ? (
         <Panel>
           <ErrorText>Couldn’t load the queue: {pending.error.message}</ErrorText>

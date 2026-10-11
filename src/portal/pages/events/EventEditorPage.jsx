@@ -10,13 +10,12 @@ import { useCommittees } from '../../officerQueries.js'
 import { scheduleFromRow, scheduleProblem, schedulePatch } from '../../eventSchedule.js'
 import ScheduleFields from './ScheduleFields.jsx'
 import {
-  Centered,
   ConfirmButton,
   ErrorText,
   Field,
   PageHeader,
+  PageLoading,
   Panel,
-  Spinner,
   Toggle,
   inputCls,
   outlineBtnCls,
@@ -266,7 +265,7 @@ function PicturePanel({ row }) {
           {current ? (
             <img src={current} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="grid h-full w-full place-items-center text-center text-[10px] uppercase tracking-[0.2em] text-soft/40">
+            <span className="grid h-full w-full place-items-center text-center text-3xs uppercase tracking-[0.2em] text-soft/40">
               None
             </span>
           )}
@@ -419,13 +418,7 @@ export default function EventEditorPage() {
     ...(committees.data || []).filter((c) => officerOf(c.slug)).map((c) => ({ value: c.id, label: `${c.abbr}, ${c.name}` })),
   ]
 
-  if (event.isPending) {
-    return (
-      <Centered>
-        <Spinner />
-      </Centered>
-    )
-  }
+  if (event.isPending) return <PageLoading />
   if (event.error) {
     return (
       <Panel>

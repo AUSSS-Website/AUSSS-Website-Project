@@ -10,7 +10,7 @@ import { ErrorText, PageHeader, Panel, Spinner } from '../../portalUi.jsx'
 // database decides the list (row-level security on content_blocks).
 
 export function BlockStatus({ block }) {
-  const chip = 'rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]'
+  const chip = 'rounded-full px-2.5 py-1 text-3xs font-bold uppercase tracking-[0.14em]'
   return (
     <span className="flex flex-wrap items-center gap-2">
       {block.published_at ? (

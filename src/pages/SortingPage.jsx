@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import usePageTitle from '../hooks/usePageTitle.js'
 import { committees, slugFor } from '../data/society.js'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
+import { scrollBehavior } from '../lib/motion.js'
 import {
   QUESTIONS,
   QUIZ_BASIS,
@@ -58,7 +59,7 @@ export default function SortingPage() {
   // Keep the viewport at the top of the card when questions change on
   // phones, the fixed navbar otherwise hides the new question.
   useEffect(() => {
-    if (window.scrollY > 120) window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (window.scrollY > 120) window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }, [qIndex, stage])
 
   const begin = () => {
@@ -389,7 +390,7 @@ function Result({ winner, ranked, answers, onRetake }) {
                 className="inline-flex items-center gap-2 rounded-full border border-line/10 bg-sunk/70 px-4 py-2 text-sm text-soft/80 transition-colors hover:border-line/30 hover:text-ink"
               >
                 <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                  className="rounded-full px-2 py-0.5 text-3xs font-bold uppercase tracking-[0.12em]"
                   style={{ background: rgba(c.color, 0.2), color: chipAccent(c.color) }}
                 >
                   {c.abbr}

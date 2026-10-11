@@ -44,7 +44,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
       <div className="flex flex-1 flex-col p-4 sm:p-6">
         <h3 className="heading-serif text-base text-ink sm:text-xl">{product.name}</h3>
         {product.tagline && (
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent sm:text-xs">
+          <p className="mt-1 text-3xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-xs">
             {product.tagline}
           </p>
         )}
@@ -56,7 +56,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
           <span className="heading-serif text-xl text-ink sm:text-2xl">
             {formatEGP(product.price)}
           </span>
-          <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-accent sm:inline-block">
+          <span className="hidden rounded-full border border-medical/40 bg-medical/10 px-3 py-1 text-3xs font-semibold uppercase tracking-[0.18em] text-accent sm:inline-block">
             Made to order
           </span>
         </div>
@@ -74,7 +74,7 @@ export default function ProductCard({ product, onOpenSizeChart }) {
                 <button
                   type="button"
                   onClick={() => onOpenSizeChart?.(product)}
-                  className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent transition-colors hover:text-ink"
+                  className="text-2xs font-semibold uppercase tracking-[0.14em] text-accent transition-colors hover:text-ink"
                 >
                   Size chart
                 </button>

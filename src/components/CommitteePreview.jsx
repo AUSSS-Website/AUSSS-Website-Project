@@ -35,10 +35,10 @@ export default function CommitteePreview({
   return (
     <div className="overflow-hidden rounded-2xl border border-line/10 bg-page">
       <div className="flex items-center justify-between border-b border-line/10 px-4 py-2.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+        <span className="text-2xs font-semibold uppercase tracking-[0.18em] text-accent">
           Live preview
         </span>
-        <span className="text-[11px] text-soft/40">{c.abbr} page</span>
+        <span className="text-2xs text-soft/40">{c.abbr} page</span>
       </div>
 
       <div className="max-h-[78vh] space-y-10 overflow-y-auto p-6">
@@ -52,7 +52,7 @@ export default function CommitteePreview({
             />
           )}
           <p
-            className="mt-3 text-[10px] font-semibold uppercase tracking-[0.24em]"
+            className="mt-3 text-3xs font-semibold uppercase tracking-[0.24em]"
             style={{ color: accent }}
           >
             {c.group}
@@ -127,7 +127,7 @@ export default function CommitteePreview({
           )}
         </section>
 
-        <p className="border-t border-line/10 pt-4 text-center text-[11px] text-soft/35">
+        <p className="border-t border-line/10 pt-4 text-center text-2xs text-soft/35">
           Preview of your editable sections. The mascot and IFMSA mission
           blocks publish too, but aren’t editable here.
         </p>

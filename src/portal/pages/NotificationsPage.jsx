@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import usePageTitle from '../../hooks/usePageTitle.js'
 import { useClearNotifications, useMarkNotificationsRead, useNames, useNotifications } from '../workQueries.js'
-import { Centered, ConfirmButton, ErrorText, PageHeader, Panel, Spinner, outlineBtnCls } from '../portalUi.jsx'
+import { ConfirmButton, ErrorText, PageHeader, PageLoading, Panel, outlineBtnCls } from '../portalUi.jsx'
 import { UnreadDot, describeNotification, notificationTarget, when } from '../workUi.jsx'
 
 // /portal/notifications. What happened on tasks this person is part of. Rows
@@ -53,9 +53,7 @@ export default function NotificationsPage() {
       />
 
       {feed.isPending ? (
-        <Centered>
-          <Spinner />
-        </Centered>
+        <PageLoading />
       ) : feed.error ? (
         <Panel>
           <ErrorText>Couldn’t load notifications: {feed.error.message}</ErrorText>
