@@ -45,6 +45,10 @@ function fixEmailDomain(email) {
 // Returns one of:
 //   { state: 'found', record }
 //   { state: 'ambiguous' }           name given matches >1 member
+//   { state: 'ended' }               the membership has ended. The database
+//        answers with the state alone (migration 20261011130001): no status,
+//        no year, no position, and never why. MEMBERSHIP_ENDED below is what
+//        the page then says
 //   { state: 'not-found', suggestions? }   suggestions: { names: [...] } when
 //        the name is a near-spelling of up to three members' names,
 //        { email: 's•••a@gmail.com' } (masked, never the real address) when
@@ -67,6 +71,9 @@ export async function lookupMember({ name = '', email = '', role = null, acceptN
       return { state: 'found', record: mapRecord(d.record) }
     }
     if (d?.state === 'ambiguous') return { state: 'ambiguous' }
+    // The state and nothing with it: whatever else an answer might carry
+    // beside "ended" is dropped here, so no page can come to show it.
+    if (d?.state === 'ended') return { state: 'ended' }
     const fixedEmail = fixEmailDomain(email)
     const suggestions = fixedEmail ? { fixedEmail } : d?.suggestions || null
     return { state: 'not-found', suggestions }
@@ -193,6 +200,16 @@ export function adviceFor(record) {
     steps: tier.steps,
     progress,
   }
+}
+
+// What the page says for a membership that has ended. It states the fact and
+// who to ask, and nothing about how the membership came to end. It cites no
+// section of the Constitution, unlike the texts above, because none is being
+// quoted here.
+export const MEMBERSHIP_ENDED = {
+  title: 'This membership has ended',
+  // The page follows this with a line that links to the contact page.
+  body: 'There is no current membership under this name or email.',
 }
 
 // Guidance for someone not in the database at all.

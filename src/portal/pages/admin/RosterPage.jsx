@@ -3,11 +3,16 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
 import { errorText } from '../../../lib/errorText.js'
 import { scrollBehavior } from '../../../lib/motion.js'
+import { useAuth } from '../../../auth/AuthProvider.jsx'
 import ExportButtons from '../../ExportButtons.jsx'
 import {
   PAGE_SIZE,
+  dismissedLine,
+  reinstatedLine,
   useDeleteRosterEntry,
+  useDismissRosterMember,
   useImportRoster,
+  useReinstateRosterMember,
   useReleaseRosterEntry,
   useRevokeToken,
   usePositions,
@@ -23,7 +28,13 @@ import {
 } from '../../rosterQueries.js'
 import { parseRosterFile } from '../../rosterFile.js'
 import { prepareRoster, searchRoster } from '../../rosterSearch.js'
-import { ROSTER_STATUSES as STATUSES, MEMBERSHIP_LABELS } from '../../constants.js'
+import {
+  DISMISSED_STATUS,
+  ROSTER_STATUSES as STATUSES,
+  MEMBERSHIP_LABELS,
+  holdsPresidency,
+  isDismissed,
+} from '../../constants.js'
 import { useCommittees } from '../../officerQueries.js'
 import { when } from '../../workUi.jsx'
 import RosterBulkPanel from './RosterBulkPanel.jsx'
@@ -60,6 +71,8 @@ const FILTERS = [
   ['full', 'Full'],
   ['none', 'No status'],
   ['portal', 'Edited in the portal'],
+  // The records of dismissed members, which stay on the roster.
+  ['dismissed', DISMISSED_STATUS],
 ]
 
 const BLANK = {
@@ -109,6 +122,16 @@ const DONE = {
   added: { row: 'Added to the roster.', full: (name) => `Added ${name} to the roster.` },
   released: { row: 'Follows the spreadsheet again.', full: (name) => `${name} follows the spreadsheet again.` },
   removed: { row: '', full: (name) => `Removed ${name} from the roster.` },
+  // The row's own line for these two is written from what the database
+  // answered (dismissedLine, reinstatedLine) and travels in the notice.
+  dismissed: { row: 'Dismissed.', full: (name) => `Dismissed ${name}.` },
+  reinstated: { row: 'Reinstated.', full: (name) => `Reinstated ${name}.` },
+}
+
+// A date as the roster shows one: "12 Oct 2026".
+function dayOf(iso) {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // The id of a row's own button, which the page scrolls to and focuses.
@@ -391,12 +414,149 @@ function Editor({ row, committees, positions, board, onClose, onDone }) {
   )
 }
 
+// The President's own control, under an opened member's form and outside it,
+// so that Enter in the reason does not save the form above. Nobody else is
+// shown it, and the database refuses anybody else (rpc/dismiss_roster_member).
+// `onDone` is the page's, as the editor's is; its third argument is the line
+// the row then shows.
+function DismissMember({ row, onDone }) {
+  const dismiss = useDismissRosterMember()
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState('')
+  const said = reason.trim()
+  const titleId = `r-dismiss-title-${row.id}`
+  const reasonId = `r-dismiss-reason-${row.id}`
+
+  // A reason half typed is work to lose, as the form above is.
+  useLeaveWarning(Boolean(said) || dismiss.isPending)
+
+  const go = async () => {
+    setError('')
+    try {
+      onDone('dismissed', row, dismissedLine(await dismiss.mutateAsync({ id: row.id, reason: said })))
+    } catch (e) {
+      setError(errorText(e, 'Could not dismiss this member.'))
+    }
+  }
+
+  return (
+    <section aria-labelledby={titleId} className="mt-6 border-t border-line/10 pt-5">
+      <p id={titleId} className={panelTitleCls}>
+        Dismiss member
+      </p>
+      <p className="mt-2 max-w-2xl text-xs text-soft/70">
+        Dismissing ends this membership. The row stays on the roster as a record with the status
+        Dismissed, and its committee and positions are cleared. The member’s portal account goes
+        back to Unverified and every position it holds ends. The spreadsheet cannot bring the
+        member back, and only the President can reinstate them.
+      </p>
+      <div className="mt-4 max-w-2xl">
+        <Field
+          label="Reason"
+          hint="Required. It is kept on the record for the Executive Board. The member and the public never see it."
+          htmlFor={reasonId}
+        >
+          <textarea
+            id={reasonId}
+            rows={2}
+            maxLength={1000}
+            required
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+      </div>
+      {error && (
+        <div className="mt-3">
+          <ErrorText>{error}</ErrorText>
+        </div>
+      )}
+      {/* Off until there is a reason, which the hint above asks for. Then two
+          clicks, like every step here that is hard to take back. */}
+      <div className="mt-4">
+        <ConfirmButton
+          label="Dismiss member"
+          confirmLabel="Click again to dismiss"
+          busyLabel="Dismissing…"
+          busy={dismiss.isPending}
+          disabled={!said}
+          onConfirm={go}
+        />
+      </div>
+    </section>
+  )
+}
+
+// An opened row of a dismissed member. The record is read-only for everybody:
+// the database refuses every change to it but a reinstatement, which is the
+// President's (rpc/reinstate_roster_member).
+function DismissedRecord({ row, president, onClose, onDone }) {
+  const reinstate = useReinstateRosterMember()
+  const [error, setError] = useState('')
+  const was = MEMBERSHIP_LABELS[row.status_before_dismissal] || row.status_before_dismissal || ''
+
+  const go = async () => {
+    setError('')
+    try {
+      onDone('reinstated', row, reinstatedLine(await reinstate.mutateAsync(row.id)))
+    } catch (e) {
+      setError(errorText(e, 'Could not reinstate this member.'))
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-4 border-t border-line/10 pt-5">
+      <dl className="grid max-w-2xl gap-x-6 gap-y-3 text-sm sm:grid-cols-[auto_1fr]">
+        <dt className="text-soft/70">Dismissed on</dt>
+        <dd className="text-ink">{dayOf(row.dismissed_at) || 'Date not recorded'}</dd>
+        <dt className="text-soft/70">Reason</dt>
+        <dd className="whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">{row.dismissal_reason}</dd>
+        <dt className="text-soft/70">Status before</dt>
+        <dd className="text-ink">{was || 'No status'}</dd>
+      </dl>
+      <p className="max-w-2xl text-xs text-soft/70">
+        This record cannot be edited or removed, and the spreadsheet leaves it as it is. The public
+        membership check says only that the membership has ended.
+      </p>
+      <ErrorText>{error}</ErrorText>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {president ? (
+          <ConfirmButton
+            label="Reinstate"
+            busyLabel="Reinstating…"
+            busy={reinstate.isPending}
+            onConfirm={go}
+          />
+        ) : (
+          <p className="text-xs text-soft/70">Only the President can reinstate a dismissed member.</p>
+        )}
+        <button type="button" disabled={reinstate.isPending} onClick={onClose} className={outlineBtnCls}>
+          Close
+        </button>
+      </div>
+      {president && (
+        <p className="max-w-2xl text-xs text-soft/70">
+          {was
+            ? `Reinstating puts the status back to “${was}”.`
+            : 'Reinstating leaves the row without a status, as it had none.'}{' '}
+          It does not give back portal access, the committee or any position: the member asks for
+          verification again, and positions are assigned again.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // `note` is what the last editor did to this row ("Saved."), shown while the
-// row is closed.
-function Row({ row, committees, positions, board, open, note, onToggle, onDone }) {
+// row is closed. `president` says whether the reader may dismiss and
+// reinstate. A dismissed member's row is quieter, through softer text and not
+// through an opacity class, which would take the text under its contrast.
+function Row({ row, committees, positions, board, open, note, president, onToggle, onDone }) {
   const boardPosition = board.find((p) => p.id === row.position_id)
   const committee = boardPosition ? { abbr: BOARD_LABEL } : unitOf(committees, row.committee_id)
   const position = boardPosition || positions.find((p) => p.id === row.position_id)
+  const dismissed = isDismissed(row)
   return (
     <li className="rounded-2xl border border-line/10 bg-card p-5">
       {/* The whole header opens the row, so it answers a pointer and a press
@@ -410,16 +570,19 @@ function Row({ row, committees, positions, board, open, note, onToggle, onDone }
         className="-m-2 flex w-[calc(100%+1rem)] flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-xl p-2 text-left transition-colors duration-150 ease-out hover:bg-veil/5 active:bg-veil/10"
       >
         <span className="min-w-0">
-          <span className="block truncate text-base font-semibold text-ink">{row.full_name}</span>
+          <span className={`block truncate text-base font-semibold ${dismissed ? 'text-soft/90' : 'text-ink'}`}>
+            {row.full_name}
+          </span>
           <span className="block truncate text-sm text-soft/70">{row.email || 'No email on file'}</span>
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-soft/70">
           {/* The status as people word it: a sheet that holds the bare code
               ("active") shows its label, as the export and a committee's
               Members tab do. */}
-          <span className="font-semibold text-accent">
+          <span className={`font-semibold ${dismissed ? 'text-soft/90' : 'text-accent'}`}>
             {MEMBERSHIP_LABELS[row.status] || row.status || 'No status'}
           </span>
+          {dismissed && dayOf(row.dismissed_at) && <span className={tagCls}>{dayOf(row.dismissed_at)}</span>}
           {committee && (
             <span className={tagCls}>
               {committee.abbr}
@@ -432,9 +595,13 @@ function Row({ row, committees, positions, board, open, note, onToggle, onDone }
         </span>
       </button>
       {note && !open && <p className="mt-3 text-xs text-ok">{note}</p>}
-      {open && (
+      {open && dismissed && (
+        <DismissedRecord row={row} president={president} onClose={onToggle} onDone={onDone} />
+      )}
+      {open && !dismissed && (
         <Editor row={row} committees={committees} positions={positions} board={board} onClose={onToggle} onDone={onDone} />
       )}
+      {open && !dismissed && president && <DismissMember row={row} onDone={onDone} />}
     </li>
   )
 }
@@ -446,6 +613,9 @@ function RunSummary({ result }) {
     [result.updated, 'updated'],
     [result.unchanged, 'unchanged'],
     [result.kept_portal_edits, 'kept (edited in the portal)'],
+    // Lines for a dismissed member, and lines whose status says Dismissed:
+    // only the President dismisses and reinstates, so an import does neither.
+    [result.skipped_dismissed, 'left alone (dismissed)'],
     [result.skipped_duplicates, 'duplicate rows skipped'],
     [result.skipped_invalid, 'rows without a name skipped'],
   ].filter(([n]) => n > 0)
@@ -747,12 +917,16 @@ export default function RosterPage() {
   const [openId, setOpenId] = useState(null) // row id, or 'new'
   // Its own switch: opening a member below must not close the panel and lose a pasted list.
   const [bulk, setBulk] = useState('') // '', 'lga' or 'committee': which bulk update is open
-  // What the editor that has just closed did: { what, id, name, before, after },
-  // with `what` a key of DONE. `before` is the row that stood under it, so that
-  // a sentence about a row which has left the list can stand where the row was;
-  // `after` is the row that stood over it. A removed row hands the keyboard to
-  // the first of the two that there is.
+  // What the editor that has just closed did: { what, id, name, said, before,
+  // after }, with `what` a key of DONE. `said` is the row's line when the
+  // database's answer wrote it (a dismissal, a reinstatement). `before` is the
+  // row that stood under it, so that a sentence about a row which has left the
+  // list can stand where the row was; `after` is the row that stood over it. A
+  // removed row hands the keyboard to the first of the two that there is.
   const [notice, setNotice] = useState(null)
+  // Dismissing and reinstating are the President's. The database decides; this
+  // only keeps the controls away from everybody else.
+  const president = holdsPresidency(useAuth().assignments)
   // The id of a member just added, until their row has been brought into view.
   const [reveal, setReveal] = useState(null)
   const listRef = useRef(null)
@@ -893,7 +1067,8 @@ export default function RosterPage() {
   }, [notice])
 
   // An editor has finished (`what` is a key of DONE): close it and say so.
-  const onDone = (what, row) => {
+  // `said` replaces the row's usual line with one written from the answer.
+  const onDone = (what, row, said = '') => {
     setOpenId(null)
     if (!row?.id) return
     // The rows on either side in the whole list, not only on this page: the
@@ -903,6 +1078,7 @@ export default function RosterPage() {
       what,
       id: row.id,
       name: row.full_name,
+      said,
       before: index === -1 ? null : matches[index + 1]?.id ?? null,
       after: index < 1 ? null : matches[index - 1].id,
     })
@@ -1056,7 +1232,7 @@ export default function RosterPage() {
           reader finds on the row, or where the row was. Always in the page, so
           that it is said when it comes. */}
       <p role="status" className="sr-only">
-        {notice ? DONE[notice.what].full(notice.name) : ''}
+        {notice ? (notice.said ? `${notice.name}: ${notice.said}` : DONE[notice.what].full(notice.name)) : ''}
       </p>
 
       {roster.error ? (
@@ -1090,7 +1266,8 @@ export default function RosterPage() {
                   positions={positions}
                   board={board}
                   open={openId === row.id}
-                  note={notice?.id === row.id ? DONE[notice.what].row : ''}
+                  note={notice?.id === row.id ? notice.said || DONE[notice.what].row : ''}
+                  president={president}
                   onToggle={() => open(openId === row.id ? null : row.id)}
                   onDone={onDone}
                 />

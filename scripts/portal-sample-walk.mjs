@@ -174,18 +174,22 @@ const positionOf = (id) => {
   const { title, level } = samplePositions.find((p) => p.id === id)
   return { id, title, level }
 }
-// The roster: five members written out (a long name, one with no committee,
+// The roster: six members written out (a long name, one with no committee,
 // one the portal owns, one whose name, address and position are all long,
-// one on the board), and enough made ones for a second page, since the list
-// shows fifty at a time. Every third made member has signed in and every
-// ninth has no email on file.
-const member = (id, full_name, email, status, more = {}) => ({ id, full_name, email, status, joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: '', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: null, is_contact_person: false, position_id: null, ...more })
+// one on the board, one the President dismissed), and enough made ones for a
+// second page, since the list shows fifty at a time. Every third made member
+// has signed in and every ninth has no email on file.
+const member = (id, full_name, email, status, more = {}) => ({ id, full_name, email, status, joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: '', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: null, is_contact_person: false, position_id: null, dismissed_at: null, dismissal_reason: null, status_before_dismissal: null, ...more })
 const sampleRoster = [
   member('r-1', 'Sample Member With A Rather Long Four Part Name', 'member1@example.com', 'Full Member', { joined_year: 2023, years_spent: 3, lgas: 4, ngas: 1, current_position: 'Exchange Incomings Assistant', profile_id: 'pr-1', committee_id: 'c-scope', is_contact_person: true, position_id: 'p-scope-assistant' }),
   member('r-2', 'Second Sample', 'member2@example.com', 'Candidate Member', { joined_year: 2025, years_spent: 1, lgas: 1 }),
   member('r-3', 'Third Sample', 'member3@example.com', 'Associate Member', { current_position: 'Local Member', origin: 'portal', portal_edited_at: iso(2), import_batch: null, updated_at: iso(2), committee_id: 'c-scope', position_id: 'p-scope-member' }),
   member('r-4', 'Fourth Sample Whose Name Runs On For A Good Many Words', 'a-rather-long-address-for-a-phone@example.com', 'Associate Member', { lgas: 3, ngas: 1, committee_id: 'c-scope', position_id: 'p-scope-social' }),
   member('r-5', 'Fifth Sample', 'member5@example.com', 'Full Member', { joined_year: 2022, years_spent: 4, lgas: 6, ngas: 2, profile_id: 'pr-5', position_id: 'p3' }),
+  // A dismissed member: the record stays, with no committee and no position,
+  // and a reason long enough to wrap and to hold an address that cannot. The
+  // page lists the roster in name order, and this name is on its first page.
+  member('r-0', 'Eighth Sample Whose Membership The President Ended', 'member0@example.com', 'Dismissed', { joined_year: 2023, years_spent: 3, lgas: 2, ngas: 1, profile_id: 'pr-0', portal_edited_at: iso(3), updated_at: iso(3), dismissed_at: iso(3), dismissal_reason: 'A made-up reason, written at some length so that it wraps on a phone, with the minutes of the meeting that decided it: https://example.org/minutes/executive-board/2026-27/an-address-with-no-space-to-wrap-at', status_before_dismissal: 'Associate Member' }),
   ...Array.from({ length: 56 }, (_, i) => {
     const committee_id = [null, 'c-scope', 'c-scoph', 'c-scope'][i % 4]
     return member(`r-${i + 6}`, `${GIVEN[i % GIVEN.length]} ${GIVEN[(i * 7 + 3) % GIVEN.length]} ${FAMILY[i % FAMILY.length]}`, i % 9 === 4 ? null : `member${i + 6}@example.com`, ['Candidate Member', 'Associate Member', 'Full Member'][i % 3], {
@@ -203,7 +207,7 @@ const sampleRoster = [
 // rpc/roster_upgrade_candidates: the first few members whose GA counts reach
 // the next status, which only the board grants.
 const upgradeCandidates = sampleRoster
-  .filter((r) => r.status !== 'Full Member')
+  .filter((r) => r.status !== 'Full Member' && !r.dismissed_at)
   .slice(0, 5)
   .map(({ id, full_name, email, status, lgas, ngas }) => ({ id, full_name, email, status, next: status === 'Candidate Member' ? 'Associate Member' : 'Full Member', lgas, ngas }))
 
@@ -334,6 +338,13 @@ const insightsOf = (slug) => {
   const reach = Array.from({ length: pages }, (_, i) => ({ page: i + 1, readers: Math.round(80 * 0.9 ** i) }))
   return { views: 412, likes: 38, downloads: 21, sessions: 90, tracked: pages ? 80 : 0, finished: reach.at(-1)?.readers ?? 0, median_page: Math.ceil(pages / 3), reach }
 }
+
+// The walk is the webmaster, who may not dismiss or reinstate a member. On a
+// route whose name after # starts with "president" the session also holds the
+// President's position (under its real key, which is what the Roster page
+// asks about), so that the President's controls are walked too.
+let presiding = false
+const presidentAssignment = { id: 'a2', status: 'active', position: { id: 'p2', key: 'eb.president', title: 'President', short_title: 'President', level: 'eb', can_assign_tasks: true, committee: null }, term: { id: 't1', label: '2026-27', is_current: true } }
 
 const tables = {
   profiles: [
@@ -749,6 +760,10 @@ const rpcs = {
   // and neither answers with anything.
   decide_verification: null,
   undo_verification_decision: null,
+  // A member dismissed, and one reinstated: what the database answers, which
+  // the row's line is written from.
+  dismiss_roster_member: { accounts: 1, positions_ended: 2 },
+  reinstate_roster_member: { status: 'Associate Member' },
   // The exam for its officers. Only ex-1 has a list and papers.
   exam_registration_list: ({ p_exam }) => (p_exam === 'ex-1' ? examList : []),
   exam_results: ({ p_exam }) => ({
@@ -794,6 +809,10 @@ const ROUTES = [
   // the roster, then each of the panels its buttons open, and a member's row opened
   '/portal/admin/roster', '/portal/admin/roster#upgrades', '/portal/admin/roster#register-a-ga', '/portal/admin/roster#position-types',
   '/portal/admin/roster#executive-board', '/portal/admin/roster#member',
+  // a dismissed member's record as the board reads it; then as the President: a member's row with
+  // "Dismiss member" and a reason typed, the line a dismissal leaves, and the record with "Reinstate"
+  '/portal/admin/roster#dismissed', '/portal/admin/roster#president-dismiss', '/portal/admin/roster#president-dismissed',
+  '/portal/admin/roster#president-reinstate',
   // the verification queue, then with one request approved (the line with its Undo) and one approved and taken back
   '/portal/admin/verification', '/portal/admin/verification#undo', '/portal/admin/rollover',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
@@ -844,6 +863,26 @@ const acts = {
   '/portal/admin/roster#executive-board': (page) => page.getByRole('button', { name: 'Executive Board', exact: true }).click(),
   // The member with the long name and address, who is on the list's first page.
   '/portal/admin/roster#member': (page) => page.locator('#roster-row-r-4').click(),
+  // The dismissed member's record. The webmaster reads it and has no button.
+  '/portal/admin/roster#dismissed': (page) => page.locator('#roster-row-r-0').click(),
+  // The same member's row for the President, with a reason long enough to wrap.
+  '/portal/admin/roster#president-dismiss': async (page) => {
+    await page.locator('#roster-row-r-4').click()
+    await page.fill('#r-dismiss-reason-r-4', 'A made-up reason, written at some length so that the field has to wrap it on a phone.')
+  },
+  // "Dismiss member" asks twice, and two taps too close together count as one
+  // slip. The sample list still shows the member as they were afterwards; the
+  // line under their name is what this screen is for.
+  '/portal/admin/roster#president-dismissed': async (page) => {
+    await page.locator('#roster-row-r-4').click()
+    await page.fill('#r-dismiss-reason-r-4', 'A made-up reason.')
+    await page.getByRole('button', { name: 'Dismiss member', exact: true }).click()
+    await page.waitForTimeout(600)
+    await page.getByRole('button', { name: 'Click again to dismiss', exact: true }).click()
+    await page.getByText(/^Dismissed\. Their portal account/).waitFor()
+  },
+  // The record again, for the President: "Reinstate" and what it gives back.
+  '/portal/admin/roster#president-reinstate': (page) => page.locator('#roster-row-r-0').click(),
   '/portal/admin/audit#released': (page) => page.locator('details > summary').first().click(),
   // "Remove" asks twice, and two taps too close together count as one slip.
   // The sample list still holds the call afterwards; the line above it is
@@ -1002,7 +1041,9 @@ for (const theme of themes) {
           return route.abort('connectionfailed').catch(() => {})
         }
       }
-      const rows = narrowed(tables[table] || [], url.searchParams)
+      // On a "president" route the session holds the President's position too.
+      const stored = table === 'assignments' && presiding ? [...tables.assignments, presidentAssignment] : tables[table] || []
+      const rows = narrowed(stored, url.searchParams)
       if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${rows.length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' } })
       if ((req.headers().accept || '').includes('vnd.pgrst.object')) return json(rows[0] ?? {})
       return json(rows, { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}` })
@@ -1011,6 +1052,8 @@ for (const theme of themes) {
     const dir = path.join('.page-walk', `portal-sample-${stamp}`, `${theme}-${width}`)
     await fs.mkdir(dir, { recursive: true })
     for (const r of ROUTES) {
+      // One page is open at a time, so this holds for every read the page makes.
+      presiding = r.split('#')[1]?.startsWith('president') ?? false
       const page = await context.newPage()
       const errs = []
       page.on('pageerror', (e) => errs.push(e.message.split('\n')[0]))

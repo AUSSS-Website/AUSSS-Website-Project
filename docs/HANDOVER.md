@@ -192,6 +192,12 @@ infrastructure. Portal permissions (EB, officer, assistant, member) are
 assignments in the database and are granted with an invite, not a dashboard
 seat. RUNBOOK section 8 covers that.
 
+One portal power belongs to the President's position alone, and not to the
+rest of the Executive Board or to the webmaster: dismissing a member from the
+roster and reinstating one. It follows the position `eb.president`, so it
+passes to the incoming President with the position at rollover. RUNBOOK
+section 4 says what dismissing ends and what reinstating gives back.
+
 ## 4. Password vault rule
 
 - One society-owned password manager organisation (Bitwarden's free

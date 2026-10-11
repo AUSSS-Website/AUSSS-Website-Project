@@ -180,7 +180,75 @@ followed by a line with **Undo**, so a slip is taken back at once. The rule is
 **Who is verified at sign-in:** anyone whose email is on the roster (at least `candidate`, even
 with a blank status; archived/suspended rows change nothing) and anyone holding an active
 assignment, which covers every TO and EB invite (trigger `verify_position_holder`). Everyone
-else stays `unverified` and uses the verification queue (section 9).
+else stays `unverified` and uses the verification queue (section 9). A dismissed member is the
+exception to both: see the next paragraphs.
+
+**Dismissing a member, and reinstating one (migration `20261011130001_roster_dismissal`, test
+`360-roster-dismissal.sql`).** Remove deletes a row and is for tidying mistakes. A member the
+society dismisses stays on the roster as a record instead, and only the **President** does it:
+whoever holds an active assignment, this term, to the position with the key `eb.president`
+(`app.is_president()`). Not the rest of the Executive Board, and not the webmaster. The page
+shows the two controls to the President alone, and the database refuses everybody else
+("Only the President can dismiss a member.").
+
+- **Dismiss.** Roster, open the member's row, *Dismiss member*: a reason (required, up to 1,000
+  characters), then two clicks. `rpc/dismiss_roster_member(entry, reason)` writes the status
+  `Dismissed` on the row with `dismissed_at`, `dismissed_by`, `dismissal_reason` and
+  `status_before_dismissal`, and clears the row's committee, position, contact person marker
+  and "Other positions" text. Every portal account the row belongs to (the linked one, and any
+  with the row's email) goes back to `unverified`, every active assignment it holds is ended
+  (`status = 'ended'`, `ended_on` today, as `rpc/remove_position` ends one, which asks for a
+  site rebuild when the position is an officer's or the board's), and the offers of positions
+  to it are deleted. The row then says how many accounts and positions that was.
+- **What a dismissed row is.** A record. The Executive Board reads it, reason included (the
+  Roster page's status filter has *Dismissed*); nobody can edit it, give it a status or remove
+  it, in the portal or with SQL, because the trigger `guard_roster_dismissal` is on the table
+  itself. Bulk updates and their Undo skip it and say so ("dismissed", "dismissed since").
+  "Dismissed" is not a status anybody can type: by hand, in a bulk update or in the sheet it is
+  refused. A second row for the same person (the same email, or the same name where either row
+  has no email) is refused as well.
+- **While dismissed, nothing brings the member back.** Signing in ties the account to the
+  record and verifies nobody. The account cannot be given a status other than `unverified`
+  (the board reads "This member was dismissed, so the account stays unverified…" on the
+  verification queue), and it cannot hold a position ("The membership of this person has
+  ended, so they cannot hold a position.", worded so because an officer can meet it).
+- **The import** leaves alone every line that names a dismissed member (the same name and
+  email, the same email, or the same name alone) and every line whose status says dismissed.
+  They are counted as `skipped_dismissed` in the run and shown as *left alone (dismissed)*
+  under *Recent imports*; a dismissed row is never listed as missing from the sheet. The name
+  alone is enough on purpose, so that a changed email in the sheet cannot make a second,
+  ordinary row. A real namesake of a dismissed member is therefore not imported: add them by
+  hand on the Roster page, with their own email.
+- **Reinstate.** The President opens the record and presses *Reinstate* (two clicks).
+  `rpc/reinstate_roster_member(entry)` puts the status back to `status_before_dismissal` and
+  clears the four columns. Nothing else comes back: the account stays `unverified` until the
+  member asks for verification again (section 9), and the committee and positions are
+  assigned again by hand. The row belongs to the portal afterwards, so the sheet does not
+  overwrite it until somebody presses *Follow the spreadsheet again*.
+- **What the President is refused:** an empty reason, a member already dismissed, the row of
+  their own account, and a person the roster lists twice under one email (remove the duplicate
+  row first, within the hour if the sheet still lists it, or the next import puts it back).
+- **On record.** The audit log (`/portal/admin/audit`) has the dismissal and the reinstatement
+  as updates of the roster row, with the President as the actor, the reason and the earlier
+  status in the before and after; the account's change and each ended position are there too.
+  Reinstating clears the reason from the row, and the log keeps it.
+- **The public check** answers `{ "state": "ended" }` for a dismissed member and nothing else.
+  `/members` then says "This membership has ended", that there is no current membership under
+  that name or email, and to contact the Executive Board. No status, date or reason leaves the
+  database, and the page does not say "dismissed". The home-page count leaves dismissed
+  members out. A committee's Members tab does not list them, because the row has no committee.
+
+```sql
+-- Who is dismissed, by whom and why.
+select r.full_name, r.dismissed_at, p.email as dismissed_by, r.status_before_dismissal, r.dismissal_reason
+from public.roster_entries r left join public.profiles p on p.id = r.dismissed_by
+where r.dismissed_at is not null order by r.dismissed_at desc;
+```
+
+Do both from the portal, as the President. As `postgres` the two functions refuse
+(`app.is_president()` sees no `auth.uid()`), and the table's guard refuses a direct update of
+a dismissed row or of the dismissal columns. If the President's account is lost, give the
+position to its work email again (section 8) first.
 
 **Public "did you mean".** `rpc/check_membership` may answer a miss with suggestions: up to three
 member names, only when two or more near-complete words were typed, or a masked email hint
@@ -206,8 +274,9 @@ never returned.
    Blank the key again afterwards.
 
 All three call the same merge, `app.apply_roster_rows`: new rows are added, changed rows
-updated, portal-edited rows kept, rows missing from the file reported and **never deleted**,
-then `app.claim_unlinked()` links anyone who signed in earlier. Each run is logged in
+updated, portal-edited rows kept, lines for a dismissed member left alone (above), rows missing
+from the file reported and **never deleted**, then `app.claim_unlinked()` links anyone who
+signed in earlier. Each run is logged in
 `public.roster_sync_runs` (shown on the Roster page as *Recent imports*).
 
 Checks:
@@ -371,6 +440,11 @@ where profile_id = '<profile uuid>' and status = 'active'
   and position_id = (select id from public.positions where key = 'eb.vp-internal');
 ```
 
+One position carries a power of its own: the holder of `eb.president` is the only account
+that can dismiss a member from the roster and reinstate one (section 4). Dismissing ends
+every position the member's account holds, and that account can be given none, by invite or
+by hand, until the President reinstates the member.
+
 ## 9. Approve a membership verification
 
 Members who are not on the roster sign in as `unverified` and submit a request
@@ -384,7 +458,8 @@ at `/portal/verify`. Two ways to decide:
   in its row ("Approved. … is now an active member.") and an Undo beside it.
   Undo calls the `undo_verification_decision` RPC (see "Taking a decision
   back" below); the row then has its buttons again and can be decided a second
-  time. A decision another board member made is shown without an Undo.
+  time. A decision another board member made is shown without an Undo, and
+  the database refuses to undo it for anyone but that board member.
 - **SQL**, as `postgres`, when the portal is unavailable:
 
   ```sql
@@ -414,6 +489,12 @@ at `/portal/verify`. Two ways to decide:
 Check the Members Officer agrees before approving anyone you cannot place. The
 EB-only RPC `public.set_membership_status(profile_id, status, tier)` changes a
 status without a request, for example to mark alumni.
+
+A request from a member the President has dismissed cannot be approved, and
+`set_membership_status` cannot lift that account either: both answer "This
+member was dismissed, so the account stays unverified. The President can
+reinstate the member on the Roster page." Once the member is reinstated the
+request is decided like any other (section 4).
 
 ### Taking a decision back
 
@@ -445,9 +526,13 @@ shows as it is (errcode `22023`), checked in this order:
 
 | When | The sentence |
 | --- | --- |
+| The request is gone | "That verification request no longer exists." |
 | The request is not decided (still waiting, or undone already) | "This request is waiting for a decision, so there is nothing to undo." |
+| The request has been decided again since, and not the way `decision` names | "This request has been decided again since, so that decision is no longer there to undo." |
 | The decision was made before the migration, or by the direct `update` above, so nothing was kept | "This decision was made before decisions could be undone. The webmaster can change the status of the member by hand." |
+| Someone else made the decision (`decided_by` is not the caller) | "This decision was made by another board member, and only they can undo it." |
 | The member has sent a newer request since the decision | "This member has sent a newer request since the decision. Decide that request instead." |
+| Another request of the same member was decided after this one | "Another request from this member has been decided since, so this decision can no longer be undone." |
 | After an approval the member's status, tier or joining year changed again (the roster, or `set_membership_status`) | "The membership of this member has changed since the approval, so the approval cannot be undone." |
 | The approval lifted an unverified member who is by now on the roster (a linked row that is not archived or suspended) or holds an active position | "This member is now on the roster or holds a position, which verifies them, so the approval cannot be undone." |
 
@@ -534,13 +619,9 @@ The portal, the assignment queries and every `app.*` helper read
 next request.
 
 ## 11. Debugging
-| The request is gone | "That verification request no longer exists." |
 
-| The request has been decided again since, and not the way `decision` names | "This request has been decided again since, so that decision is no longer there to undo." |
 ### Where to look
-| Someone else made the decision (`decided_by` is not the caller) | "This decision was made by another board member, and only they can undo it." |
 
-| Another request of the same member was decided after this one | "Another request from this member has been decided since, so this decision can no longer be undone." |
 - **Supabase logs**: dashboard, Logs, pick API (PostgREST), Auth, or Postgres;
   or MCP `query_logs` with `service: api | auth | postgres`. Auth failures
   (redirect not allowed, provider error) are in the Auth log with the exact
@@ -847,7 +928,9 @@ column is still `current_position` and still filled by the sheet sync.
 **The public member lookup follows the roster (migration `20261005190001_lookup_follows_roster`,
 test `280-lookup-follows-roster.sql`).** `/members` asks `rpc/check_membership`, which reads
 the roster row live, so a change on the Roster page or in the sheet shows on the next lookup
-with nothing to publish. Status, year joined and GA counts come straight from the row. The
+with nothing to publish. Status, year joined and GA counts come straight from the row. For a
+dismissed member the answer is `{ "state": "ended" }` alone and the page says that the
+membership has ended (section 4). The
 positions are put together by `app.roster_positions_text`, one per line:
 
 1. the position set on the roster: an officer by the short name ("LORE", "LEO-In"), a board
@@ -1487,7 +1570,11 @@ npm run walk -- --contrast --no-shots  # text contrast (WCAG AA) on every page
   form and its applications, members with one opened, invites), the new and edit forms of
   tasks and updates, Submissions with rows in every tab, an album, a magazine edition and
   the notifications panel. A screen that only shows after a tap is a route ending in
-  `#name` with an entry in `acts`.
+  `#name` with an entry in `acts`. Four roster screens came with the dismissal of members
+  (section 4): a dismissed member's record as the board reads it, and three as the
+  President, who alone has the controls. The walk is the webmaster, so on a route whose
+  `#name` starts with `president` it also holds the President's position (`presiding` in
+  the script): `#president-dismiss`, `#president-dismissed` and `#president-reinstate`.
 - **Writing a sample row.** A sample row names its committee by `c-<slug>` (`c-scope`).
   The committees are the real ones, and the script hands each to the page under that id,
   since a sample row cannot know the real one. A read that narrows its rows
