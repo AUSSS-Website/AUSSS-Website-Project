@@ -422,15 +422,26 @@ found, on the request's own row: `member_status_before`, `member_tier_before`
 and `member_joined_year_before` (the member's membership fields as the decision
 found them) and `member_status_after` (the status the decision left; after a
 decline it is the same one, because a decline changes nothing on the profile).
-All four are empty while a request is pending, and a check constraint keeps a
-member from filing a request with a "before" already in it.
+All four are empty while a request is pending, and a check constraint keeps
+them so whoever writes the row. The same migration narrows what a member may
+send when filing a request: the insert grant on `verification_requests` is on
+`profile_id` and `message` only (it was on the whole table), so a request
+cannot arrive with a date of its own or with those columns filled.
 
-`public.undo_verification_decision(request_id)` is for the Executive Board, as
-deciding is (`app.is_eb()`). It puts the request back to `pending`, clears
-`decided_by`, `decided_at` and the four kept columns and, after an approval,
-sets the member's `membership_status` back to `member_status_before`. An
-approval changes nothing else on the profile, so the profile is then what it
-was. It refuses with a sentence the portal shows as it is (errcode `22023`):
+`public.undo_verification_decision(request_id, decision)` is for the Executive
+Board, as deciding is (`app.is_eb()`), and only for the board member who made
+the decision. `decision` names the decision being taken back (`'approved'` or
+`'declined'`): a request can be decided, undone and decided again, and an Undo
+left open in another tab, or pressed again after a lost answer, must not take
+back the later decision. The function puts the request back to `pending`,
+clears `decided_by`, `decided_at` and the four kept columns and, after an
+approval, sets the member's `membership_status` back to
+`member_status_before`. An approval changes nothing else on the profile, so
+the profile is then what it was. It locks the request's row and then the
+member's profile row (`for update`, for a decline too), the order
+`decide_verification` takes them in, so no new request of that member can
+arrive between its checks and its write. It refuses with a sentence the portal
+shows as it is (errcode `22023`), checked in this order:
 
 | When | The sentence |
 | --- | --- |
@@ -439,13 +450,21 @@ was. It refuses with a sentence the portal shows as it is (errcode `22023`):
 | The member has sent a newer request since the decision | "This member has sent a newer request since the decision. Decide that request instead." |
 | After an approval the member's status, tier or joining year changed again (the roster, or `set_membership_status`) | "The membership of this member has changed since the approval, so the approval cannot be undone." |
 | The approval lifted an unverified member who is by now on the roster (a linked row that is not archived or suspended) or holds an active position | "This member is now on the roster or holds a position, which verifies them, so the approval cannot be undone." |
-| The request is gone | "That verification request no longer exists." |
 
-The last but one is there because the roster and a position each lift an
-unverified account once, when the link or the assignment is made, and found
-this account approved already: taken back to `unverified` it would stay there.
-An edit of the member's own details (name, phone, photo) since the approval
-does not stand in the way, because the undo writes none of them.
+A `decision` that is neither word is refused as "decision must be approved or
+declined", which is the function speaking of its own call and is not shown:
+the portal says "We couldn’t undo that decision." in its place.
+
+The last row of the table is there because the roster and a position each
+lift an unverified account once, when the link or the assignment is made, and
+found this account approved already: taken back to `unverified` it would stay
+there. An edit of the member's own details (name, phone, photo) since the
+approval does not stand in the way, because the undo writes none of them.
+
+When an undo is refused because the request is waiting, the page reads the
+queue again. If the request is in it, the decision had been taken back
+already (by the same person in another tab, or by a press whose answer was
+lost), and the row says so and has its buttons again.
 
 No notification and no email is sent when a request is decided, so there is
 none to take back and the undo sends none: the member's `/portal/verify` page
@@ -515,9 +534,13 @@ The portal, the assignment queries and every `app.*` helper read
 next request.
 
 ## 11. Debugging
+| The request is gone | "That verification request no longer exists." |
 
+| The request has been decided again since, and not the way `decision` names | "This request has been decided again since, so that decision is no longer there to undo." |
 ### Where to look
+| Someone else made the decision (`decided_by` is not the caller) | "This decision was made by another board member, and only they can undo it." |
 
+| Another request of the same member was decided after this one | "Another request from this member has been decided since, so this decision can no longer be undone." |
 - **Supabase logs**: dashboard, Logs, pick API (PostgREST), Auth, or Postgres;
   or MCP `query_logs` with `service: api | auth | postgres`. Auth failures
   (redirect not allowed, provider error) are in the Auth log with the exact
