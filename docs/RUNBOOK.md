@@ -1906,6 +1906,19 @@ chain (IFMSA, IFMSA-Egypt, AUSSS, `ifmsaLineage` in `src/data/society.js`) and t
 history timeline stay in the code. The IFMSA figures are approximate, as IFMSA and IFMSA-Egypt
 publish them: worth a look once a year, at rollover.
 
+**The society's age follows the term.** Any words edited in Site content may hold two
+placeholders, typed with their braces: `{years}` is shown as the number (56) and
+`{anniversary}` as the ordinal (56th). The number is the year the current term ends in, less
+1971 (`src/lib/anniversary.js`): 2025-26 was the 55th, 2026-27 is the 56th. So
+"its **{anniversary} anniversary**" needs no editing again: pressing **New term** (section 29)
+makes it the 57th everywhere, on the saved pages after the rebuild the switch asks for and in
+the editor's preview. The form keeps the placeholders as typed. The current term is read by
+`src/hooks/useCurrentTerm.js` (the `terms` table, which anyone may read; baked into the saved
+pages by the pre-render); with the database unreachable the pages count from the date, a term
+turning over on 1 September. The gallery's heading ("56 years through your eyes") uses the
+same number. A number typed as a number ("56th") stays as typed, so use the placeholder
+wherever the figure should keep up.
+
 The exchange hub (`/exchange`, three cards pointing at the two exchange pages and the team page)
 keeps its few lines in `src/data/society.js`; the two exchange pages themselves are blocks
 (section 25).
@@ -2012,7 +2025,8 @@ button at the foot of **Site settings**) shows, in order, what the switch will d
 6. **Switch**: the term changes, the old term's assignments end (dated today, in Cairo), the old
    term's offers of positions that nobody took up are withdrawn (a first sign-in would otherwise
    still turn them into positions of a term that is over), and the public pages are asked to
-   rebuild.
+   rebuild. The society's age on the site moves on with the term (the `{years}` and
+   `{anniversary}` placeholders of section 27), with nothing to edit.
 
 It refuses to start when nobody would keep the board's access: no board or webmaster position
 whose work account exists. Without that check a rollover could leave a society that only the

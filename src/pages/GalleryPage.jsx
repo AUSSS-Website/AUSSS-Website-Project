@@ -16,6 +16,7 @@ import {
 } from '../lib/gallery.js'
 import { society } from '../data/society.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
+import { useTermVars } from '../hooks/useCurrentTerm.js'
 
 // The albums come from the database (the PNSD officers edit them in the portal);
 // src/lib/gallery.js decides what to show while the live document loads. A photo
@@ -45,6 +46,8 @@ export default function GalleryPage({ archive = false }) {
 
 function GalleryIndex({ albums: all, trail, loading }) {
   useReveal()
+  // The society's age follows the current term (src/lib/anniversary.js).
+  const { years } = useTermVars()
   const albums = currentAlbums(all)
   const hasArchive = albums.length < all.length
   const isDesktop = useMediaQuery('(min-width: 768px)')
@@ -94,7 +97,7 @@ function GalleryIndex({ albums: all, trail, loading }) {
               <span className="h-px w-8 bg-medical" />
             </span>
             <h1 className="heading-serif mt-6 text-4xl text-ink sm:text-6xl">
-              55 years through your eyes
+              {years} years through your eyes
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-base font-light leading-relaxed text-soft/80 sm:text-lg">
               Camps, exchanges, assemblies, and the small in-between moments

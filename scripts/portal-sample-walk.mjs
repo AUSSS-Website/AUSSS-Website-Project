@@ -170,7 +170,7 @@ const tables = {
     { id: 'al-4', slug: 'winter-camp-2026', title: 'Winter camp 2026, with a title long enough to wrap on a phone', blurb: '', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(300), updated_at: iso(40), archived_term_id: 't0', archived_term: { label: '2025-26' } },
     { id: 'al-5', slug: 'orientation-25-26', title: 'Orientation 25-26', blurb: '', cover_photo_id: null, sort_order: 1, published: true, created_at: iso(380), updated_at: iso(40), archived_term_id: 't0', archived_term: { label: '2025-26' } },
   ],
-  terms: [{ id: 't1', label: '2026-27' }],
+  terms: [{ id: 't1', label: '2026-27', starts_on: '2026-09-01', ends_on: '2027-08-31' }],
   content_blocks: [
     { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
     // nothing saved yet: the editor opens on the copy that ships in the code

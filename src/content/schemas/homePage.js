@@ -4,6 +4,10 @@
 // code, and so do the Executive Board and the committees further down, which
 // come from the people who hold the positions.
 
+// The society's age follows the current term: src/lib/anniversary.js.
+const termHelp =
+  'Type {anniversary} where the anniversary goes (it shows as 56th, 57th and so on) and {years} for the number alone. Both move on by themselves when a new term starts.'
+
 const highlightHelp =
   'Put **double stars** around words to highlight them in the deep colour, and *single stars* around the words in the accent colour.'
 
@@ -19,7 +23,7 @@ export default {
       name: 'badge',
       type: 'text',
       label: 'Badge above the logo',
-      help: 'The small highlighted line at the very top, for an anniversary or a campaign. Leave it empty to hide it.',
+      help: `The small highlighted line at the very top, for an anniversary or a campaign. Leave it empty to hide it. ${termHelp}`,
       max: 80,
     },
     {
@@ -54,7 +58,7 @@ export default {
       name: 'note',
       type: 'markdown',
       label: 'Line under the figures',
-      help: 'Optional. Words between **double stars** take the accent colour.',
+      help: `Optional. Words between **double stars** take the accent colour. ${termHelp}`,
       max: 300,
     },
     {
@@ -68,7 +72,7 @@ export default {
       name: 'aboutLede',
       type: 'markdown',
       label: 'About: the large text under the heading',
-      help: highlightHelp,
+      help: `${highlightHelp} ${termHelp}`,
       required: true,
       max: 400,
     },
@@ -116,17 +120,17 @@ export default {
     },
   ],
   defaults: {
-    badge: '55 Years of Youth · 55 Years of Impact',
+    badge: '{years} Years of Youth · {years} Years of Impact',
     lead: 'Science, health and humanity, driven by Ain Shams’ medical students.',
     figures: [
       { value: '10', label: 'Committees and divisions' },
       { value: '300+', label: 'Exchange students hosted' },
       { value: '80+', label: 'Campaigns a year' },
     ],
-    note: 'This year, AUSSS officially celebrates its **55th anniversary**.',
+    note: 'This year, AUSSS officially celebrates its **{anniversary} anniversary**.',
     aboutHeading: 'Where clinical practice meets scientific inquiry.',
     aboutLede:
-      'For **55 years**, AUSSS has been where Ain Shams medical students **turn ideas into action**. It is where curiosity grows into a *calling for change*.',
+      'For **{years} years**, AUSSS has been where Ain Shams medical students **turn ideas into action**.',
     aboutBody:
       'The **Ain Shams University Students’ Scientific Society (AUSSS)** is an independent, non-profit, non-political and non-religious student society within the Faculty of Medicine, Ain Shams University, and an **autonomous affiliate member of IFMSA-Egypt**.\n\nThrough clinical and research exchanges, projects, campaigns and peer-to-peer training, AUSSS helps medical students use their knowledge **for the benefit of society**, and offers a forum to discuss health, education and science with peers **across Egypt and around the world**.',
     aboutQuote:
@@ -146,7 +150,7 @@ export default {
       },
       {
         title: 'Evidence-based culture',
-        body: 'Journal clubs, methodology workshops and mentorship build a generation fluent in scientific rigour.',
+        body: 'Journal clubs, methodology workshops and mentorship train students in scientific rigour.',
         link: '',
         linkLabel: '',
       },

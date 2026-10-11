@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import usePageTitle from '../../../hooks/usePageTitle.js'
 import useMediaQuery from '../../../hooks/useMediaQuery.js'
 import { contentSchema } from '../../../content/index.js'
-import { defaultDoc, normalizeDoc, sameDoc, validateDoc } from '../../../content/schema.js'
+import { defaultDoc, fillDoc, normalizeDoc, sameDoc, validateDoc } from '../../../content/schema.js'
+import { useTermVars } from '../../../hooks/useCurrentTerm.js'
 import { useContentBlock, useWriteContentBlock } from '../../contentQueries.js'
 import { useNames } from '../../workQueries.js'
 import { personName, when } from '../../workUi.jsx'
@@ -52,6 +53,9 @@ function Editor({ schema, block }) {
   const names = useNames(useMemo(() => [block.draft_saved_by, block.published_by], [block.draft_saved_by, block.published_by]))
 
   const clean = useMemo(() => normalizeDoc(schema, doc), [schema, doc])
+  // The preview shows {years} and {anniversary} the way the site does; the form keeps them as typed.
+  const vars = useTermVars()
+  const shown = useMemo(() => fillDoc(schema, clean, vars), [schema, clean, vars])
   const errors = useMemo(() => validateDoc(schema, clean), [schema, clean])
   const errorCount = Object.keys(errors).length
   const saved = useMemo(() => workingDoc(schema, block), [schema, block])
@@ -199,7 +203,7 @@ function Editor({ schema, block }) {
             className="no-reveal rounded-2xl border border-line/10 bg-page xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto xl:overscroll-contain"
           >
             <div className="p-5 sm:p-8">
-              <Preview doc={clean} />
+              <Preview doc={shown} />
             </div>
           </div>
         </section>
