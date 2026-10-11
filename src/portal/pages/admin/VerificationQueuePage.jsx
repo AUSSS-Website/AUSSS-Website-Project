@@ -29,8 +29,10 @@ import ExportButtons from '../../ExportButtons.jsx'
 //
 // That sentence has an Undo beside it, for a decision made on this visit: the
 // undo_verification_decision RPC puts the request back to pending and the
-// member's status back to what it was, and the row gets its buttons again. The
-// database refuses when undoing would overwrite something newer, and its
+// member's status back to what it was, and the row gets its buttons again.
+// The undo names the decision it takes back, and the database holds it to
+// that: it refuses a decision that is no longer how the request stands, one a
+// colleague made, and one whose undoing would overwrite something newer. Its
 // sentence is shown under the row.
 
 // On a touch screen the two buttons are at least a thumb tall; with a mouse
@@ -49,11 +51,14 @@ function outcome(req, decision, byOther = false) {
     : `Declined. ${name ? `${name}’s` : 'Their'} membership status has not changed.`
 }
 
-// What a row says once its decision has been taken back.
-function undone(req, byOther = false) {
+// What a row says once its decision has been taken back. `already` is true
+// when this press found it taken back before: only the person who made a
+// decision can undo it, so that was their own doing, in another tab or with a
+// press whose answer never arrived.
+function undone(req, already = false) {
   const name = req.profile?.full_name || req.profile?.email
   const waiting = `${name ? `${name}’s` : 'The'} request is waiting for a decision again.`
-  return byOther ? `Someone else had already undone that decision. ${waiting}` : `Decision undone. ${waiting}`
+  return already ? `That decision had already been undone. ${waiting}` : `Decision undone. ${waiting}`
 }
 
 // 'approved' or 'declined' when the database refused because the request was
@@ -67,7 +72,7 @@ function decidedElsewhere(err) {
 // Each row decides for itself, with a write of its own: its buttons are busy
 // while it saves and the other rows stay as they are. `done` is what has
 // happened to the request on this visit, once something has: { decision,
-// byOther } after a decision, and { decision: '', undone: true, byOther } once
+// byOther } after a decision, and { decision: '', undone: true, already } once
 // that decision has been taken back. `lastPressed` is the page's note of the
 // row whose button was pressed last.
 function Row({ req, done, lastPressed, onDecided, onUndone, isPendingAgain }) {
@@ -115,13 +120,18 @@ function Row({ req, done, lastPressed, onDecided, onUndone, isPendingAgain }) {
     lastPressed.current = req.id
     setError('')
     try {
-      await undo.mutateAsync(req.id)
+      // The decision this line is about goes with the request's id. If the
+      // request has been decided again since (this line was left open in
+      // another tab), the database refuses, and the later decision stands.
+      await undo.mutateAsync({ request_id: req.id, decision: done.decision })
       onUndone(req)
     } catch (err) {
-      // The database refuses an undo of a request that is pending, which is
-      // what this one is if another board member has just undone the same
-      // decision. The queue is read again to find out, and the row then says
-      // so; any other refusal is shown as the database worded it.
+      // The database refuses an undo of a request that is pending. This one
+      // is pending if the decision was taken back already: by the same
+      // person in another tab, or by an earlier press here whose answer was
+      // lost on the way. The queue is read again to find out, and the row
+      // then says so and has its buttons again. Every other refusal leaves
+      // the request decided, and is shown as the database worded it.
       if (err?.code === '22023' && (await isPendingAgain(req))) onUndone(req, true)
       else setError(errorText(err, 'We couldn’t undo that decision.'))
     }
@@ -154,7 +164,7 @@ function Row({ req, done, lastPressed, onDecided, onUndone, isPendingAgain }) {
             tabIndex={-1}
             className={done?.undone ? 'mt-3 text-sm text-soft/75 focus:outline-none' : 'sr-only'}
           >
-            {done?.undone ? undone(req, done.byOther) : ''}
+            {done?.undone ? undone(req, done.already) : ''}
           </p>
         </div>
         {/* Decline is as wide as its "Click again" wording from the start, so
@@ -190,7 +200,7 @@ function Row({ req, done, lastPressed, onDecided, onUndone, isPendingAgain }) {
             back. The line is always in the row, so a screen reader hears the
             sentence when it comes; out of sight until there is one, and out of
             the row's layout with it. A decision someone else made is not this
-            person's to undo from a list that was out of date, so it gets the
+            person's to undo, and the database would refuse it, so it gets the
             sentence alone. Only this line is busy while the undo is sent. */}
         <div ref={said} tabIndex={-1} className={decided ? 'max-w-xs focus:outline-none' : 'sr-only'}>
           <UndoLine
@@ -242,8 +252,8 @@ export default function VerificationQueuePage() {
     // Decided elsewhere, the list here is out of date: other rows may be too.
     if (byOther) pending.refetch()
   }
-  const onUndone = (req, byOther = false) => {
-    setDecided((prev) => new Map(prev).set(req.id, { req, decision: '', undone: true, byOther }))
+  const onUndone = (req, already = false) => {
+    setDecided((prev) => new Map(prev).set(req.id, { req, decision: '', undone: true, already }))
   }
   // Whether the queue, read again now, holds this request. A read that fails
   // still hands back the list from before, which proves nothing, so it
