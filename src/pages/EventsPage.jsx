@@ -282,8 +282,8 @@ function EventView({ ev, events }) {
   return (
     <article className="bg-page">
       <header className="relative overflow-hidden pb-10 pt-32 sm:pt-40">
-        {/* Centred like the committee pages: the site's floating Back button
-            sits at the top left on a phone. */}
+        {/* Centred like the committee pages: from lg up the site's floating
+            Back button sits at the top left. */}
         <div className="container-prose relative max-w-4xl text-center">
           {/* 44px for a finger. The margins take back what that adds to the
               1rem line, worked out from the root size so the 2rem gap below

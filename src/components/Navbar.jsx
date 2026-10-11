@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle.jsx'
 import NavCartButton, { FloatingCartPill } from './NavCartButton.jsx'
+import BackButton from './BackButton.jsx'
 import { useSiteSettings } from '../hooks/useSiteSettings.js'
+import { useOrderSectionInView } from '../lib/orderSectionView.js'
 import { committees, slugFor } from '../data/society.js'
 import { pressCls } from '../lib/motion.js'
 import { lockPageScroll } from './ScrollManager.jsx'
@@ -239,6 +241,9 @@ export default function Navbar() {
   // Inner pages have no dark hero behind the bar → always solid. So is the bar
   // over the open mobile menu, which then reads as one sheet with it.
   const solid = scrolled || !isHome || open
+  // True while the phone row's cart button is grown into its pill, which is
+  // while the order section of /merch is on screen (NavCartButton.jsx).
+  const cartGrown = useOrderSectionInView()
 
   const barRef = useRef(null)
   useEffect(() => {
@@ -341,25 +346,39 @@ export default function Navbar() {
         // of links is at its fullest there and needs the room.
         className="flex h-24 w-full items-center justify-between px-6 sm:px-10 min-[1100px]:px-16 min-[1920px]:px-24"
       >
-        <Link to="/" className="group flex shrink-0 items-center" aria-label="AUSSS home">
-          {/* Black logo on the light theme, white on the dark one: the hero
-              behind the clear bar follows the theme too. */}
-          <img
-            src="/assets/brand/ausss-icon-black.png"
-            alt="AUSSS, Ain Shams University Students' Scientific Society"
-            className={`h-14 w-auto transition-opacity sm:h-16 min-[1920px]:h-[4.5rem] ${
-              'block dark:hidden'
-            }`}
-          />
-          <img
-            src="/assets/brand/ausss-icon-white.png"
-            alt=""
-            aria-hidden="true"
-            className={`h-14 w-auto transition-opacity sm:h-16 min-[1920px]:h-[4.5rem] ${
-              'hidden dark:block'
-            }`}
-          />
-        </Link>
+        {/* Back comes first on an inner page below lg, where the bar is this
+            short row (BackButton.jsx says why it is in the bar). The home page
+            has no Back, and from lg up it floats under the bar, so in both the
+            logo stands alone here as it did. */}
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+          <BackButton placement="bar" />
+          {/* Under 360px the bar cannot hold Back, the logo and the grown
+              cart pill together, so the logo steps aside for as long as the
+              pill is out. The menu still has Home. */}
+          <Link
+            to="/"
+            className={`group flex shrink-0 items-center ${cartGrown ? 'max-[359px]:hidden' : ''}`}
+            aria-label="AUSSS home"
+          >
+            {/* Black logo on the light theme, white on the dark one: the hero
+                behind the clear bar follows the theme too. */}
+            <img
+              src="/assets/brand/ausss-icon-black.png"
+              alt="AUSSS, Ain Shams University Students' Scientific Society"
+              className={`h-14 w-auto transition-opacity sm:h-16 min-[1920px]:h-[4.5rem] ${
+                'block dark:hidden'
+              }`}
+            />
+            <img
+              src="/assets/brand/ausss-icon-white.png"
+              alt=""
+              aria-hidden="true"
+              className={`h-14 w-auto transition-opacity sm:h-16 min-[1920px]:h-[4.5rem] ${
+                'hidden dark:block'
+              }`}
+            />
+          </Link>
+        </div>
 
         {/* Between 1024 and 1279px the bar is at its fullest: the gaps are
             narrower there, widen from 1280px and again from 1536px. The larger

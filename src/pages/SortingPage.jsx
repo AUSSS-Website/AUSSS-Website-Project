@@ -220,19 +220,16 @@ function Question({ qIndex, answers, picked, onChoose, onBack, focusRef }) {
   const q = QUESTIONS[qIndex]
   const progress = qIndex / QUESTIONS.length
   return (
-    // The site's own floating Back button (BackButton.jsx) is fixed at the top
-    // left of every page, above everything. It sat on top of this card's Back:
-    // a tap meant for "the question before" left the quiz and lost the answers.
-    // Room at the top keeps the two apart on a phone only until the page is
-    // scrolled a little, so below lg, where this card reaches the left edge,
-    // its Back is at the right end of the row and can never be under the
-    // other. From lg the card is clear of that corner and Back is on the left.
-    <div className="mx-auto max-w-2xl pt-12 sm:pt-0">
+    // This card's Back goes to the question before; the site's own Back
+    // (BackButton.jsx) leaves the quiz and loses the answers, so the two must
+    // never lie one on the other. Below lg the site's is up in the header bar.
+    // From lg it floats at the top left, and this card is clear of that corner.
+    <div className="mx-auto max-w-2xl">
       {/* The header stays where it is from one question to the next, so the
           bar can run on to its new length. Only the question below it is
           swapped (the key) and fades up again. */}
       <div className="animate-fade-up">
-        <div className="flex flex-row-reverse items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-soft/60 lg:flex-row">
+        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-soft/60">
           <button
             type="button"
             onClick={onBack}

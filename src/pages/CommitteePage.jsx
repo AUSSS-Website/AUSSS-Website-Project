@@ -85,10 +85,8 @@ function CommitteeView({ c }) {
 
   return (
     <article className="bg-page">
-      {/* Brand hero. More room above it on a phone than from sm up: the floating
-          Back button (BackButton.jsx) sat on the arrow of the centred link
-          below and took the taps meant for it. */}
-      <header className="relative overflow-hidden pb-20 pt-44 sm:pt-40">
+      {/* Brand hero. */}
+      <header className="relative overflow-hidden pb-20 pt-32 sm:pt-40">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{

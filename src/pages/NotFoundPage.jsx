@@ -32,9 +32,7 @@ export default function NotFoundPage() {
 
   return (
     <article className="bg-page">
-      {/* Top padding: the bar, then the floating Back button, which on a phone
-          would otherwise sit on the first line of the centred text. */}
-      <div className="relative overflow-hidden pb-24 pt-44 sm:pb-32 sm:pt-48">
+      <div className="relative overflow-hidden pb-24 pt-32 sm:pb-32 sm:pt-48">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
