@@ -136,11 +136,15 @@ async function decideVerification({ request_id, decision, new_status }) {
 }
 
 // Takes a decision back: the request is pending again and, after an approval,
-// the member's status is what it was before. The database refuses in a
-// sentence when there is nothing to undo, and when undoing would overwrite
-// something newer (migration 20261011120001).
-async function undoVerification(requestId) {
-  return unwrap(await supabase.rpc('undo_verification_decision', { request_id: requestId }))
+// the member's status is what it was before. `decision` names the decision
+// being taken back ('approved' | 'declined'), and the database refuses when
+// that is not how the request stands: a request can be decided again after an
+// undo, and an Undo left open in another tab must not take back the later
+// decision. It also refuses, each time in a sentence, a decision someone else
+// made, and an undo that would overwrite something newer (migration
+// 20261011120001).
+async function undoVerification({ request_id, decision }) {
+  return unwrap(await supabase.rpc('undo_verification_decision', { request_id, decision }))
 }
 
 // ---- hooks ----------------------------------------------------------------
@@ -262,8 +266,8 @@ export function useDecideVerification() {
   })
 }
 
-// mutate(requestId). The page that offers the undo keeps the request's row
-// itself, so nothing is written into the cache here.
+// mutate({ request_id, decision }). The page that offers the undo keeps the
+// request's row itself, so nothing is written into the cache here.
 export function useUndoVerification() {
   const qc = useQueryClient()
   return useMutation({
