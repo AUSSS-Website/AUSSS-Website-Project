@@ -18,6 +18,8 @@ import { society } from '../data/society.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
 import { useTermVars } from '../hooks/useCurrentTerm.js'
 import { pressCls } from '../lib/motion.js'
+import { releaseSpeed, restingPlace, rubberband, springAt, wrap } from '../lib/photoStrip.js'
+import NotFoundPage from './NotFoundPage.jsx'
 
 // The albums come from the database (the PNSD officers edit them in the portal);
 // src/lib/gallery.js decides what to show while the live document loads. A photo
@@ -34,14 +36,31 @@ const tapLinkCls = '-my-[calc((44px_-_1.25rem)/2)] inline-flex min-h-[44px] item
 export default function GalleryPage({ archive = false }) {
   const { slug } = useParams()
   const { albums, trail, loading } = useGallery()
+  // The list the page started from: the one the build baked in, or the one
+  // this browser kept. useGallery puts another in its place only when the
+  // live list arrives with albums in it, so a different list is the live one.
+  const [startedWith] = useState(albums)
+  const live = albums !== startedWith
 
   const { album, redirectTo } = findAlbum(albums, slug)
+  // A link shared before the album was renamed still opens it.
+  if (redirectTo) return <Navigate to={`/gallery/${redirectTo}`} replace />
+  // An address that names no album gets the site's "not found" page, which
+  // also asks search engines to leave the address out. Only the live list can
+  // say so for certain: the list the page starts from may be older than the
+  // album, and a read that failed says nothing either way. The archive's
+  // albums are in the same list, so theirs still open. The gallery's own
+  // views are a component of their own below, so only one of the two sets the
+  // page title.
+  if (slug && !album && !loading && live) return <NotFoundPage />
+  return <GalleryView archive={archive} slug={slug} album={album} albums={albums} trail={trail} loading={loading} />
+}
+
+function GalleryView({ archive, slug, album, albums, trail, loading }) {
   usePageTitle(
     album ? album.title : archive ? GALLERY_ARCHIVE_TITLE : 'Gallery',
     archive && !album ? GALLERY_ARCHIVE_DESCRIPTION : undefined,
   )
-  // A link shared before the album was renamed still opens it.
-  if (redirectTo) return <Navigate to={`/gallery/${redirectTo}`} replace />
   if (slug && !album) return loading ? <LoadingAlbum /> : <NotFoundAlbum slug={slug} />
 
   if (album) return <AlbumView album={album} />
@@ -467,62 +486,13 @@ function GalleryDisclaimer() {
 // the strip is, counted in photos, so 3.25 is a quarter of the way from place
 // 3 to place 4. A drag sets it straight from the finger, and a spring carries
 // it to rest on a whole number afterwards. None of it is a CSS transition, so
-// a finger can take hold of a moving photo and it stops under it.
+// a finger can take hold of a moving photo and it stops under it. The sums
+// (the spring, the pull on a lone photo, the finger's speed and the place a
+// release comes to rest on) are in src/lib/photoStrip.js, with their tests.
 
 const LOCK_PX = 10 // a finger travels this far before its direction is read
-const COMMIT = 0.2 // let go past a fifth of the width and the photo changes
-const FLICK = 0.5 // px per ms: a flick changes the photo however short it was
-const SPRING = (2 * Math.PI) / 0.35 // the spring answers in about a third of a second
 const AT_REST = 0.0004 // nearer its place than this, the strip has arrived
 const LEAVE_MS = 200 // the fade out, as long as the fade in (.enter-scrim)
-
-const wrap = (n, count) => ((n % count) + count) % count
-
-// A critically damped spring: where it is and how fast it moves `t` seconds
-// after leaving `from` at `speed` for `to`. It takes up whatever speed it is
-// given and does not bounce by itself; only a hard flick carries it a little
-// past its place.
-function springAt(from, speed, to, t) {
-  const a = from - to
-  const b = speed + SPRING * a
-  const decay = Math.exp(-SPRING * t)
-  return { at: to + (a + b * t) * decay, speed: (b - SPRING * (a + b * t)) * decay }
-}
-
-// One photo has nowhere to go: the further it is pulled, the less it follows.
-function rubberband(pull, width) {
-  return (pull * width * 0.55) / (width + 0.55 * Math.abs(pull))
-}
-
-// The finger's speed as it lets go, in px per ms (leftwards is negative), over
-// the last 100 ms of its path. A finger that rested before lifting has none.
-function releaseSpeed(path, time) {
-  const last = path[path.length - 1]
-  if (!last || time - last.t > 100) return 0
-  const first = path.find((p) => last.t - p.t <= 100)
-  return last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0
-}
-
-// The place the strip comes to rest on when the finger lets go. A flick takes
-// the next photo in its direction from wherever the strip is, and one more
-// than it was heading for when it was caught already on its way there
-// (`toward`), so two quick flicks move two photos. A slow release takes the
-// next photo once the drag has carried the strip a fifth of the width, and
-// otherwise leaves it on the photo it was heading for.
-function restingPlace({ at, moved, speed, heading, toward }) {
-  const slack = 0.001
-  if (speed <= -FLICK) {
-    const next = Math.floor(at + slack) + 1
-    return toward > 0 ? Math.max(next, heading + 1) : next
-  }
-  if (speed >= FLICK) {
-    const before = Math.ceil(at - slack) - 1
-    return toward < 0 ? Math.min(before, heading - 1) : before
-  }
-  if (moved >= COMMIT) return Math.floor(at - COMMIT + slack) + 1
-  if (moved <= -COMMIT) return Math.ceil(at + COMMIT - slack) - 1
-  return heading
-}
 
 // The strip's moving parts. `center` is the place nearest the middle of the
 // screen (the photo either side of it is kept ready) and `shown` the place
@@ -733,19 +703,19 @@ function Lightbox({ photos, startIndex, onClose }) {
   const strip = usePhotoStrip({ start: startIndex, count, fade, onBackdrop: leave })
   const { step } = strip
 
+  // The arrow keys, wherever the focus is. Escape is the focus trap's: it
+  // hears it inside the lightbox and, since it listens on the document too,
+  // when the focus has got out.
   useEffect(() => {
     const onKey = (e) => {
       // Alt with an arrow is the browser's Back and Forward.
       if (e.altKey || e.ctrlKey || e.metaKey) return
       if (e.key === 'ArrowRight') step(1)
       else if (e.key === 'ArrowLeft') step(-1)
-      // The focus trap hears Escape while the focus is inside the lightbox
-      // and stops it there. This one is for when the focus has got out.
-      else if (e.key === 'Escape') leave()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [step, leave])
+  }, [step])
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow
@@ -920,6 +890,11 @@ function LoadingAlbum() {
   )
 }
 
+// Shown for an album the page does not know when the live list never came
+// (the read failed, or it came back with no albums at all): the album may be
+// a new one, so this says so on the gallery's own page and leaves the
+// address to search engines. Once the live list has it or has it not, the
+// page is the album or the site's "not found" page (GalleryPage above).
 function NotFoundAlbum({ slug }) {
   return (
     <article className="relative isolate overflow-hidden bg-page">

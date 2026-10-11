@@ -22,6 +22,7 @@ import {
 } from '../lib/events.js'
 import { markdownToText } from '../lib/markdown.js'
 import { pressCls } from '../lib/motion.js'
+import NotFoundPage from './NotFoundPage.jsx'
 
 // /events (what is coming up), /events/archive (what is over, by term) and
 // /events/<slug> (one event). The events come from the database
@@ -208,18 +209,43 @@ function ArchiveView() {
 
 const btnBase = `inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold ${pressCls}`
 
-function EventPage({ slug }) {
+// The events, and whether the list is the live one. The page starts from the
+// list the build baked in or the one this browser kept, and useEvents puts
+// another in its place only when the live answer arrives, so a different
+// list is the live one. Only that list can say for certain that an address
+// names no event: the first may be older than the event, and a read that
+// failed says nothing either way.
+function useEventsAndLive() {
   const { events, loading } = useEvents()
+  const [startedWith] = useState(events)
+  return { events, loading, live: events !== startedWith }
+}
+
+function EventPage({ slug }) {
+  const { events, loading, live } = useEventsAndLive()
   const { event, redirectTo } = findEvent(events, slug)
-  usePageTitle(event ? event.title : EVENTS_TITLE, event ? eventMetaDescription(event) : undefined)
-  useReveal()
 
   // A link shared before the event's link was changed still opens it.
   if (redirectTo) return <Navigate to={`/events/${redirectTo}`} replace />
+  // An address that names no event gets the site's "not found" page, which
+  // also asks search engines to leave the address out, once the live list has
+  // answered without it. Past events are in the same list, so theirs still
+  // open. The event's own page is a component of its own below, so only one
+  // of the two sets the page title.
+  if (!event && !loading && live) return <NotFoundPage />
+  return <EventOrWait event={event} events={events} loading={loading} />
+}
+
+function EventOrWait({ event, events, loading }) {
+  usePageTitle(event ? event.title : EVENTS_TITLE, event ? eventMetaDescription(event) : undefined)
+  useReveal()
   if (!event) return loading ? <LoadingEvent /> : <NotFound />
   return <EventView ev={event} events={events} />
 }
 
+// Shown for an event the page does not know when the live list never came
+// (the read failed): the event may be a new one, so this says so on the
+// events' own page and leaves the address to search engines.
 function NotFound() {
   return (
     <article className="bg-page">
@@ -439,9 +465,16 @@ function CalendarIcon() {
 // /events/<slug>.ics when the build has no file for the event yet: make the
 // file in the browser and hand it over.
 function CalendarFile({ slug }) {
-  const { events, loading } = useEvents()
+  const { events, loading, live } = useEventsAndLive()
   const { event, redirectTo } = findEvent(events, slug)
   const target = event || (redirectTo ? findEvent(events, redirectTo).event : null)
+  // The calendar file of an event the live list does not have: not found,
+  // as the event's own page is (EventPage above).
+  if (!target && !loading && live) return <NotFoundPage />
+  return <CalendarDownload target={target} loading={loading} />
+}
+
+function CalendarDownload({ target, loading }) {
   usePageTitle(target ? `${target.title} (calendar)` : EVENTS_TITLE)
   const [href, setHref] = useState('')
   const linkRef = useRef(null)

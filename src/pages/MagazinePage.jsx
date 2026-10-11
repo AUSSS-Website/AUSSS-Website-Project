@@ -71,15 +71,20 @@ function IssueSwitcher({ issues, currentId, onSelect }) {
 
 // ── Cover thumbnail (the hero page, or a gradient placeholder for a missing edition) ─
 function Cover({ src, alt, label }) {
-  const [failed, setFailed] = useState(false)
-  if (src && !failed) {
+  // Which address failed, not just that one did. A returning visitor's saved
+  // shelf can name a pages folder that has since been replaced: that cover
+  // fails, and the live shelf then brings the new address, which must be
+  // tried. A plain "failed" would outlive the address it was about and keep
+  // the placeholder up for good. The same goes for a change of edition.
+  const [failedSrc, setFailedSrc] = useState(null)
+  if (src && failedSrc !== src) {
     return (
       <img
         src={src}
         alt={alt}
         loading="lazy"
         decoding="async"
-        onError={() => setFailed(true)}
+        onError={() => setFailedSrc(src)}
         className="h-full w-full object-cover"
       />
     )

@@ -100,7 +100,7 @@ export default function ContactPage() {
           <h1 className="heading-serif mt-5 text-4xl text-ink sm:text-6xl">
             Contact us
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-lg font-light text-soft/75">
+          <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-lg font-normal text-soft/75 dark:font-light">
             {contact.contactIntro}
           </p>
           {contactEmail && (

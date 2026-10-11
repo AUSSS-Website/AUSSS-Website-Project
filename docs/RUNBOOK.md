@@ -864,9 +864,16 @@ committee shows the same page. Before, both landed on the home page without a wo
 The portal and the exam never reach it: their routes take every address under `/portal`
 and `/exam`. A few addresses people may type still go somewhere: `/committees` to the
 committees section of the home page, `/index.html` to the home page, and the aliases
-listed in `src/App.jsx` (`/quiz`, `/login`, `/social` and the like). An album or event
-address that names nothing is still answered by its own page (`GalleryPage.jsx`,
-`EventsPage.jsx`).
+listed in `src/App.jsx` (`/quiz`, `/login`, `/social` and the like).
+
+An album or event address that names nothing shows the not-found page too
+(`GalleryPage.jsx`, `EventsPage.jsx`), and so does the calendar file address of an unknown
+event (`/events/<slug>.ics`), but only once the live list has arrived without it. The list
+a page starts from, baked in by the build or kept by the browser, may be older than the
+album or event, so until the live answer comes the page waits. Archived albums, past
+events and links from before a rename still open. If the live list never comes (the read
+fails, or the gallery's comes back with no albums), the page cannot be certain and keeps
+its own "Album not found" or "Event not found" message, with no `noindex` tag.
 
 It is a soft 404. The server answers 200, because `vercel.json` hands the shell to every
 address without a file, so the page asks search engines to leave it out:
@@ -1356,13 +1363,32 @@ npm run walk -- --contrast --no-shots  # text contrast (WCAG AA) on every page
 - **The portal without a sign-in.** `npm run walk:portal-sample`
   (`scripts/portal-sample-walk.mjs`) opens every portal page as a made-up webmaster with
   sample rows, at the same widths and themes, and measures the same two things. It answers
-  every database call itself, so it shows no real person and cannot write anything. It is
-  the quick check for a design change on the portal; long names and titles are in the
-  sample on purpose. Arguments are themes, widths and an optional path:
+  every database call itself, apart from anonymous reads of two public tables (the
+  committees and the site settings), so it cannot write anything and every person in its
+  lists is made up. What those two tables hold is real, each committee's own page
+  included. It is the quick check for a design change on the portal; long names and titles
+  are in the sample on purpose. Arguments are themes, widths and an optional path:
   `npm run walk:portal-sample -- light 320,375 /portal/tasks`. When a portal page gains a
   query, give it a sample row in the script. Since Phase 8 it also walks the exchange exam's
   pages for students (`/exam/…`, with nobody signed in to the portal), and it can tap a button
   on a route before it measures; section 30 lists those screens.
+- **What the sample walk covers.** Since the design pass of October 2026 it opens 100
+  screens (`ROUTES` in the script): 73 in the portal, 17 of the exam as a student meets it
+  and 10 public pages that show the same sample. Besides each portal page as it first
+  opens, it covers the roster's panels (the upgrades, Register a GA with the bulk updates
+  under it, position types, the Executive Board, a member's row opened), the verification
+  queue with requests waiting, the committee editor tab by tab (events, calls, a call's
+  form and its applications, members with one opened, invites), the new and edit forms of
+  tasks and updates, Submissions with rows in every tab, an album, a magazine edition and
+  the notifications panel. A screen that only shows after a tap is a route ending in
+  `#name` with an entry in `acts`.
+- **Writing a sample row.** A sample row names its committee by `c-<slug>` (`c-scope`).
+  The committees are the real ones, and the script hands each to the page under that id,
+  since a sample row cannot know the real one. A read that narrows its rows
+  (`status=eq.new`, `album_id=eq.al-1`) gets only the rows that fit (`narrowed()` in the
+  script), so a new sample row must carry the column it is asked by. Only the filters the
+  portal uses are known (`eq`, `neq`, `lt`, `in`, `is.null`, `not.is.null`). Any other
+  filter narrows nothing, and neither does a column that no row of the table carries.
 - **Pages.** The public list is the sitemap (the base's own, else the one in `dist/`, else
   production's) plus the checkout, the quiz and the sign-in page. The portal list is in the
   script (`PORTAL_FIXED`, `PORTAL_DETAIL`); add a route there when the portal gains one.
@@ -1745,11 +1771,14 @@ smaller field takes focus.
 
 **The portal header** is built to the public navbar's dimensions (the 6rem bar, the logo,
 the type and the side padding); the links sit on a row of their own below it, on one line
-that scrolls sideways on a phone and wraps from a tablet up. Since the design pass the two
-no longer step up at the same widths. The public bar was retuned to fit "Check membership"
-(section 28): its side padding widens at 1100 px and its larger type, pills and logo start
-at 1920 px. The portal header still widens its padding at 1024 px and takes the larger
-type and logo from 1536 px. In the portal's row of links the page a person is on is in
+that scrolls sideways on a phone and wraps from a tablet up. The two step up at the same
+widths. The public bar was retuned to fit "Check membership" (section 28): its side
+padding widens at 1100 px and its larger type, pills and logo start at 1920 px. The
+portal header was brought back in step in the third stage of the design pass, so its
+padding (the bar's and the row of links') widens at 1100 px and its larger type, sign-out
+pill, label and logo start at 1920 px. Between 1024 and 1099 px the header therefore
+stands 24 px wider on each side than the page under it, whose padding widens at 1024 px,
+as the public bar does. In the portal's row of links the page a person is on is in
 semibold ink with a blue bar under it, and the other links are a shade quieter.
 
 **The magazine reader's depth** (`Flipbook.jsx`, the `.flipbook` rules in `index.css`):
@@ -1761,8 +1790,10 @@ read (`--stack-left`, `--stack-right`); the shadow of the lifting page is the li
 ### What the design pass added (October 2026)
 
 The audit of 2026-10-08 (`docs/DESIGN_AUDIT_2026-10.md`; its first section says where each
-finding stands) was worked through in two stages on the branch `apple-design-pass`. This
-is what a page written after it has to know. Each item ends with a line of use.
+finding stands) was worked through in three stages on the branch `apple-design-pass`:
+the shared pieces, the pages, and then the follow-ups the pages had left for the shared
+files. This is what a page written after it has to know. Each item ends with a line of
+use.
 
 **Type.**
 
@@ -1791,7 +1822,20 @@ is what a page written after it has to know. Each item ends with a line of use.
   150 ms and it sinks to 0.97 while pressed, the sinking only for readers who have not
   asked for less motion. It is already in `<Button>`, `primaryBtnCls`, `outlineBtnCls` and
   `chipBtnCls`; on a hand-typed button it takes the place of `transition-colors`.
-  `` className={`rounded-full px-5 py-2 ${pressCls} hover:bg-veil/10`} ``
+  `pressCls` changes no colour by itself. On a phone nothing hovers and under reduced
+  motion nothing sinks, so a press there shows only if the button has a pressed colour:
+  every `<Button>` variant and the three portal classes carry one, and a hand-typed button
+  needs an `active:` colour beside `pressCls`. The portal's classes write theirs as
+  `[&:not(:disabled)]:active:`, so a switched-off button keeps its colour and a link
+  styled as a button still answers (`enabled:` would never match a link).
+  `` className={`rounded-full px-5 py-2 ${pressCls} hover:bg-veil/10 active:bg-veil/20`} ``
+- **`.reveal`** (`index.css`, with `useReveal.js`) asks for a layer of its own only while
+  it waits to come in: `will-change` goes back to `auto` once `is-visible` is on, and is
+  `auto` from the start under reduced motion. Left on, the hint held a layer for every
+  revealed element for as long as the page was open. The transform that moves nothing
+  stays, so a revealed element is still the box its absolutely placed children are
+  measured from.
+  `<section className="reveal mx-auto max-w-5xl">`
 - **`scrollBehavior()`** (the same file) is the `behavior` of every `scrollTo` and
   `scrollIntoView`: a jump under reduced motion, a smooth scroll otherwise. Do not write
   `behavior: 'smooth'`. `prefersReducedMotion()` beside it is the test itself; both are
@@ -1839,15 +1883,41 @@ is what a page written after it has to know. Each item ends with a line of use.
   follow: nothing may be reachable by hover alone, and a card or button that should
   answer a finger needs an `active:` style of its own.
   `hover:border-line/30 active:border-line/30`
+- **Muted text is not dimmed a second time with an opacity class.** The steps of `soft`
+  are worked out to pass 4.5:1 as they stand (the token list above), and `opacity-60` laid
+  over one takes it under: the sample walk found an undone bulk update, a retired position
+  and a read-only field that way. Say it with a soft step, and with `line-through` where
+  the text is struck out; on a field the step needs `!`, because `inputCls` sets
+  `text-ink`. The steps are tuned for a page, a band and a card, so on a tinted fill
+  (`bg-veil/10`, a row's hover tint) take a stronger one, as the quiet status pill of the
+  calls list does (`text-soft/90`). A switched-off button is another matter and keeps its
+  `disabled:opacity-40`.
+  `` className={`${inputCls} max-w-sm ${position.active ? '' : 'line-through !text-soft/70'}`} ``
+- **The keyboard's ring on a button** is the same on every `<Button>` variant, on `Toggle`
+  and on `ThemeToggle`: a 2px outline in the theme's blue, set off by a 2px gap so that it
+  shows on any fill. A caller need not pass ring classes of its own.
+  `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`
 
 **Touch.** Where a finger lands, a control is at least 44px, written in px: the root size
 is 15px on a 320px phone, so `h-11` and `min-h-[2.75rem]` are 41px there. Three idioms are
-in use. `min-h-[44px]`, where the control may simply be taller.
-`[@media(pointer:coarse)]:min-h-[44px]` (the `tapCls` of the portal's pages), where it
-should stay a small pill under a mouse. And an unseen `::after`, 44px high and centred on
-the control, where it must not look any bigger; two such areas may meet and must not
-overlap.
+in use. `min-h-[44px]`, where the control may simply be taller. `tapCls`, exported from
+`src/portal/portalUi.jsx`, where it should stay a small pill under a mouse: a 44px minimum
+height on a touch screen only. And an unseen `::after`, 44px high and centred on the
+control, where it must not look any bigger; two such areas may meet and must not overlap.
 `relative after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-full after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']`
+
+`tapCls` is built into `primaryBtnCls`, `outlineBtnCls`, `inputCls`, `chipBtnCls` and
+`smallInputCls`, so a page adds it only to a control it styles by hand. It is written
+inside `:where()`, which gives the rule no weight, so a height a page sets itself
+(`min-h-[7rem]` on a tall textarea) still wins. Many portal pages still define a `tapCls`
+of their own in the plain form, `[@media(pointer:coarse)]:min-h-[44px]`, and put it beside
+a shared class. Those copies do no harm and can go. Do not copy the plain form for
+anything new: beside a taller minimum of the page's own it wins on a phone and takes the
+control down to 44px. A few files, among them the dashboard, the directory, the profile
+and `PortalLayout.jsx`, give the name `tapCls` to an `::after` reach of their own instead.
+`<Button>` sizes `sm` and `md` carry the `::after` reach themselves, so a `<Button>` needs
+nothing added.
+`` import { tapCls } from '../../portalUi.jsx' `` then `` className={`rounded-full border px-3 py-1 text-xs ${tapCls}`} ``
 
 **Errors people see.** `errorText(err, fallback)` (`src/lib/errorText.js`) turns a caught
 error into one whole sentence. Show its result alone, with nothing such as ". Please try
@@ -1855,22 +1925,34 @@ again" after it.
 
 | The error | What comes out |
 | --- | --- |
-| The request got no answer (offline, a dropped connection, a timeout) | "We couldn’t reach the server. Check your connection and try again." |
+| The request got no answer (offline, a dropped connection, a timeout), or a part of the site's own code that is loaded on demand did not arrive (the module that builds a PDF) | "We couldn’t reach the server. Check your connection and try again." |
 | A permission error | the database's own sentence when it wrote one, otherwise "You don’t have permission to do that." |
-| A refusal written for people: a function's `raise` (codes 22023, P0001, 23505, 40001), or an error marked `rejected` that carries no code | the sentence as written (Postgres's own words under those codes, such as "duplicate key value", become the fallback) |
+| A refusal a server answered: a function's `raise` (codes 22023, P0001, 23505, 40001), or a 4xx answer that carries no code | the sentence as written, but only when it opens as a sentence written for people does (a capital, a figure or a quotation mark, or in lower case "a", "an", "the" or "could not find") and carries no row id. Otherwise the fallback: a function speaking of its own call ("decision must be approved or declined") and Postgres's own words under those codes ("duplicate key value") are never shown |
+| A sentence the site's own code threw and marked `rejected`, which has neither a code nor a status | the sentence as written, however it opens ("minutes.pdf could not be uploaded.") |
 | Anything else | `fallback`, the caller's own words for what failed |
 
 `<ErrorText>{save.error ? errorText(save.error, 'Could not save the photo.') : ''}</ErrorText>`
 
 Two cautions. A sentence the site's own code throws with `new Error('…')` is replaced by
 the fallback: mark it `rejected = true` (as `refusal()` in `src/portal/magazineQueries.js`
-does), or show `err.message` at that one call site. `src/portal/exportFile.js` still
-throws its two font sentences unmarked, and `ExportButtons.jsx` recognises them by how
-they begin.
-And an error that carries a `code` is judged by the code alone (`src/lib/supabaseRest.js`
-puts the answer's code on what it throws), so PostgREST's own 4xx words, such as a missing
-function or a not-null violation, become the fallback. `src/lib/membership.js` still hands
-back the raw message; `MembersPage.jsx` rewords it.
+does), or show `err.message` at that one call site. `src/portal/exportFile.js` marks its
+two font sentences the same way, and `ExportButtons.jsx` calls `errorText` directly, with
+no patterns of its own.
+And whether an error that carries a `code` is a refusal is decided by the code alone
+(`src/lib/supabaseRest.js` puts the answer's code on what it throws), so PostgREST's own
+4xx words, such as a missing function or a not-null violation, become the fallback.
+`lookupMember` in `src/lib/membership.js` returns `errorText`'s sentence as the `message`
+of its `{ state: 'error' }` answer, to be shown as it is. `MembersPage.jsx` still passes
+that sentence through `lookupErrorText`, a rewording of its own from when the message was
+the raw one.
+
+**A read that got no answer is not tried again by the portal's react-query**
+(`src/portal/queryClient.js`). supabase-js has by then sent a table read four times
+itself, waiting 1, 2 and 4 seconds in between, and a second round took "We couldn’t reach
+the server" from about 7 seconds to about 15. Any other failed read is still tried once
+more. A read through a database function is a POST, which supabase-js sends once, so with
+no answer it fails at once; the directory has a retry rule of its own in
+`src/portal/queries.js` and keeps its second try.
 
 **The portal's shared pieces** are in `src/portal/portalUi.jsx` unless another file is
 named.
@@ -1882,26 +1964,39 @@ named.
 - **A field's label** (`Field`) is plain 14px ink text, and the fields show a focus ring
   (`inputCls`, and `smallInputCls` in `workUi.jsx`). The small blue capitals are a panel's
   title, and **`panelTitleCls`** is that look for a heading that opens a section without
-  being a field's label.
+  being a field's label. A `Field` given both a `hint` and an `htmlFor` ties the hint to
+  its control, so the hint is read out with the field: the control's `aria-describedby`
+  gains the hint's id, after any description the page gave it itself. With no `htmlFor`
+  there is nothing to tie the hint to.
   `<p className={panelTitleCls}>Wide designs</p>`
+  `<Field label="Title" hint="Shown on the card." htmlFor="p-title"><input id="p-title" className={inputCls} /></Field>`
 - **`CheckField`** is a tick box with its label and hint, for a choice that waits for
   Save. A switch (`Toggle`) is only for a setting that takes effect the moment it is
   flipped, so the two never look alike. `onChange` is handed the new true or false, as
   Toggle's is, and the row brings its own 44px, so stacked ones need no margin.
   `<CheckField checked={digest} onChange={setDigest} label="Email me a daily digest" hint="At most one email a day." />`
+- **`Toggle`** is 28px tall to the eye and carries an unseen `::after` 44px high, so a
+  finger has the full target, the row keeps its height and a page needs no wrapper for
+  it. It shows the keyboard's ring, and its knob slides only for a reader who has not
+  asked for less motion. `describedBy` takes the id of the line beside the switch that
+  says what the setting does, which is then read out with it; no page passes it yet.
+  `<Toggle checked={open} onChange={setOpen} label="Taking orders" describedBy="orders-hint" />`
 - **`SaveStatus`** is the one line beside a Save button: "Unsaved changes" while the form
   differs from what is stored, otherwise the saved wording, otherwise nothing. `saved` is
   true (for "Saved.", or for `savedText`) or the sentence itself. It is always in the
   page, out of sight when it has nothing to say, so a screen reader hears it change: the
   page must not print a "Saved." of its own beside it, and a wrapper that counted on
-  `empty:hidden` will not collapse.
+  `empty:hidden` will not collapse. The line is `text-xs` unless `className` brings a text
+  size (`className="text-sm"`), which then stands in its place.
   `<SaveStatus dirty={dirty} saved={saved} />`
 - **`UndoLine`** says what has just happened and offers to take it back. It stands in for
   asking first where a slip costs little (a row that left a list, a removed day). Keep it
   mounted with no children while there is nothing to undo, so it is read out when it
   comes, and give it some padding in a dense list (`className="py-3"`): its Undo button
   reaches 44px through an `::after`. The button leaves the page as it is pressed, so the
-  page that uses the line decides where the keyboard goes next.
+  page that uses the line decides where the keyboard goes next. As with `SaveStatus`, a
+  text size in `className` takes the place of the line's own `text-xs`, and the button
+  follows it.
   `<UndoLine onUndo={() => move(row.id, was)}>{moved ? 'Moved to Contacted.' : null}</UndoLine>`
 - **`ConfirmButton`** is every remove, delete and discard: the first click turns it red
   and asks again on the button, the second does it. A second click within 500 ms of the
@@ -1910,9 +2005,25 @@ named.
   is read out. A pill with the default look is as wide as its longest wording from the
   start; a pill with a `className` of its own takes `keepWidth` for the same. It renders
   two sibling nodes (the button, then an unseen live line). The `text` variant turns into
-  a red pill about 20px tall with no larger reach: on a touch screen wrap it, as
-  `confirmReachCls` in `src/portal/pages/exam/ExamsPage.jsx` does.
+  a red pill about 20px tall. On a touch screen both of its states have an unseen reach of
+  their own, so a wrapper is optional: 44px for the idle link while it keeps the default
+  look (a `className` of the page's own replaces it), and about 32px for the red pill
+  whatever the page passed. The red pill often wraps onto a line of its own under a row's
+  other links, where 44px of red would take a press meant for the link above. With a
+  mouse there is no reach. A wrapper that sets the button's `::after` itself, as
+  `confirmReachCls` in `src/portal/pages/exam/ExamsPage.jsx` does, outranks the shared
+  reach and gives the red pill the full 44px, so use one only where the row has the room.
   `<ConfirmButton label="Delete" busyLabel="Deleting…" busy={remove.isPending} onConfirm={() => remove.mutate(row.id)} />`
+  `<ConfirmButton variant="text" label="Remove" onConfirm={() => remove.mutate(row.id)} />`
+- **`useFocusTrap(active, onClose)`** (`src/hooks/useFocusTrap.js`) holds the keyboard
+  inside the cart drawer, the apply dialog, the photo viewer and the merch viewers, and
+  closes them on Escape. It keeps `onClose` in a ref, so a caller need not memoise it, and
+  a parent that renders again no longer pulls the keyboard back to the dialog's first
+  control. It also listens on the document: when the focus has slipped out of the dialog
+  (a click on plain text, the removal of the control that held it), Escape still closes
+  it and Tab comes back in. With two dialogs open only the one opened last answers. A
+  caller therefore needs no Escape listener of its own.
+  `const ref = useFocusTrap(open, onClose)`
 - **`useLeaveWarning(active)`** (`src/hooks/useLeaveWarning.js`) puts the browser's own
   question before the tab is closed, reloaded or sent to a typed address while `active`
   is truthy. It cannot see a link inside the site: the app uses `BrowserRouter`, which has
@@ -1951,15 +2062,28 @@ Four habits the pass settled on, which have no shared helper yet:
 with no page scrolling sideways and no low-contrast colour pairs; then look at the
 screenshots of the pages touched at 320 and 1920 px in both themes. State on 2026-10-05:
 the 37 public pages pass at all six widths in both themes, and so do the 18 portal pages
-of `npm run walk:portal-sample`. A signed-in walk of the portal against the real data
+`npm run walk:portal-sample` had then (it opens 100 screens since the third stage of the
+design pass, section 21). A signed-in walk of the portal against the real data
 (`npm run walk -- --login` first) has not been done yet. The design pass was checked area
 by area with throwaway headless Chromium scripts against made-up sessions and data, and
-with `npm test` (the shared pieces have tests beside them: `src/lib/motion.test.js`,
-`errorText.test.js`, `supabaseRest.test.js`, `src/hooks/useTabParam.test.js`,
-`src/portal/SortableList.test.js`). Neither walk had been run over it when this was
-written, nothing was tried signed in against the real database or on a real phone, and
-only Chromium was used: run both walks before the branch is merged, and try the photo
-viewer's swipe and the exam's buttons on an iPhone.
+with `npm test`, which ran 637 tests in 30 files on 2026-10-11 (the shared pieces have
+tests beside them: `src/lib/motion.test.js`, `errorText.test.js`, `photoStrip.test.js`,
+`supabaseRest.test.js`, `src/hooks/useTabParam.test.js`,
+`src/portal/SortableList.test.js`, `officerQueries.test.js`, `workQueries.test.js`,
+`magazineQueries.test.js`). `src/lib/photoStrip.js` holds the sums behind the photo
+viewer's swipe, moved out of `GalleryPage.jsx` so that they can be tested without a
+browser. The three portal query tests stub `../lib/supabase.js` with `vi.mock`, because
+the file each one tests builds the database client as it loads; a new test of a file that
+imports the client needs the same line. Both walks were run again over the result on
+2026-10-11, after the third stage. The portal sample walk opened all 100 screens at 320 and 1440 px and the public walk
+opened all 40 pages at 320 and 1920 px (and at 768, 1280 and 1536 px before the last small
+fixes), each in both themes with the contrast check: no page scrolled sideways, nothing
+was cut off in a fixed bar and no text was under 4.5:1. What the widened sample walk found
+on its first run (the Invites tab scrolling sideways at 320 px under a long position title,
+and six texts dimmed with an opacity class) was fixed before that last run.
+Nothing was tried signed in against the real database or on a real
+phone, and only Chromium was used: try the photo viewer's swipe and the exam's buttons on
+an iPhone, and Escape and Tab in the cart and the photo viewer in Safari.
 
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 

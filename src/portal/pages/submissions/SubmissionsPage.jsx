@@ -1095,9 +1095,16 @@ export default function SubmissionsPage() {
 
   const tabbed = tabs.length > 1
 
-  // The arrow keys move along the row, as they do in any set of tabs.
+  // The arrow keys move along the row, as they do in any set of tabs. They
+  // count from the tab that has the focus, not from the open one, as the
+  // committee editor's do: every tab can be reached with Tab, and from one
+  // that is not open an arrow used to jump to the open tab's neighbour.
   const onKeyDown = (e) => {
-    const at = tabs.indexOf(tab)
+    // With a key held beside it an arrow is the browser's own (Alt and the
+    // left arrow go back a page).
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+    const at = tabs.findIndex((key) => tabId(key) === e.target.id)
+    if (at < 0) return
     const to =
       e.key === 'ArrowRight'
         ? (at + 1) % tabs.length

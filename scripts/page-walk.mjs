@@ -190,6 +190,7 @@ const READ_RPCS = new Set([
   'check_membership',
   'committee_roster',
   'content_public',
+  'events_public',
   'gallery_public',
   'people_public',
   'magazine_insights',

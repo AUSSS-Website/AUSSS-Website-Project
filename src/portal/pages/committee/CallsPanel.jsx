@@ -199,8 +199,8 @@ function StatusPill({ call }) {
   const map = {
     open: ['Open', 'bg-medical/20 text-accent'],
     expired: ['Closed: deadline passed', 'bg-amber-400/15 text-warn'],
-    closed: ['Closed by you', 'bg-veil/10 text-soft/70'],
-    draft: ['Draft: not visible', 'bg-veil/10 text-soft/70'],
+    closed: ['Closed by you', 'bg-veil/10 text-soft/90'],
+    draft: ['Draft: not visible', 'bg-veil/10 text-soft/90'],
   }
   const [label, cls] = map[call.effectiveStatus] || map.draft
   return (

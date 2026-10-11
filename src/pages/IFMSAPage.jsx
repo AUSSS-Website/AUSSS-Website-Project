@@ -40,7 +40,7 @@ export default function IFMSAPage() {
           <h1 className="heading-serif mt-8 text-4xl text-ink sm:text-6xl">
             IFMSA at Ain Shams
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg font-light leading-relaxed text-soft/75">
+          <p className="mx-auto mt-5 max-w-2xl text-lg font-normal leading-relaxed text-soft/75 dark:font-light">
             {ifmsa.intro}
           </p>
         </div>

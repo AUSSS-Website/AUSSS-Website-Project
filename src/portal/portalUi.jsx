@@ -97,10 +97,22 @@ export function PageHeader({ eyebrow, title, subtitle, action }) {
   )
 }
 
+// On a touch screen a button or a field stands at least a thumb tall; with a
+// mouse it keeps the portal's small size. In px and not rem, because the root
+// size shrinks on a 320px phone. It is part of the shared button, chip and
+// field classes below and in workUi.jsx, so a page needs it only on a control
+// it styles by hand.
+//
+// The rule is written inside :where(), which gives it no weight: a height a
+// page sets itself (`min-h-[7rem]` on a tall textarea) still wins. Written
+// plainly it would come later in the stylesheet and take that textarea back
+// down to 44px on a phone.
+export const tapCls = '[@media(pointer:coarse)]:[:where(&)]:min-h-[44px]'
+
 // Compact form input. The ring shows which field the keyboard is in; the
 // border alone was too faint a change to find.
 export const inputCls =
-  'w-full rounded-xl border border-line/15 bg-sunk px-4 py-2.5 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60'
+  `w-full rounded-xl border border-line/15 bg-sunk px-4 py-2.5 text-sm text-ink placeholder:text-soft/40 focus:border-medical focus:outline-none focus-visible:ring-2 focus-visible:ring-medical/60 ${tapCls}`
 
 // Taller input for the sign-in card.
 export const authInputCls =
@@ -110,22 +122,78 @@ export const authInputCls =
 // both ways, on a <button> or on a link or label styled as one, even when a
 // flex row stretches them taller; the gap stands in for the space before an
 // icon, which a flex box drops. Both sink a little when pressed (pressCls).
+//
+// Both also change colour while pressed. On a phone nothing hovers, and the
+// sinking is left out for a reader who asked for less motion, who would
+// otherwise press and see nothing. Only a button that is switched on changes:
+// the rule is written with :not(:disabled) and not with enabled:, which a
+// link styled as a button would never pass.
+//
+// The primary pill has no border, so where the system forces its own colours
+// (Windows high contrast) and takes the fill away it gets one, in the
+// system's colour for a button's text. It is 2px larger there and nowhere else.
 const btnCentreCls = 'inline-flex items-center justify-center gap-1.5 text-center'
 export const primaryBtnCls =
-  `${btnCentreCls} rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta ${pressCls} hover:bg-cta-hover disabled:opacity-40`
+  `${btnCentreCls} rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-on-cta ${pressCls} ${tapCls} hover:bg-cta-hover [&:not(:disabled)]:active:bg-cta-hover disabled:opacity-40 forced-colors:border forced-colors:border-[color:ButtonText]`
 export const outlineBtnCls =
-  `${btnCentreCls} rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink ${pressCls} hover:bg-veil/10 disabled:opacity-40`
+  `${btnCentreCls} rounded-full border border-line/20 px-4 py-1.5 text-xs font-semibold text-ink ${pressCls} ${tapCls} hover:bg-veil/10 [&:not(:disabled)]:active:bg-veil/20 disabled:opacity-40`
+
+// The ids an element names as its description, as a list.
+const describers = (el) => (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)
 
 // A labelled form field. The label is plain text in the ink colour, as typed:
 // the small blue capitals are a panel's title (Panel above), and a field that
 // looked like one read as the start of a new section.
+//
+// The hint is read out with the field: the control named by `htmlFor` is
+// given the hint as a description (aria-describedby), after any description
+// the page gave it itself, such as the line that says what is wrong with it.
+// That is done on the element once it is in the page, and not by handing the
+// child a prop, because pages put all sorts of things inside a Field: the
+// control alone, the control in a row with a button, a component that draws
+// the control itself. React writes the attribute again whenever the page
+// changes its own value, so the hint is put back after every render.
 export function Field({ label, hint, htmlFor, children }) {
+  const hintId = `${useId()}-hint`
+  const box = useRef(null)
+  const described = Boolean(hint && htmlFor)
+
+  // The control this field labels, looked for inside the field only: a part
+  // of the page that is hidden may hold another element with the same id.
+  const control = () => [...(box.current?.querySelectorAll('[id]') || [])].find((el) => el.id === htmlFor)
+
+  useEffect(() => {
+    if (!described) return
+    const el = control()
+    if (!el) return
+    const ids = describers(el)
+    if (!ids.includes(hintId)) el.setAttribute('aria-describedby', [...ids, hintId].join(' '))
+  })
+
+  // When the hint goes while the field stays, its id is taken off again.
+  useEffect(() => {
+    if (!described) return undefined
+    return () => {
+      const el = control()
+      if (!el) return
+      const ids = describers(el).filter((id) => id !== hintId)
+      if (ids.length) el.setAttribute('aria-describedby', ids.join(' '))
+      else el.removeAttribute('aria-describedby')
+    }
+    // `control` reads only htmlFor and the ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [described, htmlFor, hintId])
+
   return (
-    <div>
+    <div ref={box}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
         {label}
       </label>
-      {hint && <p className="mb-3 mt-1 text-xs text-soft/50">{hint}</p>}
+      {hint && (
+        <p id={hintId} className="mb-3 mt-1 text-xs text-soft/50">
+          {hint}
+        </p>
+      )}
       {!hint && <div className="mt-3" />}
       {children}
     </div>
@@ -153,21 +221,38 @@ export function StatusBadge({ status }) {
   )
 }
 
-export function Toggle({ checked, onChange, label, disabled }) {
+// A switch, for a setting that takes effect the moment it is flipped.
+//
+//   <Toggle checked={open} onChange={setOpen} label="Taking orders" describedBy="orders-hint" />
+//
+// `label` is its name for a screen reader, and `describedBy` the id of the
+// line beside it that says what the setting does, which is then read out with
+// the switch.
+//
+// The track is 28px tall to the eye. An unseen ::after, 44px high and centred
+// on it (in px, because the root size shrinks on a 320px phone), is what a
+// finger lands on, so the row the switch stands in keeps its height. It is
+// placed by its edges and moved up by half its height, never sideways: pages
+// that already gave the switch a reach from an element around it wrote it
+// both ways, and a sideways move left over from here would push theirs off
+// the switch. The knob slides only for a reader who has not asked for less
+// motion; the track's colour fades for everyone.
+export function Toggle({ checked, onChange, label, disabled, describedBy }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 ${
         checked ? 'bg-medical' : 'bg-veil/15'
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow motion-safe:transition-transform ${
           checked ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
@@ -249,6 +334,15 @@ export function ErrorText({ id, children }) {
   )
 }
 
+// Whether a className sets a text size at every width: `text-sm`, `text-2xs`,
+// `text-[13px]`, or any of them with `!` before it. SaveStatus and UndoLine
+// ask, and leave their own `text-xs` out when it does. Two size classes on
+// one element do not settle by the order they are written in: the stylesheet
+// lists them by name, where `text-xs` comes last, so the line's own size won
+// and a size passed in was lost unless it was marked `!`.
+const TEXT_SIZE = /(?:^|\s)!?text-(?:[23]?xs|sm|base|lg|[2-9]?xl|\[(?:length:)?[\d.]+(?:px|rem|em)\])(?=\s|$)/
+const ownSize = (className) => TEXT_SIZE.test(className || '')
+
 // Where a form stands, in one line beside its Save button: "Unsaved changes"
 // while there is something to save, otherwise what the last save said,
 // otherwise nothing. A "Saved." left up after the next keystroke hid the fact
@@ -264,12 +358,15 @@ export function ErrorText({ id, children }) {
 // The line is a polite status, so a screen reader says it when it changes.
 // For that it has to be in the page before it has anything to say: with
 // nothing to say it is still rendered, out of sight and taking up no room.
+//
+// The line is `text-xs` unless `className` brings a size of its own
+// (`className="text-sm"`), which then stands in its place (see `ownSize`).
 export function SaveStatus({ dirty = false, saved = false, savedText = 'Saved.', unsavedText = 'Unsaved changes', className = '' }) {
   const text = dirty ? unsavedText : saved === true ? savedText : saved || ''
   return (
     <p
       role="status"
-      className={text ? `flex min-w-0 items-center gap-1.5 text-xs ${dirty ? 'text-soft/70' : 'text-ok'} ${className}` : 'sr-only'}
+      className={text ? `flex min-w-0 items-center gap-1.5 ${ownSize(className) ? '' : 'text-xs'} ${dirty ? 'text-soft/70' : 'text-ok'} ${className}` : 'sr-only'}
     >
       {dirty && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />}
       {text}
@@ -291,7 +388,8 @@ export function SaveStatus({ dirty = false, saved = false, savedText = 'Saved.',
 // children while there is nothing to undo, and a screen reader says the line
 // when it comes. The button has a thumb's 44px to land on although the line
 // stays one line of small text: its ::after carries the extra, centred on the
-// word.
+// word. As with SaveStatus, a text size in `className` takes the place of the
+// line's own `text-xs`, and the button follows it.
 const undoBtnCls = `relative inline-flex shrink-0 items-center rounded font-semibold text-accent ${pressCls} hover:text-ink disabled:opacity-40 after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[calc(100%+1rem)] after:min-w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`
 
 export function UndoLine({ children, onUndo, undoLabel = 'Undo', busyLabel = 'Undoing…', busy = false, className = '' }) {
@@ -299,7 +397,7 @@ export function UndoLine({ children, onUndo, undoLabel = 'Undo', busyLabel = 'Un
   return (
     <p
       role="status"
-      className={said ? `flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-soft/70 ${className}` : 'sr-only'}
+      className={said ? `flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 ${ownSize(className) ? '' : 'text-xs'} text-soft/70 ${className}` : 'sr-only'}
     >
       {said && <span className="min-w-0">{children}</span>}
       {said && onUndo && (
@@ -353,15 +451,41 @@ export function BackLink({ to = '/', children = 'Back to AUSSS home' }) {
 const DISARM_MS = 5000
 const CONFIRM_AFTER_MS = 500
 
+// The text variant is one line of small text, and the red pill it turns into
+// is some 20px tall. On a touch screen an unseen ::after gives a finger more
+// to land on, above and below, without the row growing. The red pill has it
+// whatever `className` the page gave the idle link, which the page cannot
+// reach.
+//
+// The idle link gets 44px (in px, because the root size shrinks on a 320px
+// phone). The red pill gets less: 0.375rem above and below, which makes some
+// 32px. On a phone "Click again to remove" often wraps onto a line of its own
+// under the row's other links, half a rem below them, and a press that
+// strayed onto 44px of red there would remove the thing when "Edit" was
+// meant. In rem, as that gap is, so the reach always stops short of it; and
+// never past 44px, for a pill a page has already stretched to that.
+//
+// Both are for a finger only. With a mouse the task page's files stand 6px
+// apart, and any reach round the red pill would lie over the crosses of the
+// files above and below it.
+//
+// The reach is placed by its edges and moved up by half its height, never
+// sideways, so a wrapper that sets the button's ::after itself
+// (confirmReachCls in ExamsPage.jsx, lineTapInsideCls in EventEditorPage.jsx)
+// outranks it cleanly and keeps its own shape.
+const textReachCls =
+  "relative [@media(pointer:coarse)]:after:absolute [@media(pointer:coarse)]:after:-inset-x-1 [@media(pointer:coarse)]:after:top-1/2 [@media(pointer:coarse)]:after:-translate-y-1/2 [@media(pointer:coarse)]:after:content-['']"
+
 const confirmIdle = {
   button: outlineBtnCls,
-  text: 'text-xs font-semibold text-soft/60 transition-colors hover:text-ink disabled:opacity-40',
+  text: `text-xs font-semibold text-soft/60 transition-colors hover:text-ink disabled:opacity-40 ${textReachCls} [@media(pointer:coarse)]:after:h-[44px]`,
 }
 // red-600, not red-500: white text on it is 4.8 to 1, and on red-500 only 3.8,
-// under the 4.5 that text of this size needs.
+// under the 4.5 that text of this size needs. A press shows as the darker
+// red, which a touch screen has no hover to show.
 const confirmArmed = {
-  button: '!border-red-600 !bg-red-600 !text-white hover:!bg-red-700',
-  text: `${btnCentreCls} rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white ${pressCls} hover:bg-red-700 disabled:opacity-40`,
+  button: '!border-red-600 !bg-red-600 !text-white hover:!bg-red-700 active:!bg-red-700',
+  text: `${btnCentreCls} rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white ${pressCls} hover:bg-red-700 active:bg-red-700 disabled:opacity-40 ${textReachCls} [@media(pointer:coarse)]:after:h-[min(44px,calc(100%+0.75rem))]`,
 }
 
 export function ConfirmButton({

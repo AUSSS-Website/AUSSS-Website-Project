@@ -169,7 +169,9 @@
     filter: none;
   }
 
-  /* Reveal-on-scroll base state */
+  /* Reveal-on-scroll base state. The hint asks the browser for a layer of the
+     element's own while it waits to come in, so the first frame of the way in
+     is not spent making one. */
   .reveal {
     opacity: 0;
     transform: translateY(32px);
@@ -179,10 +181,17 @@
     will-change: opacity, transform;
   }
 
+  /* useReveal.js adds `is-visible` once and never takes it off. From then on
+     the hint is dropped: the browser keeps the layer while the way in is
+     still playing and lets it go when that ends, where the hint held one for
+     every revealed element for as long as the page was open. The transform
+     that moves nothing stays, so the element is still the box its absolutely
+     placed children are measured from, as the hint made it. */
   .reveal.is-visible,
   .no-reveal .reveal {
     opacity: 1;
     transform: translateY(0);
+    will-change: auto;
   }
 }
 
@@ -463,10 +472,14 @@
       scale: none;
     }
   }
+  /* Nothing comes in, so no layer is asked for at any time. The transform
+     that moves nothing takes the hint's place in one respect: the element
+     stays the box its absolutely placed children are measured from. */
   .reveal {
     opacity: 1;
-    transform: none;
+    transform: translateY(0);
     transition: none;
+    will-change: auto;
   }
   .heba-photo {
     transition: none;

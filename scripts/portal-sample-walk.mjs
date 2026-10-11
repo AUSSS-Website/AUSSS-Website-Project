@@ -14,6 +14,10 @@
 // gains a query, give it a row here or the page shows its empty state. An
 // entry of `rpcs` is the function's answer, or a function of what the page
 // sent when the answer depends on it (which exam, which paper, which word).
+// A read that narrows its rows (status=eq.new, album_id=eq.al-1) gets the rows
+// that fit, so a row has to carry the column it is asked by. The committees
+// are the real ones, and each reaches the page under the id c-<its slug>:
+// that is the id a sample row names its committee by.
 //
 // The exchange exam is walked from both sides: the portal's Exam pages
 // (/portal/exam), and the pages students sit it on (/exam/<word>), which are no
@@ -23,10 +27,10 @@
 //   npm run walk:portal-sample -- light,dark 320,375 /exam
 //
 // A few screens only show after a tap (a question's form, a wrong start code,
-// a hand-in that got no answer): `acts` holds what the walk does on those
-// routes before it measures. The part after # in a route names such a screen
-// and means nothing to the page, except on the paper, where #review is its
-// last step.
+// a hand-in that got no answer, a panel of the roster): `acts` holds what the
+// walk does on those routes before it measures. The part after # in a route
+// names such a screen and means nothing to the page, except on the paper,
+// where #review is its last step.
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -64,8 +68,12 @@ const at = (daysAhead, hour) => {
   d.setUTCHours(hour - 2, 0, 0, 0)
   return d.toISOString()
 }
-const scoph = { slug: 'scoph', abbr: 'SCOPH', name: 'Public Health', color: '#1b9e4b' }
-const scora = { slug: 'scora', abbr: 'SCORA', name: 'Sexual & Reproductive Health and Rights incl. HIV & AIDS', color: '#d1477a' }
+const scoph = { id: 'c-scoph', slug: 'scoph', abbr: 'SCOPH', name: 'Public Health', color: '#1b9e4b' }
+const scora = { id: 'c-scora', slug: 'scora', abbr: 'SCORA', name: 'Sexual & Reproductive Health and Rights incl. HIV & AIDS', color: '#d1477a' }
+// Made-up first names and family names, for the lists that are too long to
+// write out (the roster, the exam's hall).
+const GIVEN = ['Amal', 'Basil', 'Dalia', 'Emad', 'Farah', 'Gamal', 'Hana', 'Idris', 'Jana', 'Kamal', 'Laila', 'Mona', 'Nabil', 'Omar', 'Rana', 'Sami', 'Tala', 'Wael', 'Yara', 'Zein']
+const FAMILY = ['Sample', 'Example', 'Specimen', 'Placeholder', 'Template', 'Stand-In', 'Mockup']
 const springDays = [
   { starts_at: at(8, 10), ends_at: at(8, 16) },
   { starts_at: at(9, 12), ends_at: at(9, 18) },
@@ -138,6 +146,190 @@ const sampleExams = [
   { id: 'ex-1', term_id: 't1', title: 'Exchange exam 2026-27', address_word: 'autumn-exchange-2026', status: 'ready', opens_at: minutesAgo(180), closes_at: minutesAgo(-60), minutes: 120, start_code: 'K7QM4X', created_by: other, created_at: iso(20), updated_at: iso(0.2), term: { label: '2026-27', is_current: true }, ...examCounts(examQuestions.length, HALL.ids, HALL.papers) },
   { id: 'ex-0', term_id: 't0', title: 'Exchange exam 2025-26', address_word: 'exchange-exam-2025', status: 'ready', opens_at: at(-330, 18), closes_at: at(-330, 19), minutes: 120, start_code: 'R4TB9N', created_by: other, created_at: iso(350), updated_at: iso(330), term: { label: '2025-26', is_current: false }, ...examCounts(examQuestions.length, 0, 0) },
 ]
+
+// ---- positions and the roster ---------------------------------------------------
+// The positions SCOPE and SCORE hand out (the two share one members list, and
+// SCOPE is its home), SCOPH's two, and the society's own: the board's and the
+// webmaster's. In the order the pages list them. One is retired, one has a
+// title long enough to wrap, and p1 to p4 are the ones the assignment and the
+// rollover's work accounts name.
+const position = (id, key, committee_id, level, title, short_title, more = {}) => ({ id, key, committee_id, title, short_title, level, sort: 10, active: true, can_assign_tasks: level !== 'member', ...more })
+const samplePositions = [
+  position('p4', 'scope.officer-incomings', 'c-scope', 'officer', 'Local Exchange Officer for Incomings', 'LEO-In'),
+  position('p-leo-out', 'scope.officer-outgoings', 'c-scope', 'officer', 'Local Exchange Officer for Outgoings', 'LEO-Out'),
+  position('p-lore', 'score.officer', 'c-score', 'officer', 'Local Officer on Research Exchange', 'LORE'),
+  position('p-scope-assistant', 'scope.assistant', 'c-scope', 'assistant', 'Exchange Incomings Assistant', 'Assistant'),
+  position('p-scope-social', 'scope.social', 'c-scope', 'assistant', 'Social Programme and Airport Pick-up Coordinator', ''),
+  position('p-scope-member', 'scope.member', 'c-scope', 'member', 'Contact Person', 'CP'),
+  position('p-scope-core', 'scope.core', 'c-scope', 'member', 'Core Team Member', 'Core'),
+  position('p-scope-old', 'scope.buddy', 'c-scope', 'member', 'A retired position with a rather long title, kept to show how one wraps', '', { active: false }),
+  position('p-scoph-officer', 'scoph.officer', 'c-scoph', 'officer', 'Local Public Health Officer', 'LPO'),
+  position('p-scoph-member', 'scoph.member', 'c-scoph', 'member', 'Local Member', 'Member'),
+  position('p2', 'society.president', null, 'eb', 'President', 'President'),
+  position('p3', 'society.vpe', null, 'eb', 'Vice President for External Affairs', 'VPE'),
+  position('p-president-assistant', 'society.president-assistant', null, 'assistant', 'Assistant to the President', ''),
+  position('p1', 'society.webmaster', null, 'webmaster', 'Webmaster', 'Webmaster'),
+]
+const positionOf = (id) => {
+  const { title, level } = samplePositions.find((p) => p.id === id)
+  return { id, title, level }
+}
+// The roster: five members written out (a long name, one with no committee,
+// one the portal owns, one whose name, address and position are all long,
+// one on the board), and enough made ones for a second page, since the list
+// shows fifty at a time. Every third made member has signed in and every
+// ninth has no email on file.
+const member = (id, full_name, email, status, more = {}) => ({ id, full_name, email, status, joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: '', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: null, is_contact_person: false, position_id: null, ...more })
+const sampleRoster = [
+  member('r-1', 'Sample Member With A Rather Long Four Part Name', 'member1@example.com', 'Full Member', { joined_year: 2023, years_spent: 3, lgas: 4, ngas: 1, current_position: 'Exchange Incomings Assistant', profile_id: 'pr-1', committee_id: 'c-scope', is_contact_person: true, position_id: 'p-scope-assistant' }),
+  member('r-2', 'Second Sample', 'member2@example.com', 'Candidate Member', { joined_year: 2025, years_spent: 1, lgas: 1 }),
+  member('r-3', 'Third Sample', 'member3@example.com', 'Associate Member', { current_position: 'Local Member', origin: 'portal', portal_edited_at: iso(2), import_batch: null, updated_at: iso(2), committee_id: 'c-scope', position_id: 'p-scope-member' }),
+  member('r-4', 'Fourth Sample Whose Name Runs On For A Good Many Words', 'a-rather-long-address-for-a-phone@example.com', 'Associate Member', { lgas: 3, ngas: 1, committee_id: 'c-scope', position_id: 'p-scope-social' }),
+  member('r-5', 'Fifth Sample', 'member5@example.com', 'Full Member', { joined_year: 2022, years_spent: 4, lgas: 6, ngas: 2, profile_id: 'pr-5', position_id: 'p3' }),
+  ...Array.from({ length: 56 }, (_, i) => {
+    const committee_id = [null, 'c-scope', 'c-scoph', 'c-scope'][i % 4]
+    return member(`r-${i + 6}`, `${GIVEN[i % GIVEN.length]} ${GIVEN[(i * 7 + 3) % GIVEN.length]} ${FAMILY[i % FAMILY.length]}`, i % 9 === 4 ? null : `member${i + 6}@example.com`, ['Candidate Member', 'Associate Member', 'Full Member'][i % 3], {
+      joined_year: 2022 + (i % 4),
+      years_spent: 4 - (i % 4),
+      lgas: i % 5,
+      ngas: i % 3,
+      profile_id: i % 3 === 0 ? `pr-${i + 6}` : null,
+      committee_id,
+      is_contact_person: i % 11 === 1,
+      position_id: committee_id === 'c-scoph' ? 'p-scoph-member' : committee_id ? (i % 8 === 3 ? 'p-scope-core' : 'p-scope-member') : null,
+    })
+  }),
+]
+// rpc/roster_upgrade_candidates: the first few members whose GA counts reach
+// the next status, which only the board grants.
+const upgradeCandidates = sampleRoster
+  .filter((r) => r.status !== 'Full Member')
+  .slice(0, 5)
+  .map(({ id, full_name, email, status, lgas, ngas }) => ({ id, full_name, email, status, next: status === 'Candidate Member' ? 'Associate Member' : 'Full Member', lgas, ngas }))
+
+// ---- a committee's own pages ----------------------------------------------------
+// What SCOPE's officers see on /portal/committees/scope. rpc/committee_roster
+// is the roster's rows for the committee, each with the position it gives
+// (`position`), every position the member holds there (`positions`) and how
+// many notes the officers keep on them.
+const committeeMembers = sampleRoster
+  .filter((r) => r.committee_id === 'c-scope')
+  .slice(0, 10)
+  .map(({ origin, portal_edited_at, import_batch, updated_at, position_id, ...r }, i) => {
+    const held = position_id ? positionOf(position_id) : null
+    return { ...r, status: i === 3 ? 'active' : r.status, position: held, positions: held && r.profile_id ? [held] : [], invited: [], notes: r.id === 'r-1' ? 2 : 0 }
+  })
+// rpc/committee_positions, for a committee and for the society (the board and
+// the webmaster): who holds a position now, and the offers that wait for a
+// first sign-in. `from_roster` marks what the members list gave.
+const holder = (assignment_id, profile_id, full_name, email, position_id, more = {}) => ({ assignment_id, profile_id, full_name, email, avatar_url: null, position: positionOf(position_id), from_roster: false, can_remove: true, ...more })
+const invite = (id, email, position_id, daysAgo, more = {}) => ({ id, email, invited_by: 'Sample Webmaster', created_at: iso(daysAgo), position: positionOf(position_id), from_roster: false, can_withdraw: true, ...more })
+const heldIn = {
+  committee: {
+    holders: [
+      holder('as-1', other, 'Sample Officer With A Long Name', 'leoin@example.com', 'p4'),
+      holder('as-2', 'pr-1', 'Sample Member With A Rather Long Four Part Name', 'member1@example.com', 'p-scope-assistant', { from_roster: true, can_remove: false }),
+      holder('as-3', 'pr-1', 'Sample Member With A Rather Long Four Part Name', 'member1@example.com', 'p-scope-social'),
+      holder('as-4', 'pr-9', null, 'no-name-yet@example.com', 'p-scope-core'),
+    ],
+    invites: [
+      invite('in-1', 'someone.new.with.a.rather.long.address@students.example.edu.eg', 'p-scope-social', 2),
+      invite('in-2', 'lore@example.com', 'p-lore', 6, { invited_by: null }),
+      invite('in-3', 'member3@example.com', 'p-scope-member', 9, { from_roster: true, can_withdraw: false }),
+      invite('in-4', 'a-rather-long-address-for-a-phone@example.com', 'p-scope-social', 9, { from_roster: true, can_withdraw: false }),
+    ],
+  },
+  society: {
+    holders: [
+      holder('as-5', uid, 'Sample Webmaster', 'webmaster@example.com', 'p1'),
+      holder('as-6', 'pr-2', 'Sample President', 'president@example.com', 'p2'),
+      holder('as-7', 'pr-5', 'Fifth Sample', 'member5@example.com', 'p3', { from_roster: true, can_remove: false }),
+    ],
+    invites: [invite('in-5', 'a-rather-long-work-address-for-a-phone@example.com', 'p3', 4)],
+  },
+}
+// Open Calls: one open with applications, one whose last day has passed, a
+// draft, and one its officers closed.
+const call = (id, status, title, more = {}) => ({ id, committee_id: 'c-scope', status, title, kind: 'Small Working Group', summary: '', description: '', commitment: '', deadline: null, notify_email: null, positions: [], questions: [], created_by: uid, created_at: iso(3), updated_at: iso(1), applications: [{ count: 0 }], ...more })
+const sampleCalls = [
+  call('call-1', 'open', 'Contact persons for the August incomings, with a title long enough to wrap on a phone', {
+    summary: 'Meet an incoming student at the airport, then show them the hospital and the city.',
+    description: 'Every incoming student is given a contact person for the month.\n\nYou meet them on the day they land, take them to the dormitory and are the first person they ask.',
+    commitment: 'About four hours a week through August',
+    deadline: day(9),
+    notify_email: 'leoin@example.com',
+    positions: [
+      { id: 'p0', title: 'Coordinator', blurb: 'Keeps the rota and the group chat', slots: '1 place' },
+      { id: 'p1', title: 'Contact person', blurb: '', slots: '12 places' },
+    ],
+    questions: [
+      { id: 'q0', label: 'Which weeks of August are you in Cairo?', type: 'select', options: ['All of them', 'The first two', 'The last two'], required: true },
+      { id: 'q1', label: 'Which languages do you speak well enough to explain a ward round in?', type: 'short', options: [], required: false },
+    ],
+    applications: [{ count: 3 }],
+  }),
+  call('call-2', 'open', 'Welcome booklet team', { kind: 'Campaign', deadline: day(-4), created_at: iso(30), updated_at: iso(20) }),
+  call('call-3', 'draft', 'Pre-departure training for the outgoings', { kind: 'Training', summary: 'Two evenings before the summer.', created_at: iso(1) }),
+  call('call-4', 'closed', 'Social programme volunteers', { deadline: day(20), created_at: iso(40), updated_at: iso(12), applications: [{ count: 14 }] }),
+]
+const application = (id, status, name, email, more = {}) => ({ id, ref: `AP-${id.slice(3).padStart(4, '0')}`, call_id: 'call-1', committee_id: 'c-scope', call_title: sampleCalls[0].title, name, email, phone: '', year: '', positions: [], motivation: '', answers: [], status, notes: '', created_at: iso(1), ...more })
+const sampleApplications = [
+  application('ap-1', 'new', 'First Applicant With A Rather Long Four Part Name', 'a.very.long.address.for.a.phone@students.example.edu.eg', {
+    phone: '01000000021',
+    year: 'Year 3',
+    positions: ['Coordinator', 'Contact person'],
+    motivation: 'I was a contact person last August and would like to run the rota this year.\n\nMy notes from then are here: https://example.org/exchange/incomings/contact-persons/handover-notes-august-2025-final-version',
+    answers: [
+      { id: 'q0', label: 'Which weeks of August are you in Cairo?', value: 'All of them' },
+      { id: 'q1', label: 'Which languages do you speak well enough to explain a ward round in?', value: 'English and French' },
+    ],
+  }),
+  application('ap-2', 'shortlisted', 'Second Applicant', 'applicant2@example.com', { positions: ['Contact person'], motivation: 'I would like to help.', notes: 'Met at orientation. Speaks German.', created_at: iso(2) }),
+  application('ap-3', 'declined', 'Third Applicant', 'applicant3@example.com', { year: 'Year 1', created_at: iso(2.5) }),
+]
+
+// ---- the gallery and the magazine -----------------------------------------------
+// The photos of three albums as the editor reads them: in the first one a
+// banner photo with a label, one hidden from visitors and two in the bin
+// (emptied by itself after thirty days, so neither is old enough to go).
+const photo = (album, i, more = {}) => ({ id: `${album}-ph${i}`, album_id: album, path: `${album}/ph${i}`, width: 1600, height: 1067, sort_order: i, label: '', featured: false, hidden: false, deleted_at: null, created_at: iso(10 - i * 0.01), ...more })
+const samplePhotos = [
+  photo('al-1', 0, { featured: true, label: 'Day one, on the corniche before the opening plenary' }),
+  photo('al-1', 1),
+  photo('al-1', 2, { hidden: true }),
+  photo('al-1', 3, { label: 'The delegation' }),
+  photo('al-1', 4),
+  photo('al-1', 5),
+  photo('al-1', 6, { deleted_at: iso(3) }),
+  photo('al-1', 7, { deleted_at: iso(1) }),
+  photo('al-2', 0),
+  photo('al-2', 1),
+  photo('al-2', 2),
+  photo('al-4', 0),
+]
+// The magazine's shelf: an edition whose pages were uploaded from the portal
+// (they are in the `magazine` bucket, in the folder of that upload), one built
+// into the site, one whose copy is missing and a draft with a Canva link.
+const BUCKETS = `https://${REF}.supabase.co/storage/v1/object/public`
+const pagesFolder = (daysAgo) => `pages-${Date.now() - daysAgo * 864e5}`
+const edition = (id, slug, status, title, more = {}) => ({ id, slug, title, switcher_label: '', date_label: '', blurb: '', status, sort_order: 0, pages_base: '', page_count: 0, hero_page: 1, download_url: '', canva_url: '', created_at: iso(30), updated_at: iso(10), ...more })
+// What the bucket holds under an edition: the folder its pages are read from,
+// and the one an upload replaced nine days ago. A folder goes a week after the
+// later of the two began, so both are kept.
+const magazineFolders = { 'mg-1': [pagesFolder(2), pagesFolder(9)] }
+const sampleIssues = [
+  edition('mg-1', 'vol-9', 'published', 'Autumn', { switcher_label: 'Autumn, Vol. 9', date_label: 'Volume 9 · A CBSD production', blurb: 'The ninth volume: exchange stories, a guide to the first clinical year and the term in pictures.', pages_base: `${BUCKETS}/magazine/mg-1/${magazineFolders['mg-1'][0]}`, page_count: 12, download_url: 'https://drive.google.com/file/d/sample/view' }),
+  edition('mg-2', 'vol-8', 'published', 'The Story of Origin, a title long enough to wrap on a phone, Vol. 8', { sort_order: 1, pages_base: '/assets/magazine/vol-7/pages', page_count: 23, hero_page: 2, created_at: iso(200), updated_at: iso(100) }),
+  edition('mg-3', 'vol-4', 'missing', 'Volume 4', { sort_order: 2, created_at: iso(300), updated_at: iso(300) }),
+  edition('mg-4', 'winter-draft', 'draft', 'Winter', { sort_order: 3, canva_url: 'https://www.canva.com/design/sample/view', created_at: iso(3), updated_at: iso(1) }),
+]
+// rpc/magazine_insights: the readers of an edition, fewer on every page.
+const insightsOf = (slug) => {
+  const pages = sampleIssues.find((m) => m.slug === slug)?.page_count || 0
+  const reach = Array.from({ length: pages }, (_, i) => ({ page: i + 1, readers: Math.round(80 * 0.9 ** i) }))
+  return { views: 412, likes: 38, downloads: 21, sessions: 90, tracked: pages ? 80 : 0, finished: reach.at(-1)?.readers ?? 0, median_page: Math.ceil(pages / 3), reach }
+}
+
 const tables = {
   profiles: [
     { id: uid, full_name: 'Sample Webmaster', email: 'webmaster@example.com', membership_status: 'active', avatar_url: null, photo_path: null, email_digest: true, directory_opt_in: true, phone: '', created_at: iso(30), updated_at: iso(1) },
@@ -149,18 +341,78 @@ const tables = {
     { id: 't-1', title: 'Collect the incomings welcome booklet photos from every contact person', body: 'One folder per student. Names on the files, please.', status: 'todo', priority: 'high', due_on: day(2), completed_at: null, committee_id: 'c-scope', created_by: uid, created_at: iso(3), updated_at: iso(1), committee: scope, assignees: [{ profile_id: uid }, { profile_id: other }] },
     { id: 't-2', title: 'Book the hall for the first general assembly', body: '', status: 'doing', priority: 'normal', due_on: day(-1), completed_at: null, committee_id: null, created_by: other, created_at: iso(6), updated_at: iso(2), committee: null, assignees: [{ profile_id: uid }] },
     { id: 't-3', title: 'Send the orientation recap', body: '', status: 'done', priority: 'normal', due_on: day(-6), completed_at: iso(5), committee_id: 'c-scope', created_by: uid, created_at: iso(12), updated_at: iso(5), committee: scope, assignees: [{ profile_id: other }] },
+    { id: 't-4', title: 'Print the World Health Day leaflets', body: '', status: 'blocked', priority: 'urgent', due_on: day(4), completed_at: null, committee_id: 'c-scoph', created_by: uid, created_at: iso(2), updated_at: iso(1), committee: scoph, assignees: [] },
   ],
+  // The first task's timeline, one row of every kind, and the files that came
+  // with two of them.
+  task_updates: [
+    { id: 'tu-1', task_id: 't-1', author_id: uid, kind: 'created', body: '', meta: {}, created_at: iso(3) },
+    { id: 'tu-2', task_id: 't-1', author_id: uid, kind: 'assigned', body: '', meta: { profile_id: other }, created_at: iso(3) },
+    { id: 'tu-3', task_id: 't-1', author_id: other, kind: 'comment', body: 'Half of them are in. The rest by Thursday, in the shared folder: https://example.org/exchange/incomings/welcome-booklet/photos/2026-27/contact-persons', meta: {}, created_at: iso(2) },
+    { id: 'tu-4', task_id: 't-1', author_id: other, kind: 'files', body: '', meta: { files: 2 }, created_at: iso(1.5) },
+    { id: 'tu-5', task_id: 't-1', author_id: uid, kind: 'edited', body: '', meta: { fields: ['title', 'due_on'] }, created_at: iso(1.2) },
+    { id: 'tu-6', task_id: 't-1', author_id: other, kind: 'status', body: '', meta: { from: 'doing', to: 'todo' }, created_at: iso(1) },
+    { id: 'tu-7', task_id: 't-1', author_id: uid, kind: 'comment', body: 'The list of who is still missing.', meta: {}, created_at: iso(0.5) },
+  ],
+  task_files: [
+    { id: 'tf-1', task_id: 't-1', update_id: 'tu-4', path: 't-1/a.pdf', name: 'contact-persons-with-a-rather-long-file-name-2026-27.pdf', size_bytes: 482113, mime: 'application/pdf', uploaded_by: other, created_at: iso(1.5) },
+    { id: 'tf-2', task_id: 't-1', update_id: 'tu-4', path: 't-1/b.jpg', name: 'hall.jpg', size_bytes: 1482113, mime: 'image/jpeg', uploaded_by: other, created_at: iso(1.5) },
+    { id: 'tf-3', task_id: 't-1', update_id: 'tu-7', path: 't-1/c.xlsx', name: 'missing.xlsx', size_bytes: 20480, mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', uploaded_by: uid, created_at: iso(0.5) },
+  ],
+  // A pinned update, one for everybody that runs past the fold, a draft, one
+  // that goes out next week and one that has come down.
   posts: [
-    { id: 'po-1', committee_id: 'c-scope', kind: 'update', title: 'Exchange season opens on the first of November', body: 'Applications go through the portal this year. Read the conditions before you apply: https://ausss-ainshams.org/exchange', levels: ['member', 'assistant', 'officer'], pinned: true, publish_at: iso(2), expires_at: null, author_id: uid, created_at: iso(2), committee: scope, reads: [] },
+    { id: 'po-1', committee_id: 'c-scope', kind: 'announcement', title: 'Exchange season opens on the first of November', body: 'Applications go through the portal this year. Read the conditions before you apply: https://ausss-ainshams.org/exchange', levels: ['member', 'assistant', 'officer'], pinned: true, publish_at: iso(2), expires_at: null, author_id: uid, created_at: iso(2), committee: scope, reads: [{ profile_id: other }] },
+    { id: 'po-2', committee_id: null, kind: 'news', title: 'The minutes of the first general assembly, and what was decided about the winter camp', body: 'The minutes are attached to the task, and the decisions are listed below. '.repeat(12).trim(), levels: [], pinned: false, publish_at: iso(1), expires_at: null, author_id: other, created_at: iso(1), committee: null, reads: [{ profile_id: uid }, { profile_id: other }] },
+    { id: 'po-3', committee_id: 'c-scoph', kind: 'resource', title: 'Leaflet templates', body: 'In the shared drive.', levels: ['officer'], pinned: false, publish_at: null, expires_at: null, author_id: uid, created_at: iso(0.5), committee: scoph, reads: [] },
+    { id: 'po-4', committee_id: 'c-scope', kind: 'news', title: 'Contact persons meet on Thursday', body: 'Bring the list of your students.', levels: ['member'], pinned: false, publish_at: iso(-7), expires_at: null, author_id: uid, created_at: iso(0.2), committee: scope, reads: [] },
+    { id: 'po-5', committee_id: 'c-scope', kind: 'news', title: 'Last term’s incomings report', body: 'Read it before the first meeting.', levels: [], pinned: false, publish_at: iso(40), expires_at: iso(10), author_id: uid, created_at: iso(40), committee: scope, reads: [] },
   ],
   notifications: [
     { id: 'n-1', kind: 'task_assigned', payload: { task_id: 't-1', title: 'Collect the incomings welcome booklet photos', actor_id: other }, read_at: null, created_at: iso(0.1) },
-    { id: 'n-2', kind: 'task_comment', payload: { task_id: 't-2', title: 'Book the hall for the first general assembly', actor_id: other }, read_at: iso(1), created_at: iso(2) },
+    { id: 'n-3', kind: 'order_new', payload: { name: 'Fourth Buyer With A Long Name That Wraps On A Phone', ref: 'AUSSS-4D8R1T', subtotal: 120, flagged: true }, read_at: null, created_at: iso(0.5) },
+    { id: 'n-4', kind: 'story_new', payload: { name: 'Second Outgoing With A Rather Long Four Part Name', destination: 'Brno, Czech Republic', ref: 'STORY-BBB222' }, read_at: null, created_at: iso(1) },
+    { id: 'n-5', kind: 'task_files', payload: { task_id: 't-1', title: 'Collect the incomings welcome booklet photos from every contact person', actor_id: other, count: 2, name: 'contact-persons-with-a-rather-long-file-name-2026-27.pdf' }, read_at: iso(1), created_at: iso(1.5) },
+    { id: 'n-2', kind: 'task_comment', payload: { task_id: 't-2', title: 'Book the hall for the first general assembly', actor_id: other, excerpt: 'The dean’s office wants the request on paper, signed, before Sunday.' }, read_at: iso(1), created_at: iso(2) },
   ],
-  roster_entries: [
-    { id: 'r-1', full_name: 'Sample Member With A Rather Long Four Part Name', email: 'member1@example.com', status: 'Full Member', joined_year: 2023, years_spent: 3, lgas: 4, ngas: 1, current_position: 'Exchange Incomings Assistant', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: 'c-scope', is_contact_person: true, position_id: null },
-    { id: 'r-2', full_name: 'Second Sample', email: 'member2@example.com', status: 'Candidate Member', joined_year: 2025, years_spent: 1, lgas: 1, ngas: 0, current_position: '', origin: 'sheet', portal_edited_at: null, profile_id: null, import_batch: 'b1', updated_at: iso(1), committee_id: null, is_contact_person: false, position_id: null },
-    { id: 'r-3', full_name: 'Third Sample', email: 'member3@example.com', status: 'Associate Member', joined_year: 2024, years_spent: 2, lgas: 2, ngas: 0, current_position: 'Local Member', origin: 'portal', portal_edited_at: iso(2), profile_id: null, import_batch: null, updated_at: iso(2), committee_id: 'c-scope', is_contact_person: false, position_id: null },
+  roster_entries: sampleRoster,
+  // The last two imports of the membership sheet (one pulled from the sheet,
+  // one uploaded as a file), and three bulk updates of the board's: two that
+  // can still be undone and one that was.
+  roster_sync_runs: [
+    { id: 2, at: iso(0.1), source: 'sheet', batch: '11/10/2026', result: { inserted: 0, updated: 3, unchanged: 58, kept_portal_edits: 2, skipped_duplicates: 0, skipped_invalid: 0, missing_from_sheet: 2, missing_names: ['Sample Member Who Left', 'Another Sample Member'] } },
+    { id: 1, at: iso(8), source: 'upload', batch: 'roster-october.xlsx', result: { inserted: 12, updated: 40, unchanged: 0, kept_portal_edits: 0, skipped_duplicates: 1, skipped_invalid: 2, missing_from_sheet: 0 } },
+  ],
+  roster_bulk_updates: [
+    { id: 3, at: iso(0.3), action: 'lga', value: null, label: 'Local General Assembly, October 2026', changes: sampleRoster.slice(0, 41).map((r) => ({ id: r.id })), undone_at: null },
+    { id: 2, at: iso(2), action: 'committee', value: 'scope', label: 'Contact persons for the August incomings', changes: sampleRoster.slice(5, 12).map((r) => ({ id: r.id })), undone_at: null },
+    { id: 1, at: iso(5), action: 'status', value: 'Associate Member', label: 'Upgrades approved before the assembly', changes: [{ id: 'r-3' }], undone_at: iso(4) },
+  ],
+  positions: samplePositions,
+  // The one address each officer's and board position belongs to. The
+  // outgoings officer's has none yet, so that position cannot be given.
+  position_work_emails: [
+    { position_id: 'p1', email: 'webmaster@example.com' },
+    { position_id: 'p2', email: 'president@example.com' },
+    { position_id: 'p3', email: 'a-rather-long-work-address-for-a-phone@example.com' },
+    { position_id: 'p4', email: 'leoin@example.com' },
+    { position_id: 'p-lore', email: 'lore@example.com' },
+  ],
+  // Four people waiting for the board to check their membership: one with a
+  // long name and address, one who wrote nothing, one whose account has
+  // neither a name nor an address yet.
+  verification_requests: [
+    { id: 'vr-1', status: 'pending', message: 'I joined SCOPH last year and my name is missing from the sheet. My student number and the committee I joined are in my profile.', created_at: iso(3), profile_id: 'pr-31', profile: { full_name: 'Sample Applicant With A Rather Long Four Part Name', email: 'a-rather-long-address-for-a-phone@example.com', membership_status: 'unverified' } },
+    { id: 'vr-2', status: 'pending', message: null, created_at: iso(2), profile_id: 'pr-32', profile: { full_name: 'Second Applicant', email: 'applicant2@example.com', membership_status: 'candidate' } },
+    { id: 'vr-3', status: 'pending', message: 'Please check.', created_at: iso(1), profile_id: 'pr-33', profile: { full_name: 'Third', email: 'applicant3@example.com', membership_status: 'unverified' } },
+    { id: 'vr-4', status: 'pending', message: null, created_at: iso(0.5), profile_id: 'pr-34', profile: { full_name: null, email: null, membership_status: 'unverified' } },
+  ],
+  calls: sampleCalls,
+  applications: sampleApplications,
+  // The officers' notes on the first member of SCOPE's list.
+  member_notes: [
+    { id: 'mn-2', roster_entry_id: 'r-1', committee_id: 'c-scope', author_id: other, body: 'Ran the airport rota in August without a single missed pick-up. The rota itself: https://example.org/exchange/incomings/airport-rota/august-2026/final-version-with-everyone-in-it', created_at: iso(2), updated_at: iso(2) },
+    { id: 'mn-1', roster_entry_id: 'r-1', committee_id: 'c-scope', author_id: uid, body: 'Reliable. Led the welcome stand last year.', created_at: iso(5), updated_at: iso(5) },
   ],
   albums: [
     { id: 'al-1', slug: 'national-general-assembly-aswan-2026', title: 'National General Assembly, Aswan 2026', blurb: 'Three days in Aswan.', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(20), updated_at: iso(2), archived_term_id: null, archived_term: null },
@@ -170,6 +422,8 @@ const tables = {
     { id: 'al-4', slug: 'winter-camp-2026', title: 'Winter camp 2026, with a title long enough to wrap on a phone', blurb: '', cover_photo_id: null, sort_order: 0, published: true, created_at: iso(300), updated_at: iso(40), archived_term_id: 't0', archived_term: { label: '2025-26' } },
     { id: 'al-5', slug: 'orientation-25-26', title: 'Orientation 25-26', blurb: '', cover_photo_id: null, sort_order: 1, published: true, created_at: iso(380), updated_at: iso(40), archived_term_id: 't0', archived_term: { label: '2025-26' } },
   ],
+  gallery_photos: samplePhotos,
+  magazine_issues: sampleIssues,
   terms: [{ id: 't1', label: '2026-27', starts_on: '2026-09-01', ends_on: '2027-08-31' }],
   content_blocks: [
     { key: 'join.faq', editors: [], has_draft: iso(0.2), draft: { items: [{ q: 'Who can join AUSSS?', a: 'Any student at the **Faculty of Medicine**, Ain Shams University. See the [committees](/#committees) to find where you fit.' }, { q: 'A question long enough to wrap onto a second line on a small phone, to see how the row copes?', a: 'It copes.\n\n- one\n- two' }] }, published: null, draft_saved_at: iso(0.2), draft_saved_by: other, published_at: null, published_by: null, updated_at: iso(0.2) },
@@ -181,8 +435,26 @@ const tables = {
   ],
   orders: [
     { id: 'o-1', ref: 'AUSSS-7F3K2Q', status: 'new', name: 'Sample Buyer', email: 'buyer1@example.com', phone: '01000000001', is_member: true, lc: '', year: '3rd year', payment_method: 'instapay', items: [{ product_id: 'tshirt-55', name: 'AUSSS T-Shirt, 55th Limited Edition', size: 'L', design: '', qty: 2, unit_price: 300, line_total: 600 }, { product_id: 'notebook', name: 'AUSSS Notebook', size: '', design: 'Support Divisions', qty: 1, unit_price: 40, line_total: 40 }], subtotal: 640, client_subtotal: 640, price_flag: '', notes: '', officer_notes: '', receipt_path: 'o-1.jpg', created_at: iso(0.2), updated_at: iso(0.2) },
+    // still new, with a name and an address that have to wrap, and a note each way
+    { id: 'o-4', ref: 'AUSSS-4D8R1T', status: 'new', name: 'Fourth Buyer With A Long Name That Wraps On A Phone', email: 'a-rather-long-address-for-a-phone-that-goes-on-and-on@students.example.edu.eg', phone: '+20 100 000 0004', is_member: false, lc: 'Alexandria', year: 'Other / External', payment_method: 'telda', items: [{ product_id: 'notebook', name: 'AUSSS Notebook', size: '', design: 'Exchange', qty: 3, unit_price: 40, line_total: 120 }], subtotal: 120, client_subtotal: 120, price_flag: '', notes: 'Please keep them for me until Thursday, I am away until then.', officer_notes: 'Called once, no answer.', receipt_path: 'o-4.jpg', created_at: iso(0.5), updated_at: iso(0.5) },
     { id: 'o-2', ref: 'AUSSS-9QX81B', status: 'contacted', name: 'Another Buyer With A Long Name', email: 'a-rather-long-address-for-a-phone@example.com', phone: '+44 7700 900123', is_member: false, lc: 'Cairo', year: 'Other / External', payment_method: 'telda', items: [{ product_id: 'jacket', name: '"The" AUSSS Jacket', size: '2XL', design: '', qty: 1, unit_price: 650, line_total: 650 }], subtotal: 650, client_subtotal: 600, price_flag: 'price mismatch (client said 600, server 650)', notes: '', officer_notes: '', receipt_path: null, created_at: iso(2), updated_at: iso(1) },
     { id: 'o-3', ref: 'AUSSS-2M4N6P', status: 'delivered', name: 'Third Buyer', email: 'buyer3@example.com', phone: '01000000003', is_member: true, lc: '', year: '5th year', payment_method: 'vodafone', items: [{ product_id: 'bucket-hat', name: 'Dash Bucket Hat', size: 'One size', design: '', qty: 1, unit_price: 150, line_total: 150 }], subtotal: 150, client_subtotal: 150, price_flag: '', notes: '', officer_notes: '', receipt_path: 'o-3.jpg', created_at: iso(9), updated_at: iso(3) },
+  ],
+  // Exchange stories: two new (one with a link that has nowhere to wrap), two
+  // on the exchange page (one featured) and one declined.
+  stories: [
+    { id: 's-1', ref: 'STORY-AAA111', status: 'new', name: 'Sample Outgoing', email: 'outgoing1@example.com', phone: '01000000011', destination: 'Lisbon, Portugal', programme: 'SCOPE', year: '5th year', story: 'I spent four weeks in the surgery department in Lisbon.\n\nIt was the best month of my studies.', notes: '', featured: false, public_name: '', public_story: '', published_at: null, created_at: iso(0.3), updated_at: iso(0.3) },
+    { id: 's-2', ref: 'STORY-BBB222', status: 'new', name: 'Second Outgoing With A Rather Long Four Part Name', email: 'a-rather-long-address-for-a-phone-that-goes-on-and-on@students.example.edu.eg', phone: '', destination: 'Brno, Czech Republic', programme: 'SCORE', year: '4th year', story: 'A story with a link that has nowhere to wrap: https://example.org/exchange/conditions/egypt/ain-shams-university/2026-27/professional-exchange and then some more words after it. '.repeat(6).trim(), notes: 'Asked for a photo.', featured: false, public_name: '', public_story: '', published_at: null, created_at: iso(1), updated_at: iso(1) },
+    { id: 's-3', ref: 'STORY-CCC333', status: 'published', name: 'Third Outgoing', email: 'outgoing3@example.com', phone: '', destination: 'Graz, Austria', programme: 'SCOPE', year: '6th year', story: 'Graz in winter. Cold hands, warm ward.', notes: '', featured: false, public_name: 'Third O.', public_story: 'Graz in winter. Cold hands, warm ward.', published_at: iso(5), created_at: iso(8), updated_at: iso(5) },
+    { id: 's-4', ref: 'STORY-DDD444', status: 'published', name: 'Fourth Outgoing', email: 'outgoing4@example.com', phone: '', destination: 'Tunis, Tunisia', programme: 'SCORE', year: '3rd year', story: 'A lab, a bench, a month.', notes: '', featured: true, public_name: 'Fourth Outgoing', public_story: 'A lab, a bench, a month.', published_at: iso(6), created_at: iso(9), updated_at: iso(6) },
+    { id: 's-5', ref: 'STORY-EEE555', status: 'declined', name: 'Fifth Outgoing', email: 'outgoing5@example.com', phone: '', destination: '', programme: '', year: '', story: 'Too short.', notes: '', featured: false, public_name: '', public_story: '', published_at: null, created_at: iso(12), updated_at: iso(10) },
+  ],
+  // The recruitment waitlist: one of them left no name.
+  signups: [
+    { id: 'g-1', kind: 'waitlist', status: 'new', name: 'Waiting One', email: 'waiting1@example.com', phone: '', notes: '', created_at: iso(0.1), updated_at: iso(0.1) },
+    { id: 'g-2', kind: 'waitlist', status: 'new', name: '', email: 'a-rather-long-address-for-a-phone-that-goes-on-and-on@students.example.edu.eg', phone: '+20 100 000 0012', notes: '', created_at: iso(0.4), updated_at: iso(0.4) },
+    { id: 'g-3', kind: 'waitlist', status: 'contacted', name: 'Waiting Three With A Rather Long Name', email: 'waiting3@example.com', phone: '', notes: 'Wrote back on Monday.', created_at: iso(3), updated_at: iso(2) },
+    { id: 'g-4', kind: 'waitlist', status: 'archived', name: 'Waiting Four', email: 'waiting4@example.com', phone: '', notes: '', created_at: iso(40), updated_at: iso(30) },
   ],
   merch_products: [
     { id: 'tshirt-55', name: 'AUSSS T-Shirt, 55th Limited Edition', tagline: 'Think Global. Act Local.', description: 'Forest-green ringer tee with white trim.', image: '/assets/merch/page-04.jpg', price: 300, sizes: ['S', 'M', 'L', 'XL', 'XXL'], size_chart: '/assets/merch/size-chart-tshirt.jpg', designs: [], wide_designs: [], available: true, sort_order: 0, updated_at: iso(3) },
@@ -210,15 +482,13 @@ const galleryAlbum = (id, slug, title, blurb, term, n) => ({ id, slug, title, bl
 // The people who hold an ID on its list. A few are written out, by their place
 // (the top of the ranking, a long name with a long address, a name and an ID in
 // Arabic, each state of a paper, one who has not started); the rest are made
-// from the lists below. chance(n) is the same number for the same n, so two
-// runs show the same hall.
+// from the lists of names above and the years below. chance(n) is the same
+// number for the same n, so two runs show the same hall.
 const chance = (n) => {
   const x = Math.sin(n * 12.9898) * 43758.5453
   return x - Math.floor(x)
 }
 const pick = (list, n) => list[Math.floor(chance(n) * list.length)]
-const GIVEN = ['Amal', 'Basil', 'Dalia', 'Emad', 'Farah', 'Gamal', 'Hana', 'Idris', 'Jana', 'Kamal', 'Laila', 'Mona', 'Nabil', 'Omar', 'Rana', 'Sami', 'Tala', 'Wael', 'Yara', 'Zein']
-const FAMILY = ['Sample', 'Example', 'Specimen', 'Placeholder', 'Template', 'Stand-In', 'Mockup']
 const YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', '1st year intern', '2nd year intern']
 // `paper` is { score, answered, state, started (minutes ago), took (minutes) }.
 const written = {
@@ -388,6 +658,13 @@ const paperOf = (word) => {
       .filter((a) => a.c !== null || a.f),
   }
 }
+// The people a task or an update of SCOPE's reaches.
+const reached = [
+  { id: uid, full_name: 'Sample Webmaster', position_title: 'Webmaster' },
+  { id: other, full_name: 'Sample Officer With A Long Name', position_title: 'Local Exchange Officer for Incomings' },
+  { id: 'pr-1', full_name: 'Sample Member With A Rather Long Four Part Name', position_title: 'Exchange Incomings Assistant' },
+  { id: 'pr-9', full_name: null, position_title: 'Core Team Member' },
+]
 const rpcs = {
   gallery_public: {
     albums: [
@@ -443,6 +720,26 @@ const rpcs = {
     { id: uid, full_name: 'Sample Webmaster', avatar_url: null },
     { id: other, full_name: 'Sample Officer', avatar_url: null },
   ],
+  // The roster page: who has the attendance for a higher status, and whether
+  // the sheet's link and the script's token are in use.
+  roster_upgrade_candidates: upgradeCandidates,
+  roster_sheet_info: { active: true, hint: '1AbC…xYz' },
+  roster_sync_token_info: { active: true, created_at: iso(12) },
+  // A committee's members, and the positions held in it. Asked about no
+  // committee, the second answers for the board and the webmaster.
+  committee_roster: ({ committee }) => (committee === 'c-scope' || committee === 'c-score' ? committeeMembers : []),
+  committee_positions: ({ committee }) => (committee ? heldIn.committee : heldIn.society),
+  // Who a task can be given to, and who an update has reached: the same four
+  // people, one of whom has no name yet. An update's own `reads` say which of
+  // them have read it.
+  task_assignable_people: reached.map(({ id, full_name, position_title }) => ({ id, full_name, avatar_url: null, position_title })),
+  post_audience: ({ post }) => {
+    const reads = tables.posts.find((p) => p.id === post)?.reads || []
+    return reached.map(({ id, full_name }) => ({ profile_id: id, full_name, read_at: reads.some((r) => r.profile_id === id) ? iso(1) : null }))
+  },
+  magazine_insights: ({ issue }) => insightsOf(issue),
+  // Site settings: when the public pages were last rebuilt, with a change waiting.
+  site_rebuild_status: { requested_at: iso(0.01), fired_at: iso(0.2), hook: true },
   // The exam for its officers. Only ex-1 has a list and papers.
   exam_registration_list: ({ p_exam }) => (p_exam === 'ex-1' ? examList : []),
   exam_results: ({ p_exam }) => ({
@@ -466,10 +763,27 @@ const rpcs = {
 }
 
 const ROUTES = [
-  '/portal', '/portal/profile', '/portal/verify', '/portal/tasks', '/portal/tasks/t-1', '/portal/updates',
-  '/portal/notifications', '/portal/directory', '/portal/committees', '/portal/committees/scope',
-  '/portal/gallery', '/portal/magazine', '/portal/submissions?tab=orders', '/portal/submissions?tab=stories',
-  '/portal/submissions?tab=signups', '/portal/admin/settings', '/portal/admin/roster', '/portal/admin/verification', '/portal/admin/rollover',
+  // the dashboard, and the same with the bell's panel open
+  '/portal', '/portal#bell', '/portal/profile', '/portal/verify',
+  // tasks and updates: the lists, the forms that take a page's place, and who has read an update
+  '/portal/tasks', '/portal/tasks?view=board', '/portal/tasks?tab=new', '/portal/tasks/t-1', '/portal/tasks/t-1?tab=edit',
+  '/portal/updates', '/portal/updates#audience', '/portal/updates?tab=new', '/portal/updates?edit=po-1',
+  '/portal/notifications', '/portal/directory', '/portal/committees',
+  // a committee's editor tab by tab: a new call, a call being changed, its applications, a member opened
+  '/portal/committees/scope', '/portal/committees/scope?tab=events', '/portal/committees/scope?tab=calls',
+  '/portal/committees/scope?tab=calls&call=new', '/portal/committees/scope?tab=calls&call=call-1',
+  '/portal/committees/scope?tab=calls&call=call-1&view=applications',
+  '/portal/committees/scope?tab=members', '/portal/committees/scope?tab=members#member', '/portal/committees/scope?tab=invites',
+  // the gallery's shelf, an album with photos and an archived one; the magazine's shelf and two editions
+  '/portal/gallery', '/portal/gallery/national-general-assembly-aswan-2026', '/portal/gallery/winter-camp-2026',
+  '/portal/magazine', '/portal/magazine/vol-9', '/portal/magazine/vol-8',
+  // what the public forms sent in; the stories twice, as the tab opens and then every one of them with a form for the exchange page open
+  '/portal/submissions?tab=orders', '/portal/submissions?tab=stories', '/portal/submissions?tab=stories#review',
+  '/portal/submissions?tab=signups', '/portal/admin/settings',
+  // the roster, then each of the panels its buttons open, and a member's row opened
+  '/portal/admin/roster', '/portal/admin/roster#upgrades', '/portal/admin/roster#register-a-ga', '/portal/admin/roster#position-types',
+  '/portal/admin/roster#executive-board', '/portal/admin/roster#member',
+  '/portal/admin/verification', '/portal/admin/rollover',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
   '/portal/events', '/portal/events/ev-1', '/portal/events/ev-3', '/portal/events/ev-6',
   // the public pages that show events, from the same sample
@@ -497,6 +811,27 @@ const ROUTES = [
 // What the walk does on a route before it measures, for the screens that only
 // show after a tap.
 const acts = {
+  '/portal#bell': (page) => page.getByRole('button', { name: /^Notifications/ }).click(),
+  // "Read by 1 · show who", under the first update this person manages.
+  '/portal/updates#audience': (page) => page.getByRole('button', { name: /show who$/ }).first().click(),
+  // The first member of the committee's list: a row is a button that opens it.
+  '/portal/committees/scope?tab=members#member': (page) => page.getByRole('button', { name: /^Sample Member With A Rather Long Four Part Name/ }).click(),
+  // Every story whatever its status, then the form that puts the first new one on the exchange page.
+  '/portal/submissions?tab=stories#review': async (page) => {
+    await page.getByRole('button', { name: /^All\b/ }).click()
+    await page.getByRole('button', { name: 'Review and publish' }).first().click()
+  },
+  '/portal/admin/roster#upgrades': (page) => page.getByRole('button', { name: 'Review', exact: true }).click(),
+  // The attendance form, with the bulk updates made so far under it.
+  '/portal/admin/roster#register-a-ga': (page) => page.getByRole('button', { name: 'Register a GA', exact: true }).click(),
+  // The panel lists nothing until a committee is chosen; the first is SCOPE and SCORE's.
+  '/portal/admin/roster#position-types': async (page) => {
+    await page.getByRole('button', { name: 'Position types', exact: true }).click()
+    await page.selectOption('#pt-committee', { index: 1 })
+  },
+  '/portal/admin/roster#executive-board': (page) => page.getByRole('button', { name: 'Executive Board', exact: true }).click(),
+  // The member with the long name and address, who is on the list's first page.
+  '/portal/admin/roster#member': (page) => page.locator('#roster-row-r-4').click(),
   '/portal/admin/audit#released': (page) => page.locator('details > summary').first().click(),
   '/portal/exam/ex-1?tab=questions#correct': (page) => page.getByRole('button', { name: 'Correct the answer to question 3', exact: true }).click(),
   '/portal/exam/ex-2?tab=questions#edit': (page) => page.getByRole('button', { name: 'Edit question 2', exact: true }).click(),
@@ -519,6 +854,27 @@ const acts = {
     await page.getByRole('button', { name: 'Hand in for good', exact: true }).click()
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
   },
+}
+
+// What a read asks for in its address, in PostgREST's words (status=eq.new,
+// deleted_at=is.null, id=in.(a,b)), applied to the sample rows. Only the words
+// the portal uses are known. An unknown word narrows nothing, and neither does
+// a column the rows do not carry (select, order, a column of a joined table).
+function narrowed(rows, asked) {
+  let fit = rows
+  for (const [column, test] of asked) {
+    if (!rows.some((r) => column in r)) continue
+    const [, word, value] = test.match(/^(eq|neq|lt|in)\.(.*)$/) || []
+    if (word === 'eq') fit = fit.filter((r) => String(r[column]) === value)
+    else if (word === 'neq') fit = fit.filter((r) => String(r[column]) !== value)
+    else if (word === 'lt') fit = fit.filter((r) => r[column] != null && String(r[column]) < value)
+    else if (word === 'in') {
+      const listed = value.replace(/^\(|\)$/g, '').split(',').map((v) => v.replace(/^"|"$/g, ''))
+      fit = fit.filter((r) => listed.includes(String(r[column])))
+    } else if (test === 'is.null') fit = fit.filter((r) => r[column] == null)
+    else if (test === 'not.is.null') fit = fit.filter((r) => r[column] != null)
+  }
+  return fit
 }
 
 function measureOverflow() {
@@ -575,6 +931,16 @@ for (const theme of themes) {
       if (url.pathname.startsWith('/storage/v1/object/public/gallery/')) {
         return route.fulfill({ status: 200, contentType: 'image/jpeg', path: 'public/assets/exchange/incomings/campus.jpg' })
       }
+      // An edition's uploaded pages: the page with the same number of the
+      // edition kept in the repo stands in for each.
+      const magazinePage = url.pathname.match(/^\/storage\/v1\/object\/public\/magazine\/.+\/(\d{3})\.jpg$/)?.[1]
+      if (magazinePage) return route.fulfill({ status: 200, contentType: 'image/jpeg', path: `public/assets/magazine/vol-7/pages/${magazinePage}.jpg` })
+      // The folders of an edition in the `magazine` bucket, which its editor
+      // reads to clear away what old uploads left. A folder has no id.
+      if (url.pathname === '/storage/v1/object/list/magazine') {
+        const folders = magazineFolders[req.postDataJSON()?.prefix] || []
+        return json(folders.map((name) => ({ name, id: null, updated_at: null, created_at: null, last_accessed_at: null, metadata: null })))
+      }
       if (url.pathname.startsWith('/storage/v1/')) return json([])
       const rpc = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/)?.[1]
       if (rpc) {
@@ -592,16 +958,23 @@ for (const theme of themes) {
       // Public tables are read for real, as an anonymous visitor.
       if (table === 'committees' || table === 'site_settings') {
         const headers = { ...req.headers(), authorization: `Bearer ${req.headers().apikey}` }
-        return route.continue({ headers })
+        if (table === 'site_settings') return route.continue({ headers })
+        // A committee's own id is one the sample rows cannot know, so each
+        // committee reaches the page under c-<its slug>, the id they name it
+        // by. Whatever the page then asks by that id is answered here. A read
+        // cut short (no connection, or the page closed under it) is dropped.
+        try {
+          const read = await route.fetch({ headers })
+          const found = read.ok() ? await read.json().catch(() => null) : null
+          if (!found) return await route.fulfill({ response: read })
+          const named = (c) => (c?.id && c.slug ? { ...c, id: `c-${c.slug}` } : c)
+          return await json(Array.isArray(found) ? found.map(named) : named(found))
+        } catch {
+          return route.abort('connectionfailed').catch(() => {})
+        }
       }
-      let rows = tables[table] || []
-      const idEq = url.searchParams.get('id')?.match(/^eq\.(.+)$/)?.[1]
-      if (idEq) rows = rows.filter((r) => r.id === idEq)
-      const keyEq = url.searchParams.get('key')?.match(/^eq\.(.+)$/)?.[1]
-      if (keyEq) rows = rows.filter((r) => r.key === keyEq)
-      const examEq = url.searchParams.get('exam_id')?.match(/^eq\.(.+)$/)?.[1]
-      if (examEq) rows = rows.filter((r) => r.exam_id === examEq)
-      if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${table === 'notifications' ? 1 : rows.length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' } })
+      const rows = narrowed(tables[table] || [], url.searchParams)
+      if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${rows.length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' } })
       if ((req.headers().accept || '').includes('vnd.pgrst.object')) return json(rows[0] ?? {})
       return json(rows, { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}` })
     })
@@ -628,7 +1001,10 @@ for (const theme of themes) {
         await page.evaluate(`${axe}; null`)
         const low = await page.evaluate(async () => {
           const res = await window.axe.run(document, { runOnly: ['color-contrast'], resultTypes: ['violations'] })
-          return res.violations.flatMap((v) => v.nodes.map((n) => ({ ...(n.any[0]?.data || {}), text: n.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) })))
+          // What the text says, to find it by. A field has no text between its
+          // tags, so it is named by the start of its own tag.
+          const named = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || html.replace(/\s+/g, ' ').slice(0, 110)
+          return res.violations.flatMap((v) => v.nodes.map((n) => ({ ...(n.any[0]?.data || {}), text: named(n.html) })))
         })
         for (const c of low) {
           const key = `${theme} ${c.fgColor} on ${c.bgColor} = ${c.contrastRatio}`

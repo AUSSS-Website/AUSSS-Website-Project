@@ -8,15 +8,23 @@ import { pressCls } from '../lib/motion.js'
 // phone, where the root size shrinks. An unseen ::after, 44px square and in px
 // for that reason, sits centred on it, so a finger gets the full target
 // without the bar's row growing (the portal header does the same).
+//
+// The keyboard's ring is the theme's blue, set off from the circle by a gap,
+// so it shows on the clear bar over the hero as well as on the solid one. A
+// caller that brings a ring of its own (the exam's header) draws it in the
+// same place, and the two read as one.
 export default function ThemeToggle({ tone = 'solid', className = '' }) {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
-  const base = `relative grid h-10 w-10 place-items-center rounded-full border after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] ${pressCls}`
+  const base = `relative grid h-10 w-10 place-items-center rounded-full border after:absolute after:left-1/2 after:top-1/2 after:h-[44px] after:w-[44px] after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${pressCls}`
+  // Each tone has a fill for the moment it is pressed, a step past the one it
+  // takes under the pointer: a phone has no hover to show, and with reduced
+  // motion the circle does not sink.
   const skin =
     tone === 'solid'
-      ? 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/15 dark:text-silver dark:hover:bg-white/5'
-      : 'border-forest-600/20 text-forest hover:bg-forest/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10'
+      ? 'border-forest-600/20 text-forest hover:bg-forest/5 active:bg-forest/10 dark:border-white/15 dark:text-silver dark:hover:bg-white/5 dark:active:bg-white/10'
+      : 'border-forest-600/20 text-forest hover:bg-forest/5 active:bg-forest/10 dark:border-white/25 dark:text-white dark:hover:bg-white/10 dark:active:bg-white/20'
 
   // The label names what a press will do, so the button is not also marked as
   // pressed: "Switch to light mode, pressed" says two things at once.

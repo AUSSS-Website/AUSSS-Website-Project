@@ -77,7 +77,7 @@ const BLANK = {
 }
 
 const tagCls =
-  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/60'
+  'inline-flex items-center rounded-full border border-line/15 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-soft/70'
 
 function toForm(row) {
   const f = {}
@@ -196,7 +196,7 @@ function Editor({ row, committees, positions, board, onClose, onDone }) {
               readOnly
               value={form.years_spent}
               aria-describedby="r-years-note"
-              className={`${inputCls} cursor-default opacity-60`}
+              className={`${inputCls} cursor-default !text-soft/70`}
             />
           </Field>
           {/* On the page and not in a tooltip, which a phone never shows. */}
@@ -411,10 +411,15 @@ function Row({ row, committees, positions, board, open, note, onToggle, onDone }
       >
         <span className="min-w-0">
           <span className="block truncate text-base font-semibold text-ink">{row.full_name}</span>
-          <span className="block truncate text-sm text-soft/60">{row.email || 'No email on file'}</span>
+          <span className="block truncate text-sm text-soft/70">{row.email || 'No email on file'}</span>
         </span>
         <span className="flex flex-wrap items-center gap-2 text-xs text-soft/70">
-          <span className="font-semibold text-accent">{row.status || 'No status'}</span>
+          {/* The status as people word it: a sheet that holds the bare code
+              ("active") shows its label, as the export and a committee's
+              Members tab do. */}
+          <span className="font-semibold text-accent">
+            {MEMBERSHIP_LABELS[row.status] || row.status || 'No status'}
+          </span>
           {committee && (
             <span className={tagCls}>
               {committee.abbr}
