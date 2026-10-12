@@ -13,8 +13,11 @@
 -- position, and one that reaches the table without asking (a rollover's) waits unaccepted and
 -- goes at the reinstatement, so a term rollover goes through with dismissed members on the
 -- roster. A namesake the roster already had still follows the sheet.
+-- The position belongs to the account of its work email: signing in with that address gives it,
+-- with nobody named President beforehand; the board can neither remove that account from it nor
+-- withdraw the offer that waits for the address; and a new address is offered it at once.
 begin;
-select plan(91);
+select plan(103);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -53,8 +56,9 @@ values ('aaaaaaaa-0000-0000-0000-000000000007', 'pgtap-noyear', 'No Year Member'
        ('aaaaaaaa-0000-0000-0000-000000000009', 'pgtap-officer', 'Sample Officer', 'sample officer', 'officer@pgtap.test', 'Full Member', 2022, null);
 select tests.roster('No Account Member', 'namesake@pgtap.test', 'Candidate Member', 2025);
 
--- The work emails: the President's position on the President's account, and an officer's
--- position on the address the board member's row carries.
+-- The work emails: the President's position on the President's address, which is offered the
+-- position by that alone, and an officer's position on the address the board member's row
+-- carries.
 select tests.work_email('president@pgtap.test', 'eb.president');
 select tests.work_email('vp@pgtap.test', 'scoph.pgtap-deputy');
 
@@ -66,7 +70,7 @@ select tests.create_user('officer@pgtap.test', 'Sample Officer');
 select tests.create_user('plain@pgtap.test', 'Plain Member');
 select tests.create_user('target@pgtap.test', 'Dismissed Target');
 
-select tests.assign('president@pgtap.test', 'eb.president');
+-- The President's account is given nothing here: see "who the President is".
 select tests.assign('vp@pgtap.test', 'eb.vp-internal');
 select tests.assign('web@pgtap.test', 'society.webmaster');
 select tests.assign('officer@pgtap.test', 'scoph.pgtap-officer');
@@ -108,8 +112,20 @@ create temporary table pgtap_before on commit drop as
   select (public.roster_stats() ->> 'count')::int as members;
 
 -- ---- who the President is -------------------------------------------------------------------------
+-- Nobody gave that account the position, and no roster row names it President. Its address is
+-- the work email of the position, which was offered to the address when it was set, and the
+-- first sign-in took the offer up.
+select is(
+  (select a.status from public.assignments a
+   join public.positions p on p.id = a.position_id
+   where a.profile_id = tests.user_id('president@pgtap.test')
+     and p.key = 'eb.president'
+     and a.term_id = app.current_term_id()),
+  'active',
+  'signing in with the work email of the President''s position gives the position, with nobody named President beforehand'
+);
 select tests.authenticate_as('president@pgtap.test');
-select ok(app.is_president(), 'whoever holds the position eb.president this term is the President');
+select ok(app.is_president(), 'and whoever holds the position eb.president this term is the President');
 select tests.clear_auth();
 
 select tests.authenticate_as('vp@pgtap.test');
@@ -169,6 +185,30 @@ select throws_ok(
   '42501', 'The President''s position belongs to the Executive Board.',
   'and a position under that key is never added at another level'
 );
+select throws_ok(
+  $$ select public.remove_position((
+       select a.id from public.assignments a
+       join public.positions p on p.id = a.position_id
+       where p.key = 'eb.president' and a.status = 'active'
+         and a.term_id = (select id from public.terms where is_current))) $$,
+  '22023', 'The President''s position stays with the account of its work email. To hand it to another address, the President changes the work email first.',
+  'a member of the board cannot remove the President from the position'
+);
+select throws_ok(
+  $$ delete from public.assignments
+      where profile_id = tests.user_id('president@pgtap.test')
+        and position_id = (select id from public.positions where key = 'eb.president')
+        and status = 'active' $$,
+  '22023', 'The President''s position stays with the account of its work email. To hand it to another address, the President changes the work email first.',
+  'nor delete the President''s hold of it'
+);
+select is(
+  (select h -> 'can_remove'
+   from jsonb_array_elements(public.committee_positions() -> 'holders') as h
+   where h #>> '{position,key}' = 'eb.president'),
+  'false'::jsonb,
+  'and the portal offers no Remove on it'
+);
 select tests.clear_auth();
 
 select tests.authenticate_as('web@pgtap.test');
@@ -196,7 +236,53 @@ select is(
   'president.new@pgtap.test',
   'and the President changes its work email'
 );
+
+-- The new address is offered the position there and then. The board cannot withdraw that
+-- offer, and it can now remove the account of the address this one replaced.
+select is(
+  (select count(*)::int from public.invites i
+   join public.positions p on p.id = i.position_id
+   where p.key = 'eb.president'
+     and i.email_normalized = 'president.new@pgtap.test'
+     and i.term_id = app.current_term_id()
+     and i.accepted_at is null),
+  1,
+  'the new address is offered the position at once, so its first sign-in is the President''s'
+);
+select tests.authenticate_as('vp@pgtap.test');
+select throws_ok(
+  $$ delete from public.invites where email_normalized = 'president.new@pgtap.test' $$,
+  '22023', 'This offer keeps the President''s position for its work email, so it cannot be withdrawn. To hand the position to another address, the President changes the work email first.',
+  'the board cannot withdraw the offer that waits for the President''s work email'
+);
+select throws_ok(
+  $$ update public.invites
+        set accepted_at = now(), accepted_profile_id = tests.user_id('vp@pgtap.test')
+      where email_normalized = 'president.new@pgtap.test' $$,
+  '22023', 'This offer keeps the President''s position for its work email, so it cannot be withdrawn. To hand the position to another address, the President changes the work email first.',
+  'nor mark it taken for another account, which would leave the address nothing to take up'
+);
+select lives_ok(
+  $$ select public.remove_position((
+       select a.id from public.assignments a
+       join public.positions p on p.id = a.position_id
+       where p.key = 'eb.president' and a.status = 'active'
+         and a.term_id = (select id from public.terms where is_current))) $$,
+  'the account of the address it replaced is removed like any other holder'
+);
+select tests.clear_auth();
+
+-- Back on its first address: the account that held the position and lost it has it again
+-- without anybody inviting it, and the offer to the other address goes.
 select tests.work_email('president@pgtap.test', 'eb.president');
+select tests.authenticate_as('president@pgtap.test');
+select ok(app.is_president(), 'an account whose address the position is given back to is the President again');
+select tests.clear_auth();
+select is(
+  (select count(*)::int from public.invites where email_normalized = 'president.new@pgtap.test'),
+  0,
+  'and the offer to an address that is no longer the work email is gone'
+);
 
 select ok(
   not has_function_privilege('service_role', 'public.dismiss_roster_member(uuid, text)', 'execute')
@@ -786,6 +872,25 @@ select is(
              and i.accepted_at is null)::text),
   '0:1',
   'and gives the dismissed member nothing: the offer waits, unaccepted'
+);
+
+-- ---- a term made current by hand ------------------------------------------------------------------
+-- rpc/set_current_term offers nobody anything by itself. The President's address is offered the
+-- position in whichever term becomes the current one, so the account holds it there at once.
+select tests.authenticate_as('president@pgtap.test');
+select lives_ok(
+  $$ select public.set_current_term((select id from public.terms where label = 'pgtap-past')) $$,
+  'the board can still switch the current term by hand'
+);
+select tests.clear_auth();
+select is(
+  (select a.status from public.assignments a
+   join public.positions p on p.id = a.position_id
+   where a.profile_id = tests.user_id('president@pgtap.test')
+     and p.key = 'eb.president'
+     and a.term_id = (select id from public.terms where label = 'pgtap-past')),
+  'active',
+  'and the account of the President''s work email holds the position in that term too'
 );
 
 select * from finish();

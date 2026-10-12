@@ -16,6 +16,11 @@
 -- names. When the President's mailbox is lost the owner of the database puts it right with SQL
 -- (docs/RUNBOOK.md, section 8).
 --
+-- And the position belongs to the account of that work email, whoever is or is not named
+-- President on the roster: the address is always offered the position (when it is set, when it
+-- changes, and by the rollover each term), so signing in with it is enough, and nobody signed
+-- in to the portal can withdraw that offer or remove that account from the position.
+--
 -- What is stored, on the roster row itself:
 --   dismissed_at              when; a row is dismissed exactly while this is set
 --   dismissed_by              who (the President's account)
@@ -911,7 +916,8 @@ begin
        from public.profiles p
        where p.id = v_row.profile_id or p.email_normalized = v_row.email_normalized
      )
-     and not app.position_from_roster(i.position_id, i.email_normalized, null);
+     and not app.position_from_roster(i.position_id, i.email_normalized, null)
+     and not app.is_president_seat(i.position_id, i.email);
 
   return jsonb_build_object('status', v_row.status_before_dismissal);
 end
@@ -1563,6 +1569,282 @@ create trigger guard_president_position before insert or update or delete on pub
   for each row execute function app.guard_president_position();
 
 -- ---------------------------------------------------------------------------------------------
+-- ... and belongs to the account of its work email
+-- ---------------------------------------------------------------------------------------------
+
+-- Signing in with the President's work address is what makes an account the President. No
+-- person has to be named on the roster and nobody has to hold the position beforehand: the
+-- address is offered the position, the first sign-in takes the offer up, and the term rollover
+-- makes the next term's. That used to hold only while the offer was left alone. Any member of
+-- the board could withdraw it, or remove the President, and the account then signed in to
+-- nothing until somebody invited it again. Three things keep it true from here.
+
+-- The position is the President's and the address is its work email.
+create or replace function app.is_president_seat(p_position uuid, p_email text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.positions p
+    join public.position_work_emails w on w.position_id = p.id
+    where p.id = p_position
+      and p.key = 'eb.president'
+      and w.email_normalized = app.norm_email(p_email)
+  )
+$$;
+
+-- (1) The address is offered the position whenever that could have stopped being so: when
+-- the address is set or changed, and when a term becomes the current one (the rollover makes
+-- the next term's offers itself; rpc/set_current_term and a direct write of terms did not).
+-- This is the one piece of work, for a term: an offer still waiting for an address the
+-- position no longer has goes, since it could never be taken up; the address it has is
+-- offered the position, which an account that exists has at once (app.handle_new_invite) and
+-- a new one at its first sign-in; and an account of that address that held the position and
+-- lost it has it back. The account of an address the position had before keeps it until it
+-- is removed, as with every work email.
+create or replace function app.offer_president_position_in(p_term uuid)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_position uuid;
+  v_email text;
+  v_norm text;
+begin
+  select p.id, w.email, w.email_normalized
+    into v_position, v_email, v_norm
+  from public.positions p
+  join public.position_work_emails w on w.position_id = p.id
+  where p.key = 'eb.president' and p.active;
+
+  if p_term is null or v_position is null then
+    return;
+  end if;
+
+  delete from public.invites i
+   where i.position_id = v_position
+     and i.term_id = p_term
+     and i.accepted_at is null
+     and i.email_normalized <> v_norm;
+
+  insert into public.invites (email, position_id, term_id, invited_by)
+  values (v_email, v_position, p_term, auth.uid())
+  on conflict (email_normalized, position_id, term_id) do nothing;
+
+  update public.assignments a
+     set status = 'active', ended_on = null
+   where a.position_id = v_position
+     and a.term_id = p_term
+     and a.status = 'ended'
+     and a.profile_id in (select p.id from public.profiles p where p.email_normalized = v_norm)
+     and not app.is_dismissed_profile(a.profile_id);
+end
+$$;
+
+-- After insert and update on position_work_emails: the President's address was set or changed.
+create or replace function app.offer_president_position()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (tg_op = 'INSERT' or new.email_normalized is distinct from old.email_normalized)
+    and exists (
+      select 1 from public.positions p
+      where p.id = new.position_id and p.key = 'eb.president')
+  then
+    perform app.offer_president_position_in(app.current_term_id());
+  end if;
+  return null;
+end
+$$;
+
+drop trigger if exists offer_president_position on public.position_work_emails;
+create trigger offer_president_position after insert or update on public.position_work_emails
+  for each row execute function app.offer_president_position();
+
+-- After update of is_current on terms: a term became the current one.
+create or replace function app.offer_president_position_on_term()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.is_current and not old.is_current then
+    perform app.offer_president_position_in(new.id);
+  end if;
+  return null;
+end
+$$;
+
+drop trigger if exists offer_president_position on public.terms;
+create trigger offer_president_position after update of is_current on public.terms
+  for each row execute function app.offer_president_position_on_term();
+
+-- (2) Before update and delete on assignments. Nobody signed in to the portal ends, removes
+-- or repoints this term's hold of the President's position by the account of its work email:
+-- not the rest of the board (rpc/remove_position ends up here), and not the President, who
+-- hands the position over by handing the mailbox over, or by changing the address. An
+-- account that holds the position on any other address is removed as before. A session with
+-- no account (the owner of the database, the cascade from a deleted account) is refused
+-- nothing, and neither is the rollover: it ends the old term's assignments after the switch.
+create or replace function app.guard_president_hold()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null
+    and old.status = 'active'
+    and old.term_id = app.current_term_id()
+    and app.is_president_seat(
+          old.position_id,
+          (select p.email from public.profiles p where p.id = old.profile_id))
+    and (tg_op = 'DELETE'
+         or new.status is distinct from 'active'
+         or (new.profile_id, new.position_id, new.term_id)
+            is distinct from (old.profile_id, old.position_id, old.term_id))
+  then
+    raise exception 'The President''s position stays with the account of its work email. To hand it to another address, the President changes the work email first.'
+      using errcode = '22023';
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists guard_president_hold on public.assignments;
+create trigger guard_president_hold before update or delete on public.assignments
+  for each row execute function app.guard_president_hold();
+
+-- (3) Before update and delete on invites: the same for the offer that waits for the
+-- President's work address. Taking it up changes none of the three columns and names an
+-- account of that address, so that passes; marking it taken for anybody else, which would
+-- leave the address nothing to take up at its first sign-in, does not.
+create or replace function app.guard_president_offer()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null
+    and old.accepted_at is null
+    and old.term_id = app.current_term_id()
+    and app.is_president_seat(old.position_id, old.email)
+    and (tg_op = 'DELETE'
+         or (app.norm_email(new.email), new.position_id, new.term_id)
+            is distinct from (old.email_normalized, old.position_id, old.term_id)
+         or (new.accepted_at is not null and not exists (
+               select 1 from public.profiles p
+               where p.id = new.accepted_profile_id
+                 and p.email_normalized = old.email_normalized)))
+  then
+    raise exception 'This offer keeps the President''s position for its work email, so it cannot be withdrawn. To hand the position to another address, the President changes the work email first.'
+      using errcode = '22023';
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists guard_president_offer on public.invites;
+create trigger guard_president_offer before update or delete on public.invites
+  for each row execute function app.guard_president_offer();
+
+-- The address the position has today is offered it now, where it is not already, and an
+-- account of that address that was removed from the position this term has it back.
+select app.offer_president_position_in(app.current_term_id());
+
+-- rpc/committee_positions, as 20261005112802: the portal offers no Remove on the President's
+-- hold and no Withdraw on the offer that waits for the President's work address.
+create or replace function public.committee_positions(committee uuid default null)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_term uuid := app.current_term_id();
+  v_group uuid[] := app.roster_group_ids(committee);
+begin
+  if committee is null then
+    if not app.is_eb() then
+      raise exception 'Only the Executive Board can see the society-level positions.'
+        using errcode = '42501';
+    end if;
+  elsif not app.is_roster_officer_of(committee) then
+    raise exception 'Only that committee''s officers and the Executive Board can see its positions.'
+      using errcode = '42501';
+  end if;
+
+  return jsonb_build_object(
+    'holders', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'assignment_id', a.id,
+          'profile_id', pr.id,
+          'full_name', pr.full_name,
+          'email', pr.email,
+          'avatar_url', pr.avatar_url,
+          'since', a.created_at,
+          'position', jsonb_build_object('id', p.id, 'key', p.key, 'title', p.title, 'level', p.level),
+          'from_roster', app.position_from_roster(p.id, pr.email_normalized, pr.id),
+          'can_remove', app.can_manage_position(p.id)
+            and pr.id is distinct from auth.uid()
+            and not app.is_president_seat(p.id, pr.email)
+        )
+        order by app.level_rank(p.level) desc, p.sort, pr.full_name, a.id
+      )
+      from public.assignments a
+      join public.positions p on p.id = a.position_id
+      join public.profiles pr on pr.id = a.profile_id
+      where a.status = 'active'
+        and a.term_id = v_term
+        and ((committee_positions.committee is null and p.committee_id is null)
+             or p.committee_id = any (v_group))
+    ), '[]'::jsonb),
+    'invites', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', i.id,
+          'email', i.email,
+          'created_at', i.created_at,
+          'invited_by', (select b.full_name from public.profiles b where b.id = i.invited_by),
+          'position', jsonb_build_object('id', p.id, 'key', p.key, 'title', p.title, 'level', p.level),
+          'from_roster', app.position_from_roster(p.id, i.email_normalized, null),
+          'can_withdraw', app.can_manage_position(p.id)
+            and not app.is_president_seat(p.id, i.email)
+        )
+        order by i.created_at desc, i.id
+      )
+      from public.invites i
+      join public.positions p on p.id = i.position_id
+      where i.accepted_at is null
+        and i.term_id = v_term
+        and ((committee_positions.committee is null and p.committee_id is null)
+             or p.committee_id = any (v_group))
+    ), '[]'::jsonb)
+  );
+end
+$$;
+
+-- ---------------------------------------------------------------------------------------------
 -- Ownership + grants
 -- ---------------------------------------------------------------------------------------------
 
@@ -1572,6 +1854,13 @@ alter function app.is_dismissed_profile(uuid) owner to postgres;
 alter function app.is_dismissed_email(text) owner to postgres;
 alter function app.can_set_work_email(uuid) owner to postgres;
 alter function app.guard_president_position() owner to postgres;
+alter function app.is_president_seat(uuid, text) owner to postgres;
+alter function app.offer_president_position_in(uuid) owner to postgres;
+alter function app.offer_president_position() owner to postgres;
+alter function app.offer_president_position_on_term() owner to postgres;
+alter function app.guard_president_hold() owner to postgres;
+alter function app.guard_president_offer() owner to postgres;
+alter function public.committee_positions(uuid) owner to postgres;
 alter function app.handle_new_invite() owner to postgres;
 alter function app.sync_roster_position() owner to postgres;
 alter function public.invite_to_position(text, uuid) owner to postgres;
@@ -1602,6 +1891,12 @@ grant execute on function app.is_dismissed_email(text) to authenticated;
 revoke execute on function app.can_set_work_email(uuid) from public;
 grant execute on function app.can_set_work_email(uuid) to authenticated;
 revoke execute on function app.guard_president_position() from public;
+revoke execute on function app.is_president_seat(uuid, text) from public;
+revoke execute on function app.offer_president_position_in(uuid) from public, anon, authenticated, service_role;
+revoke execute on function app.offer_president_position() from public;
+revoke execute on function app.offer_president_position_on_term() from public;
+revoke execute on function app.guard_president_hold() from public;
+revoke execute on function app.guard_president_offer() from public;
 revoke execute on function app.handle_new_invite() from public;
 revoke execute on function app.sync_roster_position() from public;
 revoke execute on function app.guard_roster_dismissal() from public;
@@ -1622,6 +1917,8 @@ grant execute on function public.reinstate_roster_member(uuid) to authenticated;
 
 revoke execute on function public.invite_to_position(text, uuid) from public, anon;
 grant execute on function public.invite_to_position(text, uuid) to authenticated;
+revoke execute on function public.committee_positions(uuid) from public, anon;
+grant execute on function public.committee_positions(uuid) to authenticated;
 
 revoke execute on function public.bulk_update_roster(uuid[], text, text, text) from public, anon;
 grant execute on function public.bulk_update_roster(uuid[], text, text, text) to authenticated;
