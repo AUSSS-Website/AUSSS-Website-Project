@@ -123,6 +123,28 @@
     }
   }
 
+  /* A drop-down's arrow is the browser's own by default, and the browser puts
+     it against the box's edge whatever the padding is: in a rounded box it
+     sits in the corner's curve, and it differs from one browser to the next.
+     Every drop-down on the site draws this one in its place: two strokes in
+     the colour of the field's own text, so it follows the theme and a
+     disabled field, set in from the edge about as far as the text is on the
+     other side, with room kept for it so a long choice stops short of it.
+     The selector outweighs a padding utility on purpose (px-3, px-4): the
+     room on the arrow's side is not a field's to give away. */
+  select:not([multiple]):not([size]) {
+    appearance: none;
+    background-image:
+      linear-gradient(to top right, transparent calc(50% - 1.25px), currentColor calc(50% - 0.75px), currentColor calc(50% + 0.75px), transparent calc(50% + 1.25px)),
+      linear-gradient(to top left, transparent calc(50% - 1.25px), currentColor calc(50% - 0.75px), currentColor calc(50% + 0.75px), transparent calc(50% + 1.25px));
+    background-repeat: no-repeat;
+    background-size: 6px 6px;
+    background-position:
+      right calc(0.875rem + 5px) center,
+      right 0.875rem center;
+    padding-right: calc(0.875rem + 11px + 0.625rem);
+  }
+
   body {
     @apply bg-page text-soft font-sans antialiased transition-colors duration-300;
     /* Force lining + tabular figures across the site. Cormorant Garamond
