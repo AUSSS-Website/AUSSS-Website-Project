@@ -205,29 +205,44 @@ shows the two controls to the President alone, and the database refuses everybod
   it, in the portal or with SQL, because the trigger `guard_roster_dismissal` is on the table
   itself. Bulk updates and their Undo skip it and say so ("dismissed", "dismissed since").
   "Dismissed" is not a status anybody can type: by hand, in a bulk update or in the sheet it is
-  refused. A second row for the same person (the same email, or the same name where either row
-  has no email) is refused as well.
+  refused. A second row for the same person is refused as well: one with the record's email or
+  the email of the account the record is tied to, a new one under the same name where either
+  row has no email, and any row tied to the dismissed member's account.
 - **While dismissed, nothing brings the member back.** Signing in ties the account to the
   record and verifies nobody. The account cannot be given a status other than `unverified`
   (the board reads "This member was dismissed, so the account stays unverified…" on the
   verification queue), and it cannot hold a position ("The membership of this person has
-  ended, so they cannot hold a position.", worded so because an officer can meet it).
+  ended, so they cannot hold a position.", worded so because an officer can meet it). The
+  same sentence refuses an **offer** of a position to the member's address, on the invite form
+  and in a direct write of an invite, whether or not the address has an account yet. The term
+  rollover and the roster write their offers many at a time, so those are refused nothing
+  (one dismissed member would otherwise stop a whole rollover): an offer that reaches the
+  table that way is left unaccepted, and the reinstatement deletes it.
 - **The import** leaves alone every line that names a dismissed member (the same name and
   email, the same email, or the same name alone) and every line whose status says dismissed.
   They are counted as `skipped_dismissed` in the run and shown as *left alone (dismissed)*
   under *Recent imports*; a dismissed row is never listed as missing from the sheet. The name
   alone is enough on purpose, so that a changed email in the sheet cannot make a second,
-  ordinary row. A real namesake of a dismissed member is therefore not imported: add them by
-  hand on the Roster page, with their own email.
+  ordinary row. A namesake who was on the roster before the dismissal is not caught by that:
+  the roster already has an ordinary row for exactly their line (the same name and email),
+  and it goes on following the sheet. A namesake who joins afterwards is not imported: add
+  them by hand on the Roster page, with their own email.
 - **Reinstate.** The President opens the record and presses *Reinstate* (two clicks).
-  `rpc/reinstate_roster_member(entry)` puts the status back to `status_before_dismissal` and
-  clears the four columns. Nothing else comes back: the account stays `unverified` until the
+  `rpc/reinstate_roster_member(entry)` puts the status back to `status_before_dismissal`,
+  clears the four columns and deletes any offer of a position still waiting for the member's
+  address (all but one the roster itself stands behind, which is changed on the roster as
+  always). Nothing else comes back: the account stays `unverified` until the
   member asks for verification again (section 9), and the committee and positions are
   assigned again by hand. The row belongs to the portal afterwards, so the sheet does not
   overwrite it until somebody presses *Follow the spreadsheet again*.
-- **What the President is refused:** an empty reason, a member already dismissed, the row of
-  their own account, and a person the roster lists twice under one email (remove the duplicate
-  row first, within the hour if the sheet still lists it, or the next import puts it back).
+- **What the President is refused:** an empty reason or one over 1,000 characters, a member
+  already dismissed, the row of their own account, a person the roster lists twice (a second
+  row under the same email, or tied to the same account: remove the duplicate row first,
+  within the hour if the sheet still lists it, or the next import puts it back), and a row
+  tied to the **work account of a position** (its email, or the email of the account it is
+  tied to, is a position's work email). A work account is handed on with its position, and
+  dismissed it would hold nothing whoever had the position by then; remove the row, add the
+  member again under their own email, and dismiss that row.
 - **On record.** The audit log (`/portal/admin/audit`) has the dismissal and the reinstatement
   as updates of the roster row, with the President as the actor, the reason and the earlier
   status in the before and after; the account's change and each ended position are there too.
@@ -247,8 +262,9 @@ where r.dismissed_at is not null order by r.dismissed_at desc;
 
 Do both from the portal, as the President. As `postgres` the two functions refuse
 (`app.is_president()` sees no `auth.uid()`), and the table's guard refuses a direct update of
-a dismissed row or of the dismissal columns. If the President's account is lost, give the
-position to its work email again (section 8) first.
+a dismissed row or of the dismissal columns. The secret key is granted neither function. If
+the President's account is lost, give the position to its work email again first (section 8,
+"The President's position").
 
 **Public "did you mean".** `rpc/check_membership` may answer a miss with suggestions: up to three
 member names, only when two or more near-complete words were typed, or a masked email hint
@@ -444,6 +460,47 @@ One position carries a power of its own: the holder of `eb.president` is the onl
 that can dismiss a member from the roster and reinstate one (section 4). Dismissing ends
 every position the member's account holds, and that account can be given none, by invite or
 by hand, until the President reinstates the member.
+
+**The President's position (migration `20261011130001_roster_dismissal`).** Because of that
+power the position is the President's own, the way the webmaster's is the webmaster's:
+
+- its **work email** is changed by the President alone. Under "Work emails" the rest of the
+  board and the webmaster see it greyed out with "Only the President changes this one", and
+  the database filters out their change (`app.can_set_work_email`). Otherwise any board member
+  could point the position at an address of their own and invite it;
+- the **row of the position** is changed by the President alone when somebody is signed in,
+  and nobody removes it or gives it another level, in the portal or with SQL (trigger
+  `guard_president_position` on `public.positions`: "Only the President changes the
+  President's position.", "The President's position cannot be removed.", "…Its level cannot be
+  changed."). A position below officer has no work email and goes to any address.
+
+Giving the position to its work email is still the board's to do (Roster page > Executive
+Board > Invite, which fills the address in), and so is Remove on whoever holds it. What only
+the President can do is change the address. **If the President's mailbox is lost**, or the
+address was wrong from the start and nobody has ever signed in as President, the owner of
+the database changes it in the SQL editor. This is the one step that needs SQL:
+
+```sql
+-- The President's new work email. Run as the owner, in the Supabase SQL editor.
+update public.position_work_emails
+set email = 'new.president@example.org'
+where position_id = (select id from public.positions where key = 'eb.president');
+```
+
+Then, in the portal as any board member (or with the SQL above in this section): Remove the
+old account under "Holding a position", and Invite, which now fills in the new address. The
+new account is the President from its first sign-in.
+
+```sql
+-- Who is the President this term, and on which address the position sits.
+select w.email as work_email, pr.email as held_by, a.status
+from public.positions p
+left join public.position_work_emails w on w.position_id = p.id
+left join public.assignments a
+  on a.position_id = p.id and a.term_id = app.current_term_id() and a.status = 'active'
+left join public.profiles pr on pr.id = a.profile_id
+where p.key = 'eb.president';
+```
 
 ## 9. Approve a membership verification
 
@@ -902,7 +959,8 @@ with no work email cannot be given at all. The list was seeded from the role inb
 reference data had invited (the `email` of each role in `src/data/society.js`). The
 Executive Board reads and changes it under "Work emails", on a committee's Invites tab and
 in the Executive Board panel of the Roster page; only the webmaster changes the
-webmaster's; officers and visitors cannot read it. **To move a position to a new address**
+webmaster's, and only the President the President's (section 8, "The President's position");
+officers and visitors cannot read it. **To move a position to a new address**
 (a role inbox is replaced): change the work email, Remove the current holder in "Holding a
 position", then Invite: the form fills in the new address by itself. Changing the address
 alone moves nothing, the old account keeps the position until it is removed.

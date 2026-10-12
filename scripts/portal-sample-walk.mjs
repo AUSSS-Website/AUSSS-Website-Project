@@ -165,7 +165,7 @@ const samplePositions = [
   position('p-scope-old', 'scope.buddy', 'c-scope', 'member', 'A retired position with a rather long title, kept to show how one wraps', '', { active: false }),
   position('p-scoph-officer', 'scoph.officer', 'c-scoph', 'officer', 'Local Public Health Officer', 'LPO'),
   position('p-scoph-member', 'scoph.member', 'c-scoph', 'member', 'Local Member', 'Member'),
-  position('p2', 'society.president', null, 'eb', 'President', 'President'),
+  position('p2', 'eb.president', null, 'eb', 'President', 'President'),
   position('p3', 'society.vpe', null, 'eb', 'Vice President for External Affairs', 'VPE'),
   position('p-president-assistant', 'society.president-assistant', null, 'assistant', 'Assistant to the President', ''),
   position('p1', 'society.webmaster', null, 'webmaster', 'Webmaster', 'Webmaster'),
@@ -813,6 +813,8 @@ const ROUTES = [
   // "Dismiss member" and a reason typed, the line a dismissal leaves, and the record with "Reinstate"
   '/portal/admin/roster#dismissed', '/portal/admin/roster#president-dismiss', '/portal/admin/roster#president-dismissed',
   '/portal/admin/roster#president-reinstate',
+  // the Executive Board panel again as the President, who alone changes the President's work email
+  '/portal/admin/roster#president-executive-board',
   // the verification queue, then with one request approved (the line with its Undo) and one approved and taken back
   '/portal/admin/verification', '/portal/admin/verification#undo', '/portal/admin/rollover',
   '/portal/merch', '/portal/merch/notebook', '/portal/merch/a-new-product-with-a-long-id-for-phones',
@@ -883,6 +885,9 @@ const acts = {
   },
   // The record again, for the President: "Reinstate" and what it gives back.
   '/portal/admin/roster#president-reinstate': (page) => page.locator('#roster-row-r-0').click(),
+  // The webmaster reads the President's work email greyed out (the walk above);
+  // here it is the President's to change.
+  '/portal/admin/roster#president-executive-board': (page) => page.getByRole('button', { name: 'Executive Board', exact: true }).click(),
   '/portal/admin/audit#released': (page) => page.locator('details > summary').first().click(),
   // "Remove" asks twice, and two taps too close together count as one slip.
   // The sample list still holds the call afterwards; the line above it is

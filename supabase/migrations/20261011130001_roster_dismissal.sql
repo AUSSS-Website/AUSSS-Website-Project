@@ -8,6 +8,14 @@
 -- whose key is 'eb.president' (app.is_president). Not the rest of the Executive Board and not the
 -- webmaster. The two functions check it, and a trigger on the table keeps every other route shut.
 --
+-- That holds only while the President's position cannot be handed to another address, so the
+-- position is the President's own from here (the last section but one): its work email is
+-- changed by the President alone, the way only the webmaster changes the webmaster's; the row
+-- of the position is changed by the President alone; and nobody removes it or gives it another
+-- level, because a position below officer has no work email and goes to any address the board
+-- names. When the President's mailbox is lost the owner of the database puts it right with SQL
+-- (docs/RUNBOOK.md, section 8).
+--
 -- What is stored, on the roster row itself:
 --   dismissed_at              when; a row is dismissed exactly while this is set
 --   dismissed_by              who (the President's account)
@@ -37,16 +45,22 @@
 --     included (row-level security is as it was: the board reads the whole roster). Three things
 --     may still happen to it by themselves: the daily count of years spent, the row being tied
 --     to the account of its own email at sign-in, and a deleted account's id being cleared;
---   * no second row can be added for a dismissed person (the same email, or the same name where
---     either row has no email).
+--   * no second row can be added for a dismissed person (the same email, the email of the
+--     account the record is tied to, or the same name where either row has no email), and no
+--     other row can be tied to that account.
 --
 -- While a row is dismissed nothing lifts its member again: claiming at sign-in ties the account
 -- to the record and verifies nobody, a change of the row follows through to no profile, the
 -- account cannot be given a status other than unverified (so a verification request cannot be
--- approved), and it cannot hold an active assignment.
+-- approved), and it cannot hold an active assignment. Nobody is offered a position either:
+-- rpc/invite_to_position and the policies on invites refuse a dismissed member's address. The
+-- places that write offers in bulk (the term rollover, the roster's own trigger) are refused
+-- nothing, so that one member cannot stop them: an offer that reaches the table that way is
+-- left unaccepted, and the reinstatement deletes it.
 --
 -- The import (app.apply_roster_rows) leaves a line alone, and counts it as skipped_dismissed,
--- when it names a dismissed member (the same key, the same email or the same name) or when its
+-- when it names a dismissed member (the same key, the same email, or the same name unless the
+-- roster already has an ordinary row for exactly that line, which is a namesake) or when its
 -- status says dismissed. A dismissed row is never reported as missing from the sheet.
 --
 -- Readers. rpc/check_membership answers { "state": "ended" } and nothing else for a dismissed
@@ -151,6 +165,25 @@ as $$
   )
 $$;
 
+-- The same question about an address, for the places that have no account to ask about (an
+-- offer, a new roster row, a line of the sheet): a dismissed row carries it, or is tied to the
+-- account that signs in with it.
+create or replace function app.is_dismissed_email(p_email text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.roster_entries r
+    left join public.profiles p on p.id = r.profile_id
+    where r.dismissed_at is not null
+      and app.norm_email(p_email) in (r.email_normalized, p.email_normalized)
+  )
+$$;
+
 -- ---------------------------------------------------------------------------------------------
 -- The guard on the roster
 -- ---------------------------------------------------------------------------------------------
@@ -185,18 +218,21 @@ begin
   end if;
 
   if tg_op = 'UPDATE' and old.dismissed_at is not null then
-    -- years_spent is left out: it is counted from the joining year, by a daily job too.
+    -- years_spent is compared only where the row has no joining year: with one it is counted
+    -- from that year, by a daily job too, and without one it is the sheet's own number.
     if (new.id, new.source_key, new.full_name, new.email, new.status, new.joined_year,
         new.lgas, new.ngas, new.current_position, new.committee_id, new.position_id,
         new.is_contact_person, new.origin, new.portal_edited_at, new.upgrade_dismissed_for,
         new.upgrade_dismissed_at, new.dismissed_at, new.dismissal_reason,
-        new.status_before_dismissal)
+        new.status_before_dismissal, new.import_batch, new.imported_at, new.created_at,
+        case when new.joined_year is null then new.years_spent end)
        is distinct from
        (old.id, old.source_key, old.full_name, old.email, old.status, old.joined_year,
         old.lgas, old.ngas, old.current_position, old.committee_id, old.position_id,
         old.is_contact_person, old.origin, old.portal_edited_at, old.upgrade_dismissed_for,
         old.upgrade_dismissed_at, old.dismissed_at, old.dismissal_reason,
-        old.status_before_dismissal)
+        old.status_before_dismissal, old.import_batch, old.imported_at, old.created_at,
+        case when old.joined_year is null then old.years_spent end)
       -- The record may be tied to the account of its own email (claiming at sign-in), and an
       -- account that has been deleted leaves the three columns that named it.
       or (new.profile_id is distinct from old.profile_id and not (
@@ -233,23 +269,23 @@ begin
       using errcode = '42501';
   end if;
 
-  -- No second, ordinary row for a dismissed person. email_normalized is a generated column,
-  -- which is not worked out yet in a before trigger, hence the two values made here.
+  -- No second, ordinary row for a dismissed person: none with an address of theirs, no new
+  -- one under their name where either row has no email to tell the two apart, and none tied
+  -- to their account. email_normalized is a generated column, which is not worked out yet in
+  -- a before trigger, hence the two values made here.
   v_email := app.norm_email(new.email);
   v_name := app.normalize_text(new.full_name);
-  if (tg_op = 'INSERT' or v_email is distinct from old.email_normalized)
-    and exists (
-      select 1
-      from public.roster_entries d
-      where d.dismissed_at is not null
-        and d.id <> new.id
-        and (
-          d.email_normalized = v_email
-          or (tg_op = 'INSERT'
-              and d.name_normalized = v_name
-              and (v_email is null or d.email_normalized is null))
-        )
-    )
+  if ((tg_op = 'INSERT' or v_email is distinct from old.email_normalized)
+        and app.is_dismissed_email(v_email))
+    or (tg_op = 'INSERT' and exists (
+          select 1
+          from public.roster_entries d
+          where d.dismissed_at is not null
+            and d.name_normalized = v_name
+            and (v_email is null or d.email_normalized is null)))
+    or (new.profile_id is not null
+        and (tg_op = 'INSERT' or new.profile_id is distinct from old.profile_id)
+        and app.is_dismissed_profile(new.profile_id))
   then
     raise exception 'This person was dismissed and is on the roster as a record. Only the President can reinstate a dismissed member.'
       using errcode = '22023';
@@ -482,6 +518,201 @@ end
 $$;
 
 -- ---------------------------------------------------------------------------------------------
+-- No offer of a position to a dismissed member
+-- ---------------------------------------------------------------------------------------------
+
+-- An offer made while the member is dismissed would wait in the table and become a position
+-- at the first sign-in after a reinstatement. The two doors a person offers through refuse the
+-- address: rpc/invite_to_position, and a direct insert or update of an invite (the policies).
+-- There is no raising trigger on invites on purpose: the term rollover and the roster write
+-- offers many at a time, and one dismissed member must not stop either. What reaches the table
+-- that way is left unaccepted (app.handle_new_invite below, app.claim_for_profile above) and
+-- goes when the member is reinstated.
+
+-- As 20261005180001, refusing a dismissed member's address, in the words an officer may read.
+create or replace function public.invite_to_position(email text, "position" uuid)
+returns text
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_email text := lower(btrim(coalesce(email, '')));
+  v_norm text;
+  v_term uuid := app.current_term_id();
+  v_profile uuid;
+  v_work text;
+begin
+  if not exists (select 1 from public.positions p where p.id = "position" and p.active)
+    or not app.can_manage_position("position")
+  then
+    raise exception 'You cannot hand out that position.' using errcode = '42501';
+  end if;
+  if v_term is null then
+    raise exception 'There is no current term.' using errcode = '22023';
+  end if;
+  if length(v_email) > 200 or v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    raise exception 'That does not look like an email address.' using errcode = '22023';
+  end if;
+  if not app.work_email_ok("position", v_email) then
+    select w.email into v_work from public.position_work_emails w where w.position_id = "position";
+    if v_work is null then
+      raise exception 'This position has no work email yet. Set it first; the position can only be given to that address.'
+        using errcode = '22023';
+    end if;
+    raise exception 'This position can only be given to its work email, %.', v_work
+      using errcode = '22023';
+  end if;
+  if app.is_dismissed_email(v_email) then
+    raise exception 'The membership of this person has ended, so they cannot hold a position.'
+      using errcode = '22023';
+  end if;
+  v_norm := app.norm_email(v_email);
+
+  -- the insert trigger turns it into an assignment when the account already exists
+  insert into public.invites (email, position_id, term_id, invited_by)
+  values (v_email, "position", v_term, auth.uid())
+  on conflict (email_normalized, position_id, term_id) do nothing;
+
+  select p.id into v_profile from public.profiles p
+  where p.email_normalized = v_norm order by p.created_at limit 1;
+  if v_profile is null then
+    return 'invited';
+  end if;
+
+  -- held before and removed since: it comes back
+  insert into public.assignments (profile_id, position_id, term_id)
+  values (v_profile, "position", v_term)
+  on conflict (profile_id, position_id, term_id)
+    do update set status = 'active', ended_on = null;
+  update public.invites i
+     set accepted_at = coalesce(i.accepted_at, now()), accepted_profile_id = v_profile
+   where i.email_normalized = v_norm and i.position_id = "position" and i.term_id = v_term;
+  return 'assigned';
+end
+$$;
+
+-- As 20261005180001, with the same refusal.
+drop policy if exists invites_insert on public.invites;
+create policy invites_insert on public.invites
+  for insert to authenticated
+  with check (
+    (select app.can_manage_position(position_id))
+    and (select app.work_email_ok(position_id, email))
+    and not (select app.is_dismissed_email(email))
+  );
+drop policy if exists invites_update on public.invites;
+create policy invites_update on public.invites
+  for update to authenticated
+  using ((select app.can_manage_position(position_id)))
+  with check (
+    (select app.can_manage_position(position_id))
+    and (select app.work_email_ok(position_id, email))
+    and not (select app.is_dismissed_email(email))
+  );
+
+-- As 20261005180001, leaving an offer to a dismissed member's account as it is: unaccepted,
+-- with nothing raised, so the statement that wrote it (one of many, in a rollover) goes on.
+create or replace function app.handle_new_invite()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_profile uuid;
+begin
+  if new.accepted_at is not null or new.email_normalized is null then
+    return new;
+  end if;
+  if not app.work_email_ok(new.position_id, new.email) then
+    return new;
+  end if;
+
+  select p.id
+    into v_profile
+  from public.profiles p
+  where p.email_normalized = new.email_normalized
+  order by p.created_at
+  limit 1;
+
+  if v_profile is null or app.is_dismissed_profile(v_profile) then
+    return new;
+  end if;
+
+  insert into public.assignments (profile_id, position_id, term_id)
+  values (v_profile, new.position_id, new.term_id)
+  on conflict (profile_id, position_id, term_id) do nothing;
+
+  update public.invites
+    set accepted_at = now(),
+        accepted_profile_id = v_profile
+  where id = new.id;
+
+  return new;
+end
+$$;
+
+-- As 20261005170001. The roster offers a dismissed member's address nothing, and gives a
+-- dismissed member's account no ended position back: app.guard_dismissed_holder would refuse
+-- that update, and with it the change of the roster row, or the whole import, that led here.
+create or replace function app.sync_roster_position()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_term uuid := app.current_term_id();
+begin
+  if v_term is null then
+    return null;
+  end if;
+  if tg_op = 'UPDATE'
+    and new.position_id is not distinct from old.position_id
+    and new.email_normalized is not distinct from old.email_normalized
+    and new.profile_id is not distinct from old.profile_id
+  then
+    return null;
+  end if;
+
+  if tg_op = 'UPDATE' and old.position_id is not null
+    and not app.position_is_privileged(old.position_id)
+    and (old.position_id is distinct from new.position_id
+         or old.email_normalized is distinct from new.email_normalized)
+  then
+    delete from public.invites i
+    where i.position_id = old.position_id and i.term_id = v_term
+      and i.email_normalized = old.email_normalized and i.accepted_at is null;
+    update public.assignments a
+       set status = 'ended', ended_on = current_date
+     where a.position_id = old.position_id and a.term_id = v_term and a.status = 'active'
+       and a.profile_id in (
+         select p.id from public.profiles p
+         where p.id = old.profile_id or p.email_normalized = old.email_normalized);
+  end if;
+
+  if new.position_id is not null and new.email_normalized is not null
+    and not app.position_is_privileged(new.position_id)
+    and not app.is_dismissed_email(new.email)
+  then
+    insert into public.invites (email, position_id, term_id, invited_by)
+    values (new.email, new.position_id, v_term, auth.uid())
+    on conflict (email_normalized, position_id, term_id) do nothing;
+    update public.assignments a
+       set status = 'active', ended_on = null
+     where a.position_id = new.position_id and a.term_id = v_term and a.status = 'ended'
+       and a.profile_id in (
+         select p.id from public.profiles p
+         where p.id = new.profile_id or p.email_normalized = new.email_normalized)
+       and not app.is_dismissed_profile(a.profile_id);
+  end if;
+  return null;
+end
+$$;
+
+-- ---------------------------------------------------------------------------------------------
 -- rpc/dismiss_roster_member
 -- ---------------------------------------------------------------------------------------------
 
@@ -499,6 +730,7 @@ declare
   v_row public.roster_entries%rowtype;
   v_profiles uuid[];
   v_emails text[];
+  v_work text;
   v_twin text;
   v_positions int;
 begin
@@ -546,17 +778,31 @@ begin
   ) e
   where e.email is not null;
 
-  -- One person, one record: an ordinary row left beside the dismissed one would still read
-  -- as a member, and its position would hand the account back what this takes away.
+  -- A work account belongs to its position and is handed on with it each term. Dismissed, it
+  -- would hold nothing until a reinstatement, whoever had the position by then.
+  select p.title into v_work
+  from public.position_work_emails w
+  join public.positions p on p.id = w.position_id
+  where w.email_normalized = any (v_emails)
+  order by p.title
+  limit 1;
+  if found then
+    raise exception 'This row is tied to the work account of a position (%), which is handed on with the position and cannot be dismissed. Remove the row, add the member again under their own email, and dismiss that row.', v_work
+      using errcode = '22023';
+  end if;
+
+  -- One person, one record: an ordinary row left beside the dismissed one (under an address
+  -- of theirs, or tied to their account) would still read as a member, and its position would
+  -- hand the account back what this takes away.
   select o.full_name into v_twin
   from public.roster_entries o
   where o.id <> v_row.id
     and o.dismissed_at is null
-    and o.email_normalized = any (v_emails)
+    and (o.email_normalized = any (v_emails) or o.profile_id = any (v_profiles))
   order by o.full_name
   limit 1;
   if found then
-    raise exception 'This email is on another row of the roster as well, under the name %. Remove the duplicate row first, so that one record is dismissed.', v_twin
+    raise exception 'This member has another row on the roster, under the name %. Remove the duplicate row first, so that one record is dismissed.', v_twin
       using errcode = '22023';
   end if;
 
@@ -650,6 +896,23 @@ begin
    where r.id = v_row.id;
   perform set_config('app.roster_dismissal', 'off', true);
 
+  -- An offer that reached the table while the member was dismissed (the rollover and the
+  -- roster write theirs many at a time) was never taken up. It goes, so that the
+  -- reinstatement gives no position back by itself at the next sign-in. One the roster itself
+  -- stands behind stays: an ordinary row lists that address with that position, the offer is
+  -- that row's to withdraw (app.guard_invite_delete would refuse it here), and a member who
+  -- is one again may take it up.
+  delete from public.invites i
+   where i.accepted_at is null
+     and i.email_normalized in (
+       select v_row.email_normalized
+       union all
+       select p.email_normalized
+       from public.profiles p
+       where p.id = v_row.profile_id or p.email_normalized = v_row.email_normalized
+     )
+     and not app.position_from_roster(i.position_id, i.email_normalized, null);
+
   return jsonb_build_object('status', v_row.status_before_dismissal);
 end
 $$;
@@ -662,7 +925,8 @@ $$;
 -- names a dismissed member, or its status says dismissed, which only the President can do. The
 -- match is wider here than in the guard, the same name alone being enough: an hourly job cannot
 -- ask whether a changed email is a correction or another person, and the board can still add a
--- namesake by hand, with their own email.
+-- namesake by hand, with their own email. A namesake who was on the roster before the
+-- dismissal is not frozen by it: their line is the one an ordinary row already answers to.
 create or replace function app.apply_roster_rows(p_rows jsonb, p_batch text, p_source text)
 returns jsonb
 language plpgsql
@@ -749,17 +1013,21 @@ begin
     v_seen := v_seen || v_key;
 
     -- a dismissed member's line changes nothing and adds nobody; neither does a line that
-    -- would dismiss somebody
-    if app.normalize_text(v_status) like '%dismiss%' or exists (
-      select 1
-      from public.roster_entries d
-      where d.dismissed_at is not null
-        and (
-          d.source_key = v_key
-          or d.name_normalized = v_name_norm
-          or d.email_normalized = app.norm_email(v_email)
-        )
-    ) then
+    -- would dismiss somebody. The name alone is enough, except for a namesake the roster
+    -- already has: an ordinary row with this line's own key (the same name and email) is
+    -- another person, and their line goes on as it always did
+    if app.normalize_text(v_status) like '%dismiss%'
+      or app.is_dismissed_email(v_email)
+      or exists (
+        select 1 from public.roster_entries d
+        where d.dismissed_at is not null and d.source_key = v_key)
+      or (exists (
+            select 1 from public.roster_entries d
+            where d.dismissed_at is not null and d.name_normalized = v_name_norm)
+          and not exists (
+            select 1 from public.roster_entries o
+            where o.dismissed_at is null and o.source_key = v_key))
+    then
       v_dismissed := v_dismissed + 1;
       continue;
     end if;
@@ -1221,12 +1489,92 @@ end
 $$;
 
 -- ---------------------------------------------------------------------------------------------
+-- The President's position is the President's own
+-- ---------------------------------------------------------------------------------------------
+
+-- "The President alone" is worth what the road to that position is worth. Until here any
+-- member of the Executive Board could take it: point its work email at an address of their
+-- own and invite that address, or give the position a level below officer (which needs no
+-- work email at all), or delete it and add another under the same key.
+
+-- As 20261005180001, with a second position that only its holder repoints: the President's
+-- work email is changed by the President, as the webmaster's is by the webmaster. Not by the
+-- rest of the board, and not by the webmaster either.
+create or replace function app.can_set_work_email(p_position uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select app.is_eb() and coalesce((
+    select case
+      when p.key = 'eb.president' then app.is_president()
+      when p.level = 'webmaster' then app.is_webmaster()
+      else true
+    end
+    from public.positions p
+    where p.id = p_position
+  ), true)
+$$;
+
+-- Before insert, update and delete on positions. The President's position is never removed
+-- and never leaves the Executive Board's level, whoever asks; and of the people signed in to
+-- the portal only the President changes anything else about it. A session with no account
+-- (the owner of the database, at the SQL editor) may still rename or retire it. The name sorts
+-- before normalize_position, so this reads what the writer sent; the key itself never changes
+-- on an update (normalize_position puts the old one back).
+create or replace function app.guard_president_position()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    if old.key = 'eb.president' then
+      raise exception 'The President''s position cannot be removed.' using errcode = '42501';
+    end if;
+    return old;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.key = 'eb.president' and (new.level is distinct from 'eb' or new.committee_id is not null) then
+      raise exception 'The President''s position belongs to the Executive Board.' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+
+  if old.key = 'eb.president' then
+    if new.level is distinct from old.level then
+      raise exception 'The President''s position belongs to the Executive Board. Its level cannot be changed.'
+        using errcode = '42501';
+    end if;
+    if new is distinct from old and auth.uid() is not null and not app.is_president() then
+      raise exception 'Only the President changes the President''s position.' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists guard_president_position on public.positions;
+create trigger guard_president_position before insert or update or delete on public.positions
+  for each row execute function app.guard_president_position();
+
+-- ---------------------------------------------------------------------------------------------
 -- Ownership + grants
 -- ---------------------------------------------------------------------------------------------
 
 alter function app.is_president() owner to postgres;
 alter function app.roster_dismissing() owner to postgres;
 alter function app.is_dismissed_profile(uuid) owner to postgres;
+alter function app.is_dismissed_email(text) owner to postgres;
+alter function app.can_set_work_email(uuid) owner to postgres;
+alter function app.guard_president_position() owner to postgres;
+alter function app.handle_new_invite() owner to postgres;
+alter function app.sync_roster_position() owner to postgres;
+alter function public.invite_to_position(text, uuid) owner to postgres;
 alter function app.guard_roster_dismissal() owner to postgres;
 alter function app.guard_dismissed_profile() owner to postgres;
 alter function app.guard_dismissed_holder() owner to postgres;
@@ -1248,6 +1596,14 @@ revoke execute on function app.is_president() from public;
 grant execute on function app.is_president() to authenticated;
 revoke execute on function app.roster_dismissing() from public;
 revoke execute on function app.is_dismissed_profile(uuid) from public;
+-- these two run inside row-level security policies, as the caller
+revoke execute on function app.is_dismissed_email(text) from public;
+grant execute on function app.is_dismissed_email(text) to authenticated;
+revoke execute on function app.can_set_work_email(uuid) from public;
+grant execute on function app.can_set_work_email(uuid) to authenticated;
+revoke execute on function app.guard_president_position() from public;
+revoke execute on function app.handle_new_invite() from public;
+revoke execute on function app.sync_roster_position() from public;
 revoke execute on function app.guard_roster_dismissal() from public;
 revoke execute on function app.guard_dismissed_profile() from public;
 revoke execute on function app.guard_dismissed_holder() from public;
@@ -1256,10 +1612,16 @@ revoke execute on function app.sync_roster_entry() from public;
 revoke execute on function app.claim_for_profile(uuid) from public, anon, authenticated, service_role;
 revoke execute on function app.apply_roster_rows(jsonb, text, text) from public, anon, authenticated, service_role;
 
-revoke execute on function public.dismiss_roster_member(uuid, text) from public, anon;
+-- The secret key is nobody's account, so it could not be the President; it is not granted the
+-- two functions either, and that is said here because the hosted project grants every new
+-- function in public to it by default.
+revoke execute on function public.dismiss_roster_member(uuid, text) from public, anon, service_role;
 grant execute on function public.dismiss_roster_member(uuid, text) to authenticated;
-revoke execute on function public.reinstate_roster_member(uuid) from public, anon;
+revoke execute on function public.reinstate_roster_member(uuid) from public, anon, service_role;
 grant execute on function public.reinstate_roster_member(uuid) to authenticated;
+
+revoke execute on function public.invite_to_position(text, uuid) from public, anon;
+grant execute on function public.invite_to_position(text, uuid) to authenticated;
 
 revoke execute on function public.bulk_update_roster(uuid[], text, text, text) from public, anon;
 grant execute on function public.bulk_update_roster(uuid[], text, text, text) to authenticated;
