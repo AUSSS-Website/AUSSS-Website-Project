@@ -3342,3 +3342,40 @@ keeps the rehearsal on `127.0.0.1` or `localhost`, and the tokens it signs).
 - The students' pages were checked in Chromium at 320 px with touch. They have not met a real
   phone, Safari, Firefox or a screen reader. The sitting in the hall is where real phones, and
   Safari on iPhones, are tried.
+
+## 31. The website guide
+
+One PDF that explains every public page and every part of the portal, with a picture of
+each. It is made from `docs/guide/`, and `docs/guide/README.md` is the full how-to; this
+section is what an operator needs to know.
+
+```sh
+npm run dev            # in another terminal: the pictures are taken from localhost:5173
+npm run guide          # every picture (about a quarter of an hour), then the book
+npm run guide:shots -- --only roster,exam    # some of the pictures
+npm run guide:build -- --sheets              # the book, and every page drawn small to check it
+```
+
+- **Where it is.** `docs/guide/out/AUSSS-website-guide.pdf`. The whole `out/` folder is made
+  by the commands and is not in the repository.
+- **Three sources.** `guide.json` (the title and the parts), `chapters/NN-name.md` (one
+  chapter each) and `shots.manifest.mjs` (every picture: its address, how it is taken and
+  its caption). `scripts/guide/shots.mjs` takes the pictures and `scripts/guide/build.mjs`
+  prints the book.
+- **No real person is in a picture of the portal.** Portal and exam pages are opened with
+  the made-up session and sample rows of `scripts/portal-sample.mjs`, the same ones the
+  portal sample walk uses (section 21). Public pages are opened as a visitor and show the
+  real site; whatever they try to write is held back by `scripts/walk-guard.mjs`, and the
+  command lists what it held back.
+- **When a page changes**, take its pictures again (`--only` with the start of their ids)
+  and print. When the portal gains a screen, give it sample rows first, then an entry in
+  the manifest, then a line in a chapter.
+- **A draft says so.** A line of a chapter that starts `TODO:` is a section still to be
+  written. The cover counts them and calls the book a draft while there are any. On
+  2026-10-12 the book was an outline: 37 chapters, a picture and a caption for every screen,
+  and every section still to be written.
+- **The checks it makes.** It refuses to print when a chapter names a picture the manifest
+  does not have or has an em-dash. It prints twice, because the contents page needs page
+  numbers only the printed PDF knows, and stops if the two printings disagree.
+- **It is for officers and the board.** The PDF must not go under `public/`. A download
+  inside the portal for officers and the board is planned and not built.

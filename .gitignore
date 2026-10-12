@@ -31,3 +31,7 @@ supabase/.branches/
 
 # Page-walk output (scripts/page-walk.mjs): screenshots, and auth.json, a live portal session
 .page-walk/
+
+# The website guide's output (scripts/guide): the screenshots, the printed PDF and its previews
+docs/guide/out/
+scripts/guide/.try/

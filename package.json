@@ -13,6 +13,9 @@
     "preview:host": "vite preview --host",
     "walk": "node scripts/page-walk.mjs",
     "walk:portal-sample": "node scripts/portal-sample-walk.mjs",
+    "guide:shots": "node scripts/guide/shots.mjs",
+    "guide:build": "node scripts/guide/build.mjs",
+    "guide": "npm run guide:shots && npm run guide:build",
     "db": "node scripts/db/supa.mjs",
     "db:new": "node scripts/db/supa.mjs migration new",
     "db:link": "node scripts/db/supa.mjs link --project-ref wjijkqrdaakiwbtdssio",
@@ -40,9 +43,11 @@
     "react-router-dom": "^7.15.1"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.9",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "axe-core": "^4.13.0",
+    "marked": "^15.0.12",
     "playwright": "^1.63.0",
     "postcss": "^8.4.49",
     "supabase": "2.117.0",
