@@ -2257,6 +2257,15 @@ named.
   flipped, so the two never look alike. `onChange` is handed the new true or false, as
   Toggle's is, and the row brings its own 44px, so stacked ones need no margin.
   `<CheckField checked={digest} onChange={setDigest} label="Email me a daily digest" hint="At most one email a day." />`
+- **A drop-down's arrow** is drawn by the site, on every `<select>` of the public pages,
+  the portal and the exam (the `select` rule in the base layer of `src/index.css`, since
+  2026-10-12). The browser's own arrow sits against the box's edge whatever the padding,
+  which in a rounded field put it in the corner's curve; the Waitlist's status list is
+  where it was noticed. Ours is two strokes in the colour of the field's text, so it
+  follows the theme, set in 0.875rem from the edge, and the rule keeps the room for it,
+  so a field's own `px-3` or `px-4` does not apply on that side. A new drop-down needs
+  nothing: give it `inputCls` or `smallInputCls` as before. A list box (`multiple` or
+  `size`) is left as the browser draws it.
 - **`Toggle`** is 28px tall to the eye and carries an unseen `::after` 44px high, so a
   finger has the full target, the row keeps its height and a page needs no wrapper for
   it. It shows the keyboard's ring, and its knob slides only for a reader who has not
