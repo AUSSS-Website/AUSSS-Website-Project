@@ -374,6 +374,7 @@ const tables = {
   notifications: [
     { id: 'n-1', kind: 'task_assigned', payload: { task_id: 't-1', title: 'Collect the incomings welcome booklet photos', actor_id: other }, read_at: null, created_at: iso(0.1) },
     { id: 'n-3', kind: 'order_new', payload: { name: 'Fourth Buyer With A Long Name That Wraps On A Phone', ref: 'AUSSS-4D8R1T', subtotal: 120, flagged: true }, read_at: null, created_at: iso(0.5) },
+    { id: 'n-6', kind: 'signup_new', payload: { submission_id: 'g-1', name: 'Waiting One', count: 3 }, read_at: null, created_at: iso(0.3) },
     { id: 'n-4', kind: 'story_new', payload: { name: 'Second Outgoing With A Rather Long Four Part Name', destination: 'Brno, Czech Republic', ref: 'STORY-BBB222' }, read_at: null, created_at: iso(1) },
     { id: 'n-5', kind: 'task_files', payload: { task_id: 't-1', title: 'Collect the incomings welcome booklet photos from every contact person', actor_id: other, count: 2, name: 'contact-persons-with-a-rather-long-file-name-2026-27.pdf' }, read_at: iso(1), created_at: iso(1.5) },
     { id: 'n-2', kind: 'task_comment', payload: { task_id: 't-2', title: 'Book the hall for the first general assembly', actor_id: other, excerpt: 'The dean’s office wants the request on paper, signed, before Sunday.' }, read_at: iso(1), created_at: iso(2) },
