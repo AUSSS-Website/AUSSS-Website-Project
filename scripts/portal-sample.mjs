@@ -793,7 +793,9 @@ export const ROUTES = [
   '/portal/magazine', '/portal/magazine/vol-9', '/portal/magazine/vol-8',
   // what the public forms sent in; the stories twice, as the tab opens and then every one of them with a form for the exchange page open
   '/portal/submissions?tab=orders', '/portal/submissions?tab=stories', '/portal/submissions?tab=stories#review',
-  '/portal/submissions?tab=signups', '/portal/admin/settings',
+  '/portal/submissions?tab=signups',
+  // everybody on the waitlist ticked, and the form that writes to each of them in Gmail
+  '/portal/submissions?tab=signups#write', '/portal/admin/settings',
   // the roster, then each of the panels its buttons open, and a member's row opened
   '/portal/admin/roster', '/portal/admin/roster#upgrades', '/portal/admin/roster#register-a-ga', '/portal/admin/roster#position-types',
   '/portal/admin/roster#executive-board', '/portal/admin/roster#member',
@@ -841,6 +843,14 @@ export const acts = {
   '/portal/submissions?tab=stories#review': async (page) => {
     await page.getByRole('button', { name: /^All\b/ }).click()
     await page.getByRole('button', { name: 'Review and publish' }).first().click()
+  },
+  // Everybody listed is ticked, and the form is open with a subject and a
+  // message. Nothing is opened in Gmail: that would leave the page.
+  '/portal/submissions?tab=signups#write': async (page) => {
+    await page.getByRole('checkbox', { name: /^Select all/ }).check()
+    await page.getByRole('button', { name: 'Write to them', exact: true }).click()
+    await page.getByLabel('Subject').fill('Recruitment opens on Sunday')
+    await page.getByLabel('Message').fill('Applications open this Sunday at noon and close a week later.\n\nThe form is on the Join page of the website.')
   },
   '/portal/admin/roster#upgrades': (page) => page.getByRole('button', { name: 'Review', exact: true }).click(),
   // The attendance form, with the bulk updates made so far under it.
