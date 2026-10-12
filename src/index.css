@@ -123,26 +123,165 @@
     }
   }
 
-  /* A drop-down's arrow is the browser's own by default, and the browser puts
-     it against the box's edge whatever the padding is: in a rounded box it
-     sits in the corner's curve, and it differs from one browser to the next.
-     Every drop-down on the site draws this one in its place: two strokes in
-     the colour of the field's own text, so it follows the theme and a
-     disabled field, set in from the edge about as far as the text is on the
-     other side, with room kept for it so a long choice stops short of it.
-     The selector outweighs a padding utility on purpose (px-3, px-4): the
-     room on the arrow's side is not a field's to give away. */
+  /* Drop-downs. A drop-down is pressed to choose, not typed in, so it has the
+     shape of the buttons and filter chips it stands beside: a capsule. That
+     also tells it apart from a text field at a glance.
+
+     The arrow is ours. The browser's own sits against the box's edge whatever
+     the padding is and differs from one browser to the next. This one is two
+     strokes in the colour of the field's own text, at its full strength, so
+     it follows the theme and a disabled field. It is set in from the edge as
+     far as the text is on the other side, with room kept for it so a long
+     choice stops short of it.
+
+     The selector outweighs a field's own rounded-*, px-* and border colour on
+     purpose: the shape and the arrow's room are not a field's to give away. */
   select:not([multiple]):not([size]) {
     appearance: none;
+    border-radius: 9999px;
+    cursor: pointer;
     background-image:
       linear-gradient(to top right, transparent calc(50% - 1.25px), currentColor calc(50% - 0.75px), currentColor calc(50% + 0.75px), transparent calc(50% + 1.25px)),
       linear-gradient(to top left, transparent calc(50% - 1.25px), currentColor calc(50% - 0.75px), currentColor calc(50% + 0.75px), transparent calc(50% + 1.25px));
     background-repeat: no-repeat;
     background-size: 6px 6px;
     background-position:
-      right calc(0.875rem + 5px) center,
-      right 0.875rem center;
-    padding-right: calc(0.875rem + 11px + 0.625rem);
+      right calc(1.125rem + 5px) center,
+      right 1.125rem center;
+    padding-left: 1.125rem;
+    padding-right: calc(1.125rem + 11px + 0.625rem);
+    transition:
+      border-color 150ms ease-out,
+      background-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+  select:not([multiple]):not([size]):disabled {
+    cursor: not-allowed;
+  }
+  /* It answers the pointer the moment it is over it and the moment it is
+     pressed, before the list has opened. */
+  select:not([multiple]):not([size]):hover:not(:disabled) {
+    border-color: rgb(var(--c-line) / calc(var(--line-k) * 0.3));
+  }
+  select:not([multiple]):not([size]):active:not(:disabled) {
+    background-color: rgb(var(--c-veil) / calc(var(--veil-k) * 0.08));
+  }
+
+  /* The list that opens. Where the browser lets a page draw it (Chromium, with
+     a mouse or a trackpad) it is one of the site's own menus: a rounded panel
+     under the field, each choice a rounded row, a tick against the one that
+     is chosen. It drops 4px out of the field as it fades in and goes back the
+     way it came; with reduced motion it only fades. Elsewhere, and on a touch
+     screen, where the phone's own picker is the better tool, the list stays
+     the browser's. */
+  @supports (appearance: base-select) {
+    @media (pointer: fine) {
+      select:not([multiple]):not([size]),
+      select:not([multiple]):not([size])::picker(select) {
+        appearance: base-select;
+      }
+      /* The field keeps the arrow it has everywhere else. */
+      select:not([multiple]):not([size])::picker-icon {
+        display: none;
+      }
+      /* While the list is open the field is ringed in the site's blue and its
+         arrow points back up, the way to close it. */
+      select:not([multiple]):not([size]):open {
+        border-color: rgb(var(--c-cta));
+        box-shadow: 0 0 0 3px rgb(var(--c-cta) / 0.16);
+        background-image:
+          linear-gradient(to bottom right, transparent calc(50% - 1.25px), currentColor calc(50% - 0.75px), currentColor calc(50% + 0.75px), transparent calc(50% + 1.25px)),
+          linear-gradient(to bottom left, transparent calc(50% - 1.25px), currentColor calc(50% - 0.75px), currentColor calc(50% + 0.75px), transparent calc(50% + 1.25px));
+      }
+      select:not([multiple]):not([size])::picker(select) {
+        /* Under the field whenever it fits there. Left alone, the browser
+           opens it on whichever side has more room, which is upwards for any
+           field in the lower half of the screen. */
+        position-try-order: normal;
+        margin-block: 0.375rem;
+        padding: 0.375rem;
+        border: 1px solid rgb(var(--c-line) / calc(var(--line-k) * 0.12));
+        border-radius: 1.125rem;
+        background-color: rgb(var(--c-card));
+        color: rgb(var(--c-ink));
+        box-shadow:
+          0 1px 2px rgb(0 0 0 / 0.06),
+          0 12px 32px -6px rgb(0 0 0 / 0.18);
+        max-height: min(22rem, 60vh);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+        transform-origin: top center;
+        transition:
+          opacity 160ms ease-out,
+          transform 160ms ease-out,
+          overlay 160ms ease-out allow-discrete,
+          display 160ms ease-out allow-discrete;
+      }
+      select:not([multiple]):not([size])::picker(select):popover-open {
+        opacity: 1;
+        transform: none;
+      }
+      @starting-style {
+        select:not([multiple]):not([size])::picker(select):popover-open {
+          opacity: 0;
+          transform: translateY(-4px) scale(0.98);
+        }
+      }
+      select:not([multiple]):not([size]) option {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 2.25rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.3;
+        color: rgb(var(--c-ink));
+        cursor: pointer;
+        outline: none;
+        transition: background-color 100ms ease-out;
+      }
+      select:not([multiple]):not([size]) option:hover,
+      select:not([multiple]):not([size]) option:focus-visible {
+        background-color: rgb(var(--c-veil) / calc(var(--veil-k) * 0.08));
+      }
+      select:not([multiple]):not([size]) option:active {
+        background-color: rgb(var(--c-veil) / calc(var(--veil-k) * 0.14));
+      }
+      select:not([multiple]):not([size]) option:checked {
+        font-weight: 600;
+      }
+      select:not([multiple]):not([size]) option:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      /* The tick stands at the end of the chosen row, in the site's blue. */
+      select:not([multiple]):not([size]) option::checkmark {
+        order: 1;
+        margin-inline-start: auto;
+        color: rgb(var(--c-accent));
+        font-size: 0.8125rem;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        select:not([multiple]):not([size])::picker(select),
+        select:not([multiple]):not([size])::picker(select):popover-open {
+          transform: none;
+        }
+      }
+      @media (forced-colors: active) {
+        select:not([multiple]):not([size])::picker(select) {
+          border-color: CanvasText;
+          box-shadow: none;
+        }
+        select:not([multiple]):not([size]) option:hover,
+        select:not([multiple]):not([size]) option:focus-visible {
+          background-color: Highlight;
+          color: HighlightText;
+        }
+      }
+    }
   }
 
   body {
