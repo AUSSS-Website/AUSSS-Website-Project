@@ -474,11 +474,29 @@ power the position is the President's own, the way the webmaster's is the webmas
   President's position.", "The President's position cannot be removed.", "…Its level cannot be
   changed."). A position below officer has no work email and goes to any address.
 
-Giving the position to its work email is still the board's to do (Roster page > Executive
-Board > Invite, which fills the address in), and so is Remove on whoever holds it. What only
-the President can do is change the address. **If the President's mailbox is lost**, or the
-address was wrong from the start and nobody has ever signed in as President, the owner of
-the database changes it in the SQL editor. This is the one step that needs SQL:
+- the position **belongs to the account of that work email**. Signing in with the address is
+  what makes an account the President, with all the position opens: nobody has to be named
+  President on the roster, and nobody has to hold the position beforehand. The address is
+  always offered the position: when it is set, when it changes (trigger
+  `offer_president_position` on `public.position_work_emails`), and whenever a term becomes
+  the current one (the rollover, and the trigger of the same name on `public.terms` for a
+  term switched by hand). An account that exists has the position at once, a new one at its
+  first sign-in, and one that lost it has it back.
+  Nobody signed in to the portal can withdraw that offer, mark it taken for another account,
+  or remove that account from the
+  position (triggers `guard_president_offer` on `public.invites` and `guard_president_hold`
+  on `public.assignments`: "The President's position stays with the account of its work
+  email. To hand it to another address, the President changes the work email first."). The
+  Executive Board panel shows "Stays with its work email" where Withdraw and Remove would be.
+
+Handing the presidency over is handing the mailbox over: nothing changes in the portal. To
+move it to **another address**, the President changes the work email. The new address is
+offered the position there and then; the account of the old address keeps it until a board
+member presses Remove on it, which the database allows again because that account is no
+longer the work email's. **If the President's mailbox is lost**, or the address was wrong
+from the start and nobody has ever signed in as President, the owner of the database changes
+the address in the SQL editor. One statement, and the new address is offered the position by
+the same trigger:
 
 ```sql
 -- The President's new work email. Run as the owner, in the Supabase SQL editor.
@@ -487,9 +505,8 @@ set email = 'new.president@example.org'
 where position_id = (select id from public.positions where key = 'eb.president');
 ```
 
-Then, in the portal as any board member (or with the SQL above in this section): Remove the
-old account under "Holding a position", and Invite, which now fills in the new address. The
-new account is the President from its first sign-in.
+The new account is the President from its first sign-in (at once, if it already exists).
+Remove the old account under "Holding a position" if one held the position.
 
 ```sql
 -- Who is the President this term, and on which address the position sits.

@@ -171,8 +171,8 @@ const samplePositions = [
   position('p1', 'society.webmaster', null, 'webmaster', 'Webmaster', 'Webmaster'),
 ]
 const positionOf = (id) => {
-  const { title, level } = samplePositions.find((p) => p.id === id)
-  return { id, title, level }
+  const { key, title, level } = samplePositions.find((p) => p.id === id)
+  return { id, key, title, level }
 }
 // The roster: six members written out (a long name, one with no committee,
 // one the portal owns, one whose name, address and position are all long,
@@ -246,7 +246,8 @@ const heldIn = {
   society: {
     holders: [
       holder('as-5', uid, 'Sample Webmaster', 'webmaster@example.com', 'p1'),
-      holder('as-6', 'pr-2', 'Sample President', 'president@example.com', 'p2'),
+      // the President's position stays with its work email: the database offers no Remove on it
+      holder('as-6', 'pr-2', 'Sample President', 'president@example.com', 'p2', { can_remove: false }),
       holder('as-7', 'pr-5', 'Fifth Sample', 'member5@example.com', 'p3', { from_roster: true, can_remove: false }),
     ],
     invites: [invite('in-5', 'a-rather-long-work-address-for-a-phone@example.com', 'p3', 4)],

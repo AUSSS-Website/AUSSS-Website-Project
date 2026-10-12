@@ -54,6 +54,13 @@ const rowActionCls = `${textBtnCls} relative text-soft/60 hover:text-ink after:a
 const tallTapCls =
   "relative after:absolute after:inset-x-0 after:top-1/2 after:h-[44px] after:-translate-y-1/2 after:content-['']"
 
+// The President's position belongs to the account of its work email: signing in
+// with that address is what makes an account the President, so the database
+// lets nobody remove that account from the position or withdraw the offer that
+// waits for the address (rpc/committee_positions answers can_remove and
+// can_withdraw false for them). This says why there is no button.
+const PRESIDENT_SEAT_HINT = 'Stays with its work email'
+
 // An officer's, a board member's or the webmaster's position: it opens editors
 // and admin pages, so it has one work email and goes to no other address.
 const isPrivileged = (p) => p?.level === 'officer' || p?.level === 'eb' || p?.level === 'webmaster'
@@ -264,7 +271,7 @@ function InviteRow({ invite }) {
         </span>
       </span>
       <span className={tagCls}>{invite.position.title}</span>
-      {invite.can_withdraw && (
+      {invite.can_withdraw ? (
         <ConfirmButton
           variant="text"
           label="Withdraw"
@@ -274,6 +281,8 @@ function InviteRow({ invite }) {
           onConfirm={() => withdraw.mutate(invite.id)}
           className={rowActionCls}
         />
+      ) : (
+        invite.position.key === PRESIDENT_KEY && <span className="text-xs text-soft/45">{PRESIDENT_SEAT_HINT}</span>
       )}
       {withdraw.error && (
         <span className="w-full">
@@ -302,18 +311,19 @@ function HolderRow({ holder, rosterHint }) {
       <span className={tagCls}>{holder.position.title}</span>
       {holder.from_roster ? (
         <span className="text-xs text-soft/45">{rosterHint}</span>
+      ) : holder.can_remove ? (
+        <ConfirmButton
+          variant="text"
+          label="Remove"
+          ariaLabel={`Remove ${holder.position.title} from ${holder.full_name || holder.email}`}
+          busyLabel="Removing…"
+          busy={remove.isPending}
+          onConfirm={() => remove.mutate(holder.assignment_id)}
+          className={rowActionCls}
+        />
       ) : (
-        holder.can_remove && (
-          <ConfirmButton
-            variant="text"
-            label="Remove"
-            ariaLabel={`Remove ${holder.position.title} from ${holder.full_name || holder.email}`}
-            busyLabel="Removing…"
-            busy={remove.isPending}
-            onConfirm={() => remove.mutate(holder.assignment_id)}
-            className={rowActionCls}
-          />
-        )
+        holder.position.key === PRESIDENT_KEY &&
+        !isSelf && <span className="text-xs text-soft/45">{PRESIDENT_SEAT_HINT}</span>
       )}
       {remove.error && (
         <span className="w-full">
