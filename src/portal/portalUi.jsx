@@ -276,6 +276,44 @@ export function Toggle({ checked, onChange, label, disabled, describedBy }) {
 const checkBoxCls =
   'peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-line/40 bg-sunk transition-[background-color,border-color,transform] duration-150 ease-out checked:border-cta checked:bg-cta group-hover/check:border-line/60 checked:group-hover/check:border-cta-hover checked:group-hover/check:bg-cta-hover motion-safe:group-active/check:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed forced-colors:appearance-auto'
 
+// The box alone, for a tick that has no line of its own: a row of a list being
+// picked. `label` is its name for a screen reader, since nothing beside it
+// says what it picks. Wrap it in a <label className="group/check"> that is at
+// least 44px each way, so a finger has the room and the box answers a hover.
+//
+//   <label className="group/check -m-3 flex cursor-pointer p-3">
+//     <TickBox checked={on} onChange={setOn} label="Select Amal Samir" />
+//   </label>
+export function TickBox({ checked, onChange, label, disabled = false, id, labelledBy, describedBy }) {
+  return (
+    <span className="relative flex h-5 w-5 shrink-0">
+      <input
+        id={id}
+        type="checkbox"
+        checked={Boolean(checked)}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        aria-label={labelledBy ? undefined : label}
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
+        className={checkBoxCls}
+      />
+      <svg
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 m-auto h-3.5 w-3.5 text-on-cta opacity-0 transition-opacity duration-150 peer-checked:opacity-100 forced-colors:hidden"
+      >
+        <path d="M3.5 8.5l3 3 6-6.5" />
+      </svg>
+    </span>
+  )
+}
+
 export function CheckField({ checked, onChange, label, hint, disabled = false, id, className = '' }) {
   const auto = useId()
   const inputId = id || auto
@@ -287,31 +325,15 @@ export function CheckField({ checked, onChange, label, hint, disabled = false, i
         disabled ? 'cursor-not-allowed opacity-50' : 'group/check cursor-pointer'
       } ${className}`}
     >
-      <span className="relative flex h-5 w-5 shrink-0">
-        <input
-          id={inputId}
-          type="checkbox"
-          checked={Boolean(checked)}
-          onChange={(e) => onChange(e.target.checked)}
-          disabled={disabled}
-          // The name is the label alone; the hint is read after it, as a description.
-          aria-labelledby={labelId}
-          aria-describedby={hint ? hintId : undefined}
-          className={checkBoxCls}
-        />
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 m-auto h-3.5 w-3.5 text-on-cta opacity-0 transition-opacity duration-150 peer-checked:opacity-100 forced-colors:hidden"
-        >
-          <path d="M3.5 8.5l3 3 6-6.5" />
-        </svg>
-      </span>
+      {/* The name is the label alone; the hint is read after it, as a description. */}
+      <TickBox
+        id={inputId}
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        labelledBy={labelId}
+        describedBy={hint ? hintId : undefined}
+      />
       <span id={labelId} className="text-sm font-medium text-ink">
         {label}
       </span>

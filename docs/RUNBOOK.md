@@ -1414,6 +1414,42 @@ and Cairo do not and lose letters).
 three tabs; a test order placed on localhost shows its receipt through *View receipt*; delete
 the test rows afterwards (the order's receipt disappears from the bucket with it).
 
+**Writing to the people on the page (since 2026-10-12).** Nothing is sent from the portal:
+a button opens Gmail's own "new message" window in another tab, already addressed, and the
+officer sends it from their own mailbox. `src/lib/gmail.js` writes the link, and
+`src/portal/pages/submissions/EmailPanel.jsx` holds the buttons.
+
+- **One person.** Every order, story and waitlist entry has *Write in Gmail*. The message
+  is addressed to that person, with a subject by kind ("Your AUSSS order" and the
+  reference, "Your exchange story", "Joining AUSSS"), and opens with "Dear" and the
+  person's first name. The address beside it is still a `mailto:` link, which on a phone
+  opens the phone's own mail app.
+- **Several.** Every entry has a tick box, and the bar above the list has *Select all
+  listed*. *Write to them* opens a form for a subject and a message written once; a press
+  then opens one email per person, each with that person's own greeting, in a tab of its
+  own, and the list says who is left. One email cannot greet everybody by name, so the
+  form also offers one message that opens "Dear all," with every address in Bcc, where
+  nobody is shown anybody else's. *Copy addresses* puts them on the clipboard. Ticks are
+  kept through a search and dropped when another filter is chosen; two entries from one
+  address are one email.
+- **The first name** is the first word of the name, after a title (Dr, Prof, Eng), with
+  the words that are not a name alone kept beside the next one (Abdel Rahman, Abd El
+  Rahman, El Sayed, Abu Bakr). A name typed all in capitals or all in small letters is
+  given its capitals. Somebody who left no name is greeted "Hello,". The officer reads
+  every message in Gmail before sending and can change it there.
+- **Which mailbox.** When the address signed in to the portal is a Gmail one, the link
+  names it (`authuser`), so a browser signed in to several Google accounts writes from
+  the position's own account. Any other address is left out and Gmail uses its default.
+- **How long a link may be.** Google refuses a link somewhere between 7,000 and 12,000
+  characters (measured on 2026-10-12), so the limit here is 6,000 (`GMAIL_LINK_MAX`). A
+  message too long for it, which a few hundred Arabic letters already are, is copied to
+  the clipboard instead, and the page says to paste it under the greeting; too many
+  addresses for one Bcc are copied the same way.
+- **What it is not.** It does not send anything by itself, and it keeps no record of
+  what was written. Sending from the portal in one press, each email with its own
+  greeting, would need either the Gmail API with each officer's permission to send, or a
+  mailbox of the society's that the portal sends through. Neither is built.
+
 ## 19. Role addresses on the domain (email forwarding)
 
 Every role has an address on `ausss-ainshams.org` that forwards to the role's Gmail inbox.

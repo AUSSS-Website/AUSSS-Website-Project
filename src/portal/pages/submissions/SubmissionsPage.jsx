@@ -16,6 +16,7 @@ import {
 } from '../../submissionsQueries.js'
 import ExportButtons from '../../ExportButtons.jsx'
 import { paymentMethodLabel } from '../../../data/merchConfig.js'
+import { uniquePeople } from '../../../lib/gmail.js'
 import { usePaymentMethods } from '../../merchQueries.js'
 import {
   CheckField,
@@ -31,6 +32,7 @@ import {
   primaryBtnCls,
 } from '../../portalUi.jsx'
 import { chipBtnCls, smallInputCls, when } from '../../workUi.jsx'
+import { BulkEmail, GmailButton, PickBox } from './EmailPanel.jsx'
 
 // /portal/submissions. The three public forms that used to land in Google
 // Sheets: merch orders, exchange stories and the recruitment waitlist.
@@ -43,6 +45,10 @@ import { chipBtnCls, smallInputCls, when } from '../../workUi.jsx'
 // stays where it is, whatever filter is on, with a line that offers to take
 // the change back (see SubmissionList). A story goes on the site from its own
 // panel, never from the status list (see PublishPanel).
+//
+// Every entry can be written to: "Write in Gmail" opens an email to that
+// person in the officer's own Gmail, and the tick boxes with the bar above the
+// list do the same for several at once (see EmailPanel.jsx).
 
 const STATUSES = {
   orders: [
@@ -166,6 +172,8 @@ function movedText(kind, row, move) {
 
 // ── Shared bits ──────────────────────────────────────────────────────────────
 
+const pickLabel = (row) => `Select ${row.name || row.email} to write to`
+
 function Contact({ row }) {
   return (
     <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft/60">
@@ -219,7 +227,7 @@ function focusFromUndo(event, statusRef) {
 // and `sending` says a change of status is still on its way.
 // Each of the three is busy on its own: saving the notes does not switch the
 // status off, and a status on its way does not hold the notes.
-function Triage({ kind, row, notesField, move, sending, onStatus, onPatch, onRemove, canDelete }) {
+function Triage({ kind, row, notesField, move, sending, onStatus, onPatch, onRemove, canDelete, from }) {
   const stored = row[notesField] || ''
   const [notes, setNotes] = useState(stored)
   const [saving, setSaving] = useState(false)
@@ -303,8 +311,9 @@ function Triage({ kind, row, notesField, move, sending, onStatus, onPatch, onRem
             Any other status takes it off the exchange page.
           </span>
         )}
-        {canDelete && (
-          <span className="ml-auto">
+        <span className="ml-auto flex flex-wrap items-center gap-2">
+          <GmailButton kind={kind} row={row} from={from} />
+          {canDelete && (
             <ConfirmButton
               label="Delete"
               busyLabel="Deleting…"
@@ -313,8 +322,8 @@ function Triage({ kind, row, notesField, move, sending, onStatus, onPatch, onRem
               className={`${outlineBtnCls} ${tapCls}`}
               keepWidth
             />
-          </span>
-        )}
+          )}
+        </span>
       </div>
       {/* Always in the page, so the line is read out when it comes. It says
           the status is on its way until the database has it, and only then
@@ -402,13 +411,16 @@ export function ReceiptButton({ path, label = 'View receipt', className = outlin
   )
 }
 
-function OrderCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete }) {
+function OrderCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete, ticked, onTick, from }) {
   const methods = usePaymentMethods()
   const items = Array.isArray(row.items) ? row.items : []
   return (
     <article className="rounded-2xl border border-line/10 bg-card p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="min-w-0 break-words text-base font-semibold text-ink">{row.name}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="flex min-w-0 items-center gap-3">
+          <PickBox checked={ticked} onChange={onTick} label={pickLabel(row)} />
+          <p className="min-w-0 break-words text-base font-semibold text-ink">{row.name}</p>
+        </div>
         <Meta row={row} />
       </div>
       <Contact row={row} />
@@ -464,6 +476,7 @@ function OrderCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete 
         onPatch={onPatch}
         onRemove={onRemove}
         canDelete={canDelete}
+        from={from}
       />
     </article>
   )
@@ -703,22 +716,25 @@ function PublishPanel({ row, onPatch, onStatus }) {
   )
 }
 
-function StoryCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete }) {
+function StoryCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete, ticked, onTick, from }) {
   return (
     <article
       className={`rounded-2xl border bg-card p-5 ${
         row.status === 'published' && row.featured ? 'border-medical/50' : 'border-line/10'
       }`}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="min-w-0 break-words text-base font-semibold text-ink">
-          {row.name}
-          {row.status === 'published' && (
-            <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-accent">
-              {row.featured ? 'Featured' : 'Published'}
-            </span>
-          )}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="flex min-w-0 items-center gap-3">
+          <PickBox checked={ticked} onChange={onTick} label={pickLabel(row)} />
+          <p className="min-w-0 break-words text-base font-semibold text-ink">
+            {row.name}
+            {row.status === 'published' && (
+              <span className="ml-2 rounded-full border border-medical/50 px-2 py-0.5 text-3xs font-semibold uppercase tracking-wider text-accent">
+                {row.featured ? 'Featured' : 'Published'}
+              </span>
+            )}
+          </p>
+        </div>
         <Meta row={row} />
       </div>
       <Contact row={row} />
@@ -743,6 +759,7 @@ function StoryCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete 
         onPatch={onPatch}
         onRemove={onRemove}
         canDelete={canDelete}
+        from={from}
       />
     </article>
   )
@@ -750,7 +767,7 @@ function StoryCard({ row, move, sending, onStatus, onPatch, onRemove, canDelete 
 
 // ── Waitlist ─────────────────────────────────────────────────────────────────
 
-function SignupRow({ row, move, sending, onStatus, onRemove, canDelete }) {
+function SignupRow({ row, move, sending, onStatus, onRemove, canDelete, ticked, onTick, from }) {
   const [removing, setRemoving] = useState(false)
   const [error, setError] = useState('')
   const statusRef = useRef(null)
@@ -775,6 +792,7 @@ function SignupRow({ row, move, sending, onStatus, onRemove, canDelete }) {
   }
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+      <PickBox checked={ticked} onChange={onTick} label={pickLabel(row)} />
       <span className="w-40 shrink-0 text-xs text-soft/45">{when(row.created_at)}</span>
       <span className="min-w-[8rem] flex-1 break-words text-sm font-medium text-ink">{row.name || '—'}</span>
       <a
@@ -796,6 +814,7 @@ function SignupRow({ row, move, sending, onStatus, onRemove, canDelete }) {
           </option>
         ))}
       </select>
+      <GmailButton kind="signups" row={row} from={from} />
       {canDelete && (
         <span>
           <ConfirmButton
@@ -856,6 +875,12 @@ function SubmissionList({ kind, canDelete, active }) {
   // the list alone went back to the old choice for a frame or more in between.
   const [sending, setSending] = useState({})
   useLeaveWarning(Object.keys(sending).length > 0)
+  // The entries ticked to be written to, by id. They are kept through a
+  // search, so several people can be looked up and ticked one after another,
+  // and dropped when another filter is chosen, where the list is a new one.
+  const [ticked, setTicked] = useState({})
+  const { user } = useAuth()
+  const from = user?.email || ''
   const methods = usePaymentMethods()
   const rows = useMemo(() => list.data || [], [list.data])
 
@@ -888,7 +913,31 @@ function SubmissionList({ kind, canDelete, active }) {
   const filterBy = (value) => {
     setStatus(value)
     setTouched({})
+    setTicked({})
   }
+
+  // The ticked entries that are still in the list (one may have been deleted
+  // since), and the people they are from, each address once.
+  const tickedRows = useMemo(() => rows.filter((r) => ticked[r.id]), [rows, ticked])
+  const people = useMemo(() => uniquePeople(tickedRows), [tickedRows])
+  const allTicked = shown.length > 0 && shown.every((r) => ticked[r.id])
+  const tick = (id, on) =>
+    setTicked((t) => {
+      const out = { ...t }
+      if (on) out[id] = true
+      else delete out[id]
+      return out
+    })
+  // The box above the list ticks everything listed, or unticks it when all of it is.
+  const tickAll = (on) =>
+    setTicked((t) => {
+      const out = { ...t }
+      for (const r of shown) {
+        if (on) out[r.id] = true
+        else delete out[r.id]
+      }
+      return out
+    })
 
   // Changes a row's status. It shows at once and is saved behind; `wait`
   // holds the screen until the database has answered instead, and `fields` are
@@ -1005,6 +1054,16 @@ function SubmissionList({ kind, canDelete, active }) {
         />
       </div>
 
+      <BulkEmail
+        shownCount={shown.length}
+        allTicked={allTicked}
+        onTickAll={tickAll}
+        tickedCount={tickedRows.length}
+        people={people}
+        onClear={() => setTicked({})}
+        from={from}
+      />
+
       {list.error && (
         <div>
           <ErrorText>{errorText(list.error, 'Could not refresh the list.')}</ErrorText>
@@ -1029,6 +1088,9 @@ function SubmissionList({ kind, canDelete, active }) {
               onPatch={onPatch}
               onRemove={onRemove}
               canDelete={canDelete}
+              ticked={Boolean(ticked[row.id])}
+              onTick={(on) => tick(row.id, on)}
+              from={from}
             />
           ))}
         </div>
@@ -1043,6 +1105,9 @@ function SubmissionList({ kind, canDelete, active }) {
               onStatus={onStatus}
               onRemove={onRemove}
               canDelete={canDelete}
+              ticked={Boolean(ticked[row.id])}
+              onTick={(on) => tick(row.id, on)}
+              from={from}
             />
           ))}
         </ul>
