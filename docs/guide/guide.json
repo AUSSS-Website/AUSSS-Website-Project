@@ -1,0 +1,46 @@
+{
+  "title": "The AUSSS website guide",
+  "subtitle": "Every page of ausss-ainshams.org and every part of the members portal, with a picture of each and how to use it.",
+  "site": "ausss-ainshams.org",
+  "file": "AUSSS-website-guide.pdf",
+  "roles": {
+    "visitor": "Visitors",
+    "member": "Members",
+    "officer": "Officers",
+    "eb": "Executive Board",
+    "president": "President",
+    "webmaster": "Webmaster"
+  },
+  "parts": [
+    {
+      "id": "1",
+      "title": "Getting around",
+      "blurb": "What is on every page: the header and its menus, the footer, the two themes, and how the site reshapes itself on a phone."
+    },
+    {
+      "id": "2",
+      "title": "The public pages",
+      "blurb": "The pages anybody can open, one chapter each: what a visitor finds there and what they can do."
+    },
+    {
+      "id": "3",
+      "title": "The portal for every member",
+      "blurb": "Signing in, and what every member has once they are in: the dashboard, their profile, tasks, updates and notifications."
+    },
+    {
+      "id": "4",
+      "title": "The portal for officers",
+      "blurb": "What an officer runs for a committee or a support division: its page, its events, its open calls and members, and the editors that belong to one division each."
+    },
+    {
+      "id": "5",
+      "title": "The portal for the Executive Board",
+      "blurb": "The society's own records and switches: the membership roster, verification, what the public forms send in, the shop, the site's wording and the turn of a term."
+    },
+    {
+      "id": "A",
+      "title": "Appendix",
+      "blurb": "Who can see and do what, every switch in one list, and where to turn when something is not in this guide."
+    }
+  ]
+}

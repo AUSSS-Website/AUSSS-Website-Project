@@ -29,6 +29,7 @@ npm run dev                  # http://localhost:5173
 npm run build                # production bundle in /dist, then pre-renders every public page
 npm run preview:prerendered  # serve /dist the way Vercel does (pre-rendered pages + spa.html fallback, same response headers)
 npm run walk                 # open every page at several widths in both themes: screenshots + console report (docs/RUNBOOK.md section 21)
+npm run guide                # take the website guide's pictures and print it as a PDF (docs/guide/README.md)
 npm test                     # unit tests (Vitest): the markdown reader, the content schemas, the exam's rules and more
 npm run preview              # Vite's preview (SPA only: it does not show the pre-rendered pages)
 ```
@@ -76,6 +77,9 @@ Headings are set in **Cormorant Garamond**, everything else in **Inter**.
   exam)
 - [`docs/HANDOVER.md`](./docs/HANDOVER.md): every account the site depends on
   and who holds it
+- [`docs/guide/`](./docs/guide/README.md): the website guide for visitors,
+  members, officers and the board, as chapters and a list of pictures that one
+  command prints as a PDF
 - [`docs/PORTAL_BACKEND_PLAN.md`](./docs/PORTAL_BACKEND_PLAN.md): the portal
   design and its phases
 - [`apps-script/MIGRATION.md`](./apps-script/MIGRATION.md): moving the Google
