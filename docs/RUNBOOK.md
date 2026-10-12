@@ -2293,15 +2293,30 @@ named.
   flipped, so the two never look alike. `onChange` is handed the new true or false, as
   Toggle's is, and the row brings its own 44px, so stacked ones need no margin.
   `<CheckField checked={digest} onChange={setDigest} label="Email me a daily digest" hint="At most one email a day." />`
-- **A drop-down's arrow** is drawn by the site, on every `<select>` of the public pages,
-  the portal and the exam (the `select` rule in the base layer of `src/index.css`, since
-  2026-10-12). The browser's own arrow sits against the box's edge whatever the padding,
-  which in a rounded field put it in the corner's curve; the Waitlist's status list is
-  where it was noticed. Ours is two strokes in the colour of the field's text, so it
-  follows the theme, set in 0.875rem from the edge, and the rule keeps the room for it,
-  so a field's own `px-3` or `px-4` does not apply on that side. A new drop-down needs
-  nothing: give it `inputCls` or `smallInputCls` as before. A list box (`multiple` or
-  `size`) is left as the browser draws it.
+- **A drop-down** is drawn by the site, on every `<select>` of the public pages, the
+  portal and the exam (the `select` rules in the base layer of `src/index.css`). A new
+  one needs nothing: give it `inputCls` or `smallInputCls` as before. A list box
+  (`multiple` or `size`) is left as the browser draws it.
+  - **The field is a capsule**, like the buttons and filter chips beside it, whatever
+    `rounded-*` its class has: it is pressed to choose, not typed in, and the shape tells
+    it from a text field. The rule also sets the padding on both sides (1.125rem) and the
+    border's colour on hover, so a field's own `px-*` does not apply to a drop-down.
+  - **The arrow is ours** (since 2026-10-12, when the Waitlist's status list showed the
+    browser's own arrow sitting in the corner's curve): two strokes in the colour of the
+    field's text at its full strength, so it stands out white on a dark field, set in as
+    far as the text is on the other side. It points up while the list is open. (A dimmer,
+    finer arrow was tried on 2026-10-13 and the webmaster asked for this one back.)
+  - **The list that opens** is one of the site's own menus where the browser lets a page
+    draw it, which on 2026-10-13 is Chromium (Chrome, Edge) with a mouse or a trackpad:
+    a rounded panel under the field, each choice a rounded row, a tick against the chosen
+    one, the field ringed in blue while it is open. It fades in while it drops 4px, and
+    only fades with reduced motion. This is `appearance: base-select` inside
+    `@supports`, so Firefox and Safari keep their own list until they support it, and a
+    touch screen (`pointer: coarse`) always keeps the phone's own picker, which is the
+    better tool there. The list opens under the field when it fits and above it when it
+    does not (`position-try-order: normal`; left alone, Chromium opens it on whichever
+    side has more room). Arrow keys, Enter, Space, Escape and a click elsewhere work as
+    in any drop-down.
 - **`Toggle`** is 28px tall to the eye and carries an unseen `::after` 44px high, so a
   finger has the full target, the row keeps its height and a page needs no wrapper for
   it. It shows the keyboard's ring, and its knob slides only for a reader who has not
