@@ -25,6 +25,7 @@ import {
 import { when } from '../../workUi.jsx'
 import { Avatar } from '../../Avatar.jsx'
 import { unitPositions, useRosterUnit } from '../../rosterUnits.js'
+import { PRESIDENT_KEY, holdsPresidency } from '../../constants.js'
 
 // The invites screen. For a committee it is the "Invites" tab of
 // /portal/committees/:slug; with no committee it is the Executive Board panel
@@ -150,7 +151,10 @@ function InviteForm({ committee, positions, workEmails }) {
   )
 }
 
-function WorkEmailRow({ position, email, locked }) {
+// lockedTo: who alone changes this address ('the webmaster', 'the President'),
+// or '' when the person signed in may.
+function WorkEmailRow({ position, email, lockedTo }) {
+  const locked = Boolean(lockedTo)
   const save = useSetWorkEmail()
   const [value, setValue] = useState(email)
   // The address this row last took from the list. When the list brings
@@ -200,7 +204,7 @@ function WorkEmailRow({ position, email, locked }) {
           </button>
         )}
         <SaveStatus saved={saved && !changed} />
-        {locked && <span className="text-xs text-soft/45">Only the webmaster changes this one</span>}
+        {locked && <span className="text-xs text-soft/45">Only {lockedTo} changes this one</span>}
         {save.error && (
           <span className="w-full">
             <ErrorText>{errorText(save.error, 'Could not save that work email.')}</ErrorText>
@@ -213,9 +217,18 @@ function WorkEmailRow({ position, email, locked }) {
 
 // The Executive Board's list of which address each officer's or board position
 // belongs to. The database gives such a position to that address and to no
-// other (migration 20261005180001).
+// other (migration 20261005180001). Two of the addresses are their holder's
+// alone to change, the webmaster's and the President's: with the President's
+// address a board member could take the one position that dismisses members
+// (migration 20261011130001). The database refuses anybody else either way.
 function WorkEmails({ positions, workEmails }) {
-  const { isWebmaster } = useAuth()
+  const { isWebmaster, assignments } = useAuth()
+  const isPresident = holdsPresidency(assignments)
+  const lockedTo = (p) => {
+    if (p.level === 'webmaster') return isWebmaster ? '' : 'the webmaster'
+    if (p.key === PRESIDENT_KEY) return isPresident ? '' : 'the President'
+    return ''
+  }
   return (
     <Panel title="Work emails">
       <p className="mt-3 text-sm text-soft/65">
@@ -229,7 +242,7 @@ function WorkEmails({ positions, workEmails }) {
             key={p.id}
             position={p}
             email={workEmails[p.id] || ''}
-            locked={p.level === 'webmaster' && !isWebmaster}
+            lockedTo={lockedTo(p)}
           />
         ))}
       </ul>

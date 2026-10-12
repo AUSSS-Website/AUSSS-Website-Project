@@ -196,7 +196,11 @@ One portal power belongs to the President's position alone, and not to the
 rest of the Executive Board or to the webmaster: dismissing a member from the
 roster and reinstating one. It follows the position `eb.president`, so it
 passes to the incoming President with the position at rollover. RUNBOOK
-section 4 says what dismissing ends and what reinstating gives back.
+section 4 says what dismissing ends and what reinstating gives back. For the
+same reason only the President changes the work email of that position, so
+hand the President's mailbox over with care: if it is lost, the address can
+only be changed with SQL by whoever owns the database (RUNBOOK section 8,
+"The President's position").
 
 ## 4. Password vault rule
 

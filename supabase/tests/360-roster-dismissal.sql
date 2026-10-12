@@ -8,8 +8,13 @@
 -- sheet that still lists the member, a script. Nothing verifies the account or gives it a
 -- position while the member is dismissed. The public check answers that the membership has
 -- ended and nothing more. Reinstating gives the status back and nothing else.
+-- The President's position cannot be taken: the rest of the board and the webmaster can neither
+-- repoint its work email nor change or remove the position. A dismissed member is offered no
+-- position, and one that reaches the table without asking (a rollover's) waits unaccepted and
+-- goes at the reinstatement, so a term rollover goes through with dismissed members on the
+-- roster. A namesake the roster already had still follows the sheet.
 begin;
-select plan(63);
+select plan(91);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -25,6 +30,7 @@ values ('eb.president', null, 'President', 'President', 'eb'),
        ('eb.vp-internal', null, 'Vice President, Internal Affairs', 'VPI', 'eb'),
        ('society.webmaster', null, 'Webmaster', 'Webmaster', 'webmaster'),
        ('scoph.pgtap-officer', (select id from public.committees where slug = 'scoph'), 'Pgtap Officer', null, 'officer'),
+       ('scoph.pgtap-deputy', (select id from public.committees where slug = 'scoph'), 'Pgtap Deputy', null, 'officer'),
        ('scoph.pgtap-helper', (select id from public.committees where slug = 'scoph'), 'Pgtap Helper', null, 'member'),
        ('scoph.pgtap-second', (select id from public.committees where slug = 'scoph'), 'Pgtap Second', null, 'member')
 on conflict do nothing;
@@ -38,6 +44,20 @@ values ('aaaaaaaa-0000-0000-0000-000000000001', 'pgtap-target', 'Dismissed Targe
        ('aaaaaaaa-0000-0000-0000-000000000005', 'pgtap-twin-one', 'Twin One', 'twin one', 'twin@pgtap.test', 'Full Member', 2024),
        ('aaaaaaaa-0000-0000-0000-000000000006', 'pgtap-twin-two', 'Twin Two', 'twin two', 'twin@pgtap.test', 'Candidate Member', 2025);
 
+-- More of it: a member listed by name only, with no joining year; a board member's row, under
+-- an address that is also a position's work email; an officer's row; and a namesake of the
+-- member with no account, keyed the way the importer keys a line.
+insert into public.roster_entries (id, source_key, full_name, name_normalized, email, status, joined_year, years_spent)
+values ('aaaaaaaa-0000-0000-0000-000000000007', 'pgtap-noyear', 'No Year Member', 'no year member', null, 'Candidate Member', null, 3),
+       ('aaaaaaaa-0000-0000-0000-000000000008', 'pgtap-board', 'Board Member', 'board member', 'vp@pgtap.test', 'Full Member', 2022, null),
+       ('aaaaaaaa-0000-0000-0000-000000000009', 'pgtap-officer', 'Sample Officer', 'sample officer', 'officer@pgtap.test', 'Full Member', 2022, null);
+select tests.roster('No Account Member', 'namesake@pgtap.test', 'Candidate Member', 2025);
+
+-- The work emails: the President's position on the President's account, and an officer's
+-- position on the address the board member's row carries.
+select tests.work_email('president@pgtap.test', 'eb.president');
+select tests.work_email('vp@pgtap.test', 'scoph.pgtap-deputy');
+
 -- Signing in ties each account to its roster row and verifies it.
 select tests.create_user('president@pgtap.test', 'Sample President');
 select tests.create_user('vp@pgtap.test', 'Board Member');
@@ -50,6 +70,28 @@ select tests.assign('president@pgtap.test', 'eb.president');
 select tests.assign('vp@pgtap.test', 'eb.vp-internal');
 select tests.assign('web@pgtap.test', 'society.webmaster');
 select tests.assign('officer@pgtap.test', 'scoph.pgtap-officer');
+
+-- Three accounts that are not the President: one whose roster row says President, one that
+-- held the position this term and no longer does, and one that held it in a term that is over.
+update public.roster_entries
+   set position_id = (select id from public.positions where key = 'eb.president')
+ where id = 'aaaaaaaa-0000-0000-0000-000000000008';
+select tests.assign('plain@pgtap.test', 'eb.president');
+update public.assignments
+   set status = 'ended', ended_on = current_date
+ where profile_id = tests.user_id('plain@pgtap.test')
+   and position_id = (select id from public.positions where key = 'eb.president');
+insert into public.terms (label, starts_on, ends_on, is_current)
+values ('pgtap-past', '2025-09-01', '2026-08-31', false)
+on conflict (label) do nothing;
+insert into public.assignments (profile_id, position_id, term_id)
+values (tests.user_id('officer@pgtap.test'),
+        (select id from public.positions where key = 'eb.president'),
+        (select id from public.terms where label = 'pgtap-past'));
+
+-- The officer's row moves to another address and stays tied to the account.
+update public.roster_entries set email = 'officer.own@pgtap.test'
+ where id = 'aaaaaaaa-0000-0000-0000-000000000009';
 
 -- What the member about to be dismissed holds: a position the roster gives (the row's own,
 -- which reaches the account as an invite), one given by hand, and an offer still waiting (an
@@ -71,7 +113,15 @@ select ok(app.is_president(), 'whoever holds the position eb.president this term
 select tests.clear_auth();
 
 select tests.authenticate_as('vp@pgtap.test');
-select ok(not app.is_president(), 'another member of the Executive Board is not');
+select ok(not app.is_president(), 'another member of the Executive Board is not, though the roster row of this one says President');
+select tests.clear_auth();
+
+select tests.authenticate_as('plain@pgtap.test');
+select ok(not app.is_president(), 'an account that held the position this term and no longer does is not');
+select tests.clear_auth();
+
+select tests.authenticate_as('officer@pgtap.test');
+select ok(not app.is_president(), 'nor one that held it in a term that is over');
 select tests.clear_auth();
 
 select tests.authenticate_as('web@pgtap.test');
@@ -81,6 +131,78 @@ select public.bulk_update_roster(
   array['aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000003']::uuid[],
   'lga', 'pgtap first ga');
 select tests.clear_auth();
+
+-- ---- the President's position cannot be taken -----------------------------------------------------
+-- Row-level security filters the two statements out: they change nothing and raise nothing.
+select tests.authenticate_as('vp@pgtap.test');
+update public.position_work_emails set email = 'vp.own@pgtap.test'
+ where position_id = (select id from public.positions where key = 'eb.president');
+delete from public.position_work_emails
+ where position_id = (select id from public.positions where key = 'eb.president');
+select tests.clear_auth();
+select is(
+  (select w.email from public.position_work_emails w
+   join public.positions p on p.id = w.position_id where p.key = 'eb.president'),
+  'president@pgtap.test',
+  'a member of the board can neither repoint nor remove the work email of the President''s position'
+);
+
+select tests.authenticate_as('vp@pgtap.test');
+select throws_ok(
+  $$ update public.positions set level = 'member' where key = 'eb.president' $$,
+  '42501', 'The President''s position belongs to the Executive Board. Its level cannot be changed.',
+  'nor give the position a level that needs no work email'
+);
+select throws_ok(
+  $$ update public.positions set title = 'Chair' where key = 'eb.president' $$,
+  '42501', 'Only the President changes the President''s position.',
+  'nor change anything else about it'
+);
+select throws_ok(
+  $$ delete from public.positions where key = 'eb.president' $$,
+  '42501', 'The President''s position cannot be removed.',
+  'nor remove it, to add another under its key'
+);
+select throws_ok(
+  $$ insert into public.positions (key, committee_id, title, level)
+     values ('eb.president', null, 'President', 'member') $$,
+  '42501', 'The President''s position belongs to the Executive Board.',
+  'and a position under that key is never added at another level'
+);
+select tests.clear_auth();
+
+select tests.authenticate_as('web@pgtap.test');
+update public.position_work_emails set email = 'web.own@pgtap.test'
+ where position_id = (select id from public.positions where key = 'eb.president');
+select tests.clear_auth();
+select is(
+  (select w.email from public.position_work_emails w
+   join public.positions p on p.id = w.position_id where p.key = 'eb.president'),
+  'president@pgtap.test',
+  'and the webmaster cannot repoint it either'
+);
+
+select tests.authenticate_as('president@pgtap.test');
+update public.position_work_emails set email = 'president.new@pgtap.test'
+ where position_id = (select id from public.positions where key = 'eb.president');
+select lives_ok(
+  $$ update public.positions set short_title = 'Pres' where key = 'eb.president' $$,
+  'the President changes the position''s own row'
+);
+select tests.clear_auth();
+select is(
+  (select w.email from public.position_work_emails w
+   join public.positions p on p.id = w.position_id where p.key = 'eb.president'),
+  'president.new@pgtap.test',
+  'and the President changes its work email'
+);
+select tests.work_email('president@pgtap.test', 'eb.president');
+
+select ok(
+  not has_function_privilege('service_role', 'public.dismiss_roster_member(uuid, text)', 'execute')
+    and not has_function_privilege('service_role', 'public.reinstate_roster_member(uuid)', 'execute'),
+  'the secret key, which is nobody''s account, is granted neither of the two functions'
+);
 
 -- ---- who may not dismiss --------------------------------------------------------------------------
 select tests.authenticate_as_anon();
@@ -130,11 +252,22 @@ select is(
 );
 
 -- ---- what the President is refused ----------------------------------------------------------------
+-- A second row for the officer, under the address the officer's account signs in with.
+insert into public.roster_entries (id, source_key, full_name, name_normalized, email, status)
+values ('aaaaaaaa-0000-0000-0000-000000000010', 'pgtap-officer-again', 'Officer Again', 'officer again', 'officer@pgtap.test', 'Candidate Member');
+
 select tests.authenticate_as('president@pgtap.test');
 select throws_ok(
   $$ select public.dismiss_roster_member('aaaaaaaa-0000-0000-0000-000000000001', '   ') $$,
   '22023', 'Give the reason for the dismissal. It is kept on the record.',
   'a dismissal needs a reason'
+);
+select throws_ok(
+  format(
+    $$ select public.dismiss_roster_member('aaaaaaaa-0000-0000-0000-000000000001', %L) $$,
+    repeat('x', 1001)),
+  '22023', 'The reason is too long. Keep it under 1,000 characters.',
+  'and one of no more than 1,000 characters'
 );
 select throws_ok(
   $$ select public.dismiss_roster_member('00000000-0000-0000-0000-00000000dead', 'No reason.') $$,
@@ -148,8 +281,18 @@ select throws_ok(
 );
 select throws_ok(
   $$ select public.dismiss_roster_member('aaaaaaaa-0000-0000-0000-000000000005', 'No reason.') $$,
-  '22023', 'This email is on another row of the roster as well, under the name Twin Two. Remove the duplicate row first, so that one record is dismissed.',
+  '22023', 'This member has another row on the roster, under the name Twin Two. Remove the duplicate row first, so that one record is dismissed.',
   'a person the roster lists twice is not dismissed until one row is left'
+);
+select throws_ok(
+  $$ select public.dismiss_roster_member('aaaaaaaa-0000-0000-0000-000000000010', 'No reason.') $$,
+  '22023', 'This member has another row on the roster, under the name Sample Officer. Remove the duplicate row first, so that one record is dismissed.',
+  'nor is one whose other row has another email and is tied to the same account'
+);
+select throws_ok(
+  $$ select public.dismiss_roster_member('aaaaaaaa-0000-0000-0000-000000000008', 'No reason.') $$,
+  '22023', 'This row is tied to the work account of a position (Pgtap Deputy), which is handed on with the position and cannot be dismissed. Remove the row, add the member again under their own email, and dismiss that row.',
+  'a row under the work email of a position is not dismissed: that account belongs to the position'
 );
 
 -- ---- the dismissal --------------------------------------------------------------------------------
@@ -165,6 +308,8 @@ select throws_ok(
   'a member is not dismissed twice'
 );
 select tests.clear_auth();
+
+delete from public.roster_entries where id = 'aaaaaaaa-0000-0000-0000-000000000010';
 
 select is(
   (select jsonb_build_object(
@@ -279,6 +424,12 @@ select throws_ok(
   'nor add the dismissed member again as a new row'
 );
 select throws_ok(
+  $$ update public.roster_entries set profile_id = tests.user_id('target@pgtap.test')
+     where id = 'aaaaaaaa-0000-0000-0000-000000000003' $$,
+  '22023', 'This person was dismissed and is on the roster as a record. Only the President can reinstate a dismissed member.',
+  'nor tie another row to the account of the dismissed member'
+);
+select throws_ok(
   $$ select public.bulk_update_roster(
        array['aaaaaaaa-0000-0000-0000-000000000003']::uuid[], 'status', 'pgtap by hand', 'Dismissed') $$,
   '42501', 'Only the President can dismiss a member, with Dismiss member on the Roster page.',
@@ -291,6 +442,13 @@ select is(
      'nga', 'pgtap second ga') as b),
   '{"updated": 1, "why": "dismissed"}'::jsonb,
   'a bulk update skips the dismissed member, says so, and updates the rest'
+);
+select is(
+  (select jsonb_build_object('updated', b -> 'updated', 'log', b -> 'log_id', 'why', b #>> '{skipped,0,reason}')
+   from public.bulk_update_roster(
+     array['aaaaaaaa-0000-0000-0000-000000000001']::uuid[], 'committee', 'pgtap move', 'scoph') as b),
+  '{"updated": 0, "log": null, "why": "dismissed"}'::jsonb,
+  'a bulk action on the dismissed member alone changes nothing and logs nothing'
 );
 select is(
   (select jsonb_build_object('restored', u -> 'restored', 'why', u #>> '{skipped,0,reason}')
@@ -344,6 +502,18 @@ select throws_ok(
   '42501', 'This member was dismissed, so the record cannot be changed. Only the President can reinstate a dismissed member.',
   'the record cannot be changed outside the portal either'
 );
+select throws_ok(
+  $$ update public.roster_entries set import_batch = 'by hand'
+     where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
+  '42501', 'This member was dismissed, so the record cannot be changed. Only the President can reinstate a dismissed member.',
+  'nor the batch it came in with'
+);
+select throws_ok(
+  $$ update public.roster_entries set created_at = now() - interval '1 year'
+     where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
+  '42501', 'This member was dismissed, so the record cannot be changed. Only the President can reinstate a dismissed member.',
+  'nor the day it was added'
+);
 select lives_ok(
   $$ update public.roster_entries set years_spent = 9
      where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
@@ -371,7 +541,27 @@ select throws_ok(
   '22023', 'The membership of this person has ended, so they cannot hold a position.',
   'nor give it a position by invite'
 );
+select throws_ok(
+  $$ insert into public.invites (email, position_id, term_id)
+     values ('target@pgtap.test',
+             (select id from public.positions where key = 'scoph.pgtap-helper'),
+             (select id from public.terms where is_current)) $$,
+  '42501', null,
+  'nor write the offer into the table'
+);
 select tests.clear_auth();
+
+-- The term rollover and the roster write their offers many at a time and ask nobody. One to a
+-- dismissed member is not refused, which would stop all the others: it is left waiting.
+select lives_ok(
+  $$ select tests.invite('target@pgtap.test', 'scoph.pgtap-helper') $$,
+  'an offer written without asking raises nothing'
+);
+select is(
+  (select (i.accepted_at is null)::text from public.invites i where i.email_normalized = 'target@pgtap.test'),
+  'true',
+  'and is left unaccepted'
+);
 
 select throws_ok(
   $$ select tests.assign('target@pgtap.test', 'scoph.pgtap-second') $$,
@@ -394,6 +584,28 @@ select is(
   '{"accounts": 0, "positions_ended": 0}'::jsonb,
   'a member who never signed in is dismissed all the same'
 );
+select is(
+  (select d from public.dismiss_roster_member(
+     'aaaaaaaa-0000-0000-0000-000000000007', 'Never took part.') as d),
+  '{"accounts": 0, "positions_ended": 0}'::jsonb,
+  'and so is a member the roster lists by name only'
+);
+select tests.clear_auth();
+
+select throws_ok(
+  $$ update public.roster_entries set years_spent = 9
+     where id = 'aaaaaaaa-0000-0000-0000-000000000007' $$,
+  '42501', 'This member was dismissed, so the record cannot be changed. Only the President can reinstate a dismissed member.',
+  'where a dismissed row has no joining year, its years spent are the sheet''s own number and stay'
+);
+
+select tests.authenticate_as('vp@pgtap.test');
+select throws_ok(
+  $$ select public.invite_to_position(
+       'noacct@pgtap.test', (select id from public.positions where key = 'scoph.pgtap-helper')) $$,
+  '22023', 'The membership of this person has ended, so they cannot hold a position.',
+  'an address with no account yet is offered nothing either, so no offer waits for a reinstatement'
+);
 select tests.clear_auth();
 
 -- They make an account afterwards, with the address the roster has for them.
@@ -406,6 +618,21 @@ select is(
   'unverified:true',
   'the new account is tied to the record, and being on the roster does not verify it'
 );
+
+-- The sheet still lists the dismissed member, and a namesake the roster had before.
+select tests.authenticate_as('vp@pgtap.test');
+select is(
+  (select jsonb_build_object(
+     'dismissed', i -> 'skipped_dismissed',
+     'namesake', (i ->> 'updated')::int + (i ->> 'unchanged')::int + (i ->> 'kept_portal_edits')::int)
+   from public.import_roster('[
+     {"full_name": "No Account Member", "email": "noacct@pgtap.test", "status": "Associate Member", "joined_year": "2024"},
+     {"full_name": "No Account Member", "email": "namesake@pgtap.test", "status": "Full Member", "joined_year": "2025"}
+   ]'::jsonb, 'pgtap-sheet-two') as i),
+  '{"dismissed": 1, "namesake": 1}'::jsonb,
+  'a namesake who was on the roster before the dismissal still follows the sheet'
+);
+select tests.clear_auth();
 
 -- ---- the public check -----------------------------------------------------------------------------
 select tests.authenticate_as_anon();
@@ -497,6 +724,11 @@ select is(
   'unverified:0',
   'reinstating gives back neither portal access nor a position'
 );
+select is(
+  (select count(*)::int from public.invites i where i.email_normalized = 'target@pgtap.test'),
+  0,
+  'and the offer that reached the table while the member was dismissed is gone'
+);
 select ok(
   exists (
     select 1 from public.audit_log l
@@ -532,6 +764,28 @@ select is(
   (select count(*)::int from public.roster_entries where email_normalized = 'new@pgtap.test'),
   0,
   'the board still removes an ordinary row'
+);
+
+-- ---- a term rollover with dismissed members -------------------------------------------------------
+-- An officer's position is pointed at the address of a member who is still dismissed. The
+-- rollover offers every work email its position again, all in one statement.
+select tests.work_email('noacct@pgtap.test', 'scoph.pgtap-officer');
+select tests.authenticate_as('vp@pgtap.test');
+select lives_ok(
+  $$ select public.roll_over_term('2027-28', '2027-09-01', '2028-08-31') $$,
+  'a term rollover goes through with dismissed members on the roster'
+);
+select tests.clear_auth();
+select is(
+  (select (select count(*) from public.assignments a
+           where a.profile_id = tests.user_id('noacct@pgtap.test') and a.status = 'active')::text
+          || ':' ||
+          (select count(*) from public.invites i
+           where i.email_normalized = 'noacct@pgtap.test'
+             and i.term_id = app.current_term_id()
+             and i.accepted_at is null)::text),
+  '0:1',
+  'and gives the dismissed member nothing: the offer waits, unaccepted'
 );
 
 select * from finish();
