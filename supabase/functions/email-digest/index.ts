@@ -81,6 +81,9 @@ function describe(n: Notification) {
       return `New merch pre-order ${n.payload.ref || ''}${n.payload.subtotal ? ` (${n.payload.subtotal} EGP)` : ''}`
     case 'story_new':
       return `New exchange story ${n.payload.ref || ''}`
+    // one line for the waitlist, with how many joined since it was last read
+    case 'signup_new':
+      return Number(n.payload.count) > 1 ? `${n.payload.count} new sign-ups on the waitlist` : 'A new sign-up on the waitlist'
     default:
       return `Activity on “${title}”`
   }
@@ -98,7 +101,9 @@ function render(p: Person) {
         ? `${PORTAL}/submissions?tab=orders`
         : n.kind === 'story_new'
           ? `${PORTAL}/submissions?tab=stories`
-          : `${PORTAL}/notifications`,
+          : n.kind === 'signup_new'
+            ? `${PORTAL}/submissions?tab=signups`
+            : `${PORTAL}/notifications`,
   }))
   const posts = p.posts.map((x) => ({
     text: `${x.committee || 'AUSSS'}: ${x.title}`,

@@ -3,7 +3,7 @@
 -- exchange officers read stories, other officers and members read nothing, and the receipt
 -- bucket accepts one file per fresh order.
 begin;
-select plan(39);
+select plan(51);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -240,6 +240,84 @@ select is(
   (select count(*) from public.stories) + (select count(*) from public.orders) + (select count(*) from public.signups),
   0::bigint,
   'another committee''s officer sees nothing'
+);
+
+-- ---- the waitlist tells the board, in one line that counts ----------------------------------
+-- (20261012214624_waitlist_notifications) So far one sign-up was stored, a duplicate was
+-- turned away and a bot was fooled.
+select tests.clear_auth();
+select is(
+  (select count(*) from public.notifications n where n.kind = 'signup_new'),
+  1::bigint,
+  'the stored sign-up left one notification: none for the duplicate or the bot, none for an officer or a member'
+);
+select is(
+  (select n.profile_id from public.notifications n where n.kind = 'signup_new'),
+  tests.user_id('eb@pgtap.test'),
+  'it is the EB person''s'
+);
+select is(
+  (select n.payload - 'submission_id' from public.notifications n where n.kind = 'signup_new'),
+  '{"name": "Some One", "count": 1}'::jsonb,
+  'it carries the name and counts one'
+);
+-- as if yesterday's email had mentioned it
+update public.notifications set emailed_at = now() where kind = 'signup_new';
+select tests.authenticate_as_anon();
+select is(
+  public.submit_signup('second@example.com', 'Second One', 'waitlist') ->> 'ok',
+  'true',
+  'a second visitor joins the waitlist'
+);
+select tests.clear_auth();
+select is(
+  (select count(*) from public.notifications n where n.kind = 'signup_new'),
+  1::bigint,
+  'a second sign-up adds no second line while the first is unread'
+);
+select is(
+  (select n.payload - 'submission_id' from public.notifications n where n.kind = 'signup_new'),
+  '{"name": "Second One", "count": 2}'::jsonb,
+  'the line counts two and carries the latest name'
+);
+select is(
+  (select n.payload ->> 'submission_id' from public.notifications n where n.kind = 'signup_new'),
+  (select s.id::text from public.signups s where s.email = 'second@example.com'),
+  'and points at the latest sign-up'
+);
+select is(
+  (select n.emailed_at from public.notifications n where n.kind = 'signup_new'),
+  null::timestamptz,
+  'and is back in line for the daily email'
+);
+-- once it is read, the next sign-up starts a new line
+update public.notifications set read_at = now() where kind = 'signup_new';
+select tests.authenticate_as_anon();
+select is(
+  public.submit_signup('third@example.com', '', 'waitlist') ->> 'ok',
+  'true',
+  'a third visitor joins and leaves no name'
+);
+select tests.clear_auth();
+select is(
+  (select array_agg((n.payload ->> 'count')::int order by n.read_at nulls last)
+   from public.notifications n where n.kind = 'signup_new'),
+  array[2, 1],
+  'a sign-up after the line was read starts a new line at one'
+);
+-- the old newsletter kind is stored and tells nobody
+select tests.authenticate_as_anon();
+select is(
+  public.submit_signup('news@example.com', 'News Reader', 'newsletter') ->> 'ok',
+  'true',
+  'a newsletter sign-up is still taken'
+);
+select tests.clear_auth();
+select is(
+  (select array_agg((n.payload ->> 'count')::int order by n.read_at nulls last)
+   from public.notifications n where n.kind = 'signup_new'),
+  array[2, 1],
+  'and notifies nobody'
 );
 
 select * from finish();

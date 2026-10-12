@@ -154,6 +154,15 @@ export function describeNotification(n, names) {
         line: 'New exchange story',
         detail: `${p.name || 'Someone'}${p.destination ? ` · ${p.destination}` : ''} · ${p.ref || ''}`,
       }
+    // One line for the waitlist however many joined: it counts, and carries the
+    // latest name (supabase/migrations/20261012214624_waitlist_notifications.sql).
+    case 'signup_new': {
+      const count = Number(p.count) || 1
+      const name = p.name || 'somebody who left no name'
+      return count > 1
+        ? { line: `${count} new sign-ups on the waitlist`, detail: `The latest is ${name}` }
+        : { line: 'New sign-up on the waitlist', detail: p.name || 'They left no name' }
+    }
     default:
       return { line: 'Something changed', detail: p.title }
   }
@@ -164,6 +173,7 @@ export function notificationTarget(n) {
   if (n.payload?.task_id) return `/portal/tasks/${n.payload.task_id}`
   if (n.kind === 'order_new') return '/portal/submissions?tab=orders'
   if (n.kind === 'story_new') return '/portal/submissions?tab=stories'
+  if (n.kind === 'signup_new') return '/portal/submissions?tab=signups'
   return null
 }
 

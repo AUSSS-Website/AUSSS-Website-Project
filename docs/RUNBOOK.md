@@ -1371,8 +1371,26 @@ it. Deleting an order (EB) removes its receipt too.
 
 **Who hears about it.** A new order or story writes a notification for everyone who triages it
 (EB, webmaster; the exchange officers for stories), so it appears in the feed and in the daily
-email digest (section 13). Sign-ups do not notify (they arrive in bulk); the dashboard panel
-and the Waitlist tab show the count.
+email digest (section 13).
+
+A sign-up for the waitlist notifies the EB and the webmaster too, since migration
+`20261012214624_waitlist_notifications` (the webmaster asked on 2026-10-13 for notifications
+to cover everything new on this page). Until then sign-ups told nobody, because they arrive
+in bulk: a line each would bury everything else under the bell when recruitment is
+announced. So the waitlist gets **one line that counts**. A person has at most one unread
+`signup_new` notification: the first sign-up makes it, and each one after that, until it is
+read, adds one to its count, puts the latest name on it and brings it back to the top
+("3 new sign-ups on the waitlist", "The latest is ..."). Once it is read, the next sign-up
+starts a new line. A unique index over the unread ones holds the rule
+(`notifications_unread_signup_idx`), and `app.notify_signup` does the counting. The daily
+email mentions the line again whenever its count has risen, which is still one email a day.
+A duplicate within a day, a bot caught by the hidden field and the old `newsletter` kind
+notify nobody. The dashboard panel and the Waitlist tab show the count of new ones as before.
+
+The wording is in two places: `describeNotification` in `src/portal/workUi.jsx` for the
+portal, and `describe` in `supabase/functions/email-digest/index.ts` for the email. The
+Edge Function is deployed by hand, so a new kind reads "Activity on a task" in the email
+until `email-digest` is deployed again.
 
 **Stories on the site.** A story is private until an exchange officer or the EB publishes it;
 it then appears under "Exchange stories" on `/exchange/outgoings` and
