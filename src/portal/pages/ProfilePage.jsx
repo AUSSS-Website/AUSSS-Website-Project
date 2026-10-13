@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import usePageTitle from '../../hooks/usePageTitle.js'
+import { useSiteSettings } from '../../hooks/useSiteSettings.js'
 import { useAuth } from '../../auth/AuthProvider.jsx'
 import { useLoadedProfile, useProfilePhoto, useUpdateProfile } from '../queries.js'
 import { resizeImageToBlob } from '../officerQueries.js'
@@ -217,6 +218,7 @@ function ProfileForm({ user, profile: given }) {
   // row arrives a moment later, and in a browser whose timers wait a
   // millisecond (Safari) the status line said "Unsaved changes" before "Saved.".
   const profile = useLoadedProfile(user.id).data ?? given
+  const digestLive = useSiteSettings().settings.emailDigestLive === true
   const [form, setForm] = useState(() => formFrom(profile))
   // A year saved before the list changed on 2026-10-11 ("Year 6", "Intern")
   // shows as it is, not as "Not set", until the member chooses again.
@@ -318,15 +320,19 @@ function ProfileForm({ user, profile: given }) {
 
           {/* A tick box, not a switch: it counts once the form is saved, like
               the fields above it. The row pads itself by 12px above and
-              below, which the pt-3 and the -mb-3 here allow for. */}
-          <div className="-mb-3 border-t border-line/10 pt-3">
-            <CheckField
-              checked={form.digest}
-              onChange={(on) => change('digest', on)}
-              label="Email me a daily digest"
-              hint="At most one email a day, only when a task or an update is waiting for you. Everything stays in the portal either way."
-            />
-          </div>
+              below, which the pt-3 and the -mb-3 here allow for. It is left
+              out while the society sends no daily email at all (the site
+              setting emailDigestLive); the member's choice is kept meanwhile. */}
+          {digestLive && (
+            <div className="-mb-3 border-t border-line/10 pt-3">
+              <CheckField
+                checked={form.digest}
+                onChange={(on) => change('digest', on)}
+                label="Email me a daily digest"
+                hint="At most one email a day, only when a task or an update is waiting for you. Everything stays in the portal either way."
+              />
+            </div>
+          )}
         </Panel>
 
         <div className="mt-6 flex flex-wrap items-center gap-4">

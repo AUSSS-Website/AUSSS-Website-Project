@@ -880,6 +880,25 @@ update public.positions set can_assign_tasks = true where key = 'scope.assistant
 
 ### The daily email digest
 
+**Switched off since 2026-10-13.** The webmaster asked to cancel the daily email for now.
+It is a site setting, `emailDigestLive`: **Site settings > Portal > "Send the daily email"**
+(EB only), off since migration `20261013090001_email_digest_switch`. A missing row means
+off.
+
+- While it is off, `rpc/admin_digest_batch` answers with nobody. The job below still calls
+  the function every day; the function sends nothing and writes no row in `digest_runs`.
+- The profile page leaves out its "Email me a daily digest" tick box. Each person's choice
+  (`profiles.email_digest`) is kept, and counts again once the switch is on.
+- Notifications are written as before and show under the bell and on the Notifications
+  page. Nothing is marked as emailed meanwhile, so the first email after the switch is
+  turned on carries what is still unread by then (15 notifications and 10 updates at most).
+- **Before turning it on again**, deploy the `email-digest` function (`supabase functions
+  deploy email-digest`, or the Supabase MCP): the deployed copy is older than the
+  repository's and does not know the waitlist line (section 18), which it would call
+  "Activity on a task".
+
+What follows is how it works while the switch is on.
+
 Every day at 15:30 UTC the pg_cron job `email-digest` calls the Edge Function of the
 same name (its own Vault secret `digest_cron_secret`, `verify_jwt = false`). The
 function asks `rpc/admin_digest_batch` who has something unseen (unread notifications
@@ -1371,7 +1390,8 @@ it. Deleting an order (EB) removes its receipt too.
 
 **Who hears about it.** A new order or story writes a notification for everyone who triages it
 (EB, webmaster; the exchange officers for stories), so it appears in the feed and in the daily
-email digest (section 13).
+email digest (section 13; the email as a whole is switched off since 2026-10-13, so for now
+"the daily email" below means the email once it is switched on again).
 
 A sign-up for the waitlist notifies the EB and the webmaster too, since migration
 `20261012214624_waitlist_notifications` (the webmaster asked on 2026-10-13 for notifications
@@ -2678,6 +2698,7 @@ on the portal's **Site settings** page (EB only). A missing row means off.
 | `openCallsLive` | Show Open Calls on the public site | the calls officers publish show on their committee pages with an Apply button |
 | `magazineCountersVisible` | Show reads and likes on the magazine | the reads count and a Like button show under each edition (reads are recorded either way) |
 | `domainEmailsLive` | Show the @ausss-ainshams.org addresses | every page shows a role's address on the domain instead of its Gmail inbox (section 19 says when) |
+| `emailDigestLive` | Send the daily email (in the panel "Portal", since 2026-10-13) | everyone with something unread in the portal gets one email a day, unless they turned it off on their profile (section 13) |
 
 Each switch saves the moment it is flipped: it moves at once, says "Saving…" and then
 "Saved." under itself for about four seconds, and goes back with the reason under it if the
