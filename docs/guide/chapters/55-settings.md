@@ -5,7 +5,7 @@ roles: eb
 routes: /portal/admin/settings
 ---
 
-TODO: The switches of the public site.
+TODO: The switches of the public site, and the portal's one ("Send the daily email").
 
 ## The switches
 

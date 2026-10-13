@@ -9,7 +9,7 @@ TODO: What the portal knows about you, and how to be confirmed as a member.
 
 ## Your details and photo
 
-TODO: Each field; the photo and where it is shown; being listed in the directory; the daily email.
+TODO: Each field; the photo and where it is shown; being listed in the directory; the daily email (its tick box is there only while the board has the email switched on in Site settings; it is off since 2026-10-13).
 
 ![](shot:profile)
 

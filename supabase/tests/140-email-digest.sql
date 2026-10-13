@@ -1,8 +1,10 @@
 -- The daily digest: admin_digest_batch lists each person once with what they have not seen
 -- (unread, never-emailed notifications and live unread updates addressed to them), skips people
--- who opted out or were emailed within the day, and admin_digest_mark makes a run final.
+-- who opted out or were emailed within the day, and admin_digest_mark makes a run final. The
+-- site setting emailDigestLive switches the whole email off: nobody is in line while it is not
+-- true.
 begin;
-select plan(10);
+select plan(13);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -46,6 +48,18 @@ select throws_ok(
 );
 
 select tests.clear_auth();
+
+-- the daily email as a whole is switched off (20261013090001), whatever is waiting for anyone
+select is(
+  (select value from public.site_settings where key = 'emailDigestLive'),
+  'false'::jsonb, 'the daily email starts switched off'
+);
+select is(public.admin_digest_batch(80), '[]'::jsonb, 'while it is off nobody is in line');
+delete from public.site_settings where key = 'emailDigestLive';
+select is(public.admin_digest_batch(80), '[]'::jsonb, 'a switch that was never set is off');
+
+-- switched on, it is the queue it always was
+insert into public.site_settings (key, value) values ('emailDigestLive', 'true'::jsonb);
 create temporary table pgtap_batch on commit drop as
   select e from jsonb_array_elements(public.admin_digest_batch(80)) as t(e)
   where e ->> 'email' like '%@pgtap.test';

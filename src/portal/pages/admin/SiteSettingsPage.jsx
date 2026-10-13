@@ -16,7 +16,8 @@ import {
 } from '../../portalUi.jsx'
 
 // /portal/admin/settings (EB only, gated by RequireEB). Site-wide switches
-// read by every visitor from public.site_settings. Known keys get a proper
+// read by every visitor from public.site_settings, and the portal's own
+// (whether the daily email goes out). Known keys get a proper
 // control; anything else is shown as raw JSON so a new setting can be added
 // from the Supabase dashboard before the site has a control for it. The way
 // to the New term page is here too (it is used once a year, so it has no
@@ -66,6 +67,18 @@ const KNOWN = [
     type: 'boolean',
     fallback: false,
     askBeforeOn: 'Click the switch again to turn this on. Mail bounces unless forwarding is set up.',
+  },
+]
+
+// Switches for the portal itself, in a panel of their own below the public
+// site's.
+const PORTAL = [
+  {
+    key: 'emailDigestLive',
+    label: 'Send the daily email',
+    hint: 'When on, everyone with something unread in the portal gets one email a day, unless they turned it off on their profile. When off, nobody is emailed and the profile page leaves the choice out. Notifications show under the bell either way.',
+    type: 'boolean',
+    fallback: false,
   },
 ]
 
@@ -354,7 +367,7 @@ export default function SiteSettingsPage() {
   usePageTitle('Site settings')
   const settings = useSiteSettingsAdmin(true)
 
-  const knownKeys = new Set([...KNOWN.map((d) => d.key), ...Object.keys(EDITED_ELSEWHERE)])
+  const knownKeys = new Set([...KNOWN, ...PORTAL].map((d) => d.key).concat(Object.keys(EDITED_ELSEWHERE)))
   const others = Object.entries(settings.data || {}).filter(([k]) => !knownKeys.has(k))
 
   return (
@@ -376,6 +389,14 @@ export default function SiteSettingsPage() {
           <Panel title="Public site" className="space-y-6">
             <div className="mt-4 space-y-6">
               {KNOWN.map((def) => (
+                <BooleanSetting key={def.key} def={def} />
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Portal" className="space-y-6">
+            <div className="mt-4 space-y-6">
+              {PORTAL.map((def) => (
                 <BooleanSetting key={def.key} def={def} />
               ))}
             </div>

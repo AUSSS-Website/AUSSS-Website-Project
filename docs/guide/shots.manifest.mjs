@@ -180,7 +180,7 @@ export const shots = [
   shot('portal-dashboard', '/portal', 'The dashboard gathers what is waiting: tasks, updates, the membership and, for those who have them, the editors.', {}),
   shot('portal-bell', '/portal#bell', 'The bell opens the latest notifications without leaving the page.', { capture: 'viewport' }),
   shot('portal-mobile', '/portal', 'The portal on a phone: the pages become a line that scrolls sideways.', { viewport: 'mobile', capture: 'viewport' }),
-  shot('profile', '/portal/profile', 'Your profile: your details, your photo, and two choices about the directory and the daily email.', { maxHeight: 1360 }),
+  shot('profile', '/portal/profile', 'Your profile: your details and your photo. The choice about the daily email is there only while the board has that email switched on.', { maxHeight: 1360 }),
   shot('verify', '/portal/verify', 'Verify your membership. An account already verified is told so.', {}),
   shot('tasks-list', '/portal/tasks', 'Tasks as a list, with what is due and who has each.', {}),
   shot('tasks-board', '/portal/tasks?view=board', 'The same tasks as a board, a column for each state.', {}),

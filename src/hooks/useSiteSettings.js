@@ -16,6 +16,9 @@ import { publicEmail } from '../data/emailConfig.js'
 //                            reads are recorded either way
 //   domainEmailsLive         the @ausss-ainshams.org addresses instead of the
 //                            Gmail inboxes (RUNBOOK section 19)
+//   emailDigestLive          the portal's daily email; the database sends to
+//                            nobody while it is off, and the profile page
+//                            leaves out the choice about it (RUNBOOK section 13)
 //
 // Same loading order as the content blocks (src/lib/content.js): what the build
 // baked in, else what this browser saw last, else the defaults; the live answer
@@ -28,6 +31,7 @@ export const SETTING_DEFAULTS = {
   openCallsLive: false,
   magazineCountersVisible: false,
   domainEmailsLive: false,
+  emailDigestLive: false,
 }
 
 const CACHE_KEY = 'ausss-site-settings'
