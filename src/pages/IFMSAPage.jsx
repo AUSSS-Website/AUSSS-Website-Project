@@ -5,6 +5,7 @@ import { ifmsaLineage } from '../data/society.js'
 import { useContentBlock } from '../lib/content.js'
 import ifmsaPage from '../content/schemas/ifmsaPage.js'
 import { IfmsaLinks, IfmsaPoints, StatBand } from '../components/IfmsaSections.jsx'
+import { regionStrategy } from '../data/ifmsaDocuments.js'
 
 export default function IFMSAPage() {
   usePageTitle(
@@ -132,6 +133,22 @@ export default function IFMSAPage() {
               </div>
             ))}
           </div>
+          {/* The IFMSA region Egypt is in, in small print, and its plan on
+              IFMSA's Drive (src/data/ifmsaDocuments.js). */}
+          <p className="mx-auto mt-6 max-w-3xl text-balance text-center text-sm leading-relaxed text-soft/60">
+            IFMSA-Egypt is part of IFMSA’s Eastern Mediterranean Region (EMR).
+            Read{' '}
+            <a
+              href={regionStrategy.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${regionStrategy.title} (Google Drive)`}
+              className="underline decoration-line/30 underline-offset-2 transition-colors hover:text-ink"
+            >
+              {regionStrategy.label}
+            </a>
+            .
+          </p>
         </section>
 
         {/* Points */}

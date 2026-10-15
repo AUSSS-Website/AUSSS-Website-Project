@@ -13,6 +13,7 @@ import { PersonCard, SectionLabel } from '../components/committeeUi.jsx'
 import CallCard from '../components/CallCard.jsx'
 import ApplyModal from '../components/ApplyModal.jsx'
 import { CommitteeEvents } from '../components/EventCard.jsx'
+import { committeeDocuments } from '../data/ifmsaDocuments.js'
 import NotFoundPage from './NotFoundPage.jsx'
 
 // An address that names no committee gets the site's "not found" page. The
@@ -39,6 +40,9 @@ function CommitteeView({ c }) {
   const ov = overrides[slugFor(c)] || {}
 
   const accent = readableAccent(c.color)
+  // IFMSA's regulations and strategy for this committee, where it publishes
+  // them.
+  const documents = committeeDocuments[slugFor(c)] || []
   // Live recruitment calls for this committee. The backend only ever returns
   // ones that are open and inside their deadline, so there's nothing to filter
   // here, and an empty list simply hides the section.
@@ -237,26 +241,18 @@ function CommitteeView({ c }) {
                 </>
               )}
 
-              <a
-                href={c.ifmsa.source}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-8 inline-flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors hover:text-ink"
-              >
-                Mission and objectives as published by IFMSA
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M7 17 17 7M9 7h8v8" />
-                </svg>
-              </a>
+              {/* The source, then IFMSA's regulations and strategy for the
+                  committee where it publishes them (src/data/ifmsaDocuments.js):
+                  small print, since the page is about our own work. Each link
+                  is 44px tall to a finger; the row's margin allows for it. */}
+              <div className="mt-5 flex flex-wrap gap-x-6">
+                <IfmsaLink href={c.ifmsa.source}>Mission and objectives as published by IFMSA</IfmsaLink>
+                {documents.map((d) => (
+                  <IfmsaLink key={d.href} href={d.href} label={`${d.title} (Google Drive)`}>
+                    {d.label}
+                  </IfmsaLink>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -371,6 +367,35 @@ function CommitteeView({ c }) {
         />
       )}
     </article>
+  )
+}
+
+// One of the small links at the foot of the "From IFMSA" box, opening on
+// IFMSA's site or its Drive in a new tab. `label` names it in full to a screen
+// reader when the visible words are short ("Regulations").
+function IfmsaLink({ href, label, children }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="inline-flex min-h-[44px] items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.18em] text-soft/50 transition-colors hover:text-ink"
+    >
+      {children}
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3.5 w-3.5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M7 17 17 7M9 7h8v8" />
+      </svg>
+    </a>
   )
 }
 
