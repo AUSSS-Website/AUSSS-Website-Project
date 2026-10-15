@@ -777,6 +777,17 @@ cards are additionally gated by the site setting `openCallsLive` ("Show Open
 Calls on the public site" on Site settings; off while the joining flow is
 unsettled, and officers can still prepare calls in the portal). See section 27.
 
+**The "From IFMSA" box** on a standing committee's page (the mission, the
+objectives and focus areas) is not an override: it is `ifmsa` in
+`src/data/society.js`, as IFMSA publishes it. Its foot has small links to
+IFMSA's own regulations and strategy for the committee, where IFMSA publishes
+them (`src/data/ifmsaDocuments.js`, added 2026-10-16). They are the files on
+IFMSA's Google Drive that each international team links from
+`ifmsa.org/teams/<committee>-team`, so a file the team replaces in place stays
+current. SCORP links no strategy yet. When a team publishes a new edition as a
+new file, put its id in `ifmsaDocuments.js` and correct the label. The EMR's
+strategic plan is one line under "Where AUSSS sits" on `/ifmsa`.
+
 The committee editor keeps its place in the address (`useTabParam`, section 24):
 the open tab as `?tab=` (`events`, `calls`, `members` or `invites`; the
 Committee page tab is the plain address), an open call as `?call=` (`new`, or
