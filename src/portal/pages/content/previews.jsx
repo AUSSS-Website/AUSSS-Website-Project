@@ -140,7 +140,7 @@ export const previews = {
       {doc.ausss.url ? (
         <PdfReader key={doc.ausss.url} src={doc.ausss.url} title="AUSSS Constitution & Bylaws" heightClass="h-[70vh]" />
       ) : (
-        <p className="text-center text-sm text-soft/60">No PDF chosen yet.</p>
+        <p className="text-center text-sm text-soft/60">No PDF yet.</p>
       )}
       <div className="pt-6">
         <h2 className="heading-serif text-2xl text-ink">How it’s amended</h2>

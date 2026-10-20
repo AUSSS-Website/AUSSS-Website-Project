@@ -2531,8 +2531,8 @@ opens each in the same form, drawn from the block's field schema.
   Storage, `content-files`). Download links to these files end in `?download=<name>`
   (`downloadHref` in `src/lib/documents.js`), because a browser ignores the `download`
   attribute on another site's file. The reader fetches such a file whole: Storage does not
-  show another site its `Accept-Ranges` header, so pdf.js cannot ask for pieces, and the
-  editor says so for an upload over 8 MB.
+  show another site its `Accept-Ranges` header, so pdf.js cannot ask for pieces. For an
+  upload over 8 MB the editor warns that it will be slow to open on a phone.
 
 **The blocks so far.**
 
@@ -2554,8 +2554,10 @@ size; read it in the preview beside the form. Change "Which version this is" (fo
 that "How it's amended" cites, correct those there. Then **Publish**. The page and the
 download on the Members page switch at once, and the saved pages follow with the rebuild.
 The IFMSA-Egypt document is replaced the same way, further down the same form. To put an
-earlier version back, take its `url`, `pages` and `bytes` from the "Before" side of the
-block's entry in the audit log (see "Undo a bad publish" below) and publish them again.
+earlier version back, upload that file again if you have it. If not, the webmaster copies
+the block's `published` value from the "Before" side of its audit-log entry (see "Undo a bad
+publish" below) and puts it back in the Supabase table editor: the earlier file is still in
+the bucket, and the form's file picker cannot take an address.
 
 **The incomings page is written for a student abroad** who is choosing which local
 committee to spend an exchange month with, and it speaks in our own voice: "we", "our",
