@@ -17,7 +17,7 @@ export default {
   key: 'constitution.documents',
   title: 'Constitution page: the documents',
   description:
-    'The AUSSS Constitution & Bylaws and the IFMSA-Egypt one, as PDFs. Upload the new version when a General Assembly adopts it; the page and the Members page switch to it once you publish.',
+    'The AUSSS Constitution & Bylaws and IFMSA-Egypt’s, as PDFs. Upload the new version when a General Assembly adopts it; the page and the Members page switch to it once you publish.',
   path: '/constitution',
   editors: [],
   fields: [
@@ -82,7 +82,7 @@ export default {
       {
         title: 'Circulate',
         ref: '§14.3–14.4, §18.1',
-        body: 'The Secretary General shares every proposal with the Supervising Council, Team of Officials and all members beforehand. Bylaw changes to Chapters 1 and 2 need at least two full members and one month’s notice; other points need two weeks’. Skipping these steps makes a proposal invalid.',
+        body: 'The Secretary General shares every proposal with the Supervising Council, Team of Officials and all members beforehand. Bylaw changes to Chapters 1 and 2 need at least two Full members and one month’s notice; other points need two weeks’. Skipping these steps makes a proposal invalid.',
       },
       {
         title: 'Vote',

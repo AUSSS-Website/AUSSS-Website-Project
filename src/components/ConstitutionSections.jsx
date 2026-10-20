@@ -51,11 +51,11 @@ export function NationalRules({ pdf, version }) {
           AUSSS is an autonomous affiliate member of IFMSA-Egypt, the national
           federation of medical students’ associations, and works within its
           rules as well as its own. The federation’s Constitution &amp; Bylaws
-          sets out who its members are and the rights they hold, how its
-          General Assembly meets and votes, the roles of the Executive Board,
-          the Team of Officials and the Supervising Council, the standing
-          committees and support divisions, its finances, and how Egypt is
-          represented in IFMSA.
+          sets out who its members are and the rights they hold, and how its
+          General Assembly meets and votes. It also covers the roles of the
+          Executive Board, the Team of Officials and the Supervising Council,
+          the standing committees and support divisions, its finances, and how
+          Egypt is represented in IFMSA.
         </p>
       </div>
 
