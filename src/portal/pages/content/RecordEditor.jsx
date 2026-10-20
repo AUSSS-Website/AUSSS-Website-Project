@@ -3,7 +3,8 @@ import { emptyRow } from '../../../content/schema.js'
 import { useGallery } from '../../../lib/gallery.js'
 import { errorText } from '../../../lib/errorText.js'
 import { pressCls, scrollBehavior } from '../../../lib/motion.js'
-import { uploadContentImage } from '../../contentQueries.js'
+import { uploadContentImage, uploadContentPdf } from '../../contentQueries.js'
+import { SLOW_PDF_BYTES, fileSize } from '../../../lib/documents.js'
 import { CheckField, ErrorText, UndoLine, inputCls, outlineBtnCls, panelTitleCls } from '../../portalUi.jsx'
 
 // The one form every edited part of the site uses. It draws a control for each
@@ -328,6 +329,105 @@ function ImageControl({ field, value, onChange, blockKey, id, path, disabled }) 
   )
 }
 
+// The last part of an address, readable ("New%20file.pdf" as "New file.pdf").
+function lastPart(url) {
+  const part = (url || '').split('/').pop() || ''
+  try {
+    return decodeURIComponent(part)
+  } catch {
+    return part
+  }
+}
+
+// A PDF: the file in place now (its name, pages and size, and a way to open
+// it), and a button to choose a new one. The new file is read and uploaded
+// at once, and takes the old one's place in the form; like any other change it
+// reaches the site only when the block is published. A PDF is replaced, never
+// removed (see the pdf type in src/content/schema.js).
+function PdfControl({ value, onChange, blockKey, id, path, disabled }) {
+  const pick = useRef(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  // What the last upload says, until the next one starts.
+  const [done, setDone] = useState('')
+  const url = value?.url || ''
+
+  const upload = async (file) => {
+    if (!file) return
+    setErr('')
+    setDone('')
+    setBusy(true)
+    try {
+      const pdf = await uploadContentPdf(blockKey, file)
+      onChange(pdf)
+      setDone(
+        pdf.bytes > SLOW_PDF_BYTES
+          ? `Uploaded. At ${fileSize(pdf.bytes)} it will be slow to open on a phone; a smaller copy of the PDF reads faster. Check it in the preview, then publish to put it on the site.`
+          : 'Uploaded. Check it in the preview, then publish to put it on the site.',
+      )
+    } catch (e) {
+      setErr(errorText(e, 'The PDF did not upload. Try again.'))
+    } finally {
+      setBusy(false)
+      if (pick.current) pick.current.value = ''
+    }
+  }
+
+  // The name it had on the computer it came from; for a file that ships with
+  // the site, the last part of its address.
+  const name = value?.name || lastPart(url)
+  const facts = [value?.pages > 0 ? `${value.pages} ${value.pages === 1 ? 'page' : 'pages'}` : '', fileSize(value?.bytes)].filter(Boolean).join(' · ')
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex min-w-0 flex-1 basis-56 items-center gap-3 rounded-xl border border-line/10 bg-sunk px-4 py-3">
+          <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-accent" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d="M7 3h7l5 5v13H7V3Z" strokeLinejoin="round" />
+            <path d="M14 3v5h5M9 13h6M9 17h6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {url ? (
+            <div className="min-w-0">
+              <p className="break-words text-sm font-medium text-ink">{name}</p>
+              <p className="mt-0.5 text-xs text-soft/60">
+                {facts && <span>{facts} · </span>}
+                <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent underline-offset-2 hover:text-ink hover:underline">
+                  Open it
+                </a>
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-soft/55">No PDF yet</p>
+          )}
+        </div>
+        {/* The button below is the control; the file input only holds the choice, so the keyboard does not stop on it. */}
+        <input
+          ref={pick}
+          id={id}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="sr-only"
+          tabIndex={-1}
+          disabled={disabled || busy}
+          onChange={(e) => upload(e.target.files?.[0])}
+        />
+        <button type="button" data-control={path} className={smallBtnCls} disabled={disabled || busy} onClick={() => pick.current?.click()}>
+          {busy ? 'Reading and uploading…' : url ? 'Choose a new PDF' : 'Choose a PDF'}
+        </button>
+      </div>
+      {/* Always in the page, so it is read out when the upload ends. */}
+      <p role="status" className={done ? 'mt-2 text-xs font-medium text-ok' : 'sr-only'}>
+        {done}
+      </p>
+      {err && (
+        <div className="mt-2">
+          <ErrorText>{err}</ErrorText>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // One of the gallery's albums, or none. An album chosen earlier and since
 // deleted stays in the list, marked, so saving does not silently drop it.
 function AlbumControl({ value, onChange, id, disabled }) {
@@ -531,7 +631,7 @@ function FieldRow({ field, value, onChange, path, errors, blockKey, disabled }) 
             {field.required && <span className="ml-1 font-normal text-soft/45">(needed)</span>}
           </label>
         )}
-        {field.type !== 'list' && field.type !== 'select' && field.type !== 'image' && field.type !== 'album' && (
+        {field.type !== 'list' && field.type !== 'select' && field.type !== 'image' && field.type !== 'pdf' && field.type !== 'album' && (
           <Count value={value} max={field.max} />
         )}
       </div>
@@ -551,6 +651,8 @@ function FieldRow({ field, value, onChange, path, errors, blockKey, disabled }) 
           <AlbumControl value={value} onChange={onChange} id={id} disabled={disabled} />
         ) : field.type === 'image' ? (
           <ImageControl field={field} value={value} onChange={onChange} blockKey={blockKey} id={id} path={path} disabled={disabled} />
+        ) : field.type === 'pdf' ? (
+          <PdfControl value={value} onChange={onChange} blockKey={blockKey} id={id} path={path} disabled={disabled} />
         ) : (
           <TextControl field={field} value={value} onChange={onChange} id={id} path={path} describedBy={errId} disabled={disabled} />
         )}

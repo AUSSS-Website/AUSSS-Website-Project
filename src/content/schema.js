@@ -21,6 +21,10 @@
 //   markdown   several lines, read by src/lib/markdown.js
 //   url        an address a link may point at (safeHref)
 //   image      the address of an uploaded picture
+//   pdf        an uploaded PDF, kept as { url, name, pages, bytes }: its address,
+//              the name it had on the computer it came from, its pages and its
+//              size (read in the browser when it is chosen, for the line of
+//              facts the page shows). A PDF is replaced, never removed.
 //   album      a gallery album, kept as its address name (the editor lists the albums)
 //   toggle     true or false                       default?
 //   select     one of options: [{ value, label }]  default?
@@ -41,11 +45,32 @@ function cleanString(v, { oneLine }) {
   return oneLine ? s.replace(/\s*\n\s*/g, ' ').trim() : s.replace(/[ \t]+$/gm, '').trim()
 }
 
-// A picture is an uploaded file (an https address) or one that ships with the
-// site ("/assets/…"); nothing else is ever used as an image source.
-function cleanImage(v) {
+// A picture or a PDF is an uploaded file (an https address) or one that ships
+// with the site ("/assets/…"); nothing else is ever used as its address.
+function cleanFileAddress(v) {
   const s = typeof v === 'string' ? v.trim() : ''
   return /^https:\/\/[^\s<>"']+$/i.test(s) || /^\/(?!\/)[^\s<>"']+$/.test(s) ? s : ''
+}
+
+const EMPTY_PDF = { url: '', name: '', pages: 0, bytes: 0 }
+const wholeNumber = (n, max) => (Number.isInteger(n) && n > 0 && n <= max ? n : 0)
+
+// Where a PDF may live: the portal's PDF bucket (content-files) of a Supabase
+// project, or the site's own files. Nothing else is opened or linked as one.
+const PDF_HOME = /^(https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/content-files\/|\/assets\/)/i
+
+// A PDF without a usable address is no file at all, whatever else it says.
+function cleanPdf(v) {
+  const src = v && typeof v === 'object' && !Array.isArray(v) ? v : {}
+  const address = cleanFileAddress(src.url)
+  const url = PDF_HOME.test(address) ? address : ''
+  if (!url) return { ...EMPTY_PDF }
+  return {
+    url,
+    name: cleanString(src.name, { oneLine: true }).slice(0, 200),
+    pages: wholeNumber(src.pages, 10000),
+    bytes: wholeNumber(src.bytes, 1e9),
+  }
 }
 
 function cleanField(field, v) {
@@ -64,7 +89,9 @@ function cleanField(field, v) {
         .map((row) => cleanFields(field.fields, row))
     }
     case 'image':
-      return cleanImage(v)
+      return cleanFileAddress(v)
+    case 'pdf':
+      return cleanPdf(v)
     case 'album':
       return typeof v === 'string' && /^[a-z0-9][a-z0-9-]{0,99}$/.test(v) ? v : ''
     case 'textarea':
@@ -115,6 +142,10 @@ function checkField(field, v, path, errors) {
     return
   }
   if (field.type === 'toggle' || field.type === 'select' || field.type === 'album') return
+  if (field.type === 'pdf') {
+    if (field.required && !v?.url) errors[path] = `${label} is needed. Choose a PDF.`
+    return
+  }
   const s = typeof v === 'string' ? v : ''
   if (!s) {
     if (field.required) errors[path] = `${label} is needed.`

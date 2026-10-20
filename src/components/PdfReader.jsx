@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import PdfFrame from './PdfFrame.jsx'
 import { pressCls } from '../lib/motion.js'
 import { MIN_QUERY, buildPageIndex, matchRanges, searchDocument, snippet } from '../lib/pdfSearch.js'
+import { PDF_SAFE_OPTIONS, loadPdfJs } from '../lib/loadPdfJs.js'
 import './PdfReader.css'
 
 // A PDF read on the page, with a search bar above it.
@@ -39,15 +40,6 @@ const NO_MATCHES = { query: '', matches: [], more: false }
 // The pages that hold a reader are pre-rendered in Node, where a layout effect
 // has nothing to do and React says so.
 const useBeforePaint = typeof window === 'undefined' ? useEffect : useLayoutEffect
-
-async function loadPdfJs() {
-  const [pdfjs, worker] = await Promise.all([
-    import('pdfjs-dist'),
-    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
-  ])
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default
-  return pdfjs
-}
 
 // Everything pdf.js: the open document, the pages on screen, their words and
 // the marks of the current search. React owns the frame around it and the
@@ -473,10 +465,7 @@ export default function PdfReader({ src, title, heightClass = 'h-[82vh]', startP
           // a large file: only the pieces its pages need, a quarter of a megabyte at a time
           disableStream: large,
           rangeChunkSize: large ? 262144 : 65536,
-          // the site's content policy allows neither WebAssembly nor code made from text;
-          // none of these files needs either
-          useWasm: false,
-          isEvalSupported: false,
+          ...PDF_SAFE_OPTIONS,
         })
         const doc = await task.promise
         if (dead) {

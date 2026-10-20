@@ -39,7 +39,7 @@ export default function ContentPage() {
       <PageHeader
         eyebrow="Site content"
         title="Edit the public site"
-        subtitle="Text and pictures on the public pages that you can change yourself. Nothing reaches visitors until you publish it."
+        subtitle="Text, pictures and documents on the public pages that you can change yourself. Nothing reaches visitors until you publish it."
       />
 
       {blocks.isPending ? (

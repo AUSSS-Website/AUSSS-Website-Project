@@ -313,6 +313,23 @@ const edition = (id, slug, status, title, more = {}) => ({ id, slug, title, swit
 // and the one an upload replaced nine days ago. A folder goes a week after the
 // later of the two began, so both are kept.
 const magazineFolders = { 'mg-1': [pagesFolder(2), pagesFolder(9)] }
+// The documents on /constitution, published from the portal: the society's
+// file is one uploaded to the `content-files` bucket (the repo's copy stands
+// in for it), with a version line and a step added to "How it's amended"; the
+// national one is still the file that ships with the site.
+const sampleConstitution = {
+  ausss: { url: `${BUCKETS}/content-files/constitution.documents/3f2b9c1e-sample.pdf`, name: 'AUSSS Constitution and Bylaws, LGA October 2026 (final).pdf', pages: 38, bytes: 789020 },
+  ausssVersion: 'As amended at the LGA of October 2026',
+  steps: [
+    { title: 'Propose', ref: '§1.2.5, §14.2', body: 'A motion to amend can be raised only by a Full member, and the written proposal must reach the Secretary General before the General Assembly.' },
+    { title: 'Circulate', ref: '§14.3–14.4, §18.1', body: 'The Secretary General shares every proposal with the Supervising Council, Team of Officials and all members beforehand.' },
+    { title: 'Vote', ref: '§14.1, §18.1.3, §11.2', body: 'Amendments are decided at the Local General Assembly by a two-thirds majority, with every Full member casting one vote.' },
+    { title: 'Adopt', ref: '§18.1.4, §11.4', body: 'Changes take effect once adopted by the General Assembly.' },
+    { title: 'Publish', ref: '', body: 'The Secretary General sends the adopted text to the webmaster, who puts it on this page.' },
+  ],
+  national: { url: '/assets/docs/IFMSA-Egypt-Constitution-and-Bylaws.pdf', name: 'IFMSA-Egypt-Constitution-and-Bylaws.pdf', pages: 49, bytes: 1756124 },
+  nationalVersion: 'Issued October 2026',
+}
 const sampleIssues = [
   edition('mg-1', 'vol-9', 'published', 'Autumn', { switcher_label: 'Autumn, Vol. 9', date_label: 'Volume 9 · A CBSD production', blurb: 'The ninth volume: exchange stories, a guide to the first clinical year and the term in pictures.', pages_base: `${BUCKETS}/magazine/mg-1/${magazineFolders['mg-1'][0]}`, page_count: 12, download_url: 'https://drive.google.com/file/d/sample/view' }),
   edition('mg-2', 'vol-8', 'published', 'The Story of Origin, a title long enough to wrap on a phone, Vol. 8', { sort_order: 1, pages_base: '/assets/magazine/vol-7/pages', page_count: 23, hero_page: 2, created_at: iso(200), updated_at: iso(100) }),
@@ -436,6 +453,7 @@ const tables = {
     { key: 'site.contact', editors: [], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
     { key: 'home.page', editors: [], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
     { key: 'ifmsa.page', editors: [], has_draft: null, draft: null, published: null, draft_saved_at: null, draft_saved_by: null, published_at: null, published_by: null, updated_at: iso(3) },
+    { key: 'constitution.documents', editors: [], has_draft: null, draft: null, published: sampleConstitution, draft_saved_at: null, draft_saved_by: null, published_at: iso(2), published_by: other, updated_at: iso(2) },
   ],
   orders: [
     { id: 'o-1', ref: 'AUSSS-7F3K2Q', status: 'new', name: 'Sample Buyer', email: 'buyer1@example.com', phone: '01000000001', is_member: true, lc: '', year: '3rd year', payment_method: 'instapay', items: [{ product_id: 'tshirt-55', name: 'AUSSS T-Shirt, 55th Limited Edition', size: 'L', design: '', qty: 2, unit_price: 300, line_total: 600 }, { product_id: 'notebook', name: 'AUSSS Notebook', size: '', design: 'Support Divisions', qty: 1, unit_price: 40, line_total: 40 }], subtotal: 640, client_subtotal: 640, price_flag: '', notes: '', officer_notes: '', receipt_path: 'o-1.jpg', created_at: iso(0.2), updated_at: iso(0.2) },
@@ -670,6 +688,8 @@ const reached = [
   { id: 'pr-9', full_name: null, position_title: 'Core Team Member' },
 ]
 const rpcs = {
+  // Only the constitution's documents are published; every other block shows its shipped copy.
+  content_public: { blocks: { 'constitution.documents': sampleConstitution } },
   gallery_public: {
     albums: [
       galleryAlbum('al-1', 'national-general-assembly-aswan-2026', 'National General Assembly, Aswan 2026', 'Three days in Aswan.', null, 6),
@@ -815,7 +835,9 @@ export const ROUTES = [
   '/events/national-general-assembly-aswan-2025', '/', '/committees/scoph',
   // the gallery and its archive
   '/gallery', '/gallery/archive', '/gallery/winter-camp-2026',
-  '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/content/home.page', '/portal/content/ifmsa.page', '/portal/admin/audit',
+  '/portal/content', '/portal/content/join.faq', '/portal/content/exchange.incomings', '/portal/content/site.contact', '/portal/content/home.page', '/portal/content/ifmsa.page', '/portal/content/constitution.documents', '/portal/admin/audit',
+  // the constitution page and the Members page reading the published documents
+  '/constitution', '/members',
   // the audit log with its first entry open: an exam ID released from its account
   '/portal/admin/audit#released',
   // the exchange exam on the portal: the list, the exam being sat in its five
@@ -989,6 +1011,14 @@ export async function installSample(context, theme) {
     if (url.pathname === '/storage/v1/object/list/magazine') {
       const folders = magazineFolders[req.postDataJSON()?.prefix] || []
       return json(folders.map((name) => ({ name, id: null, updated_at: null, created_at: null, last_accessed_at: null, metadata: null })))
+    }
+    // The PDFs in `content-files`, uploaded or published: the repo's copy of
+    // the constitution stands in for each, served as Storage serves it.
+    if (url.pathname.startsWith('/storage/v1/object/public/content-files/')) {
+      return route.fulfill({ status: 200, contentType: 'application/pdf', headers: { 'access-control-allow-origin': '*' }, path: 'public/assets/docs/AUSSS-Constitution-and-Bylaws.pdf' })
+    }
+    if (req.method() === 'POST' && url.pathname.startsWith('/storage/v1/object/content-files/')) {
+      return json({ Key: url.pathname.slice('/storage/v1/object/'.length), Id: 'sample-upload' })
     }
     if (url.pathname.startsWith('/storage/v1/')) return json([])
     const rpc = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/)?.[1]

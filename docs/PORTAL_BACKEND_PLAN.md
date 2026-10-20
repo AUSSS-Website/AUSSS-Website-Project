@@ -997,6 +997,18 @@ request is merged.
      home page just made editable), and building it before the 5d pilot
      invites start lets the piloting committee publish its events through
      the portal during its month.
+ 5. **The Constitution & Bylaws from the portal (the webmaster, 2026-10-20):**
+    "add a way for me to update the constitution and bylaws through the
+    portal", "by uploading a new pdf". **Built 2026-10-20** on branch
+    `constitution-upload` (not pushed when written): migration
+    `20261020090001_constitution_documents` (not applied), pgTAP
+    `370-constitution-documents.sql`. No new table: one more block,
+    `constitution.documents`, for the EB, and a new field type, `pdf`, in
+    the content editor, with its own public bucket `content-files` (PDFs
+    only, 25 MB). The block holds both documents on `/constitution` (ours
+    and IFMSA-Egypt's), a line saying which version each is, and the steps
+    of "How it's amended", which cite the document's section numbers and
+    so have to change with it. RUNBOOK section 25 has the steps.
 
 #### Phase 7. Sustain
 

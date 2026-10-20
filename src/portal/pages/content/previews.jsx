@@ -4,6 +4,9 @@ import About from '../../../components/About.jsx'
 import { HeroBadge, HeroFigures, HeroLead, HeroNote } from '../../../components/Hero.jsx'
 import { IfmsaLinks, IfmsaPoints, StatBand } from '../../../components/IfmsaSections.jsx'
 import { useMemberCount } from '../../../hooks/useMemberCount.js'
+import PdfReader from '../../../components/PdfReader.jsx'
+import { AmendmentSteps, NationalRules } from '../../../components/ConstitutionSections.jsx'
+import { documentFacts } from '../../../lib/documents.js'
 import {
   IncomingsAlbum,
   IncomingsContacts,
@@ -125,6 +128,27 @@ export const previews = {
       </div>
     )
   },
+  // The society's document as the page reads it, so the file can be checked
+  // page by page before it is published; then the steps and the national
+  // card. Half-typed steps are skipped.
+  'constitution.documents': ({ doc }) => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="heading-serif text-3xl text-ink">Constitution &amp; Bylaws</h2>
+        <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-soft/60">{documentFacts(doc.ausss, doc.ausssVersion)}</p>
+      </div>
+      {doc.ausss.url ? (
+        <PdfReader key={doc.ausss.url} src={doc.ausss.url} title="AUSSS Constitution & Bylaws" heightClass="h-[70vh]" />
+      ) : (
+        <p className="text-center text-sm text-soft/60">No PDF chosen yet.</p>
+      )}
+      <div className="pt-6">
+        <h2 className="heading-serif text-2xl text-ink">How it’s amended</h2>
+        <AmendmentSteps steps={doc.steps.filter((s) => s.title || s.body)} />
+      </div>
+      {doc.national.url && <NationalRules pdf={doc.national} version={doc.nationalVersion} />}
+    </div>
+  ),
   // The IFMSA page's words and figures in page order. The logo chain and the
   // history link are not part of the block.
   'ifmsa.page': ({ doc }) => (

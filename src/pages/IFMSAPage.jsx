@@ -191,8 +191,7 @@ export default function IFMSAPage() {
               </h3>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-soft/70">
                 How the federation is run, from its members’ rights to its
-                General Assembly, as issued in October 2026. Read it beside
-                the society’s own.
+                General Assembly. Read it beside the society’s own.
               </p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-accent transition-colors group-hover:text-ink">

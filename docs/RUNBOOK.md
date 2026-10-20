@@ -2468,7 +2468,7 @@ an iPhone, and Escape and Tab in the cart and the photo viewer in Safari.
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
 Built 2026-10-05. Migrations `20261005210001_content_blocks` and
-`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_site_blocks`), pgTAP file `290-content-blocks.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_site_blocks`; 2026-10-20, `20261020090001_constitution_documents`), pgTAP files `290-content-blocks.sql` and `370-constitution-documents.sql`, unit tests under `src/**/*.test.js` (`npm test`).
 
 **What it is.** A part of a public page that is plain content (the questions on `/join`
 first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The
@@ -2519,6 +2519,20 @@ opens each in the same form, drawn from the block's field schema.
   published document fails its own schema.
 - **Pictures** in an image field are shrunk in the browser and stored in the public bucket
   `content-media` under `<block key>/`, writable by that block's editors only.
+- **PDFs** in a pdf field (added 2026-10-20) are checked in the browser before anything is
+  sent: the file must start like a PDF, be 25 MB or less, and open in pdf.js, which also
+  counts its pages. It is then stored in the public bucket `content-files` as
+  `<block key>/<random>.pdf`, and the document keeps `{ url, name, pages, bytes }`, which
+  the page turns into its line of facts ("49 pages · PDF, 1.8 MB"). The bucket takes PDFs
+  only, and for now only in the `constitution.documents` folder; a later block that needs
+  PDFs widens the insert rule in a migration of its own. Nothing in it can be overwritten
+  or deleted from the portal, so the file a published page points to never disappears and
+  every earlier version stays (remove a mistaken upload in the Supabase dashboard,
+  Storage, `content-files`). Download links to these files end in `?download=<name>`
+  (`downloadHref` in `src/lib/documents.js`), because a browser ignores the `download`
+  attribute on another site's file. The reader fetches such a file whole: Storage does not
+  show another site its `Accept-Ranges` header, so pdf.js cannot ask for pieces, and the
+  editor says so for an upload over 8 MB.
 
 **The blocks so far.**
 
@@ -2530,6 +2544,18 @@ opens each in the same form, drawn from the block's field schema.
 | `site.contact` | the footer of every page, and `/contact` | the EB | the motto and line under the footer logo, the address card and the map pin, the official social channels (network, handle, address, one line), the two introductions on `/contact` (section 27) |
 | `home.page` | `/` | the EB | the badge above the logo, the line under the motto, the figures after the live member count, the line under them, and the "About the Society" section: heading, the large text, the paragraphs, the quotation, the three cards (heading, text, optional link and its words) (section 27) |
 | `ifmsa.page` | `/ifmsa` | the EB | the introduction, the membership card's text, the figures for IFMSA worldwide and for IFMSA-Egypt, the cards, the links under "Learn more" (section 27) |
+| `constitution.documents` | `/constitution`, and the download on `/members` | the EB | the AUSSS Constitution & Bylaws (a PDF) and a line saying which version it is, the steps of "How it's amended" with the sections they cite, the IFMSA-Egypt Constitution & Bylaws (a PDF) and its version line |
+
+**Replacing the Constitution & Bylaws** (after a General Assembly adopts a new version):
+Portal, **Site content**, **Constitution page: the documents**. Under "AUSSS Constitution &
+Bylaws" press **Choose a new PDF** and pick the file. The form shows its name, pages and
+size; read it in the preview beside the form. Change "Which version this is" (for example
+"As amended at the LGA of October 2026"). If the new text moves or renumbers the sections
+that "How it's amended" cites, correct those there. Then **Publish**. The page and the
+download on the Members page switch at once, and the saved pages follow with the rebuild.
+The IFMSA-Egypt document is replaced the same way, further down the same form. To put an
+earlier version back, take its `url`, `pages` and `bytes` from the "Before" side of the
+block's entry in the audit log (see "Undo a bad publish" below) and publish them again.
 
 **The incomings page is written for a student abroad** who is choosing which local
 committee to spend an exchange month with, and it speaks in our own voice: "we", "our",
@@ -2564,9 +2590,11 @@ every place, and the matches marked on the page. The search itself is
 `src/lib/pdfSearch.js`, with tests. If pdf.js cannot open a file the browser's own viewer takes
 its place in a frame.
 
-To replace a document, put the new PDF over the old one under the same name, and correct its
-line of facts (date, pages, size) where it is listed: `src/data/nationalBooklets.js`, or
-`src/pages/ConstitutionPage.jsx` for the two on `/constitution`. Two things to know:
+The two documents on `/constitution` are replaced from the portal (the block
+`constitution.documents`, section 25), not in the code; the files in `public/assets/docs` are
+only what the page shows until something is published. To replace a national booklet, put
+the new PDF over the old one under the same name, and correct its line of facts (date, pages,
+size) in `src/data/nationalBooklets.js`. Two things to know:
 
 - **Every megabyte is in every deployment.** A file in `public/` is copied into each build, and
   Vercel counts every build it keeps. The national exchange booklet is 75 MB as exported, so the site
@@ -2594,7 +2622,8 @@ section there lists every story whose destination is not Egypt, Cairo or Ain Sha
    values ('exchange.incomings', '{scope,score}') on conflict (key) do nothing;` The key
    is `<page>.<part>` in lower case.
 2. A schema file in `src/content/schemas/` (copy `joinFaq.js`). Field types: `text`,
-   `textarea`, `markdown`, `url`, `image`, `album`, `toggle`, `select`, `list`
+   `textarea`, `markdown`, `url`, `image`, `pdf` (whose block also needs its folder allowed
+   in the `content-files` insert rule), `album`, `toggle`, `select`, `list`
    (`src/content/schema.js` documents each; a `toggle` is drawn as a tick box, because it
    counts only once the block is saved or published). Its `defaults` are what the page shows until
    someone publishes, so move the current copy there.
