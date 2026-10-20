@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 import { resizeImage } from '../lib/resizeImage.js'
+import { PDF_SAFE_OPTIONS, loadPdfJs } from '../lib/loadPdfJs.js'
+import { fileSize } from '../lib/documents.js'
 
 // The content editor's reads and writes (public.content_blocks) and the
 // webmaster's audit log. Row-level security decides which blocks a person
@@ -90,6 +92,85 @@ export async function uploadContentImage(key, file, maxPx = 1600) {
   })
   if (error) throw error
   return supabase.storage.from('content-media').getPublicUrl(path).data.publicUrl
+}
+
+// ---- PDFs ------------------------------------------------------------------
+
+// The most the `content-files` bucket takes (migration 20261020090001).
+export const PDF_MAX_BYTES = 25 * 1024 * 1024
+
+// An error the person can act on, shown as written (see uploadContentImage).
+function refused(message) {
+  const e = new Error(message)
+  e.rejected = true
+  return e
+}
+
+// A PDF says so in its first bytes ("%PDF-"), nearly always at the very start.
+function looksLikePdf(bytes) {
+  const head = bytes.subarray(0, 1024)
+  let text = ''
+  for (const b of head) text += String.fromCharCode(b)
+  return text.includes('%PDF-')
+}
+
+async function countPages(bytes) {
+  const pdfjs = await loadPdfJs()
+  // pdf.js takes the bytes it is given to its worker, so it gets a copy.
+  const task = pdfjs.getDocument({ data: bytes.slice(), ...PDF_SAFE_OPTIONS })
+  try {
+    const doc = await task.promise
+    return doc.numPages
+  } finally {
+    task.destroy().catch(() => {})
+  }
+}
+
+// A PDF for a pdf field: checked and read in the browser (is it a PDF, is it
+// small enough, can it be opened, how many pages), then stored in the public
+// `content-files` bucket under the block's folder with a name of its own. A
+// new version is always a new file, so nobody is ever served a cached copy of
+// the old one under the new address. Returns what the document keeps:
+// { url, name, pages, bytes }.
+//
+// A file that fails a check never reaches the server; those errors are
+// marked `rejected` and say what to do.
+export async function uploadContentPdf(key, file) {
+  if (file.size > PDF_MAX_BYTES) {
+    throw refused(`That file is ${fileSize(file.size)}, and the most the site takes is 25 MB. Save a smaller copy of the PDF and choose that.`)
+  }
+  let bytes
+  try {
+    bytes = new Uint8Array(await file.arrayBuffer())
+  } catch {
+    throw refused('That file could not be read. Choose it again.')
+  }
+  if (!looksLikePdf(bytes)) {
+    throw refused('That file is not a PDF. Save or export the document as a PDF and choose that.')
+  }
+  let pages
+  try {
+    pages = await countPages(bytes)
+  } catch {
+    throw refused('That PDF could not be opened. It may be damaged or locked with a password. Save a fresh copy without a password and choose that.')
+  }
+  const path = `${key}/${crypto.randomUUID()}.pdf`
+  // The bytes that were checked, labelled as a PDF. supabase-js sends a file
+  // under the type the browser guessed from its name, ignoring contentType,
+  // and the bucket takes application/pdf alone.
+  const body = new Blob([bytes], { type: 'application/pdf' })
+  const { error } = await supabase.storage.from('content-files').upload(path, body, {
+    contentType: 'application/pdf',
+    upsert: false,
+    cacheControl: '31536000',
+  })
+  if (error) throw error
+  return {
+    url: supabase.storage.from('content-files').getPublicUrl(path).data.publicUrl,
+    name: file.name,
+    pages,
+    bytes: file.size,
+  }
 }
 
 // ---- audit log (webmaster) --------------------------------------------------

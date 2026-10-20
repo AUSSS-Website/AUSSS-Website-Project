@@ -2,44 +2,18 @@ import { Link } from 'react-router-dom'
 import useReveal from '../hooks/useReveal.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 import PdfReader from '../components/PdfReader.jsx'
-import DocumentCard from '../components/DocumentCard.jsx'
+import { AmendmentSteps, NationalRules } from '../components/ConstitutionSections.jsx'
 import { society } from '../data/society.js'
 import { pressCls } from '../lib/motion.js'
 import { usePublicEmail } from '../hooks/useSiteSettings.js'
+import { useContentBlock } from '../lib/content.js'
+import { documentFacts, downloadHref } from '../lib/documents.js'
+import constitutionDocuments, { AUSSS_FILE_NAME } from '../content/schemas/constitutionDocuments.js'
 
-const CONSTITUTION_PDF = '/assets/docs/AUSSS-Constitution-and-Bylaws.pdf'
-// The national federation's own document, as issued after its end-of-term
-// General Assembly of 2025-26 (the cover reads "Issued in October 2026").
-const NATIONAL_PDF = '/assets/docs/IFMSA-Egypt-Constitution-and-Bylaws.pdf'
-
-// How the document is amended, summarised straight from the Constitution &
-// Bylaws (section references in parentheses), so members know the real process.
-const AMENDMENT_STEPS = [
-  {
-    n: 1,
-    title: 'Propose',
-    ref: '§1.2.5, §14.2',
-    body: 'A motion to amend can be raised only by a Full member, and the written proposal must reach the Secretary General before the General Assembly.',
-  },
-  {
-    n: 2,
-    title: 'Circulate',
-    ref: '§14.3–14.4, §18.1',
-    body: 'The Secretary General shares every proposal with the Supervising Council, Team of Officials and all members beforehand. Bylaw changes to Chapters 1 and 2 need at least two full members and one month’s notice; other points need two weeks’. Skipping these steps makes a proposal invalid.',
-  },
-  {
-    n: 3,
-    title: 'Vote',
-    ref: '§14.1, §18.1.3, §11.2',
-    body: 'Amendments are decided at the Local General Assembly by a two-thirds majority, with every Full member casting one vote.',
-  },
-  {
-    n: 4,
-    title: 'Adopt',
-    ref: '§18.1.4, §11.4',
-    body: 'Changes take effect once adopted by the General Assembly. A bylaw point can likewise be suspended by a two-thirds majority in an official LGA.',
-  },
-]
+// The two documents, and the steps of "How it's amended" (drawn from the
+// society's document, with its section numbers), are the EB's to replace from
+// the portal: the block constitution.documents. Until something is published
+// they are what src/content/schemas/constitutionDocuments.js ships with.
 
 // The AUSSS Constitution & Bylaws, read in-page (and searched: PdfReader), so
 // "View document" reads it here rather than bouncing the user out to a new
@@ -48,6 +22,8 @@ export default function ConstitutionPage() {
   usePageTitle('Constitution')
   useReveal()
   const secGenEmail = usePublicEmail()(society.contact)
+  const docs = useContentBlock(constitutionDocuments)
+  const ausss = docs.ausss
 
   return (
     <article className="bg-page">
@@ -92,7 +68,7 @@ export default function ConstitutionPage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <a
-              href={CONSTITUTION_PDF}
+              href={ausss.url}
               target="_blank"
               rel="noopener noreferrer"
               className={`inline-flex min-h-11 items-center gap-2 rounded-full bg-cta px-5 py-2.5 text-sm font-semibold text-on-cta hover:bg-cta-hover ${pressCls}`}
@@ -101,13 +77,16 @@ export default function ConstitutionPage() {
               Open in a new tab
             </a>
             <a
-              href={CONSTITUTION_PDF}
-              download
+              href={downloadHref(ausss.url, AUSSS_FILE_NAME)}
+              download={AUSSS_FILE_NAME}
               className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-line/20 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-veil/10 ${pressCls}`}
             >
               Download PDF
             </a>
           </div>
+          <p className="mt-4 text-xs font-medium uppercase tracking-[0.16em] text-soft/60">
+            {documentFacts(ausss, docs.ausssVersion)}
+          </p>
 
           <p className="mt-6 text-sm text-soft/70">
             Looking for the national rules?{' '}
@@ -126,8 +105,10 @@ export default function ConstitutionPage() {
         {/* Wide and fitted to width, so the text is comfortably readable and
             you scroll through the pages, with a search bar above them. */}
         <div className="mx-auto w-full max-w-6xl">
+          {/* Keyed by the file, so a newer version published since the page was built opens afresh. */}
           <PdfReader
-            src={CONSTITUTION_PDF}
+            key={ausss.url}
+            src={ausss.url}
             title="AUSSS Constitution & Bylaws"
             heightClass="h-[92vh]"
           />
@@ -149,31 +130,7 @@ export default function ConstitutionPage() {
             held at least twice each term.
           </p>
 
-          <ol className="mt-8 space-y-4">
-            {AMENDMENT_STEPS.map((s) => (
-              <li
-                key={s.n}
-                className="flex gap-4 rounded-2xl border border-line/10 bg-card/60 p-6"
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-medical/15 text-sm font-bold text-accent">
-                  {s.n}
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-3">
-                    <h3 className="heading-serif text-lg text-ink">
-                      {s.title}
-                    </h3>
-                    <span className="text-2xs font-medium uppercase tracking-[0.16em] text-soft/40">
-                      {s.ref}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-sm leading-relaxed text-soft/75">
-                    {s.body}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <AmendmentSteps steps={docs.steps} />
 
           <div className="mt-8 rounded-2xl border border-medical/30 bg-gradient-to-br from-card to-sunk p-6 text-center sm:p-7">
             <h3 className="heading-serif text-xl text-ink">
@@ -193,51 +150,9 @@ export default function ConstitutionPage() {
           </div>
         </section>
 
-        <NationalRules />
+        <NationalRules pdf={docs.national} version={docs.nationalVersion} />
       </div>
     </article>
-  )
-}
-
-// The Constitution & Bylaws of IFMSA-Egypt, the federation AUSSS belongs to.
-// It opens in place when asked for (DocumentCard), so the page does not load a
-// second 49-page document for everyone who came for the society's own. The
-// IFMSA page links straight here (/constitution#ifmsa-egypt).
-function NationalRules() {
-  return (
-    <section id="ifmsa-egypt" className="mt-20 scroll-mt-28">
-      <div className="reveal mx-auto max-w-3xl">
-        <span className="eyebrow">
-          <span className="h-px w-8 bg-medical" />
-          The national rules
-        </span>
-        <h2 className="heading-serif mt-4 text-3xl text-ink sm:text-4xl">
-          IFMSA-Egypt Constitution &amp; Bylaws
-        </h2>
-        <p className="mt-4 text-base leading-relaxed text-soft/75">
-          AUSSS is an autonomous affiliate member of IFMSA-Egypt, the national
-          federation of medical students’ associations, and works within its
-          rules as well as its own. This is the federation’s Constitution
-          &amp; Bylaws as issued in October 2026: who its members are and the
-          rights they hold, how its General Assembly meets and votes, the
-          Executive Board, the Team of Officials and the Supervising Council,
-          the standing committees and support divisions, its finances, and how
-          Egypt is represented in IFMSA.
-        </p>
-      </div>
-
-      <div className="mt-6">
-        <DocumentCard
-          id="ifmsa-egypt-document"
-          src={NATIONAL_PDF}
-          title="IFMSA-Egypt Constitution & Bylaws"
-          meta="Issued October 2026 · 49 pages · PDF, 1.8 MB"
-          logo={{ src: '/assets/ifmsa/ifmsa-egypt-horizontal-white.png', alt: 'IFMSA-Egypt' }}
-          heading={false}
-          cardWidth="max-w-3xl"
-        />
-      </div>
-    </section>
   )
 }
 

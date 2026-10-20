@@ -8,13 +8,15 @@ import { errorText, UNREACHED } from '../lib/errorText.js'
 import { chipAccent, readableAccent, rgba } from '../lib/color.js'
 import { prefersReducedMotion, pressCls, scrollBehavior } from '../lib/motion.js'
 import SpecialResult from '../components/SpecialResult.jsx'
+import { useContentBlock } from '../lib/content.js'
+import { downloadHref } from '../lib/documents.js'
+import constitutionDocuments, { AUSSS_FILE_NAME } from '../content/schemas/constitutionDocuments.js'
 import {
   matchPosition,
   isPresidentPosition,
   isHebaIsmail,
 } from '../lib/teamIndex.js'
 
-const CONSTITUTION_PDF = '/assets/docs/AUSSS-Constitution-and-Bylaws.pdf'
 const MEMBERSHIP_ISSUE_FORM =
   'https://docs.google.com/forms/d/e/1FAIpQLSeU1QhHkuLpJtiUFGbD_Kdbqhzs8GMAuR3x63HMnm4XzeBAYQ/viewform'
 
@@ -191,6 +193,8 @@ function DidYouMean({ suggestions, form, busy, onRetry }) {
 export default function MembersPage() {
   useReveal()
   usePageTitle('Members')
+  // The Constitution & Bylaws as the EB last published it (the block constitution.documents).
+  const constitution = useContentBlock(constitutionDocuments).ausss
   useEffect(() => {
     // Browsers try to restore scroll position on refresh, but here the
     // result card isn't restored, so the user lands on a half-scrolled
@@ -657,8 +661,8 @@ export default function MembersPage() {
                 View document
               </Link>
               <a
-                href={CONSTITUTION_PDF}
-                download
+                href={downloadHref(constitution.url, AUSSS_FILE_NAME)}
+                download={AUSSS_FILE_NAME}
                 className={`w-full rounded-full border border-line/25 px-6 py-3 text-sm font-semibold text-ink hover:bg-veil/10 sm:w-auto ${pressCls}`}
               >
                 Download PDF

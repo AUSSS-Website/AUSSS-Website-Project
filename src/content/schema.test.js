@@ -166,6 +166,51 @@ describe('fillDoc and the placeholders', () => {
   })
 })
 
+describe('a pdf field', () => {
+  const doc = {
+    key: 'test.docs',
+    fields: [
+      { name: 'file', type: 'pdf', label: 'The document', required: true },
+      { name: 'extra', type: 'pdf', label: 'Another' },
+    ],
+  }
+  const stored = 'https://abc.supabase.co/storage/v1/object/public/content-files/test.docs/a.pdf'
+
+  it('keeps the address, the name, the pages and the size, and nothing else', () => {
+    expect(normalizeDoc(doc, { file: { url: ` ${stored} `, name: ' Constitution.pdf ', pages: 38, bytes: 789020, extra: 1 } }).file)
+      .toEqual({ url: stored, name: 'Constitution.pdf', pages: 38, bytes: 789020 })
+  })
+
+  it('is no file at all without an address a page may load', () => {
+    const empty = { url: '', name: '', pages: 0, bytes: 0 }
+    for (const url of ['javascript:alert(1)', '//evil.example/x.pdf', 'http://plain.example/x.pdf', 'https://elsewhere.example/x.pdf', 'https://abc.supabase.co/storage/v1/object/public/gallery/x.pdf', '/portal/x.pdf', '', 7]) {
+      expect(normalizeDoc(doc, { file: { url, name: 'x.pdf', pages: 3, bytes: 9 } }).file).toEqual(empty)
+    }
+    for (const junk of [null, 'x.pdf', [stored], 5]) expect(normalizeDoc(doc, { file: junk }).file).toEqual(empty)
+  })
+
+  it('drops counts that are not whole positive numbers', () => {
+    expect(normalizeDoc(doc, { file: { url: '/assets/docs/x.pdf', pages: -2, bytes: 1.5 } }).file)
+      .toEqual({ url: '/assets/docs/x.pdf', name: '', pages: 0, bytes: 0 })
+  })
+
+  it('asks for a file only when the field needs one', () => {
+    expect(validateDoc(doc, normalizeDoc(doc, {}))).toEqual({ file: 'The document is needed. Choose a PDF.' })
+    expect(validateDoc(doc, normalizeDoc(doc, { file: { url: stored } }))).toEqual({})
+  })
+
+  it('falls back to the shipped copy when a published document lost its required file', () => {
+    const shipped = { ...doc, defaults: { file: { url: '/assets/docs/x.pdf', name: 'x.pdf', pages: 2, bytes: 100 } } }
+    expect(resolveDoc(shipped, { file: { url: 'javascript:alert(1)' } }).file.url).toBe('/assets/docs/x.pdf')
+    expect(resolveDoc(shipped, { file: { url: stored, pages: 40 } }).file).toEqual({ url: stored, name: '', pages: 40, bytes: 0 })
+  })
+
+  it('is left alone by the placeholders', () => {
+    const d = normalizeDoc(doc, { file: { url: stored, name: '{years} years.pdf' } })
+    expect(fillDoc(doc, d, { years: '55' }).file.name).toBe('{years} years.pdf')
+  })
+})
+
 describe('the schemas the site ships', () => {
   it('have unique keys in the form the database accepts', () => {
     const keys = contentSchemas.map((s) => s.key)

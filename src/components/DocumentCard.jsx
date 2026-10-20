@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PdfReader from './PdfReader.jsx'
 import { pressCls, scrollBehavior } from '../lib/motion.js'
+import { downloadHref } from '../lib/documents.js'
 
 // A PDF offered on a page as a card: what it is, then "Read it here", "Open in
 // a new tab" and "Download PDF". The reader (PdfReader, with its search bar)
@@ -9,6 +10,8 @@ import { pressCls, scrollBehavior } from '../lib/motion.js'
 //
 //   id        the card's anchor; the reader's is `${id}-reader`
 //   src       the file
+//   fileName  the name "Download PDF" saves it under (needed for a file
+//             uploaded from the portal, whose own name is a random one)
 //   title     its name: the card's heading and the reader's label
 //   meta      one line of facts: date, pages, size
 //   logo      an image heading the card, { src, alt }
@@ -26,6 +29,7 @@ const quietCls = `inline-flex min-h-[44px] items-center gap-2 rounded-full borde
 export default function DocumentCard({
   id,
   src,
+  fileName = '',
   title,
   meta,
   logo,
@@ -99,7 +103,7 @@ export default function DocumentCard({
           <a href={src} target="_blank" rel="noopener noreferrer" className={quietCls}>
             Open in a new tab
           </a>
-          <a href={src} download className={quietCls}>
+          <a href={downloadHref(src, fileName)} download={fileName || true} className={quietCls}>
             Download PDF
           </a>
         </div>
