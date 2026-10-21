@@ -3,12 +3,12 @@
 // WHY a pull: the push route (apps-script/roster-sync.gs) must be installed by the sheet's
 // owner. This function needs nothing from them: it downloads the sheet as .xlsx, reads the
 // "Database" tab exactly like src/portal/rosterFile.js does, and hands the rows to
-// rpc/admin_import_roster, i.e. the same merge every other route uses (portal edits are kept,
+// rpc/admin_import_roster, i.e. the same merge every other route uses (portal edits hold until the sheet changes that field,
 // nobody is deleted, every run is logged in roster_sync_runs).
 //
 // It takes no input: which sheet to pull is stored in the database (set from the portal's
 // Roster page). Two callers are let in, and the function checks them itself (so it is deployed
-// with verify_jwt = false): the hourly pg_cron job, which sends a secret kept in Vault, and a
+// with verify_jwt = false): the daily pg_cron job, which sends a secret kept in Vault, and a
 // signed-in EB member pressing "Sync now" in the portal.
 //
 // Reading the sheet:

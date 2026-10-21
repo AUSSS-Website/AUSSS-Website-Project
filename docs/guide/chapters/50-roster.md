@@ -9,7 +9,7 @@ TODO: The society's list of members: who they are, their status, their assemblie
 
 ## The list
 
-TODO: Search and filters, the fifty to a page, the export, and where the list comes from (the Secretary General's sheet, read every hour).
+TODO: Search and filters, the fifty to a page, the export, and where the list comes from (the Secretary General's sheet, read once a day).
 
 ![](shot:roster)
 
@@ -45,4 +45,4 @@ TODO: Each position has one work email, and whoever signs in with it holds the p
 
 ## The spreadsheet
 
-TODO: The link to the sheet, the hourly pull, an upload in its place, and reading the result of an import.
+TODO: The link to the sheet, the daily pull, an upload in its place, and reading the result of an import.

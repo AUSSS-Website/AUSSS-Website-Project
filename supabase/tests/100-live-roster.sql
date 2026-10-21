@@ -120,7 +120,7 @@ select is(
   2, 'every import is logged'
 );
 
--- ---- connected sheet (the hourly pull) -----------------------------------------------------
+-- ---- connected sheet (the daily pull) ------------------------------------------------------
 select throws_ok(
   $$ select public.set_roster_sheet('not a link') $$,
   '22023', 'That does not look like a Google Sheets link.', 'a connected sheet must look like one'
