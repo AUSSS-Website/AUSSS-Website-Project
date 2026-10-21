@@ -2468,7 +2468,7 @@ an iPhone, and Escape and Tab in the cart and the photo viewer in Safari.
 ## 25. Site content: the editor, its blocks and the audit log (Phase 6, step 1)
 
 Built 2026-10-05. Migrations `20261005210001_content_blocks` and
-`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_site_blocks`; 2026-10-20, `20261020090001_constitution_documents`), pgTAP files `290-content-blocks.sql` and `370-constitution-documents.sql`, unit tests under `src/**/*.test.js` (`npm test`).
+`20261005220001_incomings_block` (and, 2026-10-06, `20261006183133_outgoings_block`; 2026-10-07, `20261007090001_site_blocks`; 2026-10-20, `20261021111130_constitution_documents`), pgTAP files `290-content-blocks.sql` and `370-constitution-documents.sql`, unit tests under `src/**/*.test.js` (`npm test`).
 
 **What it is.** A part of a public page that is plain content (the questions on `/join`
 first) is a *block*: one row of `public.content_blocks`, holding a jsonb document. The

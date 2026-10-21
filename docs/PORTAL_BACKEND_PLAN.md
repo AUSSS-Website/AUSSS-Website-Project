@@ -1001,7 +1001,7 @@ request is merged.
     "add a way for me to update the constitution and bylaws through the
     portal", "by uploading a new pdf". **Built 2026-10-20** on branch
     `constitution-upload` (not pushed when written): migration
-    `20261020090001_constitution_documents` (not applied), pgTAP
+    `20261021111130_constitution_documents` (applied live 2026-10-21 through the MCP), pgTAP
     `370-constitution-documents.sql`. No new table: one more block,
     `constitution.documents`, for the EB, and a new field type, `pdf`, in
     the content editor, with its own public bucket `content-files` (PDFs
