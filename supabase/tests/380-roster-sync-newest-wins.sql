@@ -1,4 +1,4 @@
--- The roster sync, 20261021130001: the newest change wins, field by field. A value edited in the
+-- The roster sync, 20261021123307: the newest change wins, field by field. A value edited in the
 -- portal stays until the sheet changes that same field, and the rest of the row goes on
 -- following the sheet; when both change a field between two imports the portal's value stays;
 -- a row with no record keeps all its portal values, as before; "Follow the spreadsheet again"

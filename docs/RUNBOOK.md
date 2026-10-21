@@ -150,7 +150,7 @@ Roster page. A row edited there is stamped `portal_edited_at`, and from then on 
 wins, field by field: a value edited in the portal stays until the sheet changes that same field,
 and the row's other fields keep following the sheet; when both change the same field between two
 syncs, the portal's value stays and the sheet's next change to it wins (since 2026-10-21, migration
-`20261021130001_roster_sync_newest_wins`; the import keeps what the sheet said for each member in
+`20261021123307_roster_sync_newest_wins`; the import keeps what the sheet said for each member in
 `app.roster_sheet_lines`). *Follow the spreadsheet again* hands the whole row back. A status
 change on a row whose member has signed in updates their profile too.
 
