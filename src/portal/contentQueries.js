@@ -96,7 +96,7 @@ export async function uploadContentImage(key, file, maxPx = 1600) {
 
 // ---- PDFs ------------------------------------------------------------------
 
-// The most the `content-files` bucket takes (migration 20261020090001).
+// The most the `content-files` bucket takes (migration 20261021111130).
 export const PDF_MAX_BYTES = 25 * 1024 * 1024
 
 // An error the person can act on, shown as written (see uploadContentImage).
