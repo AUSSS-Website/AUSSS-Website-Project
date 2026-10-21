@@ -60,9 +60,10 @@ import {
 // is the working copy of the membership database: the public "Check your
 // membership" page and sign-in claiming both read it.
 //
-// Two editors can feed it, and the rule between them is one line: a row edited
-// here belongs to the portal from then on, and spreadsheet imports leave it
-// alone (they report it as "kept"). Everything else follows the spreadsheet.
+// Two editors can feed it, and the rule between them is one line: the newest
+// change wins, field by field. A value edited here stays until the spreadsheet
+// changes that same field (imports report such a row as "kept"), and the rest
+// of the row follows the spreadsheet (app.apply_roster_rows).
 
 const FILTERS = [
   ['', 'All statuses'],
@@ -159,7 +160,8 @@ function Editor({ row, committees, positions, board, onClose, onDone }) {
   // A status typed into the sheet that isn't one of ours still has to show.
   const statusOptions =
     form.status && !STATUSES.includes(form.status) ? [form.status, ...STATUSES] : STATUSES
-  // A sheet row edited here belongs to the portal; this hands it back.
+  // A sheet row edited here keeps those values until the sheet changes them;
+  // this hands the whole row back to the sheet.
   const canRelease = Boolean(row?.portal_edited_at) && row.origin === 'sheet'
 
   // The browser asks before a reload or a closed tab loses what was typed.
@@ -406,7 +408,7 @@ function Editor({ row, committees, positions, board, onClose, onDone }) {
         {/* What the button does, on the page: it was only in its tooltip. */}
         {canRelease && (
           <p id="r-release-note" className="mt-3 text-xs text-soft/50">
-            After “Follow the spreadsheet again”, the next spreadsheet import may overwrite this row.
+            After “Follow the spreadsheet again”, the next import puts back what the spreadsheet says, including the values edited here.
           </p>
         )}
       </div>
@@ -637,7 +639,7 @@ function RunSummary({ result }) {
   )
 }
 
-// The hourly pull: the server downloads the connected Google Sheet by itself,
+// The daily pull: the server downloads the connected Google Sheet by itself,
 // so nothing has to be installed on the sheet.
 function SheetConnection({ onResult, onError }) {
   const info = useSheetInfo()
@@ -667,7 +669,7 @@ function SheetConnection({ onResult, onError }) {
           {info.isPending
             ? ''
             : active
-              ? `· connected (${info.data.hint}), checked every hour`
+              ? `· connected (${info.data.hint}), checked once a day`
               : '· not connected'}
         </span>
       </p>
@@ -681,7 +683,7 @@ function SheetConnection({ onResult, onError }) {
           >
             {syncNow.isPending ? 'Syncing…' : 'Sync now'}
           </button>
-          {/* It stops the hourly check, and connecting again needs the
+          {/* It stops the daily check, and connecting again needs the
               sheet's link to hand: two clicks, like every removal here. */}
           <ConfirmButton
             label="Disconnect"
@@ -785,8 +787,9 @@ function SpreadsheetPanel() {
   return (
     <Panel title="Spreadsheet" className="mt-10">
       <p className="mt-3 text-sm text-soft/65">
-        While the membership Google Sheet is still being edited, bring its changes in here. Rows
-        edited in the portal are never overwritten, and nobody is removed by an import.
+        While the membership Google Sheet is still being edited, bring its changes in here. A value
+        edited in the portal stays until the sheet changes that same field, and nobody is removed
+        by an import.
       </p>
 
       <SheetConnection onResult={setLast} onError={setError} />

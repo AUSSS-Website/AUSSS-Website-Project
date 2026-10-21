@@ -146,8 +146,13 @@ portal's **Roster** page (`/portal/admin/roster`, EB only) all read it. Migratio
 `20260919200001_live_roster` holds the rules; `apps-script/README.md` explains the sheet sync.
 
 **Day to day (no secret key needed):** the EB searches, edits, adds and removes members on the
-Roster page. A row edited there is stamped `portal_edited_at` and belongs to the portal from
-then on. A status change on a row whose member has signed in updates their profile too.
+Roster page. A row edited there is stamped `portal_edited_at`, and from then on the newest change
+wins, field by field: a value edited in the portal stays until the sheet changes that same field,
+and the row's other fields keep following the sheet; when both change the same field between two
+syncs, the portal's value stays and the sheet's next change to it wins (since 2026-10-21, migration
+`20261021130001_roster_sync_newest_wins`; the import keeps what the sheet said for each member in
+`app.roster_sheet_lines`). *Follow the spreadsheet again* hands the whole row back. A status
+change on a row whose member has signed in updates their profile too.
 
 **Search.** The Roster page loads the whole roster once and searches it in the browser
 (`src/portal/rosterSearch.js`), so the list follows every keystroke. Every typed word must match
@@ -233,12 +238,13 @@ shows the two controls to the President alone, and the database refuses everybod
   address (all but one the roster itself stands behind, which is changed on the roster as
   always). Nothing else comes back: the account stays `unverified` until the
   member asks for verification again (section 9), and the committee and positions are
-  assigned again by hand. The row belongs to the portal afterwards, so the sheet does not
-  overwrite it until somebody presses *Follow the spreadsheet again*.
+  assigned again by hand. The row stays stamped as the portal's afterwards: the values the portal
+  set stay until the sheet changes those fields, or until somebody presses *Follow the
+  spreadsheet again*.
 - **What the President is refused:** an empty reason or one over 1,000 characters, a member
   already dismissed, the row of their own account, a person the roster lists twice (a second
   row under the same email, or tied to the same account: remove the duplicate row first,
-  within the hour if the sheet still lists it, or the next import puts it back), and a row
+  and dismiss before the next import if the sheet still lists it, or that import puts it back), and a row
   tied to the **work account of a position** (its email, or the email of the account it is
   tied to, is a position's work email). A work account is handed on with its position, and
   dismissed it would hold nothing whoever had the position by then; remove the row, add the
@@ -274,7 +280,7 @@ never returned.
 **Bringing the spreadsheet in** (while the Secretary General still edits it), any of:
 
 0. **Nothing (the normal case):** the Edge Function `roster-sheet-sync` pulls the sheet connected
-   on the Roster page every hour (pg_cron job `roster-sheet-sync`, authenticated by the Vault
+   on the Roster page once a day at 02:07 UTC (hourly until 2026-10-21; pg_cron job `roster-sheet-sync`, authenticated by the Vault
    secret `roster_cron_secret`); *Sync now* on the same page runs it at once. If a run fails, look
    at `select * from cron.job_run_details order by start_time desc limit 5`, at
    `net._http_response`, and at the function's logs; the usual cause is the sheet no longer being
@@ -943,7 +949,7 @@ no committee, the database proposes one from the sheet's "Current Position" text
 names exactly one committee ("SCORA Core Team Member", "LORA"); it never overrides a
 choice, and clearing it by hand sticks until the position text changes. Neither column
 is a spreadsheet column, so setting them does not make the portal own the row and the
-hourly sheet sync keeps updating it.
+daily sheet sync keeps updating it.
 
 **SCOPE/SCORE is one choice on the Roster page (since 2026-10-05).** The two exchange
 committees run one team and the sheet files its people under "Exchange", so the Committee

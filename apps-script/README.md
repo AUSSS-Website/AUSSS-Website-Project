@@ -11,15 +11,17 @@ Supabase one of three ways:
 
 | Route | Who | How |
 |---|---|---|
-| **Hourly pull (in use)** | nobody; an EB member connects the sheet once | Portal → **Roster** → *Spreadsheet* → paste the sheet's link. The Edge Function `roster-sheet-sync` downloads the sheet every hour (pg_cron, seven past) and on *Sync now*. Needs nothing installed on the sheet, but the server must be able to read it: today by its public link, later through a service account (below) |
+| **Daily pull (in use)** | nobody; an EB member connects the sheet once | Portal → **Roster** → *Spreadsheet* → paste the sheet's link. The Edge Function `roster-sheet-sync` downloads the sheet once a day (pg_cron, 02:07 UTC; hourly until 2026-10-21) and on *Sync now*. Needs nothing installed on the sheet, but the server must be able to read it: today by its public link, later through a service account (below) |
 | File upload | any EB member | Portal → **Roster** → *Spreadsheet* → *Import an .xlsx or .csv* (in the sheet: File → Download → Microsoft Excel) |
 | Push from the sheet | the sheet's owner, once | [`roster-sync.gs`](./roster-sync.gs), below |
 
 All three end in the same merge (`app.apply_roster_rows`):
 
 - a new name + email is **added**; a row that changed in the sheet is **updated**;
-- a row the EB edited in the portal is **kept** (the portal owns it from then
-  on; *Follow the spreadsheet again* in the row's editor hands it back);
+- a value the EB edited in the portal is **kept** until the sheet changes that
+  same field, and the rest of the row keeps following the sheet (the newest
+  change wins; *Follow the spreadsheet again* in the row's editor hands the
+  whole row back);
 - a row that disappeared from the sheet is **reported, never deleted**;
 - people who already signed in are linked to their roster row at the end.
 
