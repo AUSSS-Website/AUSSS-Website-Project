@@ -1,3 +1,4 @@
-Source: https://github.com/emilkowalski/skills/blob/e8a175de22ae1e49370fc144c1f3bb9aeedf988d/skills/apple-design/SKILL.md
-Installed unchanged on 2026-10-08. MIT licence, see LICENSE.
-To update: compare with the latest skills/apple-design/SKILL.md in that repo.
+Source: https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/apple-design
+Installed unchanged on 2026-10-08 and still identical at that commit on 2026-10-30. MIT licence, see LICENSE.
+Tracked in skills-lock.json. The installer replaces the whole folder and drops this file and LICENSE,
+so after `npx skills update` put them back with `git restore` and change the commit above.
