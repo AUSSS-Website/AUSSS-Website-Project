@@ -58,9 +58,10 @@ async function call(fn, args, timeout = TIMEOUT_MS) {
 // and rejects with an ExamError.
 
 // What to show: { exam: null }, or { exam: { title, opens_at, closes_at,
-// minutes, questions, phase: 'before' | 'open' | 'closed' }, me: { full_name,
-// faculty_year, phone, student_id, email }, registration: 'held' | 'none',
-// attempt: null | { id, started_at, deadline_at, submitted_at, over }, now }.
+// minutes, questions, sections: { shared, scope, score, choice }, phase:
+// 'before' | 'open' | 'closed' }, me: { full_name, faculty_year, phone,
+// student_id, email }, registration: 'held' | 'none', attempt: null | { id,
+// started_at, deadline_at, submitted_at, over, sits_scope, sits_score }, now }.
 export function examDoor(word) {
   return call('exam_door', { p_word: word })
 }
@@ -78,25 +79,40 @@ export function examSaveDetails(word, { fullName, facultyYear, phone, studentId 
   })
 }
 
+// The two blocks a taker sits, as the functions take them. Nothing when there
+// is no choice to send: the functions then leave the paper's choice alone, and
+// a database from before the sections is asked for nothing it does not know.
+const blocks = (sits) => (sits ? { p_scope: sits.scope === true, p_score: sits.score === true } : {})
+
 // Starts the exam with the code read out in the hall: { ok: true, attempt_id },
 // or { ok: false, reason: 'not_registered' | 'details' | 'not_open' | 'closed' |
-// 'not_ready' | 'locked' | 'code', tries_left }.
-export function examStart(word, code) {
-  return call('exam_start', { p_word: word, p_code: code })
+// 'not_ready' | 'sections' | 'locked' | 'code', tries_left }. `sits` is the
+// taker's choice of blocks, { scope, score }, in an exam that has one.
+export function examStart(word, code, sits = null) {
+  return call('exam_start', { p_word: word, p_code: code, ...blocks(sits) })
 }
 
-// The taker's paper: { state: 'sitting', exam, attempt, now, questions, answers },
-// or { state: 'over', submitted } once it has ended.
+// The taker's paper: { state: 'sitting', exam, attempt, now, questions,
+// passages, answers }, or { state: 'over', submitted } once it has ended.
 export function examPaper(word) {
   return call('exam_paper', { p_word: word })
 }
 
 // Saves answers ([{ q, c, f }]; an empty list only asks for the time) and hands
 // in when `handIn` is true: { state: 'sitting' | 'over', submitted, saved,
-// deadline_at, now }. `timeout` (ms) gives the call up sooner than the usual
-// twenty seconds, for the saves that race the end of the exam.
-export function examSave(word, answers, handIn = false, { timeout } = {}) {
-  return call('exam_save', { p_word: word, p_answers: answers, p_hand_in: handIn }, timeout)
+// deadline_at, now, sits_scope, sits_score }. `timeout` (ms) gives the call up
+// sooner than the usual twenty seconds, for the saves that race the end of the
+// exam. `sits` is the taker's choice of blocks, sent with every save of an
+// exam that has one.
+export function examSave(word, answers, handIn = false, { timeout, sits = null } = {}) {
+  return call('exam_save', { p_word: word, p_answers: answers, p_hand_in: handIn, ...blocks(sits) }, timeout)
+}
+
+// Where a picture of the exam is served from. `path` is its place in the
+// bucket, as rpc/exam_paper gives it; '' for none.
+const PICTURES_URL = `${(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '')}/storage/v1/object/public/exam-pictures/`
+export function pictureUrl(path) {
+  return typeof path === 'string' && path ? PICTURES_URL + path.split('/').map(encodeURIComponent).join('/') : ''
 }
 
 // The same two values src/lib/supabase.js makes the client from.
@@ -111,14 +127,14 @@ const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 // supabase-js to look the session up; nothing is read back. The answers stay
 // marked as waiting on the phone, and a page that lives sends and settles
 // them in the ordinary way. Returns whether a request went out.
-export function examSaveLast(word, answers) {
+export function examSaveLast(word, answers, sits = null) {
   if (!supabase || !accessToken || typeof fetch !== 'function') return false
   try {
     fetch(`${REST_URL}/rpc/exam_save`, {
       method: 'POST',
       keepalive: true,
       headers: { apikey: ANON_KEY, Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_word: word, p_answers: answers, p_hand_in: false }),
+      body: JSON.stringify({ p_word: word, p_answers: answers, p_hand_in: false, ...blocks(sits) }),
     }).catch(() => {})
     return true
   } catch {

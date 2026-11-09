@@ -6,6 +6,7 @@ import {
   durationWords,
   examPhase,
   exportName,
+  programmeRows,
   readProblem,
   resultColumns,
   resultSummary,
@@ -16,6 +17,7 @@ import {
 import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls } from '../../portalUi.jsx'
 import AttemptSheet, { StateChip } from './AttemptSheet.jsx'
 import { RefreshButton, tapCls } from './ExamsPage.jsx'
+import ProgrammeSwitch, { useProgramme } from './ProgrammeSwitch.jsx'
 
 // The Results tab of an exam (/portal/exam/:id?tab=results): the ranking as
 // the database returns it (rpc/exam_results: highest grade first, equal grades
@@ -43,7 +45,9 @@ function withPaper(params, paper) {
 
 // `tied` says the row's rank is shared: it then reads '=3', so a row on its
 // own (after a search) still says so.
-function Row({ row, questions, to, tied }) {
+// In one programme's ranking (`programme`) the grade is the programme's
+// mark, and under it the two parts it is made of.
+function Row({ row, questions, to, tied, programme = null }) {
   const time = durationWords(row.seconds)
   return (
     <li>
@@ -70,8 +74,13 @@ function Row({ row, questions, to, tied }) {
           {/* From a tablet up each figure has a width of its own, so they line
               up down the list. */}
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft/70">
-            <span className="sm:w-24">
+            <span className={programme ? 'sm:w-40' : 'sm:w-24'}>
               <span className="text-base font-semibold tabular-nums text-ink">{row.score ?? 0}</span> of {questions}
+              {programme && (
+                <span className="block tabular-nums text-soft/60">
+                  {row.shared} shared + {row.block} section
+                </span>
+              )}
             </span>
             <span className="tabular-nums sm:w-24">{row.answered ?? 0} answered</span>
             <span className={time ? 'tabular-nums sm:w-24' : 'hidden sm:block sm:w-24'}>{time}</span>
@@ -100,12 +109,20 @@ export default function ResultsPanel({ exam }) {
   // useDeferredValue keeps typing smooth if a render ever lags.
   const term = useDeferredValue(q)
 
-  const attempts = results.data?.attempts
-  const questions = results.data?.questions ?? 0
+  // In an exam with two optional sections the ranking is one programme's at a
+  // time: only the papers that sit it, by that programme's mark.
+  const [programme, setProgramme, programmes] = useProgramme(results.data?.sections)
+  const everyPaper = results.data?.attempts
+  const attempts = useMemo(() => (everyPaper ? programmeRows(everyPaper, programme) : everyPaper), [everyPaper, programme])
+  const questions = programme ? programme.of : results.data?.questions ?? 0
+  const sitting = useMemo(
+    () => Object.fromEntries(programmes.map((p) => [p.id, programmeRows(everyPaper, p).length])),
+    [everyPaper, programmes],
+  )
   const found = useMemo(() => searchResults(attempts, term), [attempts, term])
   const counts = useMemo(() => tally(attempts), [attempts])
   const shared = useMemo(() => sharedRanks(attempts), [attempts])
-  const columns = useMemo(() => resultColumns(questions), [questions])
+  const columns = useMemo(() => resultColumns(questions, programme), [questions, programme])
 
   // Back from a paper: the row it was opened from, in view and in focus again.
   // After a delete that row has gone (useDeleteAttempt takes it out of the
@@ -131,6 +148,8 @@ export default function ResultsPanel({ exam }) {
   }, [paper])
 
   if (paper) {
+    // The paper's place in the ranking it was opened from. A paper that does
+    // not sit the programme shown has no place in it.
     const rank = (attempts || []).find((r) => r.attempt_id === paper)?.rank ?? null
     return (
       <AttemptSheet
@@ -139,6 +158,7 @@ export default function ResultsPanel({ exam }) {
         attemptId={paper}
         rank={rank}
         tied={shared.has(rank)}
+        programme={programme}
         backTo={{ search: withPaper(params, '').toString() }}
         onDeleted={() => {
           deleted.current = true
@@ -172,6 +192,16 @@ export default function ResultsPanel({ exam }) {
         Students never see a grade.
       </p>
 
+      <ProgrammeSwitch
+        programmes={programmes}
+        programme={programme}
+        counts={everyPaper ? sitting : null}
+        onChange={(id) => {
+          setProgramme(id)
+          setPage(0)
+        }}
+      />
+
       {/* In the page from the start, so a screen reader says it when it comes;
           it can take the keyboard (tabIndex) after a delete. */}
       <p ref={noticeRef} tabIndex={-1} role="status" className={notice ? 'mt-4 text-sm text-ok' : 'sr-only'}>
@@ -193,14 +223,16 @@ export default function ResultsPanel({ exam }) {
         <RefreshButton busy={results.isFetching} onClick={() => results.refetch()} />
         <span className="ml-auto">
           <ExportButtons
-            title={`Results: ${exam.title}`}
-            subtitle={`The ranking by grade, out of ${questions} ${questions === 1 ? 'question' : 'questions'}${
+            title={programme ? `${programme.short} results: ${exam.title}` : `Results: ${exam.title}`}
+            subtitle={`${
+              programme ? `The ${programme.name} ranking: the papers that sit its section, by the ${programme.short} mark` : 'The ranking by grade'
+            }, out of ${questions} ${questions === 1 ? 'question' : 'questions'}${
               typed ? `, matching “${typed}”` : ''
             }. Grades as counted when this file was made.`}
-            filename={exportName(exam.title, 'results')}
+            filename={exportName(exam.title, programme ? `${programme.id}-results` : 'results')}
             columns={columns}
             rows={found.rows}
-            summary={resultSummary(found.rows, questions)}
+            summary={resultSummary(found.rows, questions, programme)}
             landscape
             className={`${outlineBtnCls} ${tapCls}`}
           />
@@ -221,7 +253,9 @@ export default function ResultsPanel({ exam }) {
           <p className="mt-4 text-xs text-soft/60" aria-live="polite">
             {counts.started === 0
               ? ''
-              : `${counts.started.toLocaleString()} ${counts.started === 1 ? 'paper' : 'papers'}: ${counts.handedIn} handed in, ${
+              : `${counts.started.toLocaleString()} ${counts.started === 1 ? 'paper' : 'papers'}${
+                  programme ? ` ${counts.started === 1 ? 'sits' : 'sit'} ${programme.short}` : ''
+                }: ${counts.handedIn} handed in, ${
                   counts.timedOut
                 } ran out of time, ${counts.sitting} still sitting.`}
             {typed && counts.started > 0 ? ` ${total} ${total === 1 ? 'matches' : 'match'} the search.` : ''}
@@ -239,7 +273,9 @@ export default function ResultsPanel({ exam }) {
 
           {counts.started === 0 ? (
             <p className="mt-4 text-sm text-soft/60">
-              Nobody has started this exam yet. A paper shows here from the moment a student starts.
+              {programme && (everyPaper || []).length > 0
+                ? `No paper sits the ${programme.block.toLowerCase()} yet.`
+                : 'Nobody has started this exam yet. A paper shows here from the moment a student starts.'}
             </p>
           ) : total === 0 ? (
             <p className="mt-4 text-sm text-soft/60">Nobody matches that.</p>
@@ -254,6 +290,7 @@ export default function ResultsPanel({ exam }) {
                     key={row.attempt_id}
                     row={row}
                     questions={questions}
+                    programme={programme}
                     tied={shared.has(row.rank)}
                     to={{ search: withPaper(params, row.attempt_id).toString() }}
                   />

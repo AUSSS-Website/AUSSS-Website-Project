@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
+import { resizeImage } from '../lib/resizeImage.js'
 import { sortChanges } from './examFile.js'
 import { refreshIn } from './examStats.js'
 
@@ -26,6 +27,7 @@ export const examKeys = {
   list: () => ['exams', 'list'],
   one: (id) => ['exams', 'one', id],
   questions: (examId) => ['exams', 'questions', examId],
+  passages: (examId) => ['exams', 'passages', examId],
   registrations: (examId) => ['exams', 'registrations', examId],
 }
 
@@ -114,8 +116,13 @@ async function updateExam(id, patch) {
 }
 
 // The questions, the list of IDs and every paper go with the row.
+// The exam's pictures go after its row, best effort: a file left behind is a
+// stray file in a folder nothing points at, never a broken exam. (While the
+// exam has papers the bucket refuses to give its pictures up, so the row goes
+// first.)
 async function deleteExam(id) {
   unwrap(await supabase.from('exams').delete().eq('id', id))
+  await removeExamFolder(id).catch(() => {})
   return id
 }
 
@@ -143,7 +150,8 @@ export function useExamMutations() {
 
 // ---- questions --------------------------------------------------------------
 
-const QUESTION_SELECT = 'id, exam_id, sort, body, options, keep_option_order, updated_at, exam_key(correct_option)'
+const QUESTION_SELECT =
+  'id, exam_id, sort, body, options, keep_option_order, section, passage_id, image_path, created_at, updated_at, exam_key(correct_option)'
 
 // A question with its right answer beside it: `correct` is the option's place
 // in `options` as the officers wrote them, from 0 (null if it has no key).
@@ -176,8 +184,11 @@ export function useExamQuestions(examId) {
 
 // Adds a question at the end (no `id`) or changes one; the question and its
 // key are written together. `correct` is the right option's place, from 0.
-// Answers with the question's id.
-async function saveQuestion({ examId, id = null, body, options, correct, keepOrder = false }) {
+// `more` is { section, passage_id, image_path } with any of the three; a key
+// that is not there leaves that part of the question as it is, and no `more`
+// leaves all three (as when only the right answer is corrected). Answers with
+// the question's id.
+async function saveQuestion({ examId, id = null, body, options, correct, keepOrder = false, more = null }) {
   return unwrap(
     await supabase.rpc('save_exam_question', {
       p_exam: examId,
@@ -186,6 +197,7 @@ async function saveQuestion({ examId, id = null, body, options, correct, keepOrd
       p_options: options,
       p_correct: correct,
       p_keep_order: keepOrder,
+      ...(more ? { p_more: more } : {}),
     }),
   )
 }
@@ -263,6 +275,126 @@ export function useQuestionMutations(examId) {
     onSettled: () => (qc.isMutating({ mutationKey: orderKey }) > 1 ? undefined : done()),
   })
   return { save, importRows, remove, reorder }
+}
+
+// ---- passages ---------------------------------------------------------------
+
+const PASSAGE_SELECT = 'id, exam_id, section, body, image_path, created_at, updated_at'
+
+// The exam's passages, oldest first: the texts and pictures several questions
+// are read with.
+async function fetchPassages(examId) {
+  return (
+    unwrap(await supabase.from('exam_passages').select(PASSAGE_SELECT).eq('exam_id', examId).order('created_at').order('id')) || []
+  )
+}
+
+export function useExamPassages(examId) {
+  return useQuery({
+    queryKey: examKeys.passages(examId),
+    queryFn: () => fetchPassages(examId),
+    enabled: Boolean(examId),
+  })
+}
+
+// Adds a passage (no `id`) or changes one. Its questions follow it to a new
+// section. Answers with the passage's id.
+async function savePassage({ examId, id = null, body, section, imagePath = null }) {
+  return unwrap(
+    await supabase.rpc('save_exam_passage', {
+      p_exam: examId,
+      p_passage: id,
+      p_body: body,
+      p_section: section,
+      p_image: imagePath,
+    }),
+  )
+}
+
+// Its questions stay, as single questions.
+async function deletePassage(id) {
+  unwrap(await supabase.from('exam_passages').delete().eq('id', id))
+  return id
+}
+
+export function usePassageMutations(examId) {
+  const qc = useQueryClient()
+  const done = () => refreshExamData(qc)
+  const save = useMutation({ mutationFn: (passage) => savePassage({ examId, ...passage }), onSettled: done })
+  const remove = useMutation({ mutationFn: deletePassage, onSettled: done })
+  return { save, remove }
+}
+
+// ---- pictures ---------------------------------------------------------------
+//
+// A question or a passage may have one picture. It is shrunk in the browser
+// to a JPEG and kept in the public bucket `exam-pictures` under
+// <exam id>/<32 random hex digits>.jpg. The name cannot be guessed and the
+// bucket lists nothing to a student, so a picture is seen only by whoever was
+// given its address: the officers here, and a student's paper after the start
+// code. The row holds the picture's place in the bucket (`image_path`), not
+// its address.
+
+const PICTURES = 'exam-pictures'
+// Wide enough for a diagram on a large phone held sideways, small enough that
+// four hundred phones fetching a paper's pictures stay within a few megabytes each.
+const PICTURE_PX = 1200
+const PICTURE_QUALITY = 0.85
+
+// Where a picture is served from; '' for no picture.
+export function examPictureUrl(path) {
+  return path ? supabase.storage.from(PICTURES).getPublicUrl(path).data.publicUrl : ''
+}
+
+function randomName() {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// Shrinks the file, uploads it under the exam's folder and answers with its
+// place in the bucket, for `image_path`.
+export async function uploadExamPicture(examId, file) {
+  let blob
+  try {
+    blob = await resizeImage(file, PICTURE_PX, PICTURE_QUALITY)
+  } catch {
+    // Marked as a refusal so that errorText shows this sentence as written.
+    throw Object.assign(new Error('That file could not be read as a picture. Choose a JPEG, PNG or WebP.'), {
+      rejected: true,
+    })
+  }
+  const path = `${examId}/${randomName()}.jpg`
+  const { error } = await supabase.storage.from(PICTURES).upload(path, blob, {
+    contentType: 'image/jpeg',
+    upsert: false,
+    cacheControl: '31536000',
+  })
+  if (error) throw error
+  return path
+}
+
+// Best effort: a picture no row points at any more. A failure leaves a stray
+// file, never a broken question.
+export async function removeExamPicture(path) {
+  if (!path) return
+  try {
+    await supabase.storage.from(PICTURES).remove([path])
+  } catch {
+    // A stray file is all that is left.
+  }
+}
+
+async function removeExamFolder(examId) {
+  for (;;) {
+    const { data, error } = await supabase.storage.from(PICTURES).list(examId, { limit: 100 })
+    if (error) throw error
+    if (!data || data.length === 0) return
+    const gone = await supabase.storage.from(PICTURES).remove(data.map((o) => `${examId}/${o.name}`))
+    if (gone.error) throw gone.error
+    // Nothing went: the bucket is keeping them, and asking again would not end.
+    if (!gone.data || gone.data.length === 0 || data.length < 100) return
+  }
 }
 
 // ---- the registered list ----------------------------------------------------

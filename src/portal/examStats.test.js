@@ -13,8 +13,12 @@ import {
   oneDecimal,
   optionShares,
   optionText,
+  papersOf,
   percent,
+  programmeRows,
+  programmesOf,
   questionColumns,
+  questionLabel,
   readProblem,
   refreshIn,
   resultColumns,
@@ -25,7 +29,10 @@ import {
   sharedRanks,
   sheetColumns,
   sheetCounts,
+  sheetMarks,
+  sheetSections,
   sheetSummary,
+  sitsWords,
   stateLabel,
   tally,
   typedCell,
@@ -407,8 +414,8 @@ describe('one paper', () => {
 
   it('counts its lines', () => {
     const rows = [line(), line({ chosen: 1, flagged: true }), line({ chosen: null, flagged: true }), line({ chosen: null })]
-    expect(sheetCounts(rows)).toEqual({ all: 4, right: 1, wrong: 1, blank: 2, flagged: 2 })
-    expect(sheetCounts(undefined)).toEqual({ all: 0, right: 0, wrong: 0, blank: 0, flagged: 0 })
+    expect(sheetCounts(rows)).toEqual({ all: 4, right: 1, wrong: 1, blank: 2, left: 0, flagged: 2 })
+    expect(sheetCounts(undefined)).toEqual({ all: 0, right: 0, wrong: 0, blank: 0, left: 0, flagged: 0 })
   })
 })
 
@@ -604,5 +611,173 @@ describe('the exports', () => {
     expect(questionColumns(undefined).map((c) => c.label)).toEqual([
       'No.', 'Question', 'Right answer', 'Papers', 'Answered', 'Right', 'Share right', 'No answer',
     ])
+  })
+})
+
+describe('the two programmes', () => {
+  const sections = { shared: 80, scope: 20, score: 20, choice: true }
+  // As rpc/exam_results sends them: ordered and ranked by everything a paper sits.
+  const papers = [
+    paper({ attempt_id: 'a1', full_name: 'Both Blocks', score: 95, rank: 1, sits_scope: true, sits_score: true, mark_shared: 70, mark_scope: 15, mark_score: 10, total_scope: 85, total_score: 80, rank_scope: 2, rank_score: 1 }),
+    paper({ attempt_id: 'a2', full_name: 'Scope Only', score: 88, rank: 2, sits_scope: true, sits_score: false, mark_shared: 70, mark_scope: 18, mark_score: null, total_scope: 88, total_score: null, rank_scope: 1, rank_score: null }),
+    paper({ attempt_id: 'a3', full_name: 'score only', score: 80, rank: 3, sits_scope: false, sits_score: true, mark_shared: 62, mark_scope: null, mark_score: 18, total_scope: null, total_score: 80, rank_scope: null, rank_score: 1 }),
+  ]
+
+  it('are the exam’s two rankings, each out of the shared questions and its own section', () => {
+    const [scope, score] = programmesOf(sections)
+    expect(scope).toMatchObject({ id: 'scope', short: 'SCOPE', name: 'Professional exchange (SCOPE)', of: 100, sharedOf: 80, blockOf: 20 })
+    expect(score).toMatchObject({ id: 'score', short: 'SCORE', name: 'Research exchange (SCORE)', of: 100, sharedOf: 80, blockOf: 20 })
+    expect(programmesOf({ shared: 80, scope: 25, score: 15, choice: true }).map((p) => p.of)).toEqual([105, 95])
+  })
+
+  it('are not there in an exam without the choice', () => {
+    expect(programmesOf({ shared: 100, scope: 0, score: 0, choice: false })).toEqual([])
+    expect(programmesOf({ shared: 80, scope: 20, score: 0, choice: false })).toEqual([])
+    expect(programmesOf(undefined)).toEqual([])
+  })
+
+  it('rank only the papers that sit a programme, by that programme’s mark', () => {
+    const [scope, score] = programmesOf(sections)
+    expect(programmeRows(papers, scope).map((r) => [r.full_name, r.score, r.rank, r.shared, r.block, r.both])).toEqual([
+      ['Scope Only', 88, 1, 70, 18, false],
+      ['Both Blocks', 85, 2, 70, 15, true],
+    ])
+    // equal marks share a rank and stand by name, whatever its capitals
+    expect(programmeRows(papers, score).map((r) => [r.full_name, r.score, r.rank])).toEqual([
+      ['Both Blocks', 80, 1],
+      ['score only', 80, 1],
+    ])
+    expect(sharedRanks(programmeRows(papers, score)).has(1)).toBe(true)
+  })
+
+  it('leave the papers as they are when there is no programme', () => {
+    expect(programmeRows(papers, null)).toEqual(papers)
+    expect(programmeRows(undefined, null)).toEqual([])
+  })
+
+  it('feed the same tally, averages and spread as any ranking', () => {
+    const [scope] = programmesOf(sections)
+    const rows = programmeRows(papers, scope)
+    expect(tally(rows).started).toBe(2)
+    expect(averages(rows).grade).toBe(86.5)
+    expect(gradeSpread(rows, scope.of).reduce((n, b) => n + b.count, 0)).toBe(2)
+  })
+
+  it('say which sections a paper sits', () => {
+    expect(papers.map(sitsWords)).toEqual(['SCOPE and SCORE', 'SCOPE only', 'SCORE only'])
+    expect(sitsWords({})).toBe('')
+  })
+
+  it('give a programme’s export its mark, the two parts of it and the sections', () => {
+    const [scope] = programmesOf(sections)
+    const columns = resultColumns(120, scope)
+    const labels = columns.map((c) => c.label)
+    expect(labels.slice(0, 9)).toEqual([
+      'Rank', 'Name', 'Student ID', 'Year',
+      'SCOPE mark (of 100)', 'Shared questions (of 80)', 'Professional exchange section (of 20)', 'Sections', 'Answered',
+    ])
+    const [first] = programmeRows(papers, scope)
+    const cells = Object.fromEntries(columns.map((c) => [c.label, c.value(first)]))
+    expect(cells['SCOPE mark (of 100)']).toBe(88)
+    expect(cells['Shared questions (of 80)']).toBe(70)
+    expect(cells['Professional exchange section (of 20)']).toBe(18)
+    expect(cells.Sections).toBe('SCOPE only')
+    expect(cells.Rank).toBe(1)
+    // and an exam without the choice keeps its one grade
+    expect(resultColumns(100).map((c) => c.label)).toContain('Grade (of 100)')
+    expect(resultColumns(100).map((c) => c.label)).not.toContain('Sections')
+  })
+
+  it('head a programme’s export with its own papers and average', () => {
+    const [scope] = programmesOf(sections)
+    const summary = Object.fromEntries(resultSummary(programmeRows(papers, scope), 120, scope))
+    expect(summary['Papers that sit SCOPE']).toBe(2)
+    expect(summary['Average SCOPE mark']).toBe('86.5 of 100')
+  })
+})
+
+describe('a question of an optional section', () => {
+  const shared = question({ n: 1, label: '1', section: 'shared', sat: 10, answered: 10, right: 5, counts: [5, 5, 0, 0] })
+  const block = question({ n: 2, label: '2P', section: 'scope', sat: 4, answered: 3, right: 1, counts: [1, 2, 0, 0] })
+  const nobody = question({ n: 3, label: '2R', section: 'score', sat: 0, answered: 0, right: 0, counts: [0, 0, 0, 0] })
+
+  it('is counted over the papers that sit its section', () => {
+    expect(papersOf(shared, 10)).toBe(10)
+    expect(papersOf(block, 10)).toBe(4)
+    // a question from before the sections does not say: every paper
+    expect(papersOf(question(), 10)).toBe(10)
+    expect(shareRight(block, 10)).toBe(0.25)
+    expect(shareRight(nobody, 10)).toBe(null)
+    expect(optionShares(block, 10).blank).toEqual({ count: 1, share: 0.25 })
+    expect(optionShares(block, 10).options.map((o) => o.share)).toEqual([0.25, 0.5, 0, 0])
+  })
+
+  it('is ranked among the hardest by its share, not by a count out of fewer papers', () => {
+    // 1 right of 4 is a quarter: harder than 5 right of 10. Nobody sits the last one, so it says nothing.
+    expect(hardestFirst([shared, block, nobody]).map((q) => q.label)).toEqual(['2P', '1', '2R'])
+  })
+
+  it('shows its number as the paper does, and its section, in the exports', () => {
+    expect(questionLabel(block)).toBe('2P')
+    expect(questionLabel({ n: 7 })).toBe(7)
+    expect(questionLabel(null)).toBe('')
+    const columns = questionColumns({ attempts: 10, questions: [shared, block] })
+    const cells = Object.fromEntries(columns.map((c) => [c.label, c.value(block)]))
+    expect(cells['No.']).toBe('2P')
+    expect(cells.Section).toBe('Professional exchange (SCOPE)')
+    expect(cells.Papers).toBe(4)
+    expect(cells['Share right']).toBe('25%')
+    expect(cells['No answer']).toBe(1)
+    // an exam with no sections has no Section column
+    expect(questionColumns({ attempts: 10, questions: [question()] }).map((c) => c.label)).not.toContain('Section')
+  })
+})
+
+describe('a paper in an exam with sections', () => {
+  const rows = [
+    line({ n: 1, label: '1', section: 'shared', counted: true }),
+    line({ n: 2, label: '2', section: 'shared', counted: true, chosen: 1 }),
+    line({ n: 3, label: '3P', section: 'scope', counted: true, chosen: null }),
+    line({ n: 4, label: '3R', section: 'score', counted: false }),
+    line({ n: 5, label: '4R', section: 'score', counted: false, chosen: null, flagged: true }),
+  ]
+  const attempt = paper({ score: 1, answered: 2, sits_scope: true, sits_score: false, mark_shared: 1, mark_scope: 0, mark_score: null, total_scope: 1, total_score: null })
+
+  it('does not mark a section it left out, whatever was chosen there', () => {
+    expect(rows.map(rowOutcome)).toEqual(['right', 'wrong', 'blank', 'left', 'left'])
+    expect(sheetCounts(rows)).toEqual({ all: 5, right: 1, wrong: 1, blank: 1, left: 2, flagged: 1 })
+  })
+
+  it('counts its sections and what it sits', () => {
+    expect(sheetSections(rows)).toEqual({ shared: 2, scope: 1, score: 2, counted: 3 })
+    expect(sheetSections([line(), line()])).toEqual({ shared: 2, scope: 0, score: 0, counted: 2 })
+  })
+
+  it('has a mark for each programme it sits, out of that programme’s questions', () => {
+    expect(sheetMarks(attempt, rows)).toEqual([['SCOPE mark', 1, 3]])
+    expect(sheetMarks({ ...attempt, sits_score: true, mark_score: 2, total_score: 3 }, rows)).toEqual([
+      ['SCOPE mark', 1, 3],
+      ['SCORE mark', 3, 4],
+    ])
+    // an exam without the choice: the one grade, out of every question
+    expect(sheetMarks(paper({ score: 2, total_scope: null, total_score: null }), [line(), line(), line()])).toEqual([['Grade', 2, 3]])
+  })
+
+  it('heads its export with those marks and the sections it sits', () => {
+    const summary = Object.fromEntries(sheetSummary(attempt, rows.length, rows))
+    expect(summary['SCOPE mark']).toBe('1 of 3')
+    expect(summary['Shared questions']).toBe('1 of 2')
+    expect(summary.Sections).toBe('SCOPE only')
+    expect(summary.Answered).toBe('2 of 3')
+    expect(summary.Grade).toBeUndefined()
+  })
+
+  it('lists each question with its number as the paper shows it, its section and its result', () => {
+    const columns = sheetColumns(true)
+    const cells = (row) => Object.fromEntries(columns.map((c) => [c.label, c.value(row)]))
+    expect(cells(rows[2])).toMatchObject({ 'No.': '3P', Section: 'Professional exchange (SCOPE)', Result: 'Not answered' })
+    expect(cells(rows[3])).toMatchObject({ 'No.': '3R', Section: 'Research exchange (SCORE)', Result: 'Section left out, not marked' })
+    expect(sheetColumns().map((c) => c.label)).not.toContain('Section')
+    expect(sheetColumns()[1].value({ body: '', image: 'e/x.jpg' })).toBe('(A picture with no words)')
   })
 })

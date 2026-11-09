@@ -1,6 +1,6 @@
 import { eventWhen } from '../lib/eventTime.js'
 import { STUDY_YEARS } from '../portal/constants.js'
-import { clampPage, pageCount, pageOf, toMs } from './sitting.js'
+import { clampPage, pageCount, pageOf, pageOfQuestion, toMs } from './sitting.js'
 
 // What a taker's pages show and say, worked out from what the database
 // answered: which screen, the sentences of each result, and where in the paper
@@ -101,9 +101,48 @@ export function opensLine(exam) {
   return when ? `The exam opens on ${when} (Cairo time).` : 'The exam is not open yet.'
 }
 
-// What starting means, under the start code.
-export function startLine(exam) {
-  const questions = count(Number(exam?.questions) || 0, 'question')
+// ---- the sections ---------------------------------------------------------------
+
+// A section's name on the page.
+export function sectionName(section) {
+  if (section === 'scope') return 'Professional exchange (SCOPE)'
+  if (section === 'score') return 'Research exchange (SCORE)'
+  return 'Shared questions'
+}
+
+// Whether the taker chooses blocks in this exam: only when both have questions.
+export function hasChoice(exam) {
+  return exam?.sections?.choice === true
+}
+
+// How many questions a paper has for a taker who sits these blocks. In an exam
+// with no choice it is every question.
+export function questionsFor(exam, sits) {
+  if (!hasChoice(exam)) return Number(exam?.questions) || 0
+  const s = exam.sections
+  return (Number(s.shared) || 0) + (sits?.scope ? Number(s.scope) || 0 : 0) + (sits?.score ? Number(s.score) || 0 : 0)
+}
+
+// What a taker is asked before a block they have answered in is left out.
+export function leaveOutWords(section, answered) {
+  const name = sectionName(section)
+  const n = Number(answered) || 0
+  if (n === 0) return `Leave out ${name}?`
+  return `Leave out ${name}? Your ${count(n, 'answer')} in it ${n === 1 ? 'is' : 'are'} kept, but will not be marked unless you add the section again.`
+}
+
+// What the last screen says about the blocks a paper covered; '' in an exam
+// with no choice.
+export function satWords(sections, sits) {
+  if (sections?.choice !== true || !sits) return ''
+  if (sits.scope && sits.score) return `Your paper covers both sections: ${sectionName('scope')} and ${sectionName('score')}.`
+  return `Your paper covers one section: ${sectionName(sits.scope ? 'scope' : 'score')}.`
+}
+
+// What starting means, under the start code. `sits` is the choice of blocks
+// in an exam that has one.
+export function startLine(exam, sits = null) {
+  const questions = count(questionsFor(exam, sits), 'question')
   const minutes = count(Number(exam?.minutes) || 0, 'minute')
   return `${questions}, ${minutes}. Your time starts when you start, you have all of it, and the clock does not stop.`
 }
@@ -136,6 +175,7 @@ export function startProblem(result) {
   }
   if (result?.reason === 'locked') return LOCKED
   if (result?.reason === 'not_ready') return 'The exam is not ready yet. Tell an invigilator.'
+  if (result?.reason === 'sections') return 'Choose at least one section.'
   return ''
 }
 
@@ -322,16 +362,21 @@ export function clockNotice(left) {
 
 // { view: 'page' | 'review', page, question }. `page` is always a page of the
 // paper (the last one on the review); `question` is a number to go to, or null.
-export function placeFromHash(hash, total) {
+// `pages` are the paper's pages (layoutPages in sitting.js); without them the
+// paper is taken as plain pages of ten.
+export function placeFromHash(hash, total, pages = null) {
+  const laid = Array.isArray(pages) && pages.length > 0
+  const last = laid ? pages.length : pageCount(total)
   const text = String(hash || '').replace(/^#/, '')
-  if (text === 'review') return { view: 'review', page: pageCount(total), question: null }
+  if (text === 'review') return { view: 'review', page: last, question: null }
   const question = /^q(\d{1,4})$/.exec(text)
   if (question) {
     const n = Math.min(Math.max(Number(question[1]), 1), Math.max(1, Number(total) || 0))
-    return { view: 'page', page: pageOf(n), question: n }
+    return { view: 'page', page: laid ? pageOfQuestion(pages, n) : pageOf(n), question: n }
   }
   const page = /^p(\d{1,4})$/.exec(text)
-  return { view: 'page', page: clampPage(page ? Number(page[1]) : 1, total), question: null }
+  const asked = page ? Number(page[1]) : 1
+  return { view: 'page', page: laid ? Math.min(Math.max(asked, 1), last) : clampPage(asked, total), question: null }
 }
 
 export function hashFor(place) {
@@ -340,8 +385,10 @@ export function hashFor(place) {
 }
 
 // A page button's name for a screen reader, from a row of pageSummaries.
+// A page of one of the two blocks is named with its block.
 export function pageLabel(row) {
   const answered = row.unanswered === 0 ? 'all answered' : `${row.unanswered} not answered`
   const flagged = row.flagged > 0 ? `, ${row.flagged} flagged` : ''
-  return `Page ${row.page}, questions ${row.from} to ${row.to}: ${answered}${flagged}`
+  const block = row.section === 'scope' || row.section === 'score' ? `${sectionName(row.section)}, ` : ''
+  return `Page ${row.page}, ${block}questions ${row.from} to ${row.to}: ${answered}${flagged}`
 }

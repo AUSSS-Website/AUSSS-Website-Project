@@ -119,10 +119,43 @@ const examQuestions = [
   { body: 'Which blood group can give red cells to anyone?', options: ['A positive', 'B negative', 'AB positive', 'O negative'], correct: 3 },
   { body: 'Which of these is measured in millimetres of mercury?', options: ['Blood pressure', 'Body temperature', 'Heart rate', 'Blood glucose'], correct: 0 },
 ]
+// Where each of the dozen stands in the exam that has all of them (ex-1 and
+// ex-0): the first eight are shared, with the fourth and fifth read with one
+// passage and the eighth carrying a picture; then two of the professional
+// exchange's section, the first a picture question read with a passage that is
+// itself a picture; then two of the research exchange's. A shorter exam (ex-2)
+// has no sections.
+const partOf = (examId, i, n) => {
+  if (n < examQuestions.length) return { section: 'shared', passage_id: null, image_path: null }
+  const section = i >= n - 2 ? 'score' : i >= n - 4 ? 'scope' : 'shared'
+  const passage = i === 3 || i === 4 ? 'pa-1' : i === 8 ? 'pa-2' : null
+  return {
+    section,
+    passage_id: passage ? `${examId}-${passage}` : null,
+    image_path: i === 7 || i === 8 ? `${examId}/${String(i).padStart(2, '0').repeat(16)}.jpg` : null,
+  }
+}
 // Rows of exam_questions with the key embedded, as the Questions tab selects them.
 const questionsOf = (examId, list) =>
-  list.map((q, i) => ({ id: `${examId}-q${i + 1}`, exam_id: examId, sort: i, body: q.body, options: q.options, keep_option_order: Boolean(q.keep), updated_at: iso(2), exam_key: { correct_option: q.correct } }))
+  list.map((q, i) => ({ id: `${examId}-q${i + 1}`, exam_id: examId, sort: i, body: q.body, options: q.options, keep_option_order: Boolean(q.keep), ...partOf(examId, i, list.length), created_at: iso(3), updated_at: iso(2), exam_key: { correct_option: q.correct } }))
 const sampleQuestions = [...questionsOf('ex-1', examQuestions), ...questionsOf('ex-2', examQuestions.slice(1, 4)), ...questionsOf('ex-0', examQuestions)]
+// Rows of exam_passages: a text two shared questions are read with, and a picture for one of the professional section's.
+const passagesOf = (examId) => [
+  { id: `${examId}-pa-1`, exam_id: examId, section: 'shared', body: 'A 58-year-old man comes to the clinic after three days of vomiting and diarrhoea. He has drunk little, feels faint when he stands, and has passed urine once since yesterday. He takes a tablet for his blood sugar and injects insulin at night.', image_path: null, created_at: iso(4), updated_at: iso(2) },
+  { id: `${examId}-pa-2`, exam_id: examId, section: 'scope', body: '', image_path: `${examId}/${'cd'.repeat(16)}.jpg`, created_at: iso(3.5), updated_at: iso(2) },
+]
+const samplePassages = [...passagesOf('ex-1'), ...passagesOf('ex-0')]
+// How the sections of an exam stand, as its results name them, and each question's number as the paper shows it.
+const sectionsOf = (examId) => {
+  const mine = sampleQuestions.filter((q) => q.exam_id === examId)
+  const count = (s) => mine.filter((q) => q.section === s).length
+  return { shared: count('shared'), scope: count('scope'), score: count('score'), choice: count('scope') > 0 && count('score') > 0 }
+}
+const labelOf = (q, i, mine) => {
+  if (q.section === 'shared') return String(i + 1)
+  const shared = mine.filter((x) => x.section === 'shared').length
+  return `${shared + mine.filter((x, j) => x.section === q.section && j <= i).length}${q.section === 'scope' ? 'P' : 'R'}`
+}
 // How many IDs are on ex-1's list, how many of them an account holds, and how
 // many of those have started. The lists below are made to these numbers.
 const HALL = { ids: 412, held: 395, papers: 387 }
@@ -486,6 +519,7 @@ const tables = {
   events: sampleEvents,
   exams: sampleExams,
   exam_questions: sampleQuestions,
+  exam_passages: samplePassages,
   audit_log: [
     // The exam's two slim entries: an ID released from its account, and a paper deleted.
     { id: 5, at: iso(0.02), actor: uid, table_name: 'exam_registrations', row_id: '5d0c2f0e-8c1b-4b7e-9d0a-2f6f1f3b7a10', action: 'RELEASE', before: { exam_id: 'ex-1', profile_id: other }, after: null },
@@ -548,12 +582,24 @@ const madePaper = (i) => {
   return { score: Math.round((answered * grade) / all), answered, state: 'sitting', started }
 }
 // The papers as rpc/exam_results orders and ranks them: the highest grade
-// first, equal grades by name and sharing a rank.
+// first, equal grades by name and sharing a rank. A third of the hall sits
+// both optional sections, a third the professional one only and a third the
+// research one only; each paper has a mark for the shared questions and for
+// each section it sits, and a total and a rank for each programme.
+const SAMPLE_SECTIONS = { shared: 8, scope: 2, score: 2 }
 const examPapers = people
   .slice(0, HALL.papers)
   .map(({ paper, ...who }, i) => {
     const p = paper || madePaper(i)
     const finished = p.state === 'sitting' ? null : minutesAgo(p.started - p.took)
+    const sits_scope = i % 3 !== 2
+    const sits_score = i % 3 !== 1
+    const all = examQuestions.length
+    const mark_shared = Math.min(SAMPLE_SECTIONS.shared, Math.round((p.score * SAMPLE_SECTIONS.shared) / all))
+    const mark_scope = sits_scope ? Math.min(SAMPLE_SECTIONS.scope, p.score === all ? 2 : Math.round(chance(i + 6100) * 2.3)) : null
+    const mark_score = sits_score ? Math.min(SAMPLE_SECTIONS.score, p.score === all ? 2 : Math.round(chance(i + 6500) * 2.3)) : null
+    const sat = SAMPLE_SECTIONS.shared + (sits_scope ? SAMPLE_SECTIONS.scope : 0) + (sits_score ? SAMPLE_SECTIONS.score : 0)
+    const score = mark_shared + (mark_scope ?? 0) + (mark_score ?? 0)
     return {
       attempt_id: `at-${String(i + 1).padStart(3, '0')}`,
       ...who,
@@ -561,13 +607,25 @@ const examPapers = people
       submitted_at: p.state === 'handed_in' ? finished : null,
       finished_at: finished,
       state: p.state,
-      answered: p.answered,
-      score: p.score,
+      answered: Math.max(score, Math.min(sat, p.answered)),
+      score,
       seconds: finished ? p.took * 60 + (p.state === 'handed_in' ? Math.floor(chance(i + 4900) * 60) : 0) : null,
+      sits_scope,
+      sits_score,
+      mark_shared,
+      mark_scope,
+      mark_score,
+      total_scope: sits_scope ? mark_shared + mark_scope : null,
+      total_score: sits_score ? mark_shared + mark_score : null,
     }
   })
   .sort((a, b) => b.score - a.score || a.full_name.toLowerCase().localeCompare(b.full_name.toLowerCase()) || a.attempt_id.localeCompare(b.attempt_id))
-  .map((row, _i, all) => ({ ...row, rank: all.findIndex((o) => o.score === row.score) + 1 }))
+  .map((row, _i, all) => ({
+    ...row,
+    rank: all.findIndex((o) => o.score === row.score) + 1,
+    rank_scope: row.sits_scope ? all.filter((o) => o.sits_scope && o.total_scope > row.total_scope).length + 1 : null,
+    rank_score: row.sits_score ? all.filter((o) => o.sits_score && o.total_score > row.total_score).length + 1 : null,
+  }))
 // The list as rpc/exam_registration_list returns it, in the order of the IDs as
 // the database tidies them (digits of either script, no spaces or hyphens):
 // the 395 held ones, and 17 that no account holds yet.
@@ -581,38 +639,46 @@ const examList = [
 // rpc/exam_question_stats counts it. The share that got each right is written
 // out; the wrong answers are spread over the other options, the first the most.
 const RIGHT_SHARE = [0.91, 0.47, 0.22, 0.63, 0.84, 0.97, 0.71, 0.58, 0.35, 0.12, 0.66, 0.79]
-const statsOf = (examId, papers) => ({
-  attempts: papers,
-  questions: sampleQuestions
-    .filter((q) => q.exam_id === examId)
-    .map((q, i) => {
+const statsOf = (examId, papers) => {
+  const mine = sampleQuestions.filter((q) => q.exam_id === examId)
+  // Two thirds of the papers sit each optional section.
+  const satOf = (q) => (q.section === 'shared' ? papers : Math.round((papers * 2) / 3))
+  return {
+    attempts: papers,
+    sections: sectionsOf(examId),
+    questions: mine.map((q, i) => {
+      const sat = satOf(q)
       const correct = q.exam_key.correct_option
-      const answered = papers - Math.round(papers * (0.02 + 0.08 * chance(i + 5700)))
-      const right = Math.min(answered, Math.round(papers * RIGHT_SHARE[i % RIGHT_SHARE.length]))
+      const answered = sat - Math.round(sat * (0.02 + 0.08 * chance(i + 5700)))
+      const right = Math.min(answered, Math.round(sat * RIGHT_SHARE[i % RIGHT_SHARE.length]))
       const weights = q.options.map((_, o) => (o === correct ? 0 : q.options.length - o))
       const sum = weights.reduce((a, b) => a + b, 0)
       const counts = weights.map((w) => Math.floor(((answered - right) * w) / sum))
       counts[weights.findIndex((w) => w > 0)] += answered - right - counts.reduce((a, b) => a + b, 0)
       counts[correct] = right
-      return { question_id: q.id, n: i + 1, body: q.body, options: q.options, correct, answered, right, counts }
+      return { question_id: q.id, n: i + 1, label: labelOf(q, i, mine), section: q.section, passage: q.passage_id, image: q.image_path, body: q.body, options: q.options, correct, sat, answered, right, counts }
     }),
-})
+  }
+}
 // One paper as rpc/exam_sheet returns it, every question in the officers'
 // order. Where a paper's right answers begin is its own, so no two look alike.
 const sheetOf = (attemptId) => {
   const found = examPapers.find((row) => row.attempt_id === attemptId)
   if (!found) return null
-  const { rank, ...attempt } = found
+  const { rank, rank_scope, rank_score, ...attempt } = found
   const questions = sampleQuestions.filter((q) => q.exam_id === 'ex-1')
   const turn = Number(attemptId.slice(3))
   return {
     attempt,
+    passages: samplePassages.filter((p) => p.exam_id === 'ex-1').map((p) => ({ id: p.id, body: p.body, image: p.image_path })),
     rows: questions.map((q, i) => {
       const place = (i + turn) % questions.length
       const correct = q.exam_key.correct_option
-      const chosen = place < attempt.score ? correct : place < attempt.answered ? (correct + 1) % q.options.length : null
+      const counted = q.section === 'shared' || (q.section === 'scope' ? attempt.sits_scope : attempt.sits_score)
+      // A section this paper left out holds one answer from before it was left out.
+      const chosen = !counted ? (i % 2 === 0 ? correct : null) : place < attempt.score ? correct : place < attempt.answered ? (correct + 1) % q.options.length : null
       const answeredAt = chosen === null ? null : new Date(Date.parse(attempt.started_at) + (place + 1) * 4 * 6e4).toISOString()
-      return { n: i + 1, question_id: q.id, body: q.body, options: q.options, correct, chosen, flagged: place % 5 === 3 || place === questions.length - 1, answered_at: answeredAt }
+      return { n: i + 1, label: labelOf(q, i, questions), question_id: q.id, section: q.section, passage: q.passage_id, image: q.image_path, body: q.body, options: q.options, correct, chosen, flagged: place % 5 === 3 || place === questions.length - 1, answered_at: answeredAt, counted }
     }),
   }
 }
@@ -629,7 +695,7 @@ const student = { full_name: 'Sample Student With A Rather Long Four Part Name',
 // When a student can start, by where the exam stands.
 const startWindow = { before: [at(3, 18), at(3, 20)], open: [minutesAgo(40), minutesAgo(-80)], closed: [minutesAgo(300), minutesAgo(60)] }
 const door = (phase, more = {}) => ({
-  exam: { title: takersTitle, opens_at: startWindow[phase][0], closes_at: startWindow[phase][1], minutes: 120, questions: 100, phase },
+  exam: { title: takersTitle, opens_at: startWindow[phase][0], closes_at: startWindow[phase][1], minutes: 120, questions: 120, sections: { shared: 80, scope: 20, score: 20, choice: true }, phase },
   me: student,
   registration: 'held',
   attempt: null,
@@ -639,7 +705,7 @@ const door = (phase, more = {}) => ({
 // A paper started twenty minutes before the walk began, with its two hours.
 const paperStarted = minutesAgo(20)
 const paperDeadline = minutesAgo(-100)
-const attemptOf = (word, more = {}) => ({ id: `paper-${word}`, started_at: paperStarted, deadline_at: paperDeadline, submitted_at: null, over: false, ...more })
+const attemptOf = (word, more = {}) => ({ id: `paper-${word}`, started_at: paperStarted, deadline_at: paperDeadline, submitted_at: null, over: false, sits_scope: true, sits_score: word !== 'sample-one-section', ...more })
 const doors = {
   // signed in for the first time: Google gave a name, the rest is to fill in
   'sample-details': () => door('open', { me: { ...student, full_name: 'Sample Student', faculty_year: '', phone: '', student_id: '' }, registration: 'none' }),
@@ -650,6 +716,8 @@ const doors = {
   // a paper that is running: the paper itself, a hand-in that got no answer,
   // the exam open in another tab, and the moment the clock runs out
   'sample-sitting': () => door('open', { attempt: attemptOf('sample-sitting') }),
+  // the same paper for a student who answers the professional exchange's section only
+  'sample-one-section': () => door('open', { attempt: attemptOf('sample-one-section') }),
   'sample-hand-in': () => door('open', { attempt: attemptOf('sample-hand-in') }),
   'sample-elsewhere': () => door('open', { attempt: attemptOf('sample-elsewhere') }),
   'sample-time-up': () => door('closed', { attempt: attemptOf('sample-time-up') }),
@@ -657,27 +725,46 @@ const doors = {
   'sample-received': () => door('closed', { attempt: attemptOf('sample-received', { submitted_at: minutesAgo(4), over: true }) }),
   'sample-timed-out': () => door('closed', { attempt: attemptOf('sample-timed-out', { started_at: minutesAgo(125), deadline_at: minutesAgo(5), over: true }) }),
 }
-// rpc/exam_paper. A hundred questions in "this student's order" (the dozen
-// above, round and round), 34 of them reached: most answered, a few skipped, a
-// few flagged. At sample-time-up the clock has just run out.
+// rpc/exam_paper. A hundred and twenty questions in "this student's order" (the
+// dozen above, round and round): eighty shared, then twenty of the professional
+// exchange's section and twenty of the research exchange's. Questions 21 to 24
+// are read with one passage and 81 and 82 with a passage that is a picture;
+// questions 3 and 83 have a picture of their own, and 83 has no words. 34 are
+// reached: most answered, a few skipped, a few flagged. At sample-time-up the
+// clock has just run out; at sample-one-section the student left the research
+// section out, after answering two questions in it.
+const paperPassages = [
+  { id: 'pp-1', body: 'A 58-year-old man comes to the clinic after three days of vomiting and diarrhoea. He has drunk little, feels faint when he stands, and has passed urine once since yesterday. He takes a tablet for his blood sugar and injects insulin at night.\n\nHis pulse is 112 beats a minute and his blood pressure is 96 over 60, falling to 82 over 50 when he stands.', image: null },
+  { id: 'pp-2', body: '', image: `paper/${'cd'.repeat(16)}.jpg` },
+]
 const paperOf = (word) => {
   if (word === 'sample-received') return { state: 'over', submitted: true }
   if (word === 'sample-timed-out') return { state: 'over', submitted: false }
-  const questions = Array.from({ length: 100 }, (_, i) => {
+  const questions = Array.from({ length: 120 }, (_, i) => {
     const q = examQuestions[i % examQuestions.length]
-    return { id: `pq-${i + 1}`, body: q.body, options: q.options }
+    const n = i + 1
+    return {
+      id: `pq-${n}`,
+      body: n === 83 ? '' : q.body,
+      options: q.options,
+      section: n > 100 ? 'score' : n > 80 ? 'scope' : 'shared',
+      passage: n >= 21 && n <= 24 ? 'pp-1' : n === 81 || n === 82 ? 'pp-2' : null,
+      image: n === 3 || n === 83 ? `paper/${String(n).padStart(2, '0').repeat(16)}.jpg` : null,
+    }
   })
   const now = new Date().toISOString()
+  const reached = questions
+    .slice(0, 34)
+    .map((q, i) => ({ q: q.id, c: i % 9 === 4 ? null : i % q.options.length, f: i % 7 === 2 || i === 4 }))
+    .filter((a) => a.c !== null || a.f)
   return {
     state: 'sitting',
-    exam: { title: takersTitle, minutes: 120 },
-    attempt: { id: `paper-${word}`, started_at: paperStarted, deadline_at: word === 'sample-time-up' ? now : paperDeadline },
+    exam: { title: takersTitle, minutes: 120, sections: { shared: 80, scope: 20, score: 20, choice: true } },
+    attempt: { id: `paper-${word}`, started_at: paperStarted, deadline_at: word === 'sample-time-up' ? now : paperDeadline, sits_scope: true, sits_score: word !== 'sample-one-section' },
     now,
     questions,
-    answers: questions
-      .slice(0, 34)
-      .map((q, i) => ({ q: q.id, c: i % 9 === 4 ? null : i % q.options.length, f: i % 7 === 2 || i === 4 }))
-      .filter((a) => a.c !== null || a.f),
+    passages: paperPassages,
+    answers: word === 'sample-one-section' ? [...reached, { q: 'pq-101', c: 0, f: false }, { q: 'pq-102', c: 1, f: false }] : reached,
   }
 }
 // The people a task or an update of SCOPE's reaches.
@@ -776,6 +863,7 @@ const rpcs = {
   exam_registration_list: ({ p_exam }) => (p_exam === 'ex-1' ? examList : []),
   exam_results: ({ p_exam }) => ({
     questions: sampleQuestions.filter((q) => q.exam_id === p_exam).length,
+    sections: sectionsOf(p_exam),
     now: new Date().toISOString(),
     attempts: p_exam === 'ex-1' ? examPapers : [],
   }),
@@ -785,10 +873,19 @@ const rpcs = {
   exam_door: ({ p_word }) => (p_word === 'sample-unreached' ? DROPPED : doors[p_word]?.() ?? { exam: null }),
   exam_paper: ({ p_word }) => paperOf(p_word),
   // Every save lands, except where the walk shows what a lost one looks like.
-  exam_save: ({ p_word, p_answers }) =>
+  // The choice of sections a save carries is the choice the database then holds.
+  exam_save: ({ p_word, p_answers, p_scope, p_score }) =>
     p_word === 'sample-hand-in' || p_word === 'sample-time-up'
       ? DROPPED
-      : { state: 'sitting', submitted: false, saved: Array.isArray(p_answers) ? p_answers.length : 0, deadline_at: paperDeadline, now: new Date().toISOString() },
+      : {
+          state: 'sitting',
+          submitted: false,
+          saved: Array.isArray(p_answers) ? p_answers.length : 0,
+          deadline_at: paperDeadline,
+          now: new Date().toISOString(),
+          sits_scope: typeof p_scope === 'boolean' ? p_scope : true,
+          sits_score: typeof p_score === 'boolean' ? p_score : p_word !== 'sample-one-section',
+        },
   // The ID typed is never on the list, and the code typed is never the code.
   exam_save_details: (sent) => ({ registration: 'not_listed', me: { full_name: sent.p_full_name, faculty_year: sent.p_faculty_year, phone: sent.p_phone, student_id: sent.p_student_id, email: student.email } }),
   exam_start: () => ({ ok: false, reason: 'code', tries_left: 7 }),
@@ -843,14 +940,14 @@ export const ROUTES = [
   // the exchange exam on the portal: the list, the exam being sat in its five
   // parts, a question's right answer being corrected, and one student's paper
   '/portal/exam', '/portal/exam/ex-1?tab=setup', '/portal/exam/ex-1?tab=questions', '/portal/exam/ex-1?tab=questions#correct',
-  '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=overview',
+  '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&programme=score', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=results&programme=score&paper=at-002', '/portal/exam/ex-1?tab=overview',
   // the draft, where every form is open, and last term's, with nothing left to read
   '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
   '/portal/exam/ex-0?tab=results', '/portal/exam/ex-0?tab=overview',
   // the exam as a student meets it, in the order of a sitting
   '/exam/sample-sign-in', '/exam/callback?error=access_denied', '/exam/sample-none', '/exam/sample-unreached',
   '/exam/sample-details', '/exam/sample-details#not-listed', '/exam/sample-waiting', '/exam/sample-open', '/exam/sample-open#wrong-code', '/exam/sample-closed',
-  '/exam/sample-sitting', '/exam/sample-sitting#review', '/exam/sample-hand-in#review', '/exam/sample-elsewhere',
+  '/exam/sample-sitting', '/exam/sample-sitting#p3', '/exam/sample-sitting#p9', '/exam/sample-sitting#review', '/exam/sample-one-section#review', '/exam/sample-hand-in#review', '/exam/sample-elsewhere',
   '/exam/sample-time-up', '/exam/sample-received', '/exam/sample-timed-out',
 ]
 
@@ -935,7 +1032,9 @@ export const acts = {
     await page.fill('#exam-student-id', '2023-0471')
     await page.getByRole('button', { name: 'Save and check my ID' }).click()
   },
+  // A section is ticked first: the button stays off until one is.
   '/exam/sample-open#wrong-code': async (page) => {
+    await page.getByRole('checkbox', { name: /Professional exchange/ }).check()
     await page.fill('#exam-start-code', 'k7qm4y')
     await page.getByRole('button', { name: 'Start the exam' }).click()
   },
@@ -1000,6 +1099,10 @@ export async function installSample(context, theme) {
     if (url.pathname.startsWith('/auth/v1/')) return json(url.pathname.endsWith('/user') ? user : session)
     // Gallery photos: a picture from the repo stands in for each file.
     if (url.pathname.startsWith('/storage/v1/object/public/gallery/')) {
+      return route.fulfill({ status: 200, contentType: 'image/jpeg', path: 'public/assets/exchange/incomings/campus.jpg' })
+    }
+    // The exam's pictures: a picture from the repo stands in for each.
+    if (url.pathname.startsWith('/storage/v1/object/public/exam-pictures/')) {
       return route.fulfill({ status: 200, contentType: 'image/jpeg', path: 'public/assets/exchange/incomings/campus.jpg' })
     }
     // An edition's uploaded pages: the page with the same number of the

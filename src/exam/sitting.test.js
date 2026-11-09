@@ -34,10 +34,18 @@ import {
   syncClock,
   takeBatch,
   tidyHeld,
+  blockAnswered,
+  layoutPages,
+  pageOfQuestion,
+  sameSits,
+  sectionCounts,
+  sectionOf,
   tidyPaper,
+  tidySits,
   timeUp,
   toMs,
   toggleFlag,
+  visibleQuestions,
   unansweredNumbers,
   waitAgain,
 } from './sitting.js'
@@ -91,9 +99,154 @@ describe('pages of ten', () => {
     held = toggleFlag(held, 'q11')
     held = toggleFlag(held, 'q25')
     expect(pageSummaries(paper(25), held.answers)).toEqual([
-      { page: 1, from: 1, to: 10, unanswered: 0, flagged: 0 },
-      { page: 2, from: 11, to: 20, unanswered: 9, flagged: 1 },
-      { page: 3, from: 21, to: 25, unanswered: 5, flagged: 1 },
+      { page: 1, section: 'shared', from: 1, to: 10, unanswered: 0, flagged: 0 },
+      { page: 2, section: 'shared', from: 11, to: 20, unanswered: 9, flagged: 1 },
+      { page: 3, section: 'shared', from: 21, to: 25, unanswered: 5, flagged: 1 },
+    ])
+  })
+
+  it('gives a paper with no question its one empty page', () => {
+    expect(pageSummaries([], {})).toEqual([{ page: 1, section: 'shared', from: 1, to: 0, unanswered: 0, flagged: 0 }])
+    expect(pageQuestions([], 1)).toEqual([])
+  })
+})
+
+// A paper in three sections: `shared` shared questions (s1...), then `scope`
+// questions of the professional block (p1...) and `score` of the research
+// block (r1...). `passages` names runs that are read with one text:
+// { s3: 'text-a', s4: 'text-a' }.
+const sectioned = ({ shared = 0, scope = 0, score = 0, passages = {} } = {}) =>
+  [
+    ...Array.from({ length: shared }, (_, i) => ({ id: `s${i + 1}`, section: 'shared' })),
+    ...Array.from({ length: scope }, (_, i) => ({ id: `p${i + 1}`, section: 'scope' })),
+    ...Array.from({ length: score }, (_, i) => ({ id: `r${i + 1}`, section: 'score' })),
+  ].map((q) => ({ ...q, body: `Question ${q.id}`, options: ['a', 'b', 'c', 'd'], passage: passages[q.id] ?? null, image: null }))
+
+describe('sections', () => {
+  const all = sectioned({ shared: 3, scope: 2, score: 2 })
+
+  it('reads a question’s section, and anything unknown as shared', () => {
+    expect(all.map(sectionOf)).toEqual(['shared', 'shared', 'shared', 'scope', 'scope', 'score', 'score'])
+    expect(sectionOf({ id: 'x' })).toBe('shared')
+    expect(sectionOf({ id: 'x', section: 'clinical' })).toBe('shared')
+    expect(sectionOf(null)).toBe('shared')
+  })
+
+  it('counts each section and says whether there is a choice', () => {
+    expect(sectionCounts(all)).toEqual({ shared: 3, scope: 2, score: 2, choice: true })
+    expect(sectionCounts(sectioned({ shared: 3, scope: 2 }))).toEqual({ shared: 3, scope: 2, score: 0, choice: false })
+    expect(sectionCounts(paper(4))).toEqual({ shared: 4, scope: 0, score: 0, choice: false })
+    expect(sectionCounts(null)).toEqual({ shared: 0, scope: 0, score: 0, choice: false })
+  })
+
+  it('sits both blocks unless told otherwise, and never neither', () => {
+    expect(tidySits(undefined)).toEqual({ scope: true, score: true })
+    expect(tidySits({ scope: true, score: false })).toEqual({ scope: true, score: false })
+    expect(tidySits({ scope: false })).toEqual({ scope: false, score: true })
+    expect(tidySits({ scope: false, score: false })).toEqual({ scope: true, score: true })
+    expect(tidySits({ scope: 'no', score: 0 })).toEqual({ scope: true, score: true })
+  })
+
+  it('compares two choices', () => {
+    expect(sameSits({ scope: true, score: false }, { scope: true, score: false })).toBe(true)
+    expect(sameSits({ scope: true, score: false }, { scope: true, score: true })).toBe(false)
+    expect(sameSits(null, { scope: true, score: true })).toBe(false)
+  })
+
+  it('shows the shared questions and the blocks a taker sits, in the paper’s order', () => {
+    const ids = (sits) => visibleQuestions(all, sits).map((q) => q.id)
+    expect(ids({ scope: true, score: true })).toEqual(['s1', 's2', 's3', 'p1', 'p2', 'r1', 'r2'])
+    expect(ids({ scope: true, score: false })).toEqual(['s1', 's2', 's3', 'p1', 'p2'])
+    expect(ids({ scope: false, score: true })).toEqual(['s1', 's2', 's3', 'r1', 'r2'])
+    // neither is not a choice: everything is shown
+    expect(ids({ scope: false, score: false })).toEqual(['s1', 's2', 's3', 'p1', 'p2', 'r1', 'r2'])
+  })
+
+  it('hands back the same list when nothing is left out, so nothing is drawn again for it', () => {
+    expect(visibleQuestions(all, { scope: true, score: true })).toBe(all)
+    const plain = paper(5)
+    expect(visibleQuestions(plain, { scope: true, score: true })).toBe(plain)
+  })
+
+  it('counts the answers in each block, sat or not', () => {
+    let held = emptyHeld()
+    for (const id of ['s1', 'p1', 'p2', 'r2']) held = setAnswer(held, id, 1)
+    held = toggleFlag(held, 'r1')
+    expect(blockAnswered(all, held.answers)).toEqual({ scope: 2, score: 1 })
+    expect(blockAnswered(paper(3), {})).toEqual({ scope: 0, score: 0 })
+  })
+
+  it('numbers and counts only what a taker sits', () => {
+    const mine = visibleQuestions(all, { scope: false, score: true })
+    let held = emptyHeld()
+    held = setAnswer(held, 's1', 0)
+    held = setAnswer(held, 'p1', 0) // answered before the block was left out
+    held = setAnswer(held, 'r2', 0)
+    expect(answeredCount(mine, held.answers)).toBe(2)
+    expect(unansweredNumbers(mine, held.answers)).toEqual([2, 3, 4])
+  })
+})
+
+describe('pages with sections and passages', () => {
+  const shape = (questions) => layoutPages(questions).map((p) => `${p.page}:${p.section}:${p.from}-${p.to}:${p.questions.map((q) => q.id).join(',')}`)
+
+  it('lays a plain paper out in pages of ten, as before', () => {
+    expect(layoutPages(paper(25)).map((p) => [p.page, p.section, p.from, p.to, p.questions.length])).toEqual([
+      [1, 'shared', 1, 10, 10],
+      [2, 'shared', 11, 20, 10],
+      [3, 'shared', 21, 25, 5],
+    ])
+    expect(layoutPages([])).toEqual([])
+    expect(layoutPages(null)).toEqual([])
+  })
+
+  it('starts each section on a page of its own and numbers straight through', () => {
+    expect(shape(sectioned({ shared: 12, scope: 2, score: 3 }))).toEqual([
+      '1:shared:1-10:s1,s2,s3,s4,s5,s6,s7,s8,s9,s10',
+      '2:shared:11-12:s11,s12',
+      '3:scope:13-14:p1,p2',
+      '4:score:15-17:r1,r2,r3',
+    ])
+    const pages = layoutPages(sectioned({ shared: 12, scope: 2, score: 3 }))
+    expect(pages[2].questions.map((q) => q.n)).toEqual([13, 14])
+  })
+
+  it('never splits the questions that are read with one passage', () => {
+    // eight single questions, then a passage with four: the passage moves whole to the next page
+    const questions = sectioned({ shared: 14, passages: { s9: 't', s10: 't', s11: 't', s12: 't' } })
+    expect(shape(questions)).toEqual(['1:shared:1-8:s1,s2,s3,s4,s5,s6,s7,s8', '2:shared:9-14:s9,s10,s11,s12,s13,s14'])
+  })
+
+  it('gives a passage with more than ten questions a page as long as it needs', () => {
+    const passages = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`s${i + 2}`, 't']))
+    const pages = layoutPages(sectioned({ shared: 14, passages }))
+    expect(pages.map((p) => p.questions.length)).toEqual([1, 12, 1])
+  })
+
+  it('keeps two passages that follow one another apart', () => {
+    const questions = sectioned({ shared: 4, passages: { s1: 'a', s2: 'a', s3: 'b', s4: 'b' } })
+    expect(shape(questions)).toEqual(['1:shared:1-4:s1,s2,s3,s4'])
+    const long = sectioned({ shared: 12, passages: { s1: 'a', s2: 'a', s3: 'a', s4: 'a', s5: 'a', s6: 'a', s7: 'b', s8: 'b', s9: 'b', s10: 'b', s11: 'b', s12: 'b' } })
+    expect(layoutPages(long).map((p) => p.questions.length)).toEqual([6, 6])
+  })
+
+  it('finds the page of a question number in such a paper', () => {
+    const pages = layoutPages(sectioned({ shared: 12, scope: 2, score: 3 }))
+    expect([1, 10, 11, 12, 13, 14, 15, 17].map((n) => pageOfQuestion(pages, n))).toEqual([1, 1, 2, 2, 3, 3, 4, 4])
+    expect(pageOfQuestion(pages, 0)).toBe(1)
+    expect(pageOfQuestion(pages, 99)).toBe(4)
+    expect(pageOfQuestion([], 5)).toBe(1)
+  })
+
+  it('gives a page its questions and sums the pages up, section by section', () => {
+    const questions = sectioned({ shared: 12, scope: 2, score: 3 })
+    expect(pageQuestions(questions, 3).map((q) => `${q.n}:${q.id}`)).toEqual(['13:p1', '14:p2'])
+    expect(pageQuestions(questions, 99).map((q) => q.id)).toEqual(['r1', 'r2', 'r3'])
+    let held = setAnswer(emptyHeld(), 'p1', 0)
+    held = toggleFlag(held, 'r3')
+    expect(pageSummaries(questions, held.answers).slice(2)).toEqual([
+      { page: 3, section: 'scope', from: 13, to: 14, unanswered: 1, flagged: 0 },
+      { page: 4, section: 'score', from: 15, to: 17, unanswered: 3, flagged: 1 },
     ])
   })
 })
@@ -402,10 +555,45 @@ describe('the paper', () => {
 
   it('keeps what the pages show and nothing else', () => {
     expect(tidyPaper(reply)).toEqual({
-      exam: { title: 'Exchange exam 2026', minutes: 120 },
-      attempt: { id: 'a1', started_at: '2026-11-14T08:00:00+00:00', deadline_at: '2026-11-14T10:00:00+00:00' },
-      questions: paper(3),
+      exam: { title: 'Exchange exam 2026', minutes: 120, sections: { shared: 3, scope: 0, score: 0, choice: false } },
+      attempt: {
+        id: 'a1',
+        started_at: '2026-11-14T08:00:00+00:00',
+        deadline_at: '2026-11-14T10:00:00+00:00',
+        sits: { scope: true, score: true },
+      },
+      questions: paper(3).map((q) => ({ ...q, section: 'shared', passage: null, image: null })),
+      passages: {},
     })
+  })
+
+  it('keeps a question’s section, passage and picture, and the taker’s choice of blocks', () => {
+    const tidy = tidyPaper({
+      ...reply,
+      exam: { ...reply.exam, sections: { shared: 99, scope: 99, score: 99, choice: false } },
+      attempt: { ...reply.attempt, sits_scope: false, sits_score: true },
+      questions: [
+        { id: 'q1', body: 'Read and answer', options: ['a', 'b'], section: 'shared', passage: 'p1', image: null },
+        { id: 'q2', body: '', options: ['a', 'b'], section: 'scope', passage: null, image: 'e1/abc.jpg' },
+        { id: 'q3', body: 'Research', options: ['a', 'b'], section: 'score', passage: 'gone', image: '' },
+      ],
+      passages: [
+        { id: 'p1', body: 'A text.', image: null },
+        { id: 'unused', body: 'Nobody reads this.', image: null },
+      ],
+    })
+    // the sections are counted from the questions, whatever the reply said
+    expect(tidy.exam.sections).toEqual({ shared: 1, scope: 1, score: 1, choice: true })
+    expect(tidy.attempt.sits).toEqual({ scope: false, score: true })
+    expect(tidy.questions.map((q) => [q.section, q.passage, q.image])).toEqual([
+      ['shared', 'p1', null],
+      ['scope', null, 'e1/abc.jpg'],
+      // a passage the paper does not carry is no passage
+      ['score', null, null],
+    ])
+    expect(tidy.passages).toEqual({ p1: { body: 'A text.', image: null } })
+    // and it comes back from the phone's storage the same
+    expect(tidyPaper(JSON.parse(JSON.stringify(tidy)))).toEqual(tidy)
   })
 
   it('survives the trip through the phone’s storage', () => {

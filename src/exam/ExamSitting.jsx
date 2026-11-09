@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import ExamLayout from './ExamLayout.jsx'
+import { satWords } from './examFlow.js'
 import { ExamCard, Waiting, tapOutlineCls } from './examUi.jsx'
 import { useSitting } from './useSitting.js'
 import ElsewhereScreen from './screens/ElsewhereScreen.jsx'
@@ -41,7 +42,13 @@ export default function ExamSitting({ word, userId, attemptId = null, title = ''
   return (
     <ExamLayout title={name}>
       {status === 'over' ? (
-        <ReceivedScreen why={sitting.why} unsent={sitting.unsent} notice={notice} onSignOut={onSignOut} />
+        <ReceivedScreen
+          why={sitting.why}
+          unsent={sitting.unsent}
+          sat={satWords(sitting.sections, sitting.sits)}
+          notice={notice}
+          onSignOut={onSignOut}
+        />
       ) : status === 'ending' ? (
         <TimeUpScreen
           save={sitting.save}

@@ -1,6 +1,7 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import ExamLayout from '../ExamLayout.jsx'
+import { pictureUrl } from '../examApi.js'
 import {
   HAND_IN_CHECKING,
   clockNotice,
@@ -10,6 +11,7 @@ import {
   pageLabel,
   placeFromHash,
   saveWords,
+  sectionName,
   strayTap,
 } from '../examFlow.js'
 import { FlagIcon, focusCls, focusTargetCls, moveFocus, noteScreen, tapLinkCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
@@ -17,8 +19,9 @@ import { answerOf, formatClock } from '../sitting.js'
 import { useTimeLeft } from '../useSitting.js'
 import ReviewScreen from './ReviewScreen.jsx'
 
-// The paper: ten questions a page, the clock and the save state in a bar that
-// stays at the top, the pages and the review under it. Tired students sit it
+// The paper: about ten questions a page, the clock and the save state in a bar
+// that stays at the top, the pages and the review under it. A section starts
+// on a page of its own, and a passage sits above the questions read with it. Tired students sit it
 // for two hours on small phones, so:
 //   - everything tapped is at least 44px tall and the options are whole rows;
 //   - no text is ever cut short, a long option wraps;
@@ -135,6 +138,59 @@ function StatusBar({ sitting, where }) {
   )
 }
 
+// ---- pictures and passages ------------------------------------------------------
+
+// A picture of the exam. The sitting fetches every picture as soon as the
+// paper is known (useSitting), so it is usually on the phone already. One that
+// did not arrive says so and is fetched again on a tap: the address changes
+// with each try, or the browser would hand the failure back from its memory.
+// White behind it in both themes: the pictures are scans and diagrams on white.
+function Picture({ path, alt }) {
+  const [tries, setTries] = useState(0)
+  const [failed, setFailed] = useState(false)
+  if (!path) return null
+  if (failed) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setFailed(false)
+          setTries((n) => n + 1)
+        }}
+        className={`mt-3 flex min-h-[96px] w-full items-center justify-center rounded-xl border border-dashed border-line/30 bg-card px-4 py-3 text-center text-sm font-semibold text-ink active:bg-sunk ${focusCls}`}
+      >
+        The picture did not load. Tap to load it again.
+      </button>
+    )
+  }
+  return (
+    <img
+      src={`${pictureUrl(path)}${tries > 0 ? `?try=${tries}` : ''}`}
+      alt={alt}
+      decoding="async"
+      onError={() => setFailed(true)}
+      className="mt-3 block h-auto max-h-[75vh] w-auto max-w-full rounded-xl border border-line/10 bg-white"
+    />
+  )
+}
+
+// The text several questions are read with, above the first of them. `from`
+// and `to` are the numbers of the questions on this page that go with it.
+function Passage({ passage, from, to }) {
+  const which = from === to ? `question ${from}` : `questions ${from} to ${to}`
+  return (
+    <section aria-label={`Text for ${which}`} className="mt-6 rounded-2xl border border-line/15 bg-card p-4 first:mt-4">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Read this for {which}</h2>
+      {passage.body && (
+        <p dir="auto" className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-ink [overflow-wrap:anywhere]">
+          {passage.body}
+        </p>
+      )}
+      <Picture path={passage.image} alt={`Picture for ${which}`} />
+    </section>
+  )
+}
+
 // ---- one question ---------------------------------------------------------------
 
 // Drawn again only when its own answer changes. `locked` is true while no
@@ -160,9 +216,13 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
               </span>
             )}
           </span>
-          <span dir="auto" className="mt-2 block whitespace-pre-wrap text-base font-medium leading-relaxed text-ink [overflow-wrap:anywhere]">
-            {q.body}
-          </span>
+          {/* A question may be a picture with no words. */}
+          {q.body && (
+            <span dir="auto" className="mt-2 block whitespace-pre-wrap text-base font-medium leading-relaxed text-ink [overflow-wrap:anywhere]">
+              {q.body}
+            </span>
+          )}
+          <Picture path={q.image} alt={`Picture for question ${q.n}`} />
         </legend>
         <div className="mt-4 space-y-2">
           {q.options.map((text, i) => {
@@ -267,11 +327,27 @@ const headingCls = `heading-serif rounded-lg text-2xl text-ink ${focusTargetCls}
 // the three buttons under them alike: a slip on "Clear answer" would change
 // an answer as surely as one on an option.
 function PaperPage({ sitting, place, headingRef, tapGuard }) {
-  const { questionsOn, answers, total, pageCount, pages, locked, setAnswer, clearAnswer, toggleFlag } = sitting
+  const { questionsOn, answers, total, pageCount, pages, passages, sections, locked, setAnswer, clearAnswer, toggleFlag } = sitting
   const questions = useMemo(() => questionsOn(place.page), [questionsOn, place.page])
   const row = pages[place.page - 1]
+  // The last question of each passage on this page, by the passage's first.
+  const runs = useMemo(() => {
+    const ends = new Map()
+    let first = null
+    questions.forEach((q, i) => {
+      if (!q.passage || !passages[q.passage]) return
+      if (i === 0 || questions[i - 1].passage !== q.passage) first = q
+      ends.set(first.id, q.n)
+    })
+    return ends
+  }, [questions, passages])
+  // An exam in sections names the section of every page, the shared one too.
+  const inSections = sections.scope > 0 || sections.score > 0
   return (
     <>
+      {inSections && row && (
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">{sectionName(row.section)}</p>
+      )}
       <h1 ref={headingRef} tabIndex={-1} className={headingCls}>
         <span className="sr-only">
           Page {place.page} of {pageCount}.{' '}
@@ -280,16 +356,18 @@ function PaperPage({ sitting, place, headingRef, tapGuard }) {
       </h1>
       <div className="mt-2" {...tapGuard}>
         {questions.map((q) => (
-          <Question
-            key={q.id}
-            q={q}
-            total={total}
-            answer={answerOf(answers, q.id)}
-            locked={locked}
-            onChoose={setAnswer}
-            onClear={clearAnswer}
-            onFlag={toggleFlag}
-          />
+          <Fragment key={q.id}>
+            {runs.has(q.id) && <Passage passage={passages[q.passage]} from={q.n} to={runs.get(q.id)} />}
+            <Question
+              q={q}
+              total={total}
+              answer={answerOf(answers, q.id)}
+              locked={locked}
+              onChoose={setAnswer}
+              onClear={clearAnswer}
+              onFlag={toggleFlag}
+            />
+          </Fragment>
         ))}
       </div>
     </>
@@ -387,9 +465,9 @@ function bringToTop(element) {
 export default function SittingScreen({ sitting, title }) {
   const { hash, pathname, search } = useLocation()
   const navigate = useNavigate()
-  const { total, pageCount, pages } = sitting
+  const { total, pageCount, pages, layout } = sitting
 
-  const place = useMemo(() => placeFromHash(hash, total), [hash, total])
+  const place = useMemo(() => placeFromHash(hash, total, layout), [hash, total, layout])
   // Each move is an entry in the phone's history: its back button goes to the
   // page before, and a refresh opens the same page.
   const go = useCallback((next) => navigate({ pathname, search, hash: hashFor(next) }), [navigate, pathname, search])

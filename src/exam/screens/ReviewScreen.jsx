@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { ConfirmButton } from '../../portal/portalUi.jsx'
-import { DOUBLE_TAP_MS, handInWait, handInWords } from '../examFlow.js'
-import { Problem, focusCls, tapPrimaryCls } from '../examUi.jsx'
+import { DOUBLE_TAP_MS, handInWait, handInWords, leaveOutWords, sectionName } from '../examFlow.js'
+import { Problem, focusCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
+import { BLOCKS } from '../sitting.js'
 
 // The last step of the paper, inside the sitting's frame (the clock and the
 // save state stay in view): how many questions are answered, the unanswered
@@ -44,6 +45,69 @@ function Numbers({ title, numbers, none, go }) {
   )
 }
 
+// The two optional sections, in an exam that has them: which the taker
+// answers, with a button to add the other or to leave one out. Leaving out
+// takes two taps and says first what becomes of the answers in it: they are
+// kept, and count again if the section is added back. The last section a
+// taker answers cannot be left out.
+function Sections({ sitting }) {
+  const { sections, sits, blockAnswered, locked, setSections } = sitting
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Your sections</h2>
+      <p className="mt-3 text-sm text-soft/80">
+        Everyone answers the shared questions. You can add or leave out a section until you hand in.
+      </p>
+      <ul className="mt-3 space-y-2">
+        {BLOCKS.map((block) => {
+          const on = sits[block]
+          const only = on && !sits[block === 'scope' ? 'score' : 'scope']
+          const n = Number(sections[block]) || 0
+          const answeredHere = blockAnswered[block]
+          return (
+            <li key={block} className={`rounded-xl border px-4 py-3 ${on ? 'border-accent/50 bg-accent/5' : 'border-line/15 bg-card'}`}>
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <p className="text-base font-medium text-ink">{sectionName(block)}</p>
+                  <p className="mt-0.5 text-sm text-soft/70">
+                    {n} {n === 1 ? 'question' : 'questions'}. {on ? 'You are answering this section.' : 'You have left this section out.'}
+                  </p>
+                </div>
+                {!on ? (
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => setSections({ ...sits, [block]: true })}
+                    className={tapOutlineCls}
+                  >
+                    Add this section
+                  </button>
+                ) : only ? null : (
+                  <ConfirmButton
+                    label="Leave out"
+                    confirmLabel="Leave it out"
+                    disabled={locked}
+                    onConfirm={() => setSections({ ...sits, [block]: false })}
+                    className={tapOutlineCls}
+                  />
+                )}
+              </div>
+              {on && !only && answeredHere > 0 && <p className="mt-2 text-sm text-soft/70">{leaveOutWords(block, answeredHere)}</p>}
+              {!on && answeredHere > 0 && (
+                <p className="mt-2 text-sm text-soft/70">
+                  Your {answeredHere === 1 ? 'answer' : `${answeredHere} answers`} in it {answeredHere === 1 ? 'is' : 'are'} kept, and
+                  will be marked only if you add the section again.
+                </p>
+              )}
+              {only && <p className="mt-2 text-sm text-soft/70">This is the only section you are answering, so it stays.</p>}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 export default function ReviewScreen({ sitting, go, headingRef, headingCls }) {
   const { total, answered, unanswered, flagged, handingIn, handInNote, onPhone } = sitting
   // When the button was last tapped, and the tap before that, on the clock
@@ -70,6 +134,8 @@ export default function ReviewScreen({ sitting, go, headingRef, headingCls }) {
       <p className="mt-3 text-base text-ink">
         You have answered {answered} of {total} {total === 1 ? 'question' : 'questions'}.
       </p>
+
+      {sitting.sections.choice && <Sections sitting={sitting} />}
 
       <Numbers title="Not answered" numbers={unanswered} none="Every question has an answer." go={go} />
       <Numbers title="Flagged" numbers={flagged} none="No question is flagged." go={go} />

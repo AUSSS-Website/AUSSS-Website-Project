@@ -11,8 +11,11 @@ import {
   hardestFirst,
   oneDecimal,
   optionShares,
+  papersOf,
   percent,
+  programmeRows,
   questionColumns,
+  questionLabel,
   readProblem,
   resultSummary,
   shareRight,
@@ -21,6 +24,7 @@ import {
 import { ErrorText, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import { Figure } from './AttemptSheet.jsx'
 import { RefreshButton, tapCls } from './ExamsPage.jsx'
+import ProgrammeSwitch, { useProgramme } from './ProgrammeSwitch.jsx'
 
 // The Overview tab of an exam (/portal/exam/:id?tab=overview). From the
 // ranking (rpc/exam_results): how many started, handed in and are still
@@ -35,6 +39,7 @@ import { RefreshButton, tapCls } from './ExamsPage.jsx'
 const SHOWN = 10
 
 const smallCapsCls = 'text-xs font-semibold uppercase tracking-[0.2em] text-soft/50'
+const SECTION_WORDS = { scope: 'Professional exchange (SCOPE)', score: 'Research exchange (SCORE)' }
 
 // One bar a band, the top grades first. Each bar is that band's share of the
 // fullest one.
@@ -73,12 +78,18 @@ function QuestionFigures({ question, papers }) {
   return (
     <li className="rounded-xl border border-line/10 bg-sunk/40 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/55">Question {question.n}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/55">
+          Question {questionLabel(question)}
+          {SECTION_WORDS[question.section] && (
+            <span className="ml-2 normal-case tracking-normal">{SECTION_WORDS[question.section]}</span>
+          )}
+        </p>
         <p className="text-sm text-soft/70">
           <span className="font-semibold text-ink">{percent(shareRight(question, papers)) || '–'} right</span> (
-          {question.right ?? 0} of {papers})
+          {question.right ?? 0} of {papersOf(question, papers)})
         </p>
       </div>
+      {question.image && <p className="mt-2 text-xs text-soft/55">This question has a picture. It is shown on the Questions tab.</p>}
       {/* dir="auto", here and on each option: a question written in Arabic
           reads from the right. */}
       <p dir="auto" className="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-ink">
@@ -115,9 +126,13 @@ function QuestionFigures({ question, papers }) {
 
 export default function OverviewPanel({ exam }) {
   const results = useExamResults(exam.id, exam)
-  const attempts = results.data?.attempts
-  const total = results.data?.questions ?? 0
-  const stats = useExamQuestionStats(exam.id, { live: anySitting(attempts), exam })
+  // In an exam with two optional sections the figures are one programme's at
+  // a time: the papers that sit it, by that programme's mark.
+  const [programme, setProgramme, programmes] = useProgramme(results.data?.sections)
+  const everyPaper = results.data?.attempts
+  const attempts = useMemo(() => (everyPaper ? programmeRows(everyPaper, programme) : everyPaper), [everyPaper, programme])
+  const total = programme ? programme.of : results.data?.questions ?? 0
+  const stats = useExamQuestionStats(exam.id, { live: anySitting(everyPaper), exam })
   // A student can still start: the figures move with nobody sitting yet.
   const open = examPhase(exam, Date.now()) === 'open'
   const [showAll, setShowAll] = useState(false)
@@ -150,6 +165,7 @@ export default function OverviewPanel({ exam }) {
             }}
           />
         </div>
+        <ProgrammeSwitch programmes={programmes} programme={programme} onChange={setProgramme} />
 
         {results.isPending ? (
           <div className="mt-6 flex justify-center">
@@ -177,7 +193,7 @@ export default function OverviewPanel({ exam }) {
               <Figure label="Handed in">{counts.handedIn}</Figure>
               <Figure label="Time ran out">{counts.timedOut}</Figure>
               <Figure label="Still sitting">{counts.sitting}</Figure>
-              <Figure label="Average grade">
+              <Figure label={programme ? `Average ${programme.short} mark` : 'Average grade'}>
                 {avg.grade == null ? (
                   '–'
                 ) : (
@@ -214,6 +230,7 @@ export default function OverviewPanel({ exam }) {
           <p className="min-w-0 flex-1 basis-60 text-xs text-soft/55">
             The share of papers that got each question right, the lowest first, and how often each option was
             chosen. Every paper counts, finished or not, and a question left unanswered counts as not right.
+            {programmes.length > 0 && ' A question of an optional section is counted over the papers that sit that section.'}
           </p>
           <ExportButtons
             title={`Question figures: ${exam.title}`}
@@ -221,7 +238,7 @@ export default function OverviewPanel({ exam }) {
             filename={exportName(exam.title, 'question-figures')}
             columns={columns}
             rows={papers > 0 ? hardest : []}
-            summary={results.data ? resultSummary(attempts, total) : []}
+            summary={results.data ? resultSummary(attempts, total, programme) : []}
             landscape
             className={`${outlineBtnCls} ${tapCls}`}
           />

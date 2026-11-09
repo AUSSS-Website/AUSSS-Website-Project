@@ -9,10 +9,15 @@
 //     the form, and the two small sums the questions' list needs.
 //
 // The questions' layout is by position, one question a row:
-//   A Question, B to G Option A to Option F, H Answer, I Keep order.
+//   A Question, B to G Option A to Option F, H Answer, I Keep order,
+//   J Section, K Passage.
 // A first row whose first cell is "Question" is a header. Answer is a letter
 // (A to F), a number (1 to 6) or the right option's exact text; Keep order is
 // "yes" for a question whose options must stay as written, else blank.
+// Section is blank for a question everybody answers, "SCOPE" for the
+// professional exchange's block and "SCORE" for the research exchange's.
+// Passage is the text a question is read with: rows that follow one another
+// with the same passage share it. Pictures do not come in a spreadsheet.
 // Nothing is imported unless every row is good: each bad row is named by its
 // number in the sheet, with the reason.
 import { UNREACHED } from '../lib/errorText.js'
@@ -34,9 +39,49 @@ export const MAX_IDS = 5000
 
 const BODY_MAX = 2000
 const OPTION_MAX = 500
+export const PASSAGE_MAX = 8000
 const ANSWER_COL = 1 + MAX_OPTIONS
 const KEEP_COL = ANSWER_COL + 1
-const HEADERS = ['Question', ...OPTION_LETTERS.map((l) => `Option ${l}`), 'Answer', 'Keep order']
+const SECTION_COL = KEEP_COL + 1
+const PASSAGE_COL = SECTION_COL + 1
+const LAST_COL = PASSAGE_COL
+const HEADERS = ['Question', ...OPTION_LETTERS.map((l) => `Option ${l}`), 'Answer', 'Keep order', 'Section', 'Passage']
+
+// ---- the sections -----------------------------------------------------------
+//
+// Everybody answers the shared questions. The two blocks are optional: each
+// student sits one or both, and gets a mark for each exchange programme (the
+// shared questions plus that programme's block).
+
+export const SECTIONS = [
+  { id: 'shared', name: 'Shared questions', short: 'Shared', letter: '' },
+  { id: 'scope', name: 'Professional exchange (SCOPE)', short: 'SCOPE', letter: 'P' },
+  { id: 'score', name: 'Research exchange (SCORE)', short: 'SCORE', letter: 'R' },
+]
+const SECTION_RANK = { shared: 0, scope: 1, score: 2 }
+
+// A section's id, made safe: anything else reads as 'shared'.
+export const sectionId = (value) => (value === 'scope' || value === 'score' ? value : 'shared')
+export const sectionName = (value) => SECTIONS[SECTION_RANK[sectionId(value)]].name
+export const sectionShort = (value) => SECTIONS[SECTION_RANK[sectionId(value)]].short
+
+// How many questions each section has, and whether students choose: they do
+// when both blocks have questions.
+export function sectionCounts(questions) {
+  const counts = { shared: 0, scope: 0, score: 0 }
+  for (const q of Array.isArray(questions) ? questions : []) counts[sectionId(q?.section)] += 1
+  return { ...counts, choice: counts.scope > 0 && counts.score > 0 }
+}
+
+// What a Section cell says, as the database's word, or null for something
+// that is no section.
+function readSection(text) {
+  const word = plain(text)
+  if (['', 'shared', 'all', 'both'].includes(word)) return 'shared'
+  if (['scope', 'p', 'professional', 'clinical'].includes(word)) return 'scope'
+  if (['score', 'r', 'research'].includes(word)) return 'score'
+  return null
+}
 
 const cell = (v) => String(v ?? '').trim()
 // Length as the database counts it: characters, not UTF-16 units.
@@ -60,9 +105,12 @@ export function letterOf(index) {
 // beside that part and take the officer there; for 'options', `index` is the
 // place of the first option that is empty or too long, or null when there are
 // simply too few or too many. `correct` is the right option's place, from 0.
-export function questionFault({ body, options, correct }) {
+export function questionFault({ body, options, correct, imagePath = null }) {
   const text = cell(body)
-  if (text === '' || chars(text) > BODY_MAX) return { at: 'body', index: null, problem: 'A question needs its text.' }
+  // A question may be a picture with no words. The sentence is the database's.
+  if ((text === '' && !imagePath) || chars(text) > BODY_MAX) {
+    return { at: 'body', index: null, problem: 'A question needs its text.' }
+  }
   const opts = Array.isArray(options) ? options.map(cell) : []
   const bad = opts.findIndex((o) => o === '' || chars(o) > OPTION_MAX)
   if (opts.length < 2 || opts.length > MAX_OPTIONS || bad !== -1) {
@@ -93,6 +141,49 @@ export function dropOption(options, correct, index) {
 }
 
 // ---- the questions' order ---------------------------------------------------
+
+// The questions as the paper numbers them (app.exam_question_numbers in the
+// database does the same): the shared ones first, then each block, in the
+// officers' order within a section, with the questions of one passage standing
+// together where the first of them is. Each comes back with `n`, its place in
+// the whole list from 1, and `label`, its number as the paper shows it: the
+// shared questions are 1, 2, ...; each block counts on from the last shared
+// question with its letter (81P ..., 81R ...).
+export function numberQuestions(questions) {
+  const list = Array.isArray(questions) ? questions : []
+  const units = new Map()
+  for (const q of list) {
+    const unit = q.passage_id || q.id
+    const at = units.get(unit)
+    const made = String(q.created_at ?? '')
+    if (!at) units.set(unit, { sort: q.sort, made })
+    else units.set(unit, { sort: Math.min(at.sort, q.sort), made: made < at.made ? made : at.made })
+  }
+  const text = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+  const ordered = [...list].sort((a, b) => {
+    const ua = a.passage_id || a.id
+    const ub = b.passage_id || b.id
+    const pa = units.get(ua)
+    const pb = units.get(ub)
+    return (
+      SECTION_RANK[sectionId(a.section)] - SECTION_RANK[sectionId(b.section)] ||
+      pa.sort - pb.sort ||
+      text(pa.made, pb.made) ||
+      text(ua, ub) ||
+      a.sort - b.sort ||
+      text(String(a.created_at ?? ''), String(b.created_at ?? '')) ||
+      text(a.id, b.id)
+    )
+  })
+  const shared = ordered.filter((q) => sectionId(q.section) === 'shared').length
+  const seen = { shared: 0, scope: 0, score: 0 }
+  return ordered.map((q, i) => {
+    const section = sectionId(q.section)
+    seen[section] += 1
+    const letter = SECTIONS[SECTION_RANK[section]].letter
+    return { ...q, n: i + 1, label: section === 'shared' ? String(seen.shared) : `${shared + seen[section]}${letter}` }
+  })
+}
 
 // The rows to write after a drag: `questions` in the order they were, `ids` in
 // the new order. The numbers already in use are dealt out again in the new
@@ -183,7 +274,21 @@ function readQuestion(cells) {
   if (!['', 'yes', 'y', 'true', 'no', 'n', 'false'].includes(keep)) {
     return { problem: 'Keep order is “yes” or left blank.' }
   }
-  return { row: { body, options, correct: answer.correct, keep_order: ['yes', 'y', 'true'].includes(keep) } }
+  const section = readSection(cell(cells[SECTION_COL]))
+  if (!section) return { problem: 'Section is left blank, or is “SCOPE” or “SCORE”.' }
+  const passage = cell(cells[PASSAGE_COL])
+  if (chars(passage) > PASSAGE_MAX) return { problem: `The passage is longer than ${PASSAGE_MAX} characters.` }
+  // A question everybody answers, with no passage, is a row as it always was.
+  return {
+    row: {
+      body,
+      options,
+      correct: answer.correct,
+      keep_order: ['yes', 'y', 'true'].includes(keep),
+      ...(section === 'shared' ? {} : { section }),
+      ...(passage === '' ? {} : { passage }),
+    },
+  }
 }
 
 // grid: the sheet as an array of rows of cell text. Returns { rows, problems }:
@@ -191,7 +296,7 @@ function readQuestion(cells) {
 // `problems` (sentences an officer can act on) is empty.
 export function questionsFromGrid(grid) {
   const lines = (grid || []).map((r) => (Array.isArray(r) ? r : []))
-  const blank = (r) => r.slice(0, KEEP_COL + 1).every((c) => cell(c) === '')
+  const blank = (r) => r.slice(0, LAST_COL + 1).every((c) => cell(c) === '')
   const first = lines.findIndex((r) => !blank(r))
   if (first === -1) return { rows: [], problems: ['That file is empty.'] }
 
@@ -208,7 +313,7 @@ export function questionsFromGrid(grid) {
   // every character outside plain English in it (a curly apostrophe, a degree
   // sign, all Arabic) arrives as the "cannot be read" mark. Students would be
   // shown that mark, so the file is refused whole.
-  if (lines.some((r) => r.slice(0, KEEP_COL + 1).some((c) => String(c ?? '').includes(UNREADABLE)))) {
+  if (lines.some((r) => r.slice(0, LAST_COL + 1).some((c) => String(c ?? '').includes(UNREADABLE)))) {
     return {
       rows: [],
       problems: [
@@ -267,18 +372,25 @@ export function answerCell(question) {
 }
 
 // The same layout, as columns for an export: a question from the portal's list
-// ({ body, options, correct, keep_option_order }) per row. A CSV made from
-// them can be imported into another exam as it is.
+// ({ body, options, correct, keep_option_order, section, passage_body }) per
+// row, where `passage_body` is the text of the question's passage. A CSV made
+// from them can be imported into another exam as it is, but for the pictures.
 export const questionColumns = [
   { label: HEADERS[0], value: (q) => q.body },
   ...OPTION_LETTERS.map((_, i) => ({ label: HEADERS[1 + i], value: (q) => q.options?.[i] ?? '' })),
   { label: HEADERS[ANSWER_COL], value: answerCell },
   { label: HEADERS[KEEP_COL], value: (q) => (q.keep_option_order ? 'yes' : '') },
+  { label: HEADERS[SECTION_COL], value: (q) => (sectionId(q.section) === 'shared' ? '' : sectionShort(q.section)) },
+  { label: HEADERS[PASSAGE_COL], value: (q) => q.passage_body ?? '' },
 ]
 
-// "Download a template": the header and two made-up questions, one answered by
-// letter and one by number with its options kept in order.
+// "Download a template": the header and five made-up questions. Two that
+// everybody answers, one answered by letter and one with its options kept in
+// order; one of the professional exchange's block; and two of the research
+// exchange's that are read with one passage.
 export function questionTemplateCsv() {
+  const abstract =
+    'A trial gave 200 adults with high blood pressure either a new tablet or a dummy tablet for twelve weeks. Neither the adults nor their doctors knew who had which.'
   return toCsv(questionColumns, [
     {
       body: 'Which vitamin does the skin make in sunlight?',
@@ -291,6 +403,29 @@ export function questionTemplateCsv() {
       options: ['The duodenum', 'The jejunum', 'The ileum', 'All of the above'],
       correct: 3,
       keep_option_order: true,
+    },
+    {
+      body: 'Which of these is the first step when you find an adult who has collapsed?',
+      options: ['Check that it is safe to approach', 'Start chest compressions', 'Give two breaths', 'Fetch a defibrillator'],
+      correct: 0,
+      keep_option_order: false,
+      section: 'scope',
+    },
+    {
+      body: 'What kind of study is this?',
+      options: ['A case report', 'A cohort study', 'A randomised controlled trial', 'A survey'],
+      correct: 2,
+      keep_option_order: false,
+      section: 'score',
+      passage_body: abstract,
+    },
+    {
+      body: 'What is the dummy tablet called?',
+      options: ['A placebo', 'A control', 'A sample', 'A variable'],
+      correct: 0,
+      keep_option_order: false,
+      section: 'score',
+      passage_body: abstract,
     },
   ])
 }

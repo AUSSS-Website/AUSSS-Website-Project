@@ -15,6 +15,7 @@ import {
   idsFromGrid,
   idsFromText,
   letterOf,
+  numberQuestions,
   parseIdFile,
   parseQuestionFile,
   questionColumns,
@@ -22,11 +23,15 @@ import {
   questionProblem,
   questionTemplateCsv,
   questionsFromGrid,
+  sectionCounts,
+  sectionId,
+  sectionName,
+  sectionShort,
   sortChanges,
   tidyId,
 } from './examFile.js'
 
-const HEADER = ['Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F', 'Answer', 'Keep order']
+const HEADER = ['Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F', 'Answer', 'Keep order', 'Section', 'Passage']
 // One row of the sheet: the question, its options, the answer, keep order.
 const line = (body, options, answer, keep = '') => [body, ...options, ...Array(6 - options.length).fill(''), answer, keep]
 
@@ -201,20 +206,58 @@ describe('the questions spreadsheet', () => {
       'Some characters in this file cannot be read, because it was not saved as UTF-8. Save it as “CSV UTF-8” or as an Excel workbook (.xlsx) and import that.',
     ])
     // a mark in a column the import never reads does not matter
-    const beyond = [...line('Which?', ['Yes', 'No'], 'A'), 'a note�']
+    const beyond = [...line('Which?', ['Yes', 'No'], 'A'), '', '', 'a note�']
     expect(questionsFromGrid([beyond]).problems).toEqual([])
   })
 })
 
 describe('the template and the export', () => {
-  it('the template is a header and two questions the import takes', () => {
+  it('the template is a header and five questions the import takes', () => {
     const grid = parseCsv(questionTemplateCsv())
     expect(grid[0]).toEqual(HEADER)
     const { rows, problems } = questionsFromGrid(grid)
     expect(problems).toEqual([])
-    expect(rows).toHaveLength(2)
+    expect(rows).toHaveLength(5)
     expect(rows[0]).toMatchObject({ correct: 3, keep_order: false })
     expect(rows[1]).toMatchObject({ options: ['The duodenum', 'The jejunum', 'The ileum', 'All of the above'], correct: 3, keep_order: true })
+    // the two everybody answers carry no section and no passage, as before the sections
+    expect(Object.keys(rows[0]).sort()).toEqual(['body', 'correct', 'keep_order', 'options'])
+    // one of the professional block, and two of the research block read with one passage
+    expect(rows.map((r) => r.section ?? 'shared')).toEqual(['shared', 'shared', 'scope', 'score', 'score'])
+    expect(rows[2].passage).toBeUndefined()
+    expect(rows[3].passage).toBe(rows[4].passage)
+    expect(rows[3].passage).toMatch(/^A trial gave 200 adults/)
+  })
+
+  it('reads a row’s section and passage', () => {
+    const row = (section, passage = '') => [...line('Which?', ['Yes', 'No'], 'A'), section, passage]
+    const read = (section, passage) => questionsFromGrid([row(section, passage)])
+    expect(read('', '').rows[0]).toEqual({ body: 'Which?', options: ['Yes', 'No'], correct: 0, keep_order: false })
+    for (const word of ['SCOPE', 'scope', ' Scope ', 'P', 'professional', 'Clinical']) expect(read(word).rows[0].section).toBe('scope')
+    for (const word of ['SCORE', 'score', 'R', 'Research']) expect(read(word).rows[0].section).toBe('score')
+    for (const word of ['shared', 'Both', 'all']) expect(read(word).rows[0].section).toBeUndefined()
+    expect(read('SCOPH').problems).toEqual(['Row 1: Section is left blank, or is “SCOPE” or “SCORE”.'])
+    expect(read('', '  A text to read.  ').rows[0].passage).toBe('A text to read.')
+    expect(read('', 'x'.repeat(8001)).problems).toEqual(['Row 1: The passage is longer than 8000 characters.'])
+    // a row with only a section or a passage is not a blank row: it is a question with no text
+    expect(questionsFromGrid([['', '', '', '', '', '', '', '', '', 'SCOPE', '']]).problems).toEqual(['Row 1: A question needs its text.'])
+  })
+
+  it('an exported list with sections and passages comes back in as the same questions', () => {
+    const questions = [
+      { body: 'Shared', options: ['One', 'Two'], correct: 0, keep_option_order: false, section: 'shared' },
+      { body: 'Clinical', options: ['One', 'Two'], correct: 1, keep_option_order: false, section: 'scope' },
+      { body: 'Research one', options: ['One', 'Two'], correct: 0, keep_option_order: true, section: 'score', passage_body: 'An abstract,\nin two lines.' },
+      { body: 'Research two', options: ['One', 'Two'], correct: 1, keep_option_order: false, section: 'score', passage_body: 'An abstract,\nin two lines.' },
+    ]
+    const { rows, problems } = questionsFromGrid(parseCsv(toCsv(questionColumns, questions)))
+    expect(problems).toEqual([])
+    expect(rows).toEqual([
+      { body: 'Shared', options: ['One', 'Two'], correct: 0, keep_order: false },
+      { body: 'Clinical', options: ['One', 'Two'], correct: 1, keep_order: false, section: 'scope' },
+      { body: 'Research one', options: ['One', 'Two'], correct: 0, keep_order: true, section: 'score', passage: 'An abstract,\nin two lines.' },
+      { body: 'Research two', options: ['One', 'Two'], correct: 1, keep_order: false, section: 'score', passage: 'An abstract,\nin two lines.' },
+    ])
   })
 
   it('an exported list comes back in as the same questions', () => {
@@ -279,6 +322,12 @@ describe('one question, before it is sent', () => {
     )
     expect(questionProblem({ ...good, correct: null })).toBe('Choose which option is right.')
     expect(questionProblem({ ...good, correct: 2 })).toBe('Choose which option is right.')
+  })
+
+  it('takes a question that is a picture with no words', () => {
+    expect(questionFault({ ...good, body: '', imagePath: 'e1/abc.jpg' })).toBeNull()
+    expect(questionFault({ ...good, body: '', imagePath: null })).toEqual({ at: 'body', index: null, problem: 'A question needs its text.' })
+    expect(questionFault({ ...good, body: 'x'.repeat(2001), imagePath: 'e1/abc.jpg' })?.at).toBe('body')
   })
 
   it('says where in the form the refusal is, so the form can take the officer there', () => {
@@ -541,5 +590,67 @@ describe('reading a file', () => {
     expect(errorText(err, 'That file could not be imported.')).toBe(
       'That workbook could not be read. Save it again as an Excel workbook (.xlsx) and choose that.',
     )
+  })
+})
+
+describe('the sections', () => {
+  it('names each section, and reads anything unknown as shared', () => {
+    expect(['shared', 'scope', 'score', 'clinical', undefined, null].map(sectionId)).toEqual(['shared', 'scope', 'score', 'shared', 'shared', 'shared'])
+    expect(sectionName('scope')).toBe('Professional exchange (SCOPE)')
+    expect(sectionName('score')).toBe('Research exchange (SCORE)')
+    expect(sectionName('nothing')).toBe('Shared questions')
+    expect(['shared', 'scope', 'score'].map(sectionShort)).toEqual(['Shared', 'SCOPE', 'SCORE'])
+  })
+
+  it('counts each section and says whether students choose', () => {
+    const q = (section) => ({ section })
+    expect(sectionCounts([q('shared'), q('shared'), q('scope'), q('score'), q('score')])).toEqual({ shared: 2, scope: 1, score: 2, choice: true })
+    expect(sectionCounts([q('shared'), q('scope')])).toEqual({ shared: 1, scope: 1, score: 0, choice: false })
+    expect(sectionCounts([{}, {}])).toEqual({ shared: 2, scope: 0, score: 0, choice: false })
+    expect(sectionCounts(undefined)).toEqual({ shared: 0, scope: 0, score: 0, choice: false })
+  })
+})
+
+describe('the paper’s numbering', () => {
+  const q = (id, sort, more = {}) => ({ id, sort, created_at: '2026-11-01T10:00:00+00:00', section: 'shared', passage_id: null, ...more })
+  const labels = (questions) => numberQuestions(questions).map((x) => `${x.id}=${x.label}`)
+
+  it('numbers a plain exam 1, 2, 3 in the officers’ order', () => {
+    expect(labels([q('c', 3), q('a', 1), q('b', 2)])).toEqual(['a=1', 'b=2', 'c=3'])
+    expect(numberQuestions([q('c', 3), q('a', 1)]).map((x) => x.n)).toEqual([1, 2])
+    expect(numberQuestions(undefined)).toEqual([])
+  })
+
+  it('puts the shared questions first, then each block counting on with its letter', () => {
+    const questions = [
+      q('r1', 1, { section: 'score' }),
+      q('s1', 2),
+      q('p1', 3, { section: 'scope' }),
+      q('s2', 4),
+      q('p2', 5, { section: 'scope' }),
+      q('r2', 6, { section: 'score' }),
+    ]
+    expect(labels(questions)).toEqual(['s1=1', 's2=2', 'p1=3P', 'p2=4P', 'r1=3R', 'r2=4R'])
+    expect(numberQuestions(questions).map((x) => x.n)).toEqual([1, 2, 3, 4, 5, 6])
+  })
+
+  it('keeps the questions of one passage together, where the first of them is', () => {
+    const questions = [q('a', 1), q('b', 2, { passage_id: 'p' }), q('c', 3), q('d', 4, { passage_id: 'p' }), q('e', 5)]
+    expect(labels(questions)).toEqual(['a=1', 'b=2', 'd=3', 'c=4', 'e=5'])
+  })
+
+  it('breaks a tie as the database does: by when a question was made, then by its id', () => {
+    const questions = [
+      q('b', 0, { created_at: '2026-11-01T10:00:00+00:00' }),
+      q('a', 0, { created_at: '2026-11-01T10:00:00+00:00' }),
+      q('z', 0, { created_at: '2026-10-01T10:00:00+00:00' }),
+    ]
+    expect(labels(questions)).toEqual(['z=1', 'a=2', 'b=3'])
+  })
+
+  it('leaves the list it was given as it was', () => {
+    const questions = [q('b', 2), q('a', 1)]
+    numberQuestions(questions)
+    expect(questions.map((x) => x.id)).toEqual(['b', 'a'])
   })
 })
