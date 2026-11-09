@@ -50,6 +50,13 @@
 //   7. Prints how long the calls took and what happened.
 //   8. Deletes the exam and the accounts, and checks the exam's rows are gone.
 //
+// The mock exam here has no optional sections, no passages and no pictures:
+// it proves that such an exam still behaves as it did before those existed
+// (one grade, one ranking, nothing about a choice in what a taker is sent that
+// could matter). An exam in sections, with passages and pictures, is sat by
+// the same number of takers in scripts/exam-stress.mjs, which marks both
+// programmes itself and compares.
+//
 // It ends with 0 when everything matched, with 1 when anything did not (each
 // line says which taker and what was expected), and with 2 when it refused to
 // run. Timings are printed and are never a reason to fail.
@@ -815,25 +822,37 @@ async function makeAccounts() {
 // 4. One taker
 // ---------------------------------------------------------------------------
 
+// `sections`, `passages` and the two `sits_` fields came with the optional
+// sections (20261109120001): how many questions each section has, the texts
+// several questions are read with, and which blocks a paper sits. A question
+// carries its section, its passage's id and its picture's place.
 const PAPER_FIELDS = {
-  top: ['state', 'exam', 'attempt', 'now', 'questions', 'answers'],
-  exam: ['title', 'minutes'],
-  attempt: ['id', 'started_at', 'deadline_at'],
-  question: ['id', 'body', 'options'],
+  top: ['state', 'exam', 'attempt', 'now', 'questions', 'passages', 'answers'],
+  exam: ['title', 'minutes', 'sections'],
+  attempt: ['id', 'started_at', 'deadline_at', 'sits_scope', 'sits_score'],
+  question: ['id', 'body', 'options', 'section', 'passage', 'image'],
   answer: ['q', 'c', 'f'],
 }
-const SAVE_FIELDS = ['state', 'submitted', 'saved', 'deadline_at', 'now']
+const SAVE_FIELDS = ['state', 'submitted', 'saved', 'deadline_at', 'now', 'sits_scope', 'sits_score']
+// What an exam with no optional section says of its sections.
+const NO_SECTIONS = (count) => JSON.stringify({ shared: count, scope: 0, score: 0, choice: false })
+const sectionsOf = (value) =>
+  JSON.stringify({ shared: value?.shared, scope: value?.scope, score: value?.score, choice: value?.choice })
 const extra = (object, allowed) => Object.keys(object ?? {}).filter((key) => !allowed.includes(key))
 
 // Nothing a taker is sent may name the key, a grade or the officers' order.
+// SCORE is also the name of an exchange programme, and two fields carry it
+// with no grade in them: `sits_score` (whether the paper sits the research
+// exchange's block) and the count of that block's questions inside `sections`.
 function noHints(t, name, value) {
   const found = new Set()
-  const walk = (node) => {
-    if (Array.isArray(node)) node.forEach(walk)
+  const walk = (node, inside = '') => {
+    if (Array.isArray(node)) node.forEach((inner) => walk(inner, inside))
     else if (node && typeof node === 'object') {
       for (const [key, inner] of Object.entries(node)) {
-        if (/correct|score|grade|rank|right|mark|key|order/i.test(key)) found.add(key)
-        walk(inner)
+        const aProgramme = key === 'sits_score' || (inside === 'sections' && key === 'score')
+        if (!aProgramme && /correct|score|grade|rank|right|mark|key|order/i.test(key)) found.add(key)
+        walk(inner, key)
       }
     }
   }
@@ -862,6 +881,13 @@ function readPaper(t, paper) {
   if (paper.questions.length !== questions.length) {
     stop(`its paper should have ${questions.length} questions, but has ${paper.questions.length}`)
   }
+  // This exam has no optional section: every question is shared, nothing is
+  // read with a passage or has a picture, and the paper sits everything.
+  same(t, 'the sections its paper names', sectionsOf(paper.exam?.sections), NO_SECTIONS(questions.length))
+  same(t, 'whether its paper sits both blocks', `${paper.attempt?.sits_scope} ${paper.attempt?.sits_score}`, 'true true')
+  same(t, 'the passages on its paper', JSON.stringify(paper.passages), '[]')
+  const odd = paper.questions.find((q) => q.section !== 'shared' || q.passage !== null || q.image !== null)
+  if (odd) miss(t, `every question of this exam is shared, with no passage and no picture, but its paper has ${brief(odd)}`)
 
   const seen = new Set()
   return paper.questions.map((shown, at) => {
@@ -986,6 +1012,7 @@ async function play(t) {
   same(t, 'the phase at the door', door.exam.phase, 'open')
   same(t, 'the minutes at the door', door.exam.minutes, MINUTES)
   same(t, 'the number of questions at the door', door.exam.questions, questions.length)
+  same(t, 'the sections at the door', sectionsOf(door.exam.sections), NO_SECTIONS(questions.length))
   same(t, 'its registration before it gives an ID', door.registration, 'none')
   same(t, 'its attempt before it starts', door.attempt, null)
   same(t, 'its email at the door', door.me?.email, t.email)
@@ -1292,7 +1319,7 @@ async function closeToNewStarts() {
 // 5. What must be refused
 // ---------------------------------------------------------------------------
 
-const EXAM_TABLES = ['exams', 'exam_key', 'exam_questions', 'exam_registrations', 'exam_attempts', 'exam_answers']
+const EXAM_TABLES = ['exams', 'exam_key', 'exam_questions', 'exam_passages', 'exam_registrations', 'exam_attempts', 'exam_answers']
 
 const examRows = async () => ({
   questions: await howMany('exam_questions', `select=id&exam_id=eq.${exam.id}`),
@@ -1464,6 +1491,13 @@ async function compareMarking() {
       continue
     }
     same(t, 'its score', row.score, want.score)
+    // an exam with no optional section has no programme totals and no programme ranks
+    same(
+      t,
+      'its programme totals and ranks, in an exam with no sections',
+      JSON.stringify([row.total_scope, row.total_score, row.rank_scope, row.rank_score, row.mark_shared]),
+      JSON.stringify([null, null, null, null, want.score]),
+    )
     same(t, 'its number of answers', row.answered, want.answered)
     same(t, 'its state', row.state, want.state)
     if (whole) same(t, 'its rank', row.rank, 1 + scores.filter((score) => score > want.score).length)
@@ -1605,7 +1639,8 @@ async function compareMarking() {
 // with the key beside each, a question moved and moved back, and a second
 // exam made from a title alone, filled, emptied and deleted again.
 const EXAM_SELECT = '*,term:terms(label,is_current),exam_questions(count),exam_registrations(count),exam_attempts(count)'
-const QUESTION_SELECT = 'id,exam_id,sort,body,options,keep_option_order,updated_at,exam_key(correct_option)'
+const QUESTION_SELECT =
+  'id,exam_id,sort,body,options,keep_option_order,section,passage_id,image_path,created_at,updated_at,exam_key(correct_option)'
 const QUESTION_ORDER = 'sort.asc,created_at.asc,id.asc'
 // The API gives a count asked for in this way as [{ count: n }] ...
 const counted = (value) => (Array.isArray(value) ? value[0]?.count : undefined)
