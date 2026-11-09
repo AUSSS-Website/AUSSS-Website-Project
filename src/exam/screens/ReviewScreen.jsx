@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { ConfirmButton } from '../../portal/portalUi.jsx'
 import { DOUBLE_TAP_MS, handInWait, handInWords, leaveOutWords, sectionName } from '../examFlow.js'
 import { Problem, focusCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
@@ -51,10 +51,33 @@ function Numbers({ title, numbers, none, go }) {
 // kept, and count again if the section is added back. The last section a
 // taker answers cannot be left out.
 function Sections({ sitting }) {
-  const { sections, sits, blockAnswered, locked, setSections } = sitting
+  const { sections, sits, blockAnswered, locked, setSections, total } = sitting
+  // The button that was tapped is gone once the section changes ("Leave out"
+  // becomes "Add this section", and the other row loses its own "Leave
+  // out"). The keyboard then goes to the row that changed, and a screen
+  // reader is told what the paper holds now.
+  const changed = useRef(null)
+  const rows = useRef({})
+  const before = useRef(sits)
+  useEffect(() => {
+    if (before.current === sits) return
+    before.current = sits
+    const row = changed.current && rows.current[changed.current]
+    changed.current = null
+    if (row) row.focus({ preventScroll: true })
+  }, [sits])
+  const change = (block, on) => {
+    changed.current = block
+    setSections({ ...sits, [block]: on })
+  }
+  const both = sits.scope && sits.score
+  const said = `You are answering ${both ? 'both sections' : sectionName(sits.scope ? 'scope' : 'score')}: ${total} ${total === 1 ? 'question' : 'questions'} in all.`
   return (
     <section className="mt-8">
       <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Your sections</h2>
+      <p role="status" className="sr-only">
+        {said}
+      </p>
       <p className="mt-3 text-sm text-soft/80">
         Everyone answers the shared questions. You can add or leave out a section until you hand in.
       </p>
@@ -65,7 +88,14 @@ function Sections({ sitting }) {
           const n = Number(sections[block]) || 0
           const answeredHere = blockAnswered[block]
           return (
-            <li key={block} className={`rounded-xl border px-4 py-3 ${on ? 'border-accent/50 bg-accent/5' : 'border-line/15 bg-card'}`}>
+            <li
+              key={block}
+              ref={(el) => {
+                rows.current[block] = el
+              }}
+              tabIndex={-1}
+              className={`rounded-xl border px-4 py-3 ${focusCls} ${on ? 'border-accent/50 bg-accent/5' : 'border-line/15 bg-card'}`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
                   <p className="text-base font-medium text-ink">{sectionName(block)}</p>
@@ -77,7 +107,7 @@ function Sections({ sitting }) {
                   <button
                     type="button"
                     disabled={locked}
-                    onClick={() => setSections({ ...sits, [block]: true })}
+                    onClick={() => change(block, true)}
                     className={tapOutlineCls}
                   >
                     Add this section
@@ -87,7 +117,7 @@ function Sections({ sitting }) {
                     label="Leave out"
                     confirmLabel="Leave it out"
                     disabled={locked}
-                    onConfirm={() => setSections({ ...sits, [block]: false })}
+                    onConfirm={() => change(block, false)}
                     className={tapOutlineCls}
                   />
                 )}

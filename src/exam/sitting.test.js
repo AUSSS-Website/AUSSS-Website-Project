@@ -827,4 +827,11 @@ describe('when the database does not answer', () => {
     // nothing is waiting, so nothing is at risk, connection or not
     expect(saveStatus({ waiting: 0, failures: 2, online: false })).toEqual({ kind: 'saved', count: 0 })
   })
+
+  it('counts a change of sections that waits as something not saved yet', () => {
+    expect(saveStatus({ waiting: 0, choice: true })).toEqual({ kind: 'saving', count: 0, choice: true })
+    expect(saveStatus({ waiting: 0, choice: true, online: false })).toEqual({ kind: 'offline', count: 0, choice: true })
+    expect(saveStatus({ waiting: 2, choice: true, failures: 1 })).toEqual({ kind: 'offline', count: 2, choice: true })
+    expect(saveStatus({ waiting: 0, choice: false })).toEqual({ kind: 'saved', count: 0 })
+  })
 })

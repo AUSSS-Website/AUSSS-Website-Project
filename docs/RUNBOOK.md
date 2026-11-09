@@ -3351,13 +3351,18 @@ exam does the same since migration `20261109120001_exam_sections.sql`.
 - **The spreadsheet.** Two more columns, J **Section** (blank, SCOPE or SCORE) and K **Passage**
   (the text a question is read with; rows that follow one another with the same text share one
   passage). Pictures do not come in a spreadsheet: add them on the Questions tab afterwards. An
-  old sheet with a note in column J is now refused for that row, with the reason.
+  old sheet with a note in column J is now refused for that row, with the reason. Two things do
+  not survive an export and a fresh import: a passage that is only a picture (its Passage cell
+  is empty, so its questions come back as single ones), and two passages one after the other
+  with the very same text (they come back as one).
 - **Marking.** Still a count at the moment the officers read. Each paper has a mark for the shared
   questions and for each block it sits, and a total for each programme. **Results** and
   **Overview** show one programme at a time (the switch above the list, kept in the address as
   `?programme=score`): only the papers that sit that programme's block are ranked in it, by its
-  total. The exports follow the switch. A question of a block is counted over the papers that sit
-  that block. A paper's own page shows each mark and marks the questions of a section it left
+  total. The exports follow the switch, and "answered" in a programme's list counts that
+  programme's own questions (`answered_scope`, `answered_score`). A question of a block is
+  counted over the papers that sit that block; the Overview's question figures are of every
+  paper, whichever programme the page shows. A paper's own page shows each mark and marks the questions of a section it left
   out as not marked.
 - **Fixed once started.** A question's section, passage and picture, and a passage's text, section
   and picture, are fixed with the wording once the first student has started. The pictures of a
@@ -3466,8 +3471,11 @@ node --env-file=.env.local scripts/exam-stress.mjs --live wjijkqrdaakiwbtdssio -
 - It needs `--live`, the project's ref typed out, the same ref in `.env.local`, and `--yes`. It
   refuses to start while a real exam is ready and not yet closed.
 - Everything it makes can be found by its name: the two exams' titles begin "Stress test, delete
-  me", the accounts are `stress-taker-NNNN.<run>@stress.ausss.invalid`. It deletes them when it
-  ends, when it is stopped with Ctrl-C and when it fails. `--clean` in place of `--yes` removes
+  me", the accounts are `stress-taker-NNNN.<run>@stress.ausss.invalid` (the domain must end in
+  `.invalid` or `.test`, which no real mailbox can). It deletes them when it ends, when it is
+  stopped with Ctrl-C (once: every wait ends at once and the clean-up begins; do not close the
+  window) and when it fails, and it then checks that no exam, paper, account or picture of the
+  run is left. `--clean` in place of `--yes` removes
   whatever an earlier run left and says what it found.
 - Every account signs in for real, with a password, through the live sign-in service, and all
   of them renew their session within one minute. The sign-in service takes 30 sign-ins from one

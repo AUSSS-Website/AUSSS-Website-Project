@@ -208,8 +208,12 @@ async function importQuestions({ examId, rows }) {
   return unwrap(await supabase.rpc('import_exam_questions', { p_exam: examId, p_rows: rows }))
 }
 
-async function deleteQuestion(id) {
+// Takes { id, imagePath }. The picture goes after the row, here and not in a
+// callback of the page: a callback given with the call runs only for the last
+// of several removals, and not at all once the page has gone.
+async function deleteQuestion({ id, imagePath = null }) {
   unwrap(await supabase.from('exam_questions').delete().eq('id', id))
+  await removeExamPicture(imagePath)
   return id
 }
 
@@ -311,9 +315,11 @@ async function savePassage({ examId, id = null, body, section, imagePath = null 
   )
 }
 
-// Its questions stay, as single questions.
-async function deletePassage(id) {
+// Takes { id, imagePath }. Its questions stay, as single questions; its
+// picture goes after the row.
+async function deletePassage({ id, imagePath = null }) {
   unwrap(await supabase.from('exam_passages').delete().eq('id', id))
+  await removeExamPicture(imagePath)
   return id
 }
 

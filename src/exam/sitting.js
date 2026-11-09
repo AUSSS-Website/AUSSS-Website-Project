@@ -568,8 +568,13 @@ export function failureKind(code, status) {
 //   saving   answers are on their way (`count` still waiting)
 //   offline  the last try failed, or the phone says it has no connection;
 //            `count` answers wait on the phone
-export function saveStatus({ waiting = 0, sending = false, failures = 0, online = true }) {
-  if (waiting > 0 && (failures > 0 || !online)) return { kind: 'offline', count: waiting }
-  if (waiting > 0 || sending) return { kind: 'saving', count: waiting }
+// `choice` is true while a change of sections waits to be confirmed: it is
+// something not saved yet, as an answer is. `count` does not include it; the
+// state then carries `choice: true` beside it.
+export function saveStatus({ waiting = 0, sending = false, failures = 0, online = true, choice = false }) {
+  const something = waiting > 0 || choice
+  const more = choice ? { choice: true } : {}
+  if (something && (failures > 0 || !online)) return { kind: 'offline', count: waiting, ...more }
+  if (something || sending) return { kind: 'saving', count: waiting, ...more }
   return { kind: 'saved', count: 0 }
 }

@@ -1394,6 +1394,44 @@ describe('the choice of sections', () => {
     tab.sitting.stop()
   })
 
+  it('keeps a section left out through a refresh with no connection', async () => {
+    const { clock, db, store, tab } = await openChoice({ sits: { scope: true, score: true } })
+    tab.sitting.setSections({ scope: true, score: false })
+    await vi.advanceTimersByTimeAsync(400)
+    db.answer(T0 + SECOND) // confirmed: nothing of the choice waits any more
+    await settle()
+    expect(store.kept.get('a1')).toMatchObject({ sits: { scope: true, score: false }, sitsWaiting: false })
+    tab.sitting.stop()
+
+    // the hall's Wi-Fi is gone and the page is opened again: the phone's copy of the paper
+    // was fetched when both sections were sat, and must not bring the research section back
+    const again = makeTab({ db, store, clock })
+    again.sitting.start()
+    await settle()
+    db.drop()
+    await settle()
+    expect(again.view.status).toBe('sitting')
+    expect(again.view.fromPhone).toBe(true)
+    expect(again.view.sits).toEqual({ scope: true, score: false })
+    expect(ids(again.view)).toEqual(['s1', 's2', 'p1'])
+    again.sitting.stop()
+  })
+
+  it('says a change of sections is not saved yet until the database has answered', async () => {
+    const { db, tab } = await openChoice()
+    tab.sitting.setSections({ scope: true, score: true })
+    expect(tab.view.save).toEqual({ kind: 'saving', count: 0, choice: true })
+    await vi.advanceTimersByTimeAsync(400)
+    db.drop()
+    await settle()
+    expect(tab.view.save).toEqual({ kind: 'offline', count: 0, choice: true })
+    await vi.advanceTimersByTimeAsync(2000)
+    db.answer(T0 + 3 * SECOND)
+    await settle()
+    expect(tab.view.save).toEqual({ kind: 'saved', count: 0 })
+    tab.sitting.stop()
+  })
+
   it('sends nothing as the page leaves when neither an answer nor a choice waits', async () => {
     const { db, tab } = await openChoice()
     tab.sitting.pageLeaving()

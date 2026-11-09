@@ -130,7 +130,24 @@ const BARS = { hallP95: 1000, hallP99: 3000, spikeP99: 10_000 }
 class Refusal extends Error {}
 // Thrown to leave the run early on purpose (ONLY_SIGN_IN): the clean-up and the result still follow.
 const ONLY_THAT = Symbol('the run was asked for its first part only')
-const sleep = (ms) => new Promise((done) => setTimeout(done, Math.max(0, ms)))
+// A wait that ends at once, with an error, when the run is stopped (Ctrl-C):
+// the hall's long waits, and the five minutes between two groups of sign-ins,
+// would otherwise hold the clean-up back for as long as they last. The
+// clean-up's own waits are ordinary ones.
+const STOPPED = 'the run was stopped'
+const waiting = new Set()
+const sleep = (ms) =>
+  new Promise((done, fail) => {
+    if (stopping && !clearing) return fail(new Error(STOPPED))
+    const end = (stopped) => {
+      clearTimeout(timer)
+      waiting.delete(end)
+      if (stopped) fail(new Error(STOPPED))
+      else done()
+    }
+    const timer = setTimeout(end, Math.max(0, ms))
+    waiting.add(end)
+  })
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 const seconds = (ms) => `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)} s`
 const brief = (value) => {
@@ -269,7 +286,12 @@ export function readSettings(argv, env) {
     lead: wholeNumber(env, 'LEAD_SECONDS', live ? 150 : 75, 25, 3600),
     signInsPer5Min: wholeNumber(env, 'SIGN_INS_PER_5_MIN', 28, 0, 100_000),
     seed: wholeNumber(env, 'SEED', Math.floor(Math.random() * 2 ** 31), 0, 2 ** 32 - 1),
-    emailDomain: value('EMAIL_DOMAIN') || (live ? 'stress.ausss.invalid' : 'exam-stress.test'),
+    // .invalid and .test can never be a real mailbox, so --clean can never match a real account
+    emailDomain: (() => {
+      const domain = value('EMAIL_DOMAIN') || (live ? 'stress.ausss.invalid' : 'exam-stress.test')
+      if (!/^[a-z0-9.-]+\.(invalid|test)$/.test(domain)) throw new Refusal(`EMAIL_DOMAIN must end in .invalid or .test, not "${domain}".`)
+      return domain
+    })(),
     resultFile: value('RESULT_FILE'),
   }
 }
@@ -283,12 +305,13 @@ const run = randomUUID().slice(0, 8)
 const lines = []
 const failures = []
 const made = { termId: null, positionId: null, examIds: [], userIds: [], pictures: [] }
-let stopping = false
+let stopping = false // Ctrl-C: nothing new is begun, and every wait ends
+let clearing = false // the clean-up has begun
 
 // How long each kind of call took, by phase ('hall', 'spike', 'other').
 let phase = 'other'
 const timings = new Map()
-const counts = { calls: 0, retried: 0, refusedForRate: 0, serverErrors: 0, timeouts: 0, noAnswer: 0 }
+const counts = { calls: 0, retried: 0, refusedForRate: 0, serverErrors: 0, timeouts: 0, noAnswer: 0, doubtful: 0 }
 const keep = (label, ms) => {
   const name = `${phase}|${label}`
   if (!timings.has(name)) timings.set(name, [])
@@ -322,8 +345,9 @@ function failureLines() {
 // One request. Never throws for an answer, whatever its status; throws
 // { kind: 'offline' } when none came (the network, a timeout, the gateway's
 // 502, 503 or 504). `timed` keeps how long it took under that name.
-async function request(method, url, { token, apikey, body, raw, type, prefer, timeout = CALL_TIMEOUT_MS, timed } = {}) {
+async function request(method, url, { token, apikey, body, raw, type, prefer, cache, timeout = CALL_TIMEOUT_MS, timed } = {}) {
   const headers = {}
+  if (cache) headers['cache-control'] = cache
   if (prefer) headers.Prefer = prefer
   if (apikey) headers.apikey = apikey
   if (token) headers.Authorization = `Bearer ${token}`
@@ -479,6 +503,8 @@ async function uploadPicture(path, bytes) {
     apikey: cfg.serviceKey,
     raw: bytes,
     type: 'image/jpeg',
+    // as the portal uploads them: a phone keeps a picture once it has it
+    cache: 'max-age=31536000',
     timeout: 60_000,
   })
   if (!res.ok) throw new Error(`uploading a picture: answered ${res.status} ${brief(res.data)}`)
@@ -649,6 +675,7 @@ async function makeAccounts() {
   }
   const password = cfg.live ? randomBytes(24).toString('base64url') : ''
   await pool(takers, 20, async (t) => {
+    if (stopping) throw new Error(STOPPED)
     t.id = await makeAccount(t.email, t.name, password)
     if (!cfg.live) t.token = signedHere(t.id, t.email)
   })
@@ -685,6 +712,7 @@ async function makeAccounts() {
     const groups = chunks(takers, per)
     say(`Signing ${takers.length} accounts in, ${per} every five minutes: about ${Math.ceil((groups.length - 1) * 5)} minutes. (SIGN_INS_PER_5_MIN=0 once the limit is raised.)`)
     for (let g = 0; g < groups.length; g += 1) {
+      if (stopping) throw new Error(STOPPED)
       const groupBegan = Date.now()
       await pool(groups[g], 10, (t) => signIn(t, password))
       // a session lasts an hour: the early ones are renewed before they end
@@ -728,6 +756,7 @@ function newPaper(exam) {
     attemptId: null,
     questions: [], // in this taker's order, each with shownAt: officers' index -> position on this paper
     deadline: 0, // on this machine's clock
+    deadlineAt: 0, // on the database's, as the paper named it
     held: new Map(),
     waiting: new Set(),
     confirmed: new Map(),
@@ -737,6 +766,7 @@ function newPaper(exam) {
     // answers carried by a save that got no answer: whether it reached the
     // database nobody here knows, until a later save of them is answered
     doubt: new Set(),
+    sentInDoubt: new Map(), // question id -> every value such a save carried for it
     busy: null,
     timer: null,
     beat: null,
@@ -785,7 +815,8 @@ function readPaper(t, p, paper) {
   p.sits = { scope: paper.attempt?.sits_scope !== false, score: paper.attempt?.sits_score !== false }
   p.dbSits = { ...p.sits }
   t.ahead = Date.parse(paper.now) - Date.now()
-  p.deadline = Date.parse(paper.attempt?.deadline_at) - t.ahead
+  p.deadlineAt = Date.parse(paper.attempt?.deadline_at) // on the database's clock
+  p.deadline = p.deadlineAt - t.ahead
   return paper
 }
 
@@ -806,8 +837,16 @@ async function saveOnce(t, p, { handIn = false, hurry = false, label } = {}) {
   try {
     reply = await rpc(t, 'exam_save', args, { timeout: hurry ? HURRY_TIMEOUT_MS : CALL_TIMEOUT_MS, timed: name })
   } catch (err) {
-    // no answer: it may have been saved all the same
-    if (err.kind === 'offline') for (const id of ids) p.doubt.add(id)
+    // no answer: it may have been saved all the same. What was sent is kept,
+    // to hold what the database has against in the end.
+    if (err.kind === 'offline') {
+      const places = new Map(p.questions.map((q) => [q.id, q]))
+      for (const item of batch) {
+        p.doubt.add(item.q)
+        if (!p.sentInDoubt.has(item.q)) p.sentInDoubt.set(item.q, new Set())
+        p.sentInDoubt.get(item.q).add(item.c === null ? null : places.get(item.q).shownAt.indexOf(item.c))
+      }
+    }
     throw err
   }
   if (reply?.state !== 'sitting' && reply?.state !== 'over') throw Object.assign(new Error(`exam_save answered ${brief(reply)}`), { kind: 'offline' })
@@ -838,8 +877,24 @@ async function saveOnce(t, p, { handIn = false, hurry = false, label } = {}) {
     miss(t.tag, 'a save should say which sections the paper sits, but did not')
   }
   if (reply.now) t.ahead = Date.parse(reply.now) - Date.now()
-  if (reply.deadline_at) p.deadline = Date.parse(reply.deadline_at) - t.ahead
-  if (reply.state === 'over') p.over = reply.submitted ? 'handed_in' : 'time'
+  if (reply.deadline_at) {
+    // Nobody moves this exam's end: a save that names another deadline than the paper did is a fault.
+    const named = Date.parse(reply.deadline_at)
+    if (p.deadlineAt && named !== p.deadlineAt) miss(t.tag, `a save should name the paper's own deadline, but named one ${Math.round((named - p.deadlineAt) / 1000)} s away from it`)
+    p.deadline = named - t.ahead
+  }
+  if (reply.state === 'over') {
+    // A paper that was not handed in is over when its time is up, and not a moment before:
+    // one ended early would lose the answers still to come, and nothing else here would notice.
+    // Judged on the database's own clock, which the answer carries.
+    const early = Date.parse(reply.deadline_at) - Date.parse(reply.now)
+    if (!reply.submitted && !p.over && early > 0) {
+      miss(t.tag, `its paper should run until its deadline, but the database ended it ${Math.ceil(early / 1000)} s early`)
+    }
+    // some of a late batch saved and some not: which, nobody here knows
+    if (!landed && Number(reply.saved) > 0) for (const item of batch) p.doubt.add(item.q)
+    p.over = reply.submitted ? 'handed_in' : 'time'
+  }
   return reply
 }
 
@@ -1106,6 +1161,7 @@ async function sitInBrowsers(opensAt) {
         }
   const shots = path.join(tmpdir(), `exam-stress-${run}`)
   const file = path.join(tmpdir(), `exam-stress-phones-${run}.json`)
+  // The file holds sessions: it is this account's alone to read, and goes whatever happens next.
   writeFileSync(
     file,
     JSON.stringify({
@@ -1118,14 +1174,22 @@ async function sitInBrowsers(opensAt) {
       shots,
       phones: phones.map((t) => ({ tag: t.tag, session: sessionOf(t), sits: t.starts, share: t.share })),
     }),
+    { mode: 0o600 },
   )
   let said = ''
-  const child = spawn(process.execPath, [fileURLToPath(new URL('./exam-stress-phones.mjs', import.meta.url)), file], { stdio: ['ignore', 'pipe', 'inherit'] })
-  child.stdout.on('data', (part) => {
-    said += part
-  })
-  const code = await new Promise((done) => child.on('exit', done))
-  rmSync(file, { force: true }) // it held sessions
+  let code = null
+  try {
+    const child = spawn(process.execPath, [fileURLToPath(new URL('./exam-stress-phones.mjs', import.meta.url)), file], { stdio: ['ignore', 'pipe', 'inherit'] })
+    child.stdout.on('data', (part) => {
+      said += part
+    })
+    code = await new Promise((done, fail) => {
+      child.on('exit', done)
+      child.on('error', fail)
+    })
+  } finally {
+    rmSync(file, { force: true })
+  }
   const line = said.split('\n').find((l) => l.startsWith('PHONES '))
   if (!line) {
     miss(null, `the browsers should say what they met, but the script ended with ${code} and said nothing`)
@@ -1195,7 +1259,8 @@ async function theHall() {
   await loadTheSite()
   phase = 'hall'
   const began = performance.now()
-  const watching = watchAsOfficer(opensAt + cfg.minutes * 60_000)
+  // a run that is stopped ends its waits with an error: nobody is left without someone to hear it
+  const watching = watchAsOfficer(opensAt + cfg.minutes * 60_000).catch(() => {})
   // Every half minute, where the hall stands: a long run should not be silent.
   const telling = setInterval(() => {
     const where = new Map()
@@ -1375,10 +1440,16 @@ async function compare(exam) {
     }
     // An answer whose save got no answer may be in the database or not: for
     // those alone, what the database holds is taken as it is, and counted.
+    // It must still be one of the values such a save carried, or the last one
+    // the database confirmed: anything else is a wrong answer in the database.
     const expected = new Map(p.confirmed)
     for (const id of p.doubt) {
       totals.doubtful += 1
-      if (stored.has(id)) expected.set(id, stored.get(id))
+      counts.doubtful += 1
+      if (!stored.has(id)) continue
+      const sent = p.sentInDoubt.get(id)
+      const may = stored.get(id) === (p.confirmed.get(id) ?? null) || !sent || sent.has(stored.get(id))
+      if (may) expected.set(id, stored.get(id))
     }
     if (hasBlocks && !sameSits(sits, p.dbSits)) miss(t.tag, `its paper should sit ${brief(p.dbSits)}, the last choice the database answered, but the database holds ${brief(sits)}`)
     if (Boolean(attempt.submitted_at) !== (p.over === 'handed_in')) miss(t.tag, `its paper should be ${p.over === 'handed_in' ? 'handed in' : 'not handed in'}, but the database says otherwise`)
@@ -1449,13 +1520,24 @@ async function compare(exam) {
 // Clearing up
 // ---------------------------------------------------------------------------
 
+// Removes files from the pictures' bucket. A refusal is said: a file left in a
+// public bucket is still served to whoever has its address.
 async function removePictures(paths) {
   for (const part of chunks(paths, 50)) {
-    await request('DELETE', `${cfg.api}/storage/v1/object/${PICTURES}`, { token: cfg.serviceKey, apikey: cfg.serviceKey, body: { prefixes: part }, timeout: 60_000 }).catch(() => {})
+    const res = await request('DELETE', `${cfg.api}/storage/v1/object/${PICTURES}`, { token: cfg.serviceKey, apikey: cfg.serviceKey, body: { prefixes: part }, timeout: 60_000 })
+    if (!res.ok) throw new Error(`removing ${plural(part.length, 'picture')}: answered ${res.status} ${brief(res.data)}`)
   }
 }
 
+// The files in an exam's folder of the bucket.
+async function picturesOf(examId) {
+  const res = await request('POST', `${cfg.api}/storage/v1/object/list/${PICTURES}`, { token: cfg.serviceKey, apikey: cfg.serviceKey, body: { prefix: examId, limit: 1000 }, timeout: 60_000 })
+  if (!res.ok) throw new Error(`listing the pictures of an exam: answered ${res.status} ${brief(res.data)}`)
+  return (Array.isArray(res.data) ? res.data : []).map((o) => `${examId}/${o.name}`)
+}
+
 async function cleanUp() {
+  clearing = true
   const began = performance.now()
   const problems = []
   const quietly = async (what, work) => {
@@ -1482,7 +1564,11 @@ async function cleanUp() {
     const exams = await service('looking for exams', 'GET', `/rest/v1/exams?select=id&address_word=like.stress-*-${run}`)
     const attempts = made.examIds.length ? await service('looking for papers', 'GET', `/rest/v1/exam_attempts?select=id&exam_id=in.(${made.examIds.join(',')})&limit=1`) : []
     const profiles = await service('looking for accounts', 'GET', `/rest/v1/profiles?select=id&email=like.*.${run}@${cfg.emailDomain}&limit=5`)
-    if (exams.length || attempts.length || profiles.length) left = `${exams.length} exams, ${attempts.length ? 'papers' : 'no papers'}, ${profiles.length ? 'accounts' : 'no accounts'}`
+    let pictures = 0
+    for (const id of new Set([hall.id, ...made.examIds])) pictures += (await picturesOf(id)).length
+    if (exams.length || attempts.length || profiles.length || pictures) {
+      left = `${exams.length} exams, ${attempts.length ? 'papers' : 'no papers'}, ${profiles.length ? 'accounts' : 'no accounts'}, ${plural(pictures, 'picture')}`
+    }
   })
   if (left) problems.push(`left behind: ${left}`)
   if (problems.length) {
@@ -1496,21 +1582,26 @@ async function cleanUp() {
 // --clean: whatever any run left behind, found by its names.
 async function cleanEverything() {
   const exams = await service('looking for stress exams', 'GET', `/rest/v1/exams?select=id,title&title=like.${encodeURIComponent(TAG)}*`)
+  let pictures = 0
   for (const exam of exams) {
-    const listed = await request('POST', `${cfg.api}/storage/v1/object/list/${PICTURES}`, { token: cfg.serviceKey, apikey: cfg.serviceKey, body: { prefix: exam.id, limit: 1000 } }).catch(() => ({ data: [] }))
+    const listed = await picturesOf(exam.id)
     await service(`deleting "${exam.title}"`, 'DELETE', `/rest/v1/exams?id=eq.${exam.id}`)
-    await removePictures((Array.isArray(listed.data) ? listed.data : []).map((o) => `${exam.id}/${o.name}`))
+    await removePictures(listed)
+    pictures += listed.length
   }
-  const positions = await service('looking for stress positions', 'GET', '/rest/v1/positions?select=id&key=like.scope.exam-stress-*')
-  for (const position of positions) await service('deleting a stress position', 'DELETE', `/rest/v1/positions?id=eq.${position.id}`)
+  // The accounts before the positions: an officer's account of a run holds one.
   let accounts = 0
   for (;;) {
     const profiles = await service('looking for stress accounts', 'GET', `/rest/v1/profiles?select=id,email&email=like.stress-*@${cfg.emailDomain}&limit=500`)
-    if (profiles.length === 0) break
-    await pool(profiles, 20, (p) => service('deleting an account', 'DELETE', `/auth/v1/admin/users/${p.id}`))
-    accounts += profiles.length
+    // only the addresses a run makes, whatever else the pattern might let through
+    const mine = profiles.filter((p) => /^stress-(taker-\d+|officer)\.[0-9a-f]{8}@/.test(String(p.email)))
+    if (mine.length === 0) break
+    await pool(mine, 20, (p) => service('deleting an account', 'DELETE', `/auth/v1/admin/users/${p.id}`))
+    accounts += mine.length
   }
-  say(`Clean: deleted ${plural(exams.length, 'exam')}, ${plural(positions.length, 'position')} and ${plural(accounts, 'account')} that stress runs had left.`)
+  const positions = await service('looking for stress positions', 'GET', '/rest/v1/positions?select=id&key=like.scope.exam-stress-*')
+  for (const position of positions) await service('deleting a stress position', 'DELETE', `/rest/v1/positions?id=eq.${position.id}`)
+  say(`Clean: deleted ${plural(exams.length, 'exam')}, ${plural(pictures, 'picture')}, ${plural(accounts, 'account')} and ${plural(positions.length, 'position')} that stress runs had left.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -1558,7 +1649,9 @@ function sayTimings() {
     if (!met) missed += 1
     say(`  ${met ? 'met   ' : 'MISSED'}  ${what}: ${Math.round(got)} ms (the bar is ${bar} ms)`)
   }
-  for (const [what, n] of [['Requests refused for rate', counts.refusedForRate], ['Server errors', counts.serverErrors]]) {
+  // An answer whose save got no answer, and was never confirmed by a later one, is an answer
+  // nobody can vouch for: at a hall's pace on a healthy stack there is none.
+  for (const [what, n] of [['Requests refused for rate', counts.refusedForRate], ['Server errors', counts.serverErrors], ['Answers whose save was never answered', counts.doubtful]]) {
     if (n) missed += 1
     say(`  ${n ? 'MISSED' : 'met   '}  ${what}: ${n} (the bar is none)`)
   }
@@ -1595,11 +1688,19 @@ async function main() {
   if (stale.length) say(`Note: ${plural(stale.length, 'exam')} of an earlier stress run ${stale.length === 1 ? 'is' : 'are'} still there. Remove ${stale.length === 1 ? 'it' : 'them'} afterwards with --clean.`)
 
   const stopNow = () => {
-    if (stopping) return
+    if (stopping) {
+      console.log('Still clearing up what was made. Do not close this window: what is left behind takes --clean to remove.')
+      return
+    }
     stopping = true
     say('Stopping: clearing up what was made. Do not close this window.')
+    for (const end of [...waiting]) end(true)
   }
   process.on('SIGINT', stopNow)
+  // Whatever goes wrong where nobody was waiting for it, the clean-up still runs.
+  process.on('unhandledRejection', (err) => {
+    if (err?.message !== STOPPED) console.error('exam-stress: an error nobody was waiting for:', err?.message || err)
+  })
   process.on('SIGTERM', stopNow)
 
   let missedBars = 0

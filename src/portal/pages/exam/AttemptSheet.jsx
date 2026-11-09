@@ -206,7 +206,9 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
   const sections = sheetSections(rows)
   const inSections = sections.scope > 0 || sections.score > 0
   const passages = new Map((Array.isArray(sheet.data.passages) ? sheet.data.passages : []).map((p) => [p.id, p]))
-  const shown = rows.filter((row) => (filter === 'all' ? true : filter === 'flagged' ? row.flagged : rowOutcome(row) === filter))
+  // A filter whose button is no longer offered (the paper sits the section again) shows everything.
+  const active = filter === 'left' && counts.left === 0 ? 'all' : filter
+  const shown = rows.filter((row) => (active === 'all' ? true : active === 'flagged' ? row.flagged : rowOutcome(row) === active))
   const when = eventWhen({ startsAt: a.started_at, endsAt: a.finished_at })
 
   const deletePaper = async () => {
@@ -253,7 +255,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
           <ExportButtons
             title={a.full_name || 'Paper'}
             subtitle={`${exam.title}. Each question in the officers’ order, with the right answer and the one chosen. ${
-              FILTER_NOTE[filter] || ''
+              FILTER_NOTE[active] || ''
             }`.trim()}
             filename={exportName(exam.title, 'paper', a.student_id)}
             columns={sheetColumns(inSections)}
@@ -283,7 +285,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
             This paper sits {sitsWords(a)}: {a.mark_shared ?? 0} of {sections.shared} on the shared questions
             {a.mark_scope != null && `, ${a.mark_scope} of ${sections.scope} on the professional exchange section`}
             {a.mark_score != null && `, ${a.mark_score} of ${sections.score} on the research exchange section`}.
-            {programme && rank == null && ` It is not in the ${programme.short} ranking.`}
+            {programme && a[`total_${programme.id}`] == null && ` It does not sit ${programme.short}, so it is not in that ranking.`}
           </p>
         )}
 
@@ -303,8 +305,8 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
               key={value}
               type="button"
               onClick={() => setFilter(value)}
-              aria-pressed={filter === value}
-              className={`${chipBtnCls(filter === value)} ${tapCls}`}
+              aria-pressed={active === value}
+              className={`${chipBtnCls(active === value)} ${tapCls}`}
             >
               {label} · {counts[value]}
             </button>

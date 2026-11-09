@@ -17,6 +17,7 @@ import {
   questionColumns,
   questionFault,
   questionTemplateCsv,
+  sortChanges,
   sectionCounts,
   sectionId,
   sectionName,
@@ -31,6 +32,7 @@ import {
   usePassageMutations,
   useQuestionMutations,
 } from '../../examQueries.js'
+import { makePictureLedger } from '../../examPictures.js'
 import { readProblem } from '../../examStats.js'
 import {
   CheckField,
@@ -89,39 +91,24 @@ const snippet = (text, max = 70) => {
 
 // ---- a picture ------------------------------------------------------------------
 
-// The pictures a form has uploaded, so that none is left in the bucket with
-// nothing pointing at it. `stored` is the picture the saved row has. The form
-// calls `added` for each upload and `saved` once the row is written with a
-// picture (or with none); what was uploaded and not saved goes then, and so
-// does the picture the row had before, and whatever is left goes when the
-// form closes.
-function usePictureCleanup(stored) {
-  const kept = useRef(stored || null)
-  const uploads = useRef([])
-  useEffect(
-    () => () => {
-      for (const path of uploads.current) if (path !== kept.current) removeExamPicture(path)
-    },
-    [],
-  )
-  return {
-    added(path) {
-      uploads.current.push(path)
-    },
-    saved(path) {
-      const before = kept.current
-      kept.current = path || null
-      for (const p of uploads.current) if (p !== kept.current) removeExamPicture(p)
-      uploads.current = []
-      if (before && before !== kept.current) removeExamPicture(before)
-    },
-  }
+// The pictures a form has uploaded: which of them may be removed from the
+// bucket, and when, is makePictureLedger's to say (src/portal/examPictures.js,
+// where the rules are written out and tested). `stored` is the picture of the
+// row the form edits; `editsARow` is false for the form that adds new rows.
+function usePictureCleanup(stored, editsARow) {
+  const ledger = useRef(null)
+  if (!ledger.current) ledger.current = makePictureLedger(stored, editsARow, removeExamPicture)
+  useEffect(() => {
+    const mine = ledger.current
+    mine.opened()
+    return () => mine.closed()
+  }, [])
+  return ledger.current
 }
 
-// One picture for a question or a passage: shown as it will be on a phone,
-// with buttons to choose, replace or take it out. The file is shrunk and
-// uploaded when it is chosen; it belongs to the row only once the form is saved.
-function PictureField({ examId, idBase, path, onChange, onUploaded, disabled = false, what = 'question' }) {
+// `onBusy` is told while a picture is on its way up, so the form can hold its
+// Save back: a save sent meanwhile would go without the picture.
+function PictureField({ examId, idBase, path, onChange, onUploaded, onBusy, disabled = false, what = 'question' }) {
   const fileRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -131,6 +118,7 @@ function PictureField({ examId, idBase, path, onChange, onUploaded, disabled = f
     if (!file) return
     setError('')
     setBusy(true)
+    onBusy?.(true)
     try {
       const uploaded = await uploadExamPicture(examId, file)
       onUploaded(uploaded)
@@ -139,6 +127,7 @@ function PictureField({ examId, idBase, path, onChange, onUploaded, disabled = f
       setError(errorText(err, 'The picture could not be uploaded.'))
     } finally {
       setBusy(false)
+      onBusy?.(false)
     }
   }
   return (
@@ -193,7 +182,8 @@ const legendCls = 'block text-sm font-medium text-ink'
 function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, onDone }) {
   const { save } = useQuestionMutations(exam.id)
   const [form, setForm] = useState(() => formFrom(question))
-  const pictures = usePictureCleanup(question?.image_path)
+  const pictures = usePictureCleanup(question?.image_path, Boolean(question))
+  const [uploading, setUploading] = useState(false)
   // The passage chosen in the form, if it is still there.
   const passage = passages.find((p) => p.id === form.passageId) || null
   // What is wrong with the form, found when it was sent (questionFault). It is
@@ -283,6 +273,7 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
       return
     }
     try {
+      if (!keyOnly) pictures.sending(form.imagePath)
       await save.mutateAsync({
         id: question?.id ?? null,
         // With only the right answer open, the rest goes back exactly as it is stored.
@@ -301,7 +292,7 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
         return
       }
       setForm(BLANK)
-      setNote('Added at the end of the list.')
+      setNote(passage ? 'Added, beside the other questions of its passage.' : 'Added at the end of its section.')
       // Ready for the next question, unless the officer is typing elsewhere.
       if (keyboardIsHere()) bodyRef.current?.focus()
     } catch (err) {
@@ -325,9 +316,9 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
         <button
           type="submit"
           className={`${primaryBtnCls} ${tapCls}`}
-          disabled={save.isPending || (Boolean(question) && !dirty)}
+          disabled={save.isPending || uploading || (Boolean(question) && !dirty)}
         >
-          {save.isPending ? 'Saving…' : !question ? 'Add question' : keyOnly ? 'Save the right answer' : 'Save'}
+          {save.isPending ? 'Saving…' : uploading ? 'Uploading the picture…' : !question ? 'Add question' : keyOnly ? 'Save the right answer' : 'Save'}
         </button>
         {question &&
           (dirty ? (
@@ -363,6 +354,13 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
           The exam has started, so this question’s text and options are fixed. You can still correct its right answer:
           every paper is marked against it the next time the results are read.
         </p>
+        {/* The first student started while this form was open with other changes typed into it. */}
+        {JSON.stringify({ ...form, correct: null }) !== JSON.stringify({ ...formFrom(question), correct: null }) && (
+          <p role="alert" className="text-xs text-danger">
+            The exam started while this form was open. The other changes typed here can no longer be saved; only the
+            right answer can.
+          </p>
+        )}
         <fieldset className="min-w-0" aria-describedby={fault ? faultId : undefined}>
           <legend className={legendCls}>Question {number}</legend>
           {/* dir="auto", here and on each option: a question written in Arabic
@@ -452,6 +450,7 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
         path={form.imagePath}
         onChange={(imagePath) => patch({ imagePath })}
         onUploaded={pictures.added}
+        onBusy={setUploading}
         disabled={save.isPending}
       />
 
@@ -485,7 +484,11 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
             className={inputCls}
             value={passage ? passage.id : ''}
             disabled={passages.length === 0}
-            onChange={(e) => patch({ passageId: e.target.value })}
+            onChange={(e) => {
+              // The question is in its passage's section from now on, also if the passage is taken off again.
+              const chosen = passages.find((p) => p.id === e.target.value)
+              patch({ passageId: e.target.value, ...(chosen ? { section: sectionId(chosen.section) } : {}) })
+            }}
           >
             <option value="">No passage</option>
             {passages.map((p, i) => (
@@ -809,7 +812,8 @@ function PassageForm({ exam, passage = null, number, onDone }) {
   const [form, setForm] = useState(from)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
-  const pictures = usePictureCleanup(passage?.image_path)
+  const pictures = usePictureCleanup(passage?.image_path, Boolean(passage))
+  const [uploading, setUploading] = useState(false)
   const prefix = `passage-${passage?.id || 'new'}`
   const dirty = JSON.stringify(form) !== JSON.stringify(from)
   useLeaveWarning(dirty || save.isPending)
@@ -827,6 +831,7 @@ function PassageForm({ exam, passage = null, number, onDone }) {
       return
     }
     try {
+      pictures.sending(form.imagePath)
       await save.mutateAsync({ id: passage?.id ?? null, body: form.body.trim(), section: form.section, imagePath: form.imagePath })
       pictures.saved(form.imagePath)
       if (passage) {
@@ -857,6 +862,7 @@ function PassageForm({ exam, passage = null, number, onDone }) {
         path={form.imagePath}
         onChange={(imagePath) => patch({ imagePath })}
         onUploaded={pictures.added}
+        onBusy={setUploading}
         disabled={save.isPending}
       />
       <Field label="Section" htmlFor={`${prefix}-section`} hint="Its questions are in this section too, and follow it if it changes.">
@@ -869,8 +875,8 @@ function PassageForm({ exam, passage = null, number, onDone }) {
         </select>
       </Field>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className={`${primaryBtnCls} ${tapCls}`} disabled={save.isPending || (Boolean(passage) && !dirty)}>
-          {save.isPending ? 'Saving…' : passage ? 'Save' : 'Add passage'}
+        <button type="submit" className={`${primaryBtnCls} ${tapCls}`} disabled={save.isPending || uploading || (Boolean(passage) && !dirty)}>
+          {save.isPending ? 'Saving…' : uploading ? 'Uploading the picture…' : passage ? 'Save' : 'Add passage'}
         </button>
         {passage &&
           (dirty ? (
@@ -973,16 +979,14 @@ function PassagesPanel({ exam, passages, questions }) {
                               ariaLabel={`Remove passage ${i + 1}`}
                               confirmLabel="Click again to remove"
                               busyLabel="Removing…"
-                              onConfirm={() =>
-                                remove.mutate(p.id, { onSuccess: () => removeExamPicture(p.image_path) })
-                              }
-                              busy={remove.isPending && remove.variables === p.id}
+                              onConfirm={() => remove.mutate({ id: p.id, imagePath: p.image_path })}
+                              busy={remove.isPending && remove.variables?.id === p.id}
                             />
                           </span>
                         </>
                       )}
                     </div>
-                    {remove.isError && remove.variables === p.id && (
+                    {remove.isError && remove.variables?.id === p.id && (
                       <div className="mt-2">
                         <ErrorText>{errorText(remove.error, 'The passage could not be removed.')}</ErrorText>
                       </div>
@@ -1039,9 +1043,17 @@ export default function QuestionsPanel({ exam }) {
     [list, passageBody],
   )
   // A drag moves a question within its section: the other sections' questions
-  // keep their places, and the whole order is saved.
+  // keep their places, and the whole order is saved. A passage's questions
+  // stand together where the first of them is, so a question dragged out of
+  // its passage goes back beside it, and one dropped between two of a
+  // passage's lands after them: the list then says so, where the row would
+  // otherwise seem to have jumped.
+  const [moveNote, setMoveNote] = useState('')
   const reorderSection = (section, ids) => {
     const next = SECTIONS.flatMap((s) => (s.id === section ? ids : list.filter((q) => sectionId(q.section) === s.id).map((q) => q.id)))
+    const sorts = new Map(sortChanges(list, next).map((c) => [c.id, c.sort]))
+    const lands = numberQuestions(list.map((q) => (sorts.has(q.id) ? { ...q, sort: sorts.get(q.id) } : q))).map((q) => q.id)
+    setMoveNote(lands.join() === next.join() ? '' : 'The questions of a passage stay together, so the list put them back beside one another.')
     reorder.mutate({ questions: list, ids: next })
   }
 
@@ -1135,6 +1147,9 @@ export default function QuestionsPanel({ exam }) {
             <ErrorText>{errorText(reorder.error, 'The new order could not be saved.')}</ErrorText>
           </div>
         )}
+        <p role="status" className={moveNote ? 'mt-3 text-xs text-soft/70' : 'sr-only'}>
+          {moveNote}
+        </p>
 
         {/* A read that failed after one that worked: the list stays, and with
             it a question's open form and what was typed into it. */}
@@ -1184,10 +1199,10 @@ export default function QuestionsPanel({ exam }) {
                       editing={editing.has(q.id)}
                       onEdit={() => openForm(q.id)}
                       onDone={(takeKeyboard) => closeForm(q.id, takeKeyboard)}
-                      onRemove={() => remove.mutate(q.id, { onSuccess: () => removeExamPicture(q.image_path) })}
-                      removing={remove.isPending && remove.variables === q.id}
+                      onRemove={() => remove.mutate({ id: q.id, imagePath: q.image_path })}
+                      removing={remove.isPending && remove.variables?.id === q.id}
                       removeError={
-                        remove.isError && remove.variables === q.id
+                        remove.isError && remove.variables?.id === q.id
                           ? errorText(remove.error, 'The question could not be removed.')
                           : ''
                       }

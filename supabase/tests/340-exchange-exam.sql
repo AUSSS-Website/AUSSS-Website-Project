@@ -966,7 +966,7 @@ select is(
         jsonb_array_elements(x.r -> 'attempts') as a
    group by x.r),
   array['attempts', 'now', 'questions', 'sections',
-        '{answered,attempt_id,email,faculty_year,finished_at,full_name,mark_scope,mark_score,mark_shared,phone,profile_id,rank,rank_scope,rank_score,score,seconds,sits_scope,sits_score,started_at,state,student_id,submitted_at,total_scope,total_score}'],
+        '{answered,answered_scope,answered_score,attempt_id,email,faculty_year,finished_at,full_name,mark_scope,mark_score,mark_shared,phone,profile_id,rank,rank_scope,rank_score,score,seconds,sits_scope,sits_score,started_at,state,student_id,submitted_at,total_scope,total_score}'],
   'the results name the size of the exam, the time, and for each paper the taker''s details and marks'
 );
 select lives_ok(
