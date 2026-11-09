@@ -1087,6 +1087,32 @@ and the real questions from the exchange officers. Done on 2026-10-11, on pull r
 passed on PostgreSQL 17, and the scripted rehearsal passed its first run on a real stack (400
 takers, everything matched).
 
+**Added 2026-11-09 (the webmaster): sections, passages, pictures, and a stress test.** Built on the
+branch `exam-sections`, not merged when this was written. Last year's paper
+(`_source/Exchange Exam/`) ends with two optional blocks of twenty questions, one for each
+exchange programme, and has reading passages and picture questions; the site's exam was one flat
+list of questions in words with one grade. What was built, with the webmaster's three decisions:
+
+- **Sections.** A question is shared, or in the professional exchange's block (SCOPE) or the
+  research exchange's (SCORE). A student ticks one block or both before the start code and **can
+  change it until they hand in** (decided 2026-11-09, over a choice that is final and over no
+  choice at all). Two marks and two rankings, as on the paper's cover: the shared questions plus
+  the block.
+- **Passages and pictures, in the same work** (decided 2026-11-09, so the stress test matches the
+  real paper). A passage is read with several questions, which stay together. One picture for a
+  question or a passage, in the public bucket `exam-pictures`.
+- **A stress test, on a local stack and then on the live site** (decided 2026-11-09).
+  `scripts/exam-stress.mjs`: 400 phones in flight together, at a hall's pace and then all in the
+  same instant, with its own marking of both programmes. A stand-in for Google
+  (`scripts/exam-fake-provider.mjs`) lets a runner's throwaway stack take 400 new accounts through
+  a first sign-in the way Google's goes; it is never added to the hosted project.
+
+Migration `20261109120001_exam_sections`, pgTAP file `345-exam-sections.sql`, RUNBOOK section 30
+("Sections, passages and pictures", "The stress test", "The stress test on the live site").
+Still to do when this was written: the pull request and its three jobs on GitHub, the merge, and
+the run against the live site, which is the webmaster's to start.
+
+
 **Added by the webmaster, 2026-10-10.** The exchange team's
 exam moves onto the site: registered students sit it signed in on their own
 phones in a hall, the site marks it, and the exchange officers read the

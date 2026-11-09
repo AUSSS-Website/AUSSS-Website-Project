@@ -1,16 +1,28 @@
-# The exam rehearsal: scripts/exam-rehearsal.mjs plays 400 made-up students
-# through a mock exchange exam, over HTTP as their phones would, and compares
-# the database's marking with its own (docs/PORTAL_BACKEND_PLAN.md, phase 8).
-# It needs a whole local Supabase stack, and Docker is only available here,
-# never on the maintainers' machines, so this is where the rehearsal runs: on
-# every pull request that changes the database or the script, and by hand
-# before an exam (Actions > exam-rehearsal > Run workflow), where the numbers
-# can be changed. The run's summary page shows what happened and how long the
-# calls took.
+# The exam's rehearsals, each on a whole local Supabase stack that the runner
+# makes and throws away (docs/RUNBOOK.md, section 30):
 #
-# Nothing here reaches the hosted project. The stack is the runner's own and
-# is thrown away when the job ends, the script refuses any API address that
-# is not 127.0.0.1 or localhost, and the job is given no secret.
+#   rehearse  scripts/exam-rehearsal.mjs plays 400 made-up students through a
+#             mock exchange exam, some at a time and as fast as the stack
+#             answers, checks every rule of the exam on the way and compares
+#             the database's marking with its own.
+#   stress    scripts/exam-stress.mjs keeps 400 of them in flight together, each
+#             behaving as the exam's page does on a phone, through an exam in
+#             sections with passages and pictures: first at a hall's pace, then
+#             all in the same instant. It marks every paper itself and compares.
+#   sign-in   the same script takes 400 new accounts through a first sign-in
+#             the way Google's goes, with a stand-in for Google that exists on
+#             this runner alone (scripts/exam-fake-provider.mjs).
+#
+# Docker is only available here, never on the maintainers' machines, so this is
+# where they run: on every pull request that changes the database, a script or
+# this file, and by hand before an exam (Actions > exam-rehearsal > Run
+# workflow), where the numbers can be changed and one of the three chosen. Each
+# run's summary page shows what happened and how long the calls took.
+#
+# Nothing here reaches the hosted project. Each stack is the runner's own and
+# is thrown away when the job ends, the scripts refuse any API address that is
+# not 127.0.0.1 or localhost unless told in so many words to go to the live
+# project (which nothing here does), and the jobs are given no secret.
 name: exam-rehearsal
 
 on:
@@ -18,19 +30,30 @@ on:
     paths:
       - 'supabase/**'
       - 'scripts/exam-rehearsal.mjs'
+      - 'scripts/exam-stress.mjs'
+      - 'scripts/exam-fake-provider.mjs'
       - '.github/workflows/exam-rehearsal.yml'
   workflow_dispatch:
     inputs:
+      which:
+        description: Which to run
+        type: choice
+        options: [all, rehearse, stress, sign-in]
+        default: all
       takers:
         description: Takers (blank = 400)
         type: string
         default: ''
       questions:
-        description: Questions (blank = 100)
+        description: 'Rehearse only: questions (blank = 100)'
         type: string
         default: ''
       concurrency:
-        description: Takers playing at the same time (blank = 50)
+        description: 'Rehearse only: takers playing at the same time (blank = 50)'
+        type: string
+        default: ''
+      minutes:
+        description: 'Stress only: the hall exam''s length in minutes (blank = 5)'
         type: string
         default: ''
       seed:
@@ -41,16 +64,18 @@ on:
 permissions:
   contents: read
 
+env:
+  # The same throwaway values as db-ci: config.toml reads these with env(), and the CLI
+  # refuses to load it when they are empty. Nothing here reaches the hosted project.
+  SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+  SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
+  RESEND_API_KEY: ci-placeholder
+
 jobs:
   rehearse:
+    if: github.event_name == 'pull_request' || inputs.which == 'all' || inputs.which == 'rehearse'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      # The same throwaway values as db-ci: config.toml reads these with env(), and the CLI
-      # refuses to load it when they are empty. Nothing here reaches the hosted project.
-      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
-      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ci-placeholder
-      RESEND_API_KEY: ci-placeholder
     steps:
       - uses: actions/checkout@v4
 
@@ -98,6 +123,129 @@ jobs:
       - name: Show the stack's logs after a failure
         if: failure()
         run: |
+          for name in $(docker ps -a --format '{{.Names}}' | grep -E '^supabase_(rest|auth|kong|db)_' || true); do
+            echo "::group::$name"
+            docker logs --tail 200 "$name" 2>&1 || true
+            echo "::endgroup::"
+          done
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop
+
+  # 400 phones at once. The pictures are uploaded to and fetched from the stack's own
+  # Storage, so that is not among the exclusions either. A pass is that every paper
+  # matched; the timings are a runner's, with the database beside the script, and are
+  # printed against the bars without failing the job.
+  stress:
+    if: github.event_name == 'pull_request' || inputs.which == 'all' || inputs.which == 'stress'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      - name: Start local stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sit the exam, 400 at once
+        env:
+          TAKERS: ${{ inputs.takers }}
+          EXAM_MINUTES: ${{ inputs.minutes }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          supabase status -o env > "$RUNNER_TEMP/stack.env"
+          echo "The stack printed: $(cut -d= -f1 "$RUNNER_TEMP/stack.env" | tr '\n' ' ')"
+          node --env-file="$RUNNER_TEMP/stack.env" scripts/exam-stress.mjs
+          grep -q '^Result: everything matched' "$GITHUB_STEP_SUMMARY" || {
+            echo "The script ended with 0 without saying that everything matched."
+            exit 1
+          }
+
+      - name: Show the stack's logs after a failure
+        if: failure()
+        run: |
+          for name in $(docker ps -a --format '{{.Names}}' | grep -E '^supabase_(rest|auth|kong|db|storage)_' || true); do
+            echo "::group::$name"
+            docker logs --tail 200 "$name" 2>&1 || true
+            echo "::endgroup::"
+          done
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop
+
+  # A first sign-in the way Google's goes, 400 times. The stand-in for Google vouches for
+  # any address, so it is told to this runner's stack and to nothing else: the two lines
+  # below change the runner's own copy of supabase/config.toml, which is thrown away with
+  # the runner. It must never be added to the file in the repository (a config push would
+  # carry it to the hosted project) nor to the hosted project itself.
+  #
+  # The stack's sign-in service runs in a container and reaches the stand-in on the
+  # runner at host.docker.internal. The limit on session renewals from one address (150 in
+  # five minutes) is raised here as the runbook has it raised before an exam, so the 400
+  # renewals in one minute show what the raised limit allows, not the refusals it was
+  # raised to avoid.
+  sign-in:
+    if: github.event_name == 'pull_request' || inputs.which == 'all' || inputs.which == 'sign-in'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tell this runner's stack of the stand-in for Google
+        run: |
+          cat >> supabase/config.toml <<'TOML'
+
+          [auth.external.keycloak]
+          enabled = true
+          client_id = "exam-stress"
+          secret = "exam-stress"
+          url = "http://host.docker.internal:9911/realms/hall"
+          TOML
+          sed -i 's/^token_refresh = 150$/token_refresh = 5000/' supabase/config.toml
+          grep -q '^token_refresh = 5000$' supabase/config.toml
+          node scripts/exam-fake-provider.mjs > "$RUNNER_TEMP/provider.log" 2>&1 &
+
+      - name: Start local stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+      - name: Sign 400 new accounts in through the provider
+        env:
+          TAKERS: ${{ inputs.takers }}
+          SEED: ${{ inputs.seed }}
+          PROVIDER: keycloak
+          ONLY_SIGN_IN: '1'
+        run: |
+          supabase status -o env > "$RUNNER_TEMP/stack.env"
+          node --env-file="$RUNNER_TEMP/stack.env" scripts/exam-stress.mjs
+          grep -q '^Result: everything matched' "$GITHUB_STEP_SUMMARY" || {
+            echo "The script ended with 0 without saying that everything matched."
+            exit 1
+          }
+          echo "The stand-in was asked: $(curl -s http://127.0.0.1:9911/seen)"
+
+      - name: Show the logs after a failure
+        if: failure()
+        run: |
+          echo "::group::the stand-in for Google"
+          cat "$RUNNER_TEMP/provider.log" || true
+          echo "::endgroup::"
           for name in $(docker ps -a --format '{{.Names}}' | grep -E '^supabase_(rest|auth|kong|db)_' || true); do
             echo "::group::$name"
             docker logs --tail 200 "$name" 2>&1 || true

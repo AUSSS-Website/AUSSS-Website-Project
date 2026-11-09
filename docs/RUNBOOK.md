@@ -3312,6 +3312,67 @@ in the repository, so merging the branch does none of them.
       open the address again, and move to a second phone. Watch the Results tab fill, check that
       nobody was signed out, and delete the mock exam after.
 
+**Sections, passages and pictures (2026-11-09).** The paper exam ends with two blocks of twenty
+questions, "Clinical Section for SCOPE Contracts" (81P to 100P) and "Research Section for SCORE
+Contracts" (81R to 100R). Every student answers the shared questions and then one block or both,
+and gets a mark for each programme: the shared questions plus that programme's block. The site's
+exam does the same since migration `20261109120001_exam_sections.sql`.
+
+- **A question's section.** `exam_questions.section` is `shared`, `scope` (professional exchange)
+  or `score` (research exchange). On the Questions tab it is a field of the question's form, and
+  the list is in three parts once a block has a question. The sizes are free: 80, 20 and 20 is
+  last year's paper, not a rule.
+- **The choice.** It exists only in an exam that has questions in both blocks. A student ticks
+  SCOPE, SCORE or both above the start code (nothing is ticked for them), and can add or leave
+  out a section on the review page until they hand in or their time is up. The choice is
+  `exam_attempts.sits_scope` and `sits_score`, never both false. Answers in a section a student
+  leaves out stay saved and are not marked; they count again if the section is added back. An
+  exam with one block or none has no choice: every question is on every paper and there is one
+  grade, as before.
+- **The paper.** The shared questions first, then the SCOPE block, then the SCORE block, each
+  shuffled within itself. A section starts on a page of its own. `rpc/exam_paper` sends every
+  question with its section and the page shows the ones the student sits, so a change of mind
+  needs no second download. The choice travels with `rpc/exam_save`, sent only while the database
+  has not confirmed it, so a phone left open cannot put an old choice back over one made on a
+  second phone.
+- **Passages.** A passage (`exam_passages`) is a text, a picture or both that several questions
+  are read with: a reading passage, a research abstract. Add it under **Passages** on the
+  Questions tab, then choose it in each of its questions under "Read with a passage". Its
+  questions take its section, stay together in every student's order, and are never split across
+  two pages. Removing a passage leaves its questions in the exam as single questions.
+- **Pictures.** A question or a passage may have one picture, and a question may be a picture with
+  no words. The portal shrinks it to a JPEG no larger than 1200 px and keeps it in the public
+  bucket `exam-pictures` under `<exam id>/<32 random hex digits>.jpg`. Public, because 400 phones
+  fetch the pictures in the same minute and a public file costs the database nothing. The name
+  cannot be guessed, the bucket lists nothing to a student, and a picture's address is handed out
+  only by `rpc/exam_paper`, after the start code. The page fetches every picture as the paper
+  loads, so a connection that drops later does not leave a question without its picture. There
+  are no pictures inside answer options.
+- **The spreadsheet.** Two more columns, J **Section** (blank, SCOPE or SCORE) and K **Passage**
+  (the text a question is read with; rows that follow one another with the same text share one
+  passage). Pictures do not come in a spreadsheet: add them on the Questions tab afterwards. An
+  old sheet with a note in column J is now refused for that row, with the reason.
+- **Marking.** Still a count at the moment the officers read. Each paper has a mark for the shared
+  questions and for each block it sits, and a total for each programme. **Results** and
+  **Overview** show one programme at a time (the switch above the list, kept in the address as
+  `?programme=score`): only the papers that sit that programme's block are ranked in it, by its
+  total. The exports follow the switch. A question of a block is counted over the papers that sit
+  that block. A paper's own page shows each mark and marks the questions of a section it left
+  out as not marked.
+- **Fixed once started.** A question's section, passage and picture, and a passage's text, section
+  and picture, are fixed with the wording once the first student has started. The pictures of a
+  started exam cannot be removed from the bucket either (`app.exam_picture_free`).
+- **Numbering.** The officers' lists number the questions as the paper does: 1 to 80, then 81P to
+  100P and 81R to 100R (`app.exam_question_numbers`; `numberQuestions` in
+  `src/portal/examFile.js` does the same in the browser).
+
+Three functions changed their arguments and the old ones were dropped: `exam_start` and
+`exam_save` gained the choice (two booleans that default to null, so a page loaded before the
+migration still starts and saves), and `save_exam_question` gained `p_more`, a JSON object with
+any of `section`, `passage_id` and `image_path`. `rpc/save_exam_passage` is new. The migration
+must be applied before the new pages are used; the reverse order is safe.
+
+
 **The scripted rehearsal.** `scripts/exam-rehearsal.mjs` plays 400 made-up students through a mock
 exam of 100 questions over HTTP, as phones would, and compares the database's marking with its
 own. It needs a whole local Supabase stack, so it runs on GitHub: on every pull request that
@@ -3360,6 +3421,88 @@ matched: 400 takers and 100 questions, 7,942 requests in 26 seconds. The takers'
 42 ms at the median and 562 ms at the slowest, with 50 takers at a time, and none had to be sent
 again. Those figures are a runner's, with the database beside the script; a hall of phones on one
 Wi-Fi is slower, which is what the sitting in the hall is for.
+
+**The stress test.** `scripts/exam-stress.mjs` is the rehearsal's companion. The rehearsal plays
+its students some at a time, as fast as the stack answers, and checks every rule. The stress test
+keeps all 400 in flight together, each behaving as the exam's page does on a phone, through an
+exam in sections with two passages and eight pictures:
+
+1. **The hall.** Every student comes to the door before the exam opens and asks it again every 30
+   seconds; when it opens they start within three quarters of a minute of one another, fetch the
+   paper and its pictures, and answer with a pause between taps. Each tap is saved 400 ms later,
+   a phone with nothing to send asks for the time once a minute, a tenth refresh the page, a
+   tenth lose their connection for half a minute and then send what piled up, some add or leave
+   out a section. Most hand in; the slow ones are still answering when their time runs out and
+   send what they hold in the thirty seconds the database allows. A third sit SCOPE, a third
+   SCORE and a third both.
+2. **The spikes**, on a second short exam: every student presses Start in the same instant,
+   fetches the paper in the same instant, saves an answer in the same instant round after round
+   (the last three rounds with a second request beside each, twice the hall at once), and hands
+   in in the same instant.
+3. **The marking.** It reads every paper back as the service role, marks it itself from the key,
+   and compares with what each phone was told was saved: every answer, every choice of sections,
+   both programmes' marks. On a local stack it also reads `rpc/exam_results` as an officer of its
+   own and compares the database's marking and both rankings paper by paper.
+
+It prints a line every half minute while the hall sits, then a table of every kind of call
+(median, 95th and 99th percentiles, slowest), and holds the timings against three bars: a save
+at the hall's pace under 1 s at the 95th percentile and under 3 s at the 99th, and any call in a
+spike under 10 s at the 99th (the page gives a call up at 20 s). It ends with 0 when everything
+matched, 1 when anything did not, 2 when it refused to run. The bars fail a run only with
+`STRICT=1`.
+
+On GitHub it is the job **stress** of the exam-rehearsal workflow, on every pull request that
+touches `supabase/**` or the scripts, and by hand (Actions > exam-rehearsal > Run workflow, "Which
+to run"). There the timings are a runner's, with the database beside the script.
+
+**The stress test on the live site.** The only run that shows what the hosted project carries.
+It is never started by a workflow. From the webmaster's machine, at a quiet hour, after the
+nightly backup:
+
+```
+node --env-file=.env.local scripts/exam-stress.mjs --live wjijkqrdaakiwbtdssio --yes
+```
+
+- It needs `--live`, the project's ref typed out, the same ref in `.env.local`, and `--yes`. It
+  refuses to start while a real exam is ready and not yet closed.
+- Everything it makes can be found by its name: the two exams' titles begin "Stress test, delete
+  me", the accounts are `stress-taker-NNNN.<run>@stress.ausss.invalid`. It deletes them when it
+  ends, when it is stopped with Ctrl-C and when it fails. `--clean` in place of `--yes` removes
+  whatever an earlier run left and says what it found.
+- Every account signs in for real, with a password, through the live sign-in service, and all
+  of them renew their session within one minute. The sign-in service takes 30 sign-ins from one
+  address in five minutes, so by default the script signs 28 in every five minutes (about 70
+  minutes for 400) and renews the early ones. To skip the wait, raise **Rate limits > sign-ups
+  and sign-ins** in the Supabase dashboard for the hour and run it with `SIGN_INS_PER_5_MIN=0`,
+  then put the figure back. The renewal minute is the test of the **token refreshes** limit the
+  hall needs raised (see "What only the webmaster can do"): a refused renewal fails the run and
+  says so.
+- `SITE=https://ausss-ainshams.org` also loads the exam's page and its files from the site once
+  for every phone.
+- `EXAM_MINUTES` is the hall exam's length (20). At 20 minutes a typical student taps every 7
+  seconds, about six times the pace of a two-hour exam.
+- While it runs, open **Exam > Results** on the mock exam in the portal, as an officer would on
+  the day: the list refreshes every 30 seconds and is part of the load.
+- It prints one SQL line with the sums it expects of the database's own marking
+  (`app.exam_result_rows`); `PAUSE_BEFORE_CLEAN=1` holds the clean-up for two minutes to run it.
+- The cost to the free tier: about 420 MB of picture downloads from the month's allowance for a
+  run of 400, and a slower site for the length of the run.
+
+What it cannot show: Google's own sign-in screen (Google signs in only real Google accounts),
+real phones, and the hall's own Wi-Fi. The sitting in the hall with a test group stays the proof
+of those.
+
+**Signing in as with Google, on a runner.** A student signs in to the exam with Google, and no
+script can sign 400 made-up students in to the real Google. On a GitHub runner's throwaway stack
+a stand-in takes its place: `scripts/exam-fake-provider.mjs` answers the three parts of the
+exchange the sign-in service uses, the workflow's job **sign-in** adds it to the runner's own
+copy of `supabase/config.toml` as one more provider, and the stress script (`PROVIDER=keycloak
+ONLY_SIGN_IN=1`) takes 400 new accounts through a first sign-in that way, tries each session at
+an exam's door, and renews all of them within a minute. The stand-in vouches for any address it
+is asked about. It must never be named in the repository's `supabase/config.toml` (a config push
+would carry it to the hosted project) and never be added to the hosted project, where it would
+let a stranger sign in as an officer; the script refuses `PROVIDER` together with `--live`.
+
 
 **The sample walk.** `npm run walk:portal-sample` (section 21) knows the exam from both sides,
 with every database call answered by the script. On the portal it has three sample exams: this
