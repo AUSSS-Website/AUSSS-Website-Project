@@ -11,16 +11,21 @@ import {
   detailsProblem,
   handInWait,
   handInWords,
+  hasChoice,
   hashFor,
   inAppBrowser,
+  leaveOutWords,
   missingDetail,
   opensInWords,
   opensLine,
   pageLabel,
   placeFromHash,
+  questionsFor,
   receivedWords,
+  satWords,
   saveWords,
   screenFor,
+  sectionName,
   signedOutWords,
   startLine,
   startProblem,
@@ -531,5 +536,91 @@ describe('a page button’s name', () => {
       'Page 3, questions 21 to 30: 4 not answered, 1 flagged',
     )
     expect(pageLabel({ page: 1, from: 1, to: 10, unanswered: 0, flagged: 0 })).toBe('Page 1, questions 1 to 10: all answered')
+  })
+})
+
+describe('the two optional sections', () => {
+  const exam = { questions: 120, minutes: 120, sections: { shared: 80, scope: 20, score: 20, choice: true } }
+  const plain = { questions: 100, minutes: 120, sections: { shared: 100, scope: 0, score: 0, choice: false } }
+
+  it('names each section', () => {
+    expect(sectionName('shared')).toBe('Shared questions')
+    expect(sectionName('scope')).toBe('Professional exchange (SCOPE)')
+    expect(sectionName('score')).toBe('Research exchange (SCORE)')
+    expect(sectionName(undefined)).toBe('Shared questions')
+  })
+
+  it('knows whether an exam asks for a choice', () => {
+    expect(hasChoice(exam)).toBe(true)
+    expect(hasChoice(plain)).toBe(false)
+    // a door from before the sections says nothing about them
+    expect(hasChoice({ questions: 100, minutes: 120 })).toBe(false)
+    expect(hasChoice(null)).toBe(false)
+  })
+
+  it('counts the questions of the paper a taker chose', () => {
+    expect(questionsFor(exam, { scope: true, score: true })).toBe(120)
+    expect(questionsFor(exam, { scope: true, score: false })).toBe(100)
+    expect(questionsFor(exam, { scope: false, score: true })).toBe(100)
+    expect(questionsFor(exam, { scope: false, score: false })).toBe(80)
+    // no choice: every question, whatever is passed
+    expect(questionsFor(plain, { scope: true, score: false })).toBe(100)
+    expect(questionsFor(plain, null)).toBe(100)
+  })
+
+  it('says what starting means for the sections chosen', () => {
+    expect(startLine(exam, { scope: true, score: false })).toMatch(/^100 questions, 120 minutes\./)
+    expect(startLine(exam, { scope: true, score: true })).toMatch(/^120 questions, 120 minutes\./)
+    expect(startLine(plain)).toMatch(/^100 questions, 120 minutes\./)
+  })
+
+  it('says so when the database refuses a start with no section', () => {
+    expect(startProblem({ ok: false, reason: 'sections' })).toBe('Choose at least one section.')
+  })
+
+  it('asks before a section with answers in it is left out', () => {
+    expect(leaveOutWords('score', 0)).toBe('Leave out Research exchange (SCORE)?')
+    expect(leaveOutWords('score', 1)).toBe(
+      'Leave out Research exchange (SCORE)? Your 1 answer in it is kept, but will not be marked unless you add the section again.',
+    )
+    expect(leaveOutWords('scope', 12)).toBe(
+      'Leave out Professional exchange (SCOPE)? Your 12 answers in it are kept, but will not be marked unless you add the section again.',
+    )
+  })
+
+  it('says on the last screen which sections the paper covered', () => {
+    const sections = exam.sections
+    expect(satWords(sections, { scope: true, score: true })).toBe(
+      'Your paper covers both sections: Professional exchange (SCOPE) and Research exchange (SCORE).',
+    )
+    expect(satWords(sections, { scope: false, score: true })).toBe('Your paper covers one section: Research exchange (SCORE).')
+    expect(satWords(plain.sections, { scope: true, score: true })).toBe('')
+    expect(satWords(undefined, undefined)).toBe('')
+  })
+
+  it('names a page of a section in its button', () => {
+    expect(pageLabel({ page: 9, section: 'scope', from: 81, to: 90, unanswered: 0, flagged: 2 })).toBe(
+      'Page 9, Professional exchange (SCOPE), questions 81 to 90: all answered, 2 flagged',
+    )
+    expect(pageLabel({ page: 1, section: 'shared', from: 1, to: 10, unanswered: 3, flagged: 0 })).toBe('Page 1, questions 1 to 10: 3 not answered')
+  })
+
+  it('finds the place in a paper whose pages are not all ten long', () => {
+    // 12 shared questions, then 3 of a block, then 4 of the other
+    const pages = [
+      { page: 1, from: 1, to: 10 },
+      { page: 2, from: 11, to: 12 },
+      { page: 3, from: 13, to: 15 },
+      { page: 4, from: 16, to: 19 },
+    ]
+    expect(placeFromHash('#q12', 19, pages)).toEqual({ view: 'page', page: 2, question: 12 })
+    expect(placeFromHash('#q13', 19, pages)).toEqual({ view: 'page', page: 3, question: 13 })
+    expect(placeFromHash('#q99', 19, pages)).toEqual({ view: 'page', page: 4, question: 19 })
+    expect(placeFromHash('#p3', 19, pages)).toEqual({ view: 'page', page: 3, question: null })
+    expect(placeFromHash('#p9', 19, pages)).toEqual({ view: 'page', page: 4, question: null })
+    expect(placeFromHash('#review', 19, pages)).toEqual({ view: 'review', page: 4, question: null })
+    expect(placeFromHash('', 19, pages)).toEqual({ view: 'page', page: 1, question: null })
+    // with no pages given, plain pages of ten, as before
+    expect(placeFromHash('#q13', 19)).toEqual({ view: 'page', page: 2, question: 13 })
   })
 })

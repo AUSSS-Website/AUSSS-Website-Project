@@ -1140,3 +1140,264 @@ describe('two tabs of one browser', () => {
     b.sitting.stop()
   })
 })
+
+describe('the choice of sections', () => {
+  // Two shared questions, one of the professional block and one of the research block.
+  const sectioned = [
+    { id: 's1', body: 'Shared 1', options: ['a', 'b'], section: 'shared', passage: null, image: null },
+    { id: 's2', body: 'Shared 2', options: ['a', 'b'], section: 'shared', passage: null, image: null },
+    { id: 'p1', body: 'Professional 1', options: ['a', 'b'], section: 'scope', passage: null, image: null },
+    { id: 'r1', body: 'Research 1', options: ['a', 'b'], section: 'score', passage: null, image: null },
+  ]
+
+  // makeDb, with the choice: the paper says which blocks it sits, a save that
+  // is answered may carry a new choice, and every answer says what stands.
+  // `told` is the choice each save carried (null for none), `lastTold` the
+  // same for the copy sent as the page leaves.
+  function choiceDb({ sits = { scope: true, score: false }, questions = sectioned, deadline = T0 + 60 * MINUTE } = {}) {
+    const db = makeDb({ deadline, questions })
+    db.sits = { ...sits }
+    db.told = []
+    db.lastTold = []
+    const { examPaper, examSave } = db.api
+    db.api.examPaper = () =>
+      examPaper().then((reply) =>
+        reply.state === 'sitting' ? { ...reply, attempt: { ...reply.attempt, sits_scope: db.sits.scope, sits_score: db.sits.score } } : reply,
+      )
+    db.api.examSave = (word, batch, final, options) => {
+      db.told.push(options?.sits ? { ...options.sits } : null)
+      return examSave(word, batch, final, options).then((reply) => {
+        // as the database does: both given, at least one, and the paper still open
+        const asked = options?.sits
+        if (asked && (asked.scope || asked.score) && (reply.state === 'sitting' || reply.submitted)) db.sits = { ...asked }
+        return { ...reply, sits_scope: db.sits.scope, sits_score: db.sits.score }
+      })
+    }
+    db.api.examSaveLast = (word, batch, sitsLeft) => {
+      db.last.push(copy(batch))
+      db.lastTold.push(sitsLeft ? { ...sitsLeft } : null)
+      return true
+    }
+    return db
+  }
+
+  async function openChoice(options = {}) {
+    const clock = { wall: T0, mono: 1000 }
+    const db = choiceDb(options)
+    const store = makeStore()
+    const tab = makeTab({ db, store, clock })
+    tab.sitting.start()
+    await settle()
+    db.answer(T0)
+    await settle()
+    return { clock, db, store, tab }
+  }
+
+  const ids = (view) => view.questions.map((q) => q.id)
+
+  it('shows the shared questions and the blocks the paper sits, and holds every question', async () => {
+    const { tab } = await openChoice()
+    expect(tab.view.sections).toEqual({ shared: 2, scope: 1, score: 1, choice: true })
+    expect(tab.view.sits).toEqual({ scope: true, score: false })
+    expect(ids(tab.view)).toEqual(['s1', 's2', 'p1'])
+    expect(tab.view.allQuestions.map((q) => q.id)).toEqual(['s1', 's2', 'p1', 'r1'])
+    tab.sitting.stop()
+  })
+
+  it('adds a block on the page at once and tells the database with the next save, answer or no answer', async () => {
+    const { db, store, tab } = await openChoice()
+    tab.sitting.setSections({ scope: true, score: true })
+    // on the page and on the phone before anything is sent
+    expect(ids(tab.view)).toEqual(['s1', 's2', 'p1', 'r1'])
+    expect(store.kept.get('a1')).toMatchObject({ sits: { scope: true, score: true }, sitsWaiting: true })
+    expect(db.calls).toHaveLength(0)
+    await vi.advanceTimersByTimeAsync(400)
+    expect(db.calls).toEqual([{ batch: [], final: false, timeout: undefined }])
+    expect(db.told).toEqual([{ scope: true, score: true }])
+    db.answer(T0 + SECOND)
+    await settle()
+    expect(db.sits).toEqual({ scope: true, score: true })
+    expect(store.kept.get('a1')).toMatchObject({ sits: { scope: true, score: true }, sitsWaiting: false })
+    expect(tab.view.sits).toEqual({ scope: true, score: true })
+    tab.sitting.stop()
+  })
+
+  it('leaves a block out and keeps what was answered in it', async () => {
+    const { db, tab } = await openChoice({ sits: { scope: true, score: true } })
+    tab.sitting.choose('r1', 1)
+    await vi.advanceTimersByTimeAsync(400)
+    db.answer(T0 + SECOND)
+    await settle()
+    tab.sitting.setSections({ scope: true, score: false })
+    expect(ids(tab.view)).toEqual(['s1', 's2', 'p1'])
+    // the answer stays on the phone and in the database, and comes back with the block
+    expect(tab.view.answers.r1).toEqual({ c: 1, f: false })
+    expect(db.rows.r1).toEqual({ c: 1, f: false })
+    await vi.advanceTimersByTimeAsync(400)
+    db.answer(T0 + 2 * SECOND)
+    await settle()
+    expect(db.sits).toEqual({ scope: true, score: false })
+    tab.sitting.setSections({ scope: true, score: true })
+    expect(ids(tab.view)).toEqual(['s1', 's2', 'p1', 'r1'])
+    tab.sitting.stop()
+  })
+
+  it('sends the choice only while the database has not heard it, and a hand-in carries one that waits', async () => {
+    const { db, tab } = await openChoice()
+    // an ordinary save says nothing of a choice the database already holds
+    tab.sitting.choose('s1', 0)
+    await vi.advanceTimersByTimeAsync(400)
+    db.answer(T0 + SECOND)
+    await settle()
+    // a change of mind and a hand-in straight after it: they land in one write
+    tab.sitting.setSections({ scope: true, score: true })
+    const handed = tab.sitting.handIn()
+    await settle()
+    db.answer(T0 + 2 * SECOND)
+    await settle()
+    expect((await handed).ok).toBe(true)
+    expect(db.told).toEqual([null, { scope: true, score: true }])
+    expect(db.calls[1].final).toBe(true)
+    expect(db.sits).toEqual({ scope: true, score: true })
+    // nothing changes after that
+    tab.sitting.setSections({ scope: true, score: false })
+    expect(tab.view.sits).toEqual({ scope: true, score: true })
+  })
+
+  it('never sits neither block, and takes no change it was not asked for', async () => {
+    const { db, tab } = await openChoice()
+    tab.sitting.setSections({ scope: false, score: false })
+    tab.sitting.setSections({})
+    tab.sitting.setSections(null)
+    tab.sitting.setSections({ scope: true, score: false }) // what it sits already
+    await vi.advanceTimersByTimeAsync(400)
+    expect(tab.view.sits).toEqual({ scope: true, score: false })
+    expect(db.calls).toHaveLength(0)
+    tab.sitting.stop()
+  })
+
+  it('sends no choice, and takes none, in an exam without the two blocks', async () => {
+    const clock = { wall: T0, mono: 1000 }
+    const db = choiceDb({ questions: paperOf(3), sits: { scope: true, score: true } })
+    const store = makeStore()
+    const tab = makeTab({ db, store, clock })
+    tab.sitting.start()
+    await settle()
+    db.answer(T0)
+    await settle()
+    expect(tab.view.sections.choice).toBe(false)
+    tab.sitting.setSections({ scope: true, score: false })
+    expect(tab.view.sits).toEqual({ scope: true, score: true })
+    tab.sitting.choose('q1', 0)
+    await vi.advanceTimersByTimeAsync(400)
+    expect(db.told).toEqual([null])
+    tab.sitting.stop()
+  })
+
+  it('sends a choice made while a save was on its way with the next one', async () => {
+    const { db, tab } = await openChoice()
+    tab.sitting.choose('s1', 0)
+    await vi.advanceTimersByTimeAsync(400) // the save is in flight, with the old choice
+    tab.sitting.setSections({ scope: true, score: true })
+    db.answer(T0 + SECOND) // the database answers with the old choice still standing
+    await settle()
+    // the newer choice is not overwritten by that answer, and goes out at once
+    expect(tab.view.sits).toEqual({ scope: true, score: true })
+    expect(db.told).toEqual([null, { scope: true, score: true }])
+    db.answer(T0 + 2 * SECOND)
+    await settle()
+    expect(db.sits).toEqual({ scope: true, score: true })
+    expect(tab.view.sits).toEqual({ scope: true, score: true })
+    tab.sitting.stop()
+  })
+
+  it('tries again when the save that carried the choice got no answer', async () => {
+    const { db, store, tab } = await openChoice()
+    tab.sitting.setSections({ scope: false, score: true })
+    await vi.advanceTimersByTimeAsync(400)
+    db.drop()
+    await settle()
+    expect(store.kept.get('a1').sitsWaiting).toBe(true)
+    expect(ids(tab.view)).toEqual(['s1', 's2', 'r1'])
+    await vi.advanceTimersByTimeAsync(2000) // the first retry
+    expect(db.told).toEqual([
+      { scope: false, score: true },
+      { scope: false, score: true },
+    ])
+    db.answer(T0 + 3 * SECOND)
+    await settle()
+    expect(db.sits).toEqual({ scope: false, score: true })
+    expect(store.kept.get('a1').sitsWaiting).toBe(false)
+    tab.sitting.stop()
+  })
+
+  it('keeps a choice the database has not heard through a refresh, and sends it', async () => {
+    const { clock, db, store, tab } = await openChoice()
+    tab.sitting.setSections({ scope: true, score: true })
+    await vi.advanceTimersByTimeAsync(400)
+    db.drop()
+    await settle()
+    tab.sitting.stop()
+
+    // the page is opened again: the phone's choice shows before the database answers ...
+    const again = makeTab({ db, store, clock })
+    again.sitting.start()
+    await settle()
+    expect(again.view.sits).toEqual({ scope: true, score: true })
+    expect(ids(again.view)).toEqual(['s1', 's2', 'p1', 'r1'])
+    // ... stays when the database's paper says the old one ...
+    db.answer(T0 + 5 * SECOND)
+    await settle()
+    expect(again.view.sits).toEqual({ scope: true, score: true })
+    // ... and is sent without waiting for an answer to be tapped
+    expect(db.told[db.told.length - 1]).toEqual({ scope: true, score: true })
+    db.answer(T0 + 6 * SECOND)
+    await settle()
+    expect(db.sits).toEqual({ scope: true, score: true })
+    again.sitting.stop()
+  })
+
+  it('follows the database after a refresh when no choice was waiting', async () => {
+    const { clock, db, store, tab } = await openChoice()
+    tab.sitting.stop()
+    db.sits = { scope: false, score: true } // changed from another phone
+    const again = makeTab({ db, store, clock })
+    again.sitting.start()
+    await settle()
+    db.answer(T0 + 5 * SECOND)
+    await settle()
+    expect(again.view.sits).toEqual({ scope: false, score: true })
+    expect(ids(again.view)).toEqual(['s1', 's2', 'r1'])
+    again.sitting.stop()
+  })
+
+  it('follows a choice changed on another phone, and never puts its own back over it', async () => {
+    const { db, tab } = await openChoice()
+    db.sits = { scope: true, score: true } // the student added the block on a second phone
+    await vi.advanceTimersByTimeAsync(60 * SECOND) // this phone's heartbeat
+    // it carries no choice: this phone has none the database has not heard
+    expect(db.told).toEqual([null])
+    db.answer(T0 + 61 * SECOND)
+    await settle()
+    expect(db.sits).toEqual({ scope: true, score: true })
+    expect(tab.view.sits).toEqual({ scope: true, score: true })
+    expect(ids(tab.view)).toEqual(['s1', 's2', 'p1', 'r1'])
+    tab.sitting.stop()
+  })
+
+  it('sends a waiting choice as the page leaves, with or without an answer beside it', async () => {
+    const { db, tab } = await openChoice()
+    tab.sitting.setSections({ scope: true, score: true })
+    tab.sitting.pageLeaving()
+    expect(db.last).toEqual([[]])
+    expect(db.lastTold).toEqual([{ scope: true, score: true }])
+    tab.sitting.stop()
+  })
+
+  it('sends nothing as the page leaves when neither an answer nor a choice waits', async () => {
+    const { db, tab } = await openChoice()
+    tab.sitting.pageLeaving()
+    expect(db.last).toEqual([])
+    tab.sitting.stop()
+  })
+})
