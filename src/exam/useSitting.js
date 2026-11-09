@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { readJson } from '../lib/localCache.js'
-import { examPaper, examSave, examSaveLast, onAuthStateChange } from './examApi.js'
+import { examPaper, examSave, examSaveLast, onAuthStateChange, pictureUrl } from './examApi.js'
 import {
   HEARTBEAT_MS,
   HURRY_EVERY_MS,
   HURRY_TIMEOUT_MS,
   SEND_AFTER_MS,
   answeredCount,
+  blockAnswered,
   canChoose,
   clearAnswer,
   clocksDisagree,
@@ -16,12 +17,12 @@ import {
   heldClock,
   holdClock,
   lateSaveOpen,
+  layoutPages,
   mergeAnswers,
-  pageCount,
-  pageQuestions,
   pageSummaries,
   remaining,
   retryDelay,
+  sameSits,
   saveStatus,
   setAnswer,
   settleBatch,
@@ -29,10 +30,12 @@ import {
   takeBatch,
   tidyHeld,
   tidyPaper,
+  tidySits,
   timeUp,
   toMs,
   toggleFlag,
   unansweredNumbers,
+  visibleQuestions,
   waitAgain,
 } from './sitting.js'
 import { claimTab } from './tabLock.js'
@@ -53,7 +56,8 @@ import { claimTab } from './tabLock.js'
 //   ausss-exam-paper:<attempt id>   the paper as the database gave it, with the
 //                                   address word and the account it is for
 //   ausss-exam:<attempt id>         the answers, which of them still wait to be
-//                                   sent, and the clock
+//                                   sent, the clock, and the taker's choice of
+//                                   blocks with whether it still waits too
 // Both go once the exam is over and nothing is left waiting.
 
 const PAPER_KEY = 'ausss-exam-paper:'
@@ -172,6 +176,9 @@ const LEAVING_GAP_MS = 5000
 
 const NO_QUESTIONS = Object.freeze([])
 const NO_ANSWERS = Object.freeze({})
+const NO_PASSAGES = Object.freeze({})
+const NO_SECTIONS = Object.freeze({ shared: 0, scope: 0, score: 0, choice: false })
+const BOTH_BLOCKS = Object.freeze({ scope: true, score: true })
 
 // `status` is where the sitting stands:
 //   loading    no paper yet (the database has not answered and the phone holds none)
@@ -215,6 +222,13 @@ export function createSitting({
   let paper = null
   let fromDatabase = false // the paper on screen is the database's, not only the phone's copy
   let held = emptyHeld()
+  // Which of the two optional blocks this taker sits, in an exam that has the
+  // choice. It is held like an answer: changed on the phone at once, sent with
+  // the next save, and `sitsWaiting` until the database has heard it.
+  let sits = BOTH_BLOCKS
+  let sitsWaiting = false
+  let visible = NO_QUESTIONS // the questions on screen: the paper's, less a block left out ...
+  let visibleFor = null // ... and what they were worked out from
   let clock = null
   let paperOnPhone = true // the phone's storage took the paper ...
   let answersOnPhone = true // ... and the latest answers
@@ -242,6 +256,19 @@ export function createSitting({
 
   const ended = () => status === 'over' || status === 'gone' || status === 'elsewhere'
 
+  // The choice, when this paper has one to tell the database about.
+  const choice = () => (paper?.exam.sections.choice ? sits : null)
+
+  // The same list until the paper or the choice changes, so a page draws its
+  // questions again only when they are different ones.
+  function onScreen() {
+    if (!visibleFor || visibleFor.questions !== paper.questions || !sameSits(visibleFor.sits, sits)) {
+      visible = visibleQuestions(paper.questions, sits)
+      visibleFor = { questions: paper.questions, sits }
+    }
+    return visible
+  }
+
   function view() {
     const showing = status === 'sitting' || status === 'ending'
     return {
@@ -251,7 +278,11 @@ export function createSitting({
       problem,
       exam: paper?.exam ?? null,
       attempt: paper?.attempt ?? null,
-      questions: showing && paper ? paper.questions : NO_QUESTIONS,
+      questions: showing && paper ? onScreen() : NO_QUESTIONS,
+      allQuestions: showing && paper ? paper.questions : NO_QUESTIONS,
+      passages: showing && paper ? paper.passages : NO_PASSAGES,
+      sections: paper?.exam.sections ?? NO_SECTIONS,
+      sits,
       answers: showing ? held.answers : NO_ANSWERS,
       save: saveStatus({ waiting: held.waiting.length, sending, failures, online: online() }),
       connected: failures === 0 && online(),
@@ -270,7 +301,7 @@ export function createSitting({
   }
 
   function keep() {
-    if (paper) answersOnPhone = store.keepAnswers(paper.attempt.id, { ...held, clock: holdClock(clock) })
+    if (paper) answersOnPhone = store.keepAnswers(paper.attempt.id, { ...held, clock: holdClock(clock), sits, sitsWaiting })
   }
 
   function stopTimers() {
@@ -346,6 +377,10 @@ export function createSitting({
     const kept = store.answers(copy.attempt.id)
     paper = copy
     held = tidyHeld(kept, copy.questions)
+    // A choice the database has not heard yet is the phone's to keep; any
+    // other is the one the paper came with.
+    sitsWaiting = copy.exam.sections.choice && kept?.sitsWaiting === true
+    sits = sitsWaiting ? tidySits(kept.sits) : copy.attempt.sits
     clock = heldClock(kept?.clock, readClock())
     return true
   }
@@ -383,7 +418,15 @@ export function createSitting({
     const fresh = tidyPaper(reply)
     if (!fresh) throw new Error('The database sent something that is not a paper.')
     // Answers waiting on the phone win over the database's; the rest follows it.
-    const own = paper && paper.attempt.id === fresh.attempt.id ? held : store.answers(fresh.attempt.id)
+    const sameOne = Boolean(paper) && paper.attempt.id === fresh.attempt.id
+    const kept = sameOne ? null : store.answers(fresh.attempt.id)
+    const own = sameOne ? held : kept
+    // So does a choice of blocks the database has not heard yet.
+    const waitingChoice = fresh.exam.sections.choice && (sameOne ? sitsWaiting : kept?.sitsWaiting === true)
+    const stands = waitingChoice ? (sameOne ? sits : tidySits(kept.sits)) : fresh.attempt.sits
+    if (!sameSits(stands, sits)) sits = stands
+    sitsWaiting = waitingChoice
+    if (sitsWaiting) owed = true
     paper = fresh
     fromDatabase = true
     held = mergeAnswers(own, reply.answers, fresh.questions)
@@ -404,9 +447,15 @@ export function createSitting({
     sending = batch.length > 0 || final
     if (sending) emit()
     const sent = readClock()
+    // The choice of blocks goes with every save of an exam that has one, so a
+    // hand-in fixes it in the same write.
+    const told = choice()
+    const options = {}
+    if (hurrying()) options.timeout = HURRY_TIMEOUT_MS
+    if (told) options.sits = told
     let reply
     try {
-      reply = await api.examSave(address, batch, final, hurrying() ? { timeout: HURRY_TIMEOUT_MS } : undefined)
+      reply = await api.examSave(address, batch, final, Object.keys(options).length > 0 ? options : undefined)
     } finally {
       sending = false
     }
@@ -417,6 +466,15 @@ export function createSitting({
     }
     failures = 0
     held = settleBatch(held, batch, reply)
+    if (typeof reply.sits_scope === 'boolean' && typeof reply.sits_score === 'boolean') {
+      // The database has heard the choice this save carried. One made while
+      // the save was on its way still waits, and goes with the next.
+      if (told && sitsWaiting && sameSits(told, sits)) sitsWaiting = false
+      if (!sitsWaiting) {
+        const stands = tidySits({ scope: reply.sits_scope, score: reply.sits_score })
+        if (!sameSits(stands, sits)) sits = stands
+      }
+    }
     clock = syncClock(reply.deadline_at, reply.now, readClock(), sent) || clock
     if (paper && reply.deadline_at && reply.deadline_at !== paper.attempt.deadline_at) {
       // The officers moved the end of the exam.
@@ -626,6 +684,8 @@ export function createSitting({
     paper = null
     fromDatabase = false
     held = emptyHeld()
+    sits = BOTH_BLOCKS
+    sitsWaiting = false
     clock = null
     failures = 0
     owed = false
@@ -698,12 +758,14 @@ export function createSitting({
     if (!alive || !fromDatabase || (status !== 'sitting' && status !== 'ending')) return
     if (typeof api.examSaveLast !== 'function' || !online()) return
     const batch = takeBatch(held)
-    if (batch.length === 0) return
-    const text = JSON.stringify(batch)
+    // A choice of blocks that still waits leaves with the page too.
+    const told = choice()
+    if (batch.length === 0 && !(told && sitsWaiting)) return
+    const text = told ? JSON.stringify([batch, told]) : JSON.stringify(batch)
     const at = readClock().wall
     if (lastLeft && lastLeft.text === text && Math.abs(at - lastLeft.at) < LEAVING_GAP_MS) return
     lastLeft = { text, at }
-    if (!api.examSaveLast(address, batch)) return
+    if (!(told ? api.examSaveLast(address, batch, told) : api.examSaveLast(address, batch))) return
     for (const item of batch) doubt.add(item.q)
     doubtRipe = false
   }
@@ -786,6 +848,23 @@ export function createSitting({
       if (taking() && canChoose(paper.questions, id)) change(toggleFlag(held, id))
     },
 
+    // Sits these blocks from now on: { scope, score }, at least one of them.
+    // Nothing happens in an exam with no choice. The answers in a block that
+    // is left out stay where they are, on the phone and in the database.
+    setSections(next) {
+      if (!taking() || !paper.exam.sections.choice) return
+      const wanted = { scope: next?.scope === true, score: next?.score === true }
+      if (!(wanted.scope || wanted.score) || sameSits(wanted, sits)) return
+      sits = wanted
+      sitsWaiting = true
+      owed = true
+      handInNote = ''
+      keep()
+      emit()
+      clearTimeout(sendTimer)
+      sendTimer = setTimeout(pump, SEND_AFTER_MS)
+    },
+
     // Resolves when the database has answered or failed to: { ok: true } once
     // the exam is over (see `status` and `why`), or { ok: false, reason }
     // with 'offline' (it was not sent: say so and keep the button), 'unsure'
@@ -860,6 +939,10 @@ const LOADING = Object.freeze({
   exam: null,
   attempt: null,
   questions: NO_QUESTIONS,
+  allQuestions: NO_QUESTIONS,
+  passages: NO_PASSAGES,
+  sections: NO_SECTIONS,
+  sits: BOTH_BLOCKS,
   answers: NO_ANSWERS,
   save: Object.freeze({ kind: 'saved', count: 0 }),
   connected: true,
@@ -879,11 +962,19 @@ const LOADING = Object.freeze({
 // change never starts the sitting again. What it returns:
 //
 //   status, why, problem   see createSitting; `over` is status === 'over'
-//   exam, attempt          { title, minutes }, { id, started_at, deadline_at }
-//   questions              this taker's paper: [{ id, body, options }]
+//   exam, attempt          { title, minutes, sections }, { id, started_at, deadline_at, sits }
+//   questions              the questions this taker sits, in the paper's order:
+//                          [{ id, body, options, section, passage, image }]
+//   allQuestions           every question of the paper, a block left out too
+//   passages               { [passage id]: { body, image } }
+//   sections               { shared, scope, score, choice }: how many questions
+//                          each section has, and whether there is a choice
+//   sits                   { scope, score }: the blocks this taker sits now
+//   blockAnswered          { scope, score }: answers in each block, sat or not
 //   answers                { [question id]: { c, f } }; read one with answerOf
-//   total, answered        how many questions, how many have an answer
+//   total, answered        how many questions the taker sits, how many have an answer
 //   unanswered, flagged    question numbers (from 1) for the review
+//   layout                 layoutPages of `questions`
 //   pageCount, pages       pageSummaries: one row per page for its button
 //   questionsOn(page)      the questions of a page (from 1), each with its `n`
 //   save                   { kind: 'saved' | 'saving' | 'offline', count }
@@ -900,8 +991,8 @@ const LOADING = Object.freeze({
 //   locked                 answers are not taken just now (a hand-in is on its
 //                          way, or nobody knows yet whether it arrived)
 //   unsent                 once over: answers the database never received
-//   setAnswer(id, c), clearAnswer(id), toggleFlag(id), handIn(), retry(),
-//   takeOver()
+//   setAnswer(id, c), clearAnswer(id), toggleFlag(id), setSections({ scope,
+//   score }), handIn(), retry(), takeOver()
 export function useSitting({ word, userId, attemptId = null }) {
   const [state, setState] = useState(LOADING)
   // The one sitting. Everything the callbacks below do goes through it, so
@@ -928,23 +1019,50 @@ export function useSitting({ word, userId, attemptId = null }) {
     }
   }, [word, userId])
 
-  const { questions, answers } = state
+  const { questions, answers, allQuestions, passages } = state
+  const layout = useMemo(() => layoutPages(questions), [questions])
   const lists = useMemo(
     () => ({
       total: questions.length,
       answered: answeredCount(questions, answers),
       unanswered: unansweredNumbers(questions, answers),
       flagged: flaggedNumbers(questions, answers),
-      pageCount: pageCount(questions.length),
-      pages: pageSummaries(questions, answers),
+      pageCount: Math.max(1, layout.length),
+      pages: pageSummaries(questions, answers, layout),
+      blockAnswered: blockAnswered(allQuestions, answers),
     }),
-    [questions, answers],
+    [questions, answers, allQuestions, layout],
   )
-  const questionsOn = useCallback((page) => pageQuestions(questions, page), [questions])
+  const questionsOn = useCallback(
+    (page) => {
+      if (layout.length === 0) return NO_QUESTIONS
+      const n = Math.trunc(Number(page)) || 1
+      return layout[Math.min(Math.max(n, 1), layout.length) - 1].questions
+    },
+    [layout],
+  )
+
+  // Every picture is fetched as soon as the paper is known, so a connection
+  // that drops later does not leave a question without its picture. A block
+  // that is left out is fetched too: it may be added again with no connection.
+  useEffect(() => {
+    if (typeof Image !== 'function') return undefined
+    const paths = [...allQuestions.map((q) => q.image), ...Object.values(passages).map((p) => p.image)]
+    const fetching = [...new Set(paths.filter(Boolean))].map((path) => {
+      const picture = new Image()
+      picture.decoding = 'async'
+      picture.src = pictureUrl(path)
+      return picture
+    })
+    return () => {
+      for (const picture of fetching) picture.src = ''
+    }
+  }, [allQuestions, passages])
 
   const choose = useCallback((id, c) => sitting.current?.choose(id, c), [])
   const clear = useCallback((id) => sitting.current?.clear(id), [])
   const flag = useCallback((id) => sitting.current?.flag(id), [])
+  const setSections = useCallback((next) => sitting.current?.setSections(next), [])
   const retry = useCallback(() => sitting.current?.retry(), [])
   const takeOver = useCallback(() => sitting.current?.takeOver(), [])
   const handIn = useCallback(
@@ -955,10 +1073,12 @@ export function useSitting({ word, userId, attemptId = null }) {
   return {
     ...state,
     ...lists,
+    layout,
     questionsOn,
     setAnswer: choose,
     clearAnswer: clear,
     toggleFlag: flag,
+    setSections,
     handIn,
     retry,
     takeOver,

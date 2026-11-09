@@ -130,6 +130,70 @@ export function sharedRanks(attempts) {
   return shared
 }
 
+// ---- the two programmes -----------------------------------------------------
+//
+// An exam with questions in both optional sections gives each paper a mark for
+// each exchange programme it sits: the shared questions plus that programme's
+// section. The pages then show one programme at a time, each with its own
+// ranking. An exam without the choice has one grade and one ranking, and none
+// of this applies to it.
+
+const PROGRAMMES = [
+  { id: 'scope', short: 'SCOPE', name: 'Professional exchange (SCOPE)', block: 'Professional exchange section' },
+  { id: 'score', short: 'SCORE', name: 'Research exchange (SCORE)', block: 'Research exchange section' },
+]
+
+// The programmes of an exam, from the `sections` its results name: each with
+// how many questions its mark is out of (`of`), and how many of those are
+// shared (`sharedOf`) and in its own section (`blockOf`). Empty for an exam
+// without the choice.
+export function programmesOf(sections) {
+  if (sections?.choice !== true) return []
+  return PROGRAMMES.map((p) => ({
+    ...p,
+    sharedOf: num(sections.shared),
+    blockOf: num(sections[p.id]),
+    of: num(sections.shared) + num(sections[p.id]),
+  }))
+}
+
+// The papers of one programme, as a ranking of their own: only the papers
+// that sit it, each with the programme's total as its `score` and the
+// programme's rank as its `rank`, the highest first and equal marks by name.
+// `shared` and `block` are the two parts of the mark, and `both` says the
+// paper sits the other programme too. Everything that reads a ranking (the
+// tally, the averages, the spread, the search, the exports) reads these rows
+// as it reads any other. With no programme the papers come back as they are.
+export function programmeRows(attempts, programme) {
+  const rows = list(attempts)
+  if (!programme) return rows
+  const id = programme.id
+  return rows
+    .filter((r) => r?.[`sits_${id}`] === true)
+    .map((r) => ({
+      ...r,
+      score: num(r[`total_${id}`]),
+      rank: r[`rank_${id}`] ?? null,
+      shared: num(r.mark_shared),
+      block: num(r[`mark_${id}`]),
+      both: r.sits_scope === true && r.sits_score === true,
+    }))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        String(a.full_name || '').toLowerCase().localeCompare(String(b.full_name || '').toLowerCase()) ||
+        String(a.attempt_id).localeCompare(String(b.attempt_id)),
+    )
+}
+
+// What a paper sits, in words: '' in an exam without the choice.
+export function sitsWords(row) {
+  if (row?.sits_scope && row?.sits_score) return 'SCOPE and SCORE'
+  if (row?.sits_scope) return 'SCOPE only'
+  if (row?.sits_score) return 'SCORE only'
+  return ''
+}
+
 // ---- averages and words -----------------------------------------------------
 
 function mean(values) {
@@ -221,18 +285,33 @@ export function optionText(question, i) {
   return Number.isInteger(i) && i >= 0 && i < options.length ? `${optionLetter(i)}. ${options[i]}` : ''
 }
 
-// The share of the papers that got a question right, 0 to 1, where `papers` is
-// how many there are (rpc/exam_question_stats counts every paper, finished or
-// not). A question left unanswered counts as not right. null with no paper.
-export function shareRight(question, papers) {
-  return papers > 0 ? Math.min(1, num(question?.right) / papers) : null
+// How many papers a question is counted over: the papers that sit its
+// section (`sat`, which rpc/exam_question_stats gives each question), or
+// every paper when the question does not say.
+export function papersOf(question, papers) {
+  return isNum(question?.sat) ? question.sat : num(papers)
 }
 
-// The questions most people got wrong first. Every question is out of the
-// same number of papers, so the fewest right answers is the smallest share;
-// equal ones stay in the officers' order.
+// The share of its papers that got a question right, 0 to 1, where `papers` is
+// how many papers the exam has (rpc/exam_question_stats counts every paper,
+// finished or not, and a question of an optional section only over the papers
+// that sit it). A question left unanswered counts as not right. null with no
+// paper.
+export function shareRight(question, papers) {
+  const over = papersOf(question, papers)
+  return over > 0 ? Math.min(1, num(question?.right) / over) : null
+}
+
+// The questions most people got wrong first: the smallest share right. With
+// every question out of the same papers that is the fewest right answers.
+// A question nobody sits has no share and goes last; equal ones stay in the
+// officers' order.
 export function hardestFirst(questions) {
-  return [...list(questions)].sort((a, b) => num(a?.right) - num(b?.right) || num(a?.n) - num(b?.n))
+  const share = (q) => {
+    if (!isNum(q?.sat)) return num(q?.right)
+    return q.sat > 0 ? num(q?.right) / q.sat : Infinity
+  }
+  return [...list(questions)].sort((a, b) => share(a) - share(b) || num(a?.n) - num(b?.n))
 }
 
 // How one question was answered: a line for each option in the officers' order
@@ -240,7 +319,8 @@ export function hardestFirst(questions) {
 // paper), and how many papers left the question unanswered.
 export function optionShares(question, papers) {
   const counts = list(question?.counts)
-  const share = (count) => (papers > 0 ? Math.min(1, count / papers) : null)
+  const over = papersOf(question, papers)
+  const share = (count) => (over > 0 ? Math.min(1, count / over) : null)
   const options = list(question?.options).map((text, i) => ({
     index: i,
     letter: optionLetter(i),
@@ -250,24 +330,32 @@ export function optionShares(question, papers) {
     correct: i === question?.correct,
   }))
   const answered = isNum(question?.answered) ? question.answered : options.reduce((sum, o) => sum + o.count, 0)
-  const blank = Math.max(0, num(papers) - answered)
+  const blank = Math.max(0, over - answered)
   return { options, blank: { count: blank, share: share(blank) } }
 }
 
 // ---- one paper --------------------------------------------------------------
 
 // A line of a paper (rpc/exam_sheet) is 'right', 'wrong', or 'blank' when no
-// option was chosen.
+// option was chosen. A question in a section the paper does not sit is 'left':
+// it is not marked, whatever was chosen in it before the section was left out.
 export function rowOutcome(row) {
+  if (row?.counted === false) return 'left'
   if (row?.chosen == null) return 'blank'
   return row.chosen === row.correct ? 'right' : 'wrong'
 }
 
-export const OUTCOME_LABEL = { right: 'Right', wrong: 'Wrong', blank: 'Not answered' }
+export const OUTCOME_LABEL = { right: 'Right', wrong: 'Wrong', blank: 'Not answered', left: 'Section left out, not marked' }
 
-// How many lines of a paper are right, wrong, unanswered and flagged.
+// A question's number as the paper shows it ('81P'), or its plain number.
+export function questionLabel(row) {
+  return row?.label ?? row?.n ?? ''
+}
+
+// How many lines of a paper are right, wrong, unanswered, in a section left
+// out, and flagged.
 export function sheetCounts(rows) {
-  const out = { all: 0, right: 0, wrong: 0, blank: 0, flagged: 0 }
+  const out = { all: 0, right: 0, wrong: 0, blank: 0, left: 0, flagged: 0 }
   for (const row of list(rows)) {
     out.all += 1
     out[rowOutcome(row)] += 1
@@ -339,14 +427,24 @@ export function typedCell(v) {
 
 // The ranking. `questions` is how many the exam has. The email and the phone
 // are here though the screen leaves them out: the officers write to people
-// from this file. Times are Cairo's.
-export function resultColumns(questions) {
+// from this file. Times are Cairo's. For one programme's ranking (rows from
+// programmeRows) the grade is the programme's mark, with its two parts and
+// which sections the paper sits beside it.
+export function resultColumns(questions, programme = null) {
+  const marks = programme
+    ? [
+        { label: `${programme.short} mark (of ${programme.of})`, value: (r) => r.score },
+        { label: `Shared questions (of ${programme.sharedOf})`, value: (r) => r.shared },
+        { label: `${programme.block} (of ${programme.blockOf})`, value: (r) => r.block },
+        { label: 'Sections', value: (r) => sitsWords(r) },
+      ]
+    : [{ label: `Grade (of ${num(questions)})`, value: (r) => r.score }]
   return [
     { label: 'Rank', value: (r) => r.rank },
     { label: 'Name', value: (r) => typedCell(r.full_name) },
     { label: 'Student ID', value: (r) => r.student_id },
     { label: 'Year', value: (r) => typedCell(r.faculty_year) },
-    { label: `Grade (of ${num(questions)})`, value: (r) => r.score },
+    ...marks,
     { label: 'Answered', value: (r) => r.answered },
     { label: 'Time taken', value: (r) => durationWords(r.seconds) },
     { label: 'State', value: (r) => stateLabel(r.state) },
@@ -357,25 +455,30 @@ export function resultColumns(questions) {
   ]
 }
 
-// The lines printed above a list of papers: how many, and the averages.
-export function resultSummary(attempts, questions) {
+// The lines printed above a list of papers: how many, and the averages. For
+// one programme's ranking the papers are the ones that sit it, and the average
+// is of the programme's mark.
+export function resultSummary(attempts, questions, programme = null) {
   const t = tally(attempts)
   const avg = averages(attempts)
+  const of = programme ? programme.of : num(questions)
   return [
-    ['Papers', t.started],
+    [programme ? `Papers that sit ${programme.short}` : 'Papers', t.started],
     ['Handed in', t.handedIn],
     ['Time ran out', t.timedOut],
     ['Still sitting', t.sitting],
-    ['Average grade', avg.grade == null ? 'No finished paper yet' : `${oneDecimal(avg.grade)} of ${num(questions)}`],
+    [programme ? `Average ${programme.short} mark` : 'Average grade', avg.grade == null ? 'No finished paper yet' : `${oneDecimal(avg.grade)} of ${of}`],
     ['Average time', avg.seconds == null ? 'No finished paper yet' : durationWords(avg.seconds)],
   ]
 }
 
-// One paper, a line for each question in the officers' order.
-export function sheetColumns() {
+// One paper, a line for each question in the officers' order. `inSections`
+// adds each question's section, for an exam that has the two optional ones.
+export function sheetColumns(inSections = false) {
   return [
-    { label: 'No.', value: (r) => r.n },
-    { label: 'Question', value: (r) => r.body },
+    { label: 'No.', value: (r) => questionLabel(r) },
+    ...(inSections ? [{ label: 'Section', value: (r) => SECTION_WORDS[r.section] ?? SECTION_WORDS.shared }] : []),
+    { label: 'Question', value: (r) => r.body || (r.image ? '(A picture with no words)' : '') },
     { label: 'Right answer', value: (r) => optionText(r, r.correct) },
     { label: 'Chosen answer', value: (r) => optionText(r, r.chosen) },
     { label: 'Result', value: (r) => OUTCOME_LABEL[rowOutcome(r)] },
@@ -383,17 +486,48 @@ export function sheetColumns() {
   ]
 }
 
-// The lines printed above one paper: whose it is, the grade and the time.
-// `questions` is how many the paper has.
-export function sheetSummary(attempt, questions) {
+const SECTION_WORDS = { shared: 'Shared', scope: 'Professional exchange (SCOPE)', score: 'Research exchange (SCORE)' }
+
+// How many questions of a paper's lines are in each section, and how many of
+// them the paper sits.
+export function sheetSections(rows) {
+  const out = { shared: 0, scope: 0, score: 0, counted: 0 }
+  for (const row of list(rows)) {
+    out[row?.section === 'scope' || row?.section === 'score' ? row.section : 'shared'] += 1
+    if (row?.counted !== false) out.counted += 1
+  }
+  return out
+}
+
+// A paper's marks as lines of [label, mark, out of]: one for each programme it
+// sits, or the one grade of an exam without the choice. `rows` are the
+// paper's lines.
+export function sheetMarks(attempt, rows) {
   const a = attempt || {}
+  const s = sheetSections(rows)
+  const marks = []
+  if (a.total_scope != null) marks.push(['SCOPE mark', num(a.total_scope), s.shared + s.scope])
+  if (a.total_score != null) marks.push(['SCORE mark', num(a.total_score), s.shared + s.score])
+  return marks.length > 0 ? marks : [['Grade', num(a.score), s.counted]]
+}
+
+// The lines printed above one paper: whose it is, the grade and the time.
+// `questions` is how many the paper has; `rows`, when given, are its lines,
+// from which the marks of each programme and what they are out of are read.
+export function sheetSummary(attempt, questions, rows = null) {
+  const a = attempt || {}
+  const marks = rows ? sheetMarks(a, rows) : [['Grade', num(a.score), num(questions)]]
+  const sat = rows ? sheetSections(rows).counted : num(questions)
   return [
     ['Student ID', a.student_id],
     ['Year', a.faculty_year],
     ['Email', a.email],
     ['Phone', a.phone],
-    ['Grade', `${num(a.score)} of ${num(questions)}`],
-    ['Answered', `${num(a.answered)} of ${num(questions)}`],
+    ...marks.map(([label, mark, of]) => [label, `${mark} of ${of}`]),
+    ...(marks.length > 1 || a.total_scope != null || a.total_score != null
+      ? [['Shared questions', `${num(a.mark_shared)} of ${sheetSections(rows).shared}`], ['Sections', sitsWords(a)]]
+      : []),
+    ['Answered', `${num(a.answered)} of ${sat}`],
     ['State', stateLabel(a.state)],
     ['Time taken', durationWords(a.seconds)],
     ['Started (Cairo time)', cairoStamp(a.started_at)],
@@ -407,11 +541,13 @@ export function sheetSummary(attempt, questions) {
 export function questionColumns(stats) {
   const papers = num(stats?.attempts)
   const most = Math.max(0, ...list(stats?.questions).map((q) => list(q?.options).length))
+  const inSections = list(stats?.questions).some((q) => q?.section === 'scope' || q?.section === 'score')
   return [
-    { label: 'No.', value: (q) => q.n },
-    { label: 'Question', value: (q) => q.body },
+    { label: 'No.', value: (q) => questionLabel(q) },
+    ...(inSections ? [{ label: 'Section', value: (q) => SECTION_WORDS[q.section] ?? SECTION_WORDS.shared }] : []),
+    { label: 'Question', value: (q) => q.body || (q.image ? '(A picture with no words)' : '') },
     { label: 'Right answer', value: (q) => optionText(q, q.correct) },
-    { label: 'Papers', value: () => papers },
+    { label: 'Papers', value: (q) => papersOf(q, papers) },
     { label: 'Answered', value: (q) => q.answered },
     { label: 'Right', value: (q) => q.right },
     { label: 'Share right', value: (q) => percent(shareRight(q, papers)) },

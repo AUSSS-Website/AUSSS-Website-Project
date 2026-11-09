@@ -3,17 +3,22 @@ import { Link } from 'react-router-dom'
 import { errorText } from '../../../lib/errorText.js'
 import { eventWhen } from '../../../lib/eventTime.js'
 import ExportButtons from '../../ExportButtons.jsx'
+import { examPictureUrl } from '../../examQueries.js'
 import { useDeleteAttempt, useExamSheet } from '../../examResultQueries.js'
 import {
   OUTCOME_LABEL,
   durationWords,
   exportName,
   optionLetter,
+  questionLabel,
   readProblem,
   rowOutcome,
   sheetColumns,
   sheetCounts,
+  sheetMarks,
+  sheetSections,
   sheetSummary,
+  sitsWords,
   stateLabel,
 } from '../../examStats.js'
 import { ConfirmButton, ErrorText, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
@@ -47,33 +52,41 @@ export function Figure({ label, children }) {
   )
 }
 
+// 'left' is offered only on a paper that left a section out.
 const FILTERS = [
   ['all', 'All'],
   ['right', 'Right'],
   ['wrong', 'Wrong'],
   ['blank', 'Not answered'],
+  ['left', 'Section left out'],
   ['flagged', 'Flagged'],
 ]
 const FILTER_NOTE = {
   right: 'The questions answered right only.',
   wrong: 'The questions answered wrong only.',
   blank: 'The questions not answered only.',
+  left: 'The questions of the section this paper left out only.',
   flagged: 'The flagged questions only.',
 }
 
-const OUTCOME_CLS = { right: 'text-ok', wrong: 'text-danger', blank: 'text-soft/65' }
+const OUTCOME_CLS = { right: 'text-ok', wrong: 'text-danger', blank: 'text-soft/65', left: 'text-soft/65' }
+const SECTION_WORDS = { scope: 'Professional exchange (SCOPE)', score: 'Research exchange (SCORE)' }
 
 // The student's address and phone number, as links in a line of small text.
 const contactLinkCls =
   'transition-colors hover:text-ink [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:items-center'
 
-function QuestionRow({ row }) {
+// `passage` is the text the question is read with, if any: { body, image }.
+function QuestionRow({ row, passage = null }) {
   const outcome = rowOutcome(row)
   const options = Array.isArray(row.options) ? row.options : []
   return (
-    <li className="rounded-xl border border-line/10 bg-sunk/40 p-4">
+    <li className={`rounded-xl border border-line/10 bg-sunk/40 p-4 ${outcome === 'left' ? 'border-dashed' : ''}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/55">Question {row.n}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/55">
+          Question {questionLabel(row)}
+          {SECTION_WORDS[row.section] && <span className="ml-2 normal-case tracking-normal">{SECTION_WORDS[row.section]}</span>}
+        </p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">
           <span className={OUTCOME_CLS[outcome]}>{OUTCOME_LABEL[outcome]}</span>
           {row.flagged && <span className="text-warn">Flagged</span>}
@@ -81,9 +94,37 @@ function QuestionRow({ row }) {
       </div>
       {/* dir="auto", here and on each option: a question written in Arabic
           reads from the right. */}
-      <p dir="auto" className="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-ink">
-        {row.body}
-      </p>
+      {passage && (
+        <details className="mt-2 text-xs text-soft/70">
+          <summary className="cursor-pointer font-semibold text-accent">Read with a passage</summary>
+          {passage.body && (
+            <p dir="auto" className="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-soft/85">
+              {passage.body}
+            </p>
+          )}
+          {passage.image && (
+            <img
+              src={examPictureUrl(passage.image)}
+              alt="The passage’s picture"
+              loading="lazy"
+              className="mt-2 block h-auto max-h-72 w-auto max-w-full rounded-xl border border-line/10 bg-white"
+            />
+          )}
+        </details>
+      )}
+      {row.body && (
+        <p dir="auto" className="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-ink">
+          {row.body}
+        </p>
+      )}
+      {row.image && (
+        <img
+          src={examPictureUrl(row.image)}
+          alt={`The picture of question ${questionLabel(row)}`}
+          loading="lazy"
+          className="mt-2 block h-auto max-h-72 w-auto max-w-full rounded-xl border border-line/10 bg-white"
+        />
+      )}
       <ol className="mt-3 space-y-1.5">
         {options.map((text, i) => {
           const right = i === row.correct
@@ -114,8 +155,10 @@ function QuestionRow({ row }) {
 
 // `rank` is the person's place in the ranking when the ranking is loaded (the
 // sheet itself does not carry it), and `tied` says another paper shares it.
+// `programme` is the programme whose ranking the paper was opened from, in an
+// exam with two optional sections: the rank is the paper's place in that one.
 // `backTo` is the ranking's address; `onDeleted` runs once the paper is gone.
-export default function AttemptSheet({ exam, attemptId, rank = null, tied = false, backTo, onDeleted }) {
+export default function AttemptSheet({ exam, attemptId, rank = null, tied = false, programme = null, backTo, onDeleted }) {
   const remove = useDeleteAttempt()
   // From the moment the delete is sent the sheet stops asking for a paper
   // that is about to be gone.
@@ -159,6 +202,10 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
   const a = sheet.data.attempt
   const rows = Array.isArray(sheet.data.rows) ? sheet.data.rows : []
   const counts = sheetCounts(rows)
+  const marks = sheetMarks(a, rows)
+  const sections = sheetSections(rows)
+  const inSections = sections.scope > 0 || sections.score > 0
+  const passages = new Map((Array.isArray(sheet.data.passages) ? sheet.data.passages : []).map((p) => [p.id, p]))
   const shown = rows.filter((row) => (filter === 'all' ? true : filter === 'flagged' ? row.flagged : rowOutcome(row) === filter))
   const when = eventWhen({ startsAt: a.started_at, endsAt: a.finished_at })
 
@@ -209,24 +256,36 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
               FILTER_NOTE[filter] || ''
             }`.trim()}
             filename={exportName(exam.title, 'paper', a.student_id)}
-            columns={sheetColumns()}
+            columns={sheetColumns(inSections)}
             rows={shown}
-            summary={sheetSummary(a, rows.length)}
+            summary={sheetSummary(a, rows.length, rows)}
             csv={false}
             className={`${outlineBtnCls} ${tapCls}`}
           />
         </div>
 
         <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Figure label="Grade">
-            {a.score ?? 0} <span className="font-sans text-sm font-normal text-soft/60">of {rows.length}</span>
-          </Figure>
+          {/* One mark for each programme the paper sits, or the one grade of an
+              exam without the choice. */}
+          {marks.map(([label, mark, of]) => (
+            <Figure key={label} label={label}>
+              {mark} <span className="font-sans text-sm font-normal text-soft/60">of {of}</span>
+            </Figure>
+          ))}
           <Figure label="Answered">
-            {a.answered ?? 0} <span className="font-sans text-sm font-normal text-soft/60">of {rows.length}</span>
+            {a.answered ?? 0} <span className="font-sans text-sm font-normal text-soft/60">of {sections.counted}</span>
           </Figure>
           <Figure label="Time taken">{durationWords(a.seconds) || '–'}</Figure>
-          <Figure label={tied && rank != null ? 'Joint rank' : 'Rank'}>{rank ?? '–'}</Figure>
+          <Figure label={`${tied && rank != null ? 'Joint rank' : 'Rank'}${programme ? ` in ${programme.short}` : ''}`}>{rank ?? '–'}</Figure>
         </dl>
+        {inSections && sitsWords(a) && (
+          <p className="mt-3 text-xs text-soft/60">
+            This paper sits {sitsWords(a)}: {a.mark_shared ?? 0} of {sections.shared} on the shared questions
+            {a.mark_scope != null && `, ${a.mark_scope} of ${sections.scope} on the professional exchange section`}
+            {a.mark_score != null && `, ${a.mark_score} of ${sections.score} on the research exchange section`}.
+            {programme && rank == null && ` It is not in the ${programme.short} ranking.`}
+          </p>
+        )}
 
         <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-soft/55">
           <StateChip state={a.state} />
@@ -239,7 +298,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
           The questions and their options are in the order you wrote them, not the order this student saw.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {FILTERS.map(([value, label]) => (
+          {FILTERS.filter(([value]) => value !== 'left' || counts.left > 0).map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -258,7 +317,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
         ) : (
           <ol className="mt-4 space-y-3">
             {shown.map((row) => (
-              <QuestionRow key={row.question_id ?? row.n} row={row} />
+              <QuestionRow key={row.question_id ?? row.n} row={row} passage={row.passage ? passages.get(row.passage) : null} />
             ))}
           </ol>
         )}

@@ -1,11 +1,16 @@
-// The rules under a taker's exam pages: the pages of ten, the answers and which
-// of them still wait to be sent, the review lists, the clock, and what to do
-// when the database does not answer. Nothing here touches React, the network,
+// The rules under a taker's exam pages: the sections and the pages, the answers
+// and which of them still wait to be sent, the review lists, the clock, and
+// what to do when the database does not answer. Nothing here touches React, the network,
 // storage or a clock (the time is always handed in), so sitting.test.js proves
 // each rule; useSitting.js ties them to the page.
 //
 // The shapes, as rpc/exam_paper and rpc/exam_save use them:
-//   question   { id, body, options: [text, ...] }, in this taker's order
+//   question   { id, body, options: [text, ...], section, passage, image }, in
+//              this taker's order. `section` is 'shared', 'scope' or 'score';
+//              `passage` is the id of the text it is read with, or null;
+//              `image` is its picture's place in the bucket, or null
+//   sits       which of the two optional blocks this taker answers,
+//              { scope, score }: never neither
 //   answer     { c, f }: c is the chosen option's position as shown to this
 //              taker (from 0), or null; f is the flag
 //   held       what the phone holds: { answers: { [question id]: answer },
@@ -41,28 +46,133 @@ export function examWord(value) {
   return WORD.test(word) ? word : null
 }
 
-// ---- pages ----------------------------------------------------------------------
+// ---- sections -------------------------------------------------------------------
+//
+// An exam may end with two optional blocks of questions, one for each exchange
+// programme: 'scope' (professional exchange) and 'score' (research exchange).
+// Everybody answers the 'shared' questions; each taker sits one block or both,
+// and may change that until the paper is handed in. The database sends every
+// question, and the pages show the ones this taker sits.
 
-// Pages and question numbers both count from 1, as the screen shows them.
+export const BLOCKS = ['scope', 'score']
+
+// A question's section; anything the page does not know reads as 'shared'.
+export function sectionOf(question) {
+  return question?.section === 'scope' || question?.section === 'score' ? question.section : 'shared'
+}
+
+// Which blocks a paper sits, made safe to use: both unless told otherwise, and
+// never neither (the database refuses that too).
+export function tidySits(value) {
+  const scope = value?.scope !== false
+  const score = value?.score !== false
+  return scope || score ? { scope, score } : { scope: true, score: true }
+}
+
+export function sameSits(a, b) {
+  return Boolean(a && b) && a.scope === b.scope && a.score === b.score
+}
+
+// How many questions each section has, and whether there is a choice to make:
+// only when both blocks have questions.
+export function sectionCounts(questions) {
+  const counts = { shared: 0, scope: 0, score: 0 }
+  for (const q of Array.isArray(questions) ? questions : []) counts[sectionOf(q)] += 1
+  return { ...counts, choice: counts.scope > 0 && counts.score > 0 }
+}
+
+// The questions a taker sees: the shared ones and the blocks they sit, in the
+// paper's order. The same array when nothing is left out.
+export function visibleQuestions(questions, sits) {
+  const list = Array.isArray(questions) ? questions : []
+  const chosen = tidySits(sits)
+  if (chosen.scope && chosen.score) return list
+  return list.filter((q) => {
+    const section = sectionOf(q)
+    return section === 'shared' || chosen[section]
+  })
+}
+
+// How many questions of each block have an answer, whether the block is sat or
+// not: what a taker is told before leaving a block out.
+export function blockAnswered(questions, answers) {
+  const out = { scope: 0, score: 0 }
+  for (const q of Array.isArray(questions) ? questions : []) {
+    const section = sectionOf(q)
+    if (section !== 'shared' && answerOf(answers, q.id).c !== null) out[section] += 1
+  }
+  return out
+}
+
+// ---- pages ----------------------------------------------------------------------
+//
+// Pages and question numbers both count from 1, as the screen shows them. A
+// page holds up to ten questions, with two exceptions that keep things
+// together: a section starts on a page of its own, and the questions that are
+// read with one passage are never split (a passage with more than ten
+// questions gets a page as long as it needs). A paper with no sections and no
+// passages is plain pages of ten.
+
+// The pages of a list of questions: [{ page, section, from, to, questions }],
+// where each question carries `n`, its number in this list, and `from` and
+// `to` are the first and last of those. Empty for an empty list.
+export function layoutPages(questions) {
+  const list = Array.isArray(questions) ? questions : []
+  const pages = []
+  let current = null
+  let i = 0
+  while (i < list.length) {
+    // one unit: a single question, or the run of questions read with one passage
+    const passage = list[i].passage || null
+    let j = i + 1
+    if (passage) while (j < list.length && list[j].passage === passage) j += 1
+    const section = sectionOf(list[i])
+    const full = current && current.questions.length > 0 && current.questions.length + (j - i) > PAGE_SIZE
+    if (!current || current.section !== section || full) {
+      current = { page: pages.length + 1, section, from: i + 1, to: i, questions: [] }
+      pages.push(current)
+    }
+    for (let k = i; k < j; k += 1) current.questions.push({ ...list[k], n: k + 1 })
+    current.to = j
+    i = j
+  }
+  return pages
+}
+
+// How many pages a paper of `total` plain questions has. With sections or
+// passages the count is layoutPages(...).length.
 export function pageCount(total) {
   return Math.max(1, Math.ceil((Number(total) || 0) / PAGE_SIZE))
 }
 
-// A page number kept inside the paper.
-export function clampPage(page, total) {
+// A page number kept inside `pages` pages (at least one).
+function clampTo(page, pages) {
   const n = Math.trunc(Number(page)) || 1
-  return Math.min(Math.max(n, 1), pageCount(total))
+  return Math.min(Math.max(n, 1), Math.max(1, pages))
+}
+
+// A page number kept inside a paper of `total` plain questions.
+export function clampPage(page, total) {
+  return clampTo(page, pageCount(total))
 }
 
 // The questions of one page, each with `n`, its number in this taker's order.
 export function pageQuestions(questions, page) {
-  const start = (clampPage(page, questions.length) - 1) * PAGE_SIZE
-  return questions.slice(start, start + PAGE_SIZE).map((q, i) => ({ ...q, n: start + i + 1 }))
+  const pages = layoutPages(questions)
+  return pages.length === 0 ? [] : pages[clampTo(page, pages.length) - 1].questions
 }
 
-// The page a question number is on.
+// The page a question number is on, in a paper of plain pages of ten.
 export function pageOf(n) {
   return Math.max(1, Math.ceil((Math.trunc(Number(n)) || 1) / PAGE_SIZE))
+}
+
+// The page a question number is on, in these pages (from layoutPages).
+export function pageOfQuestion(pages, n) {
+  const number = Math.trunc(Number(n)) || 1
+  const found = (Array.isArray(pages) ? pages : []).find((p) => number >= p.from && number <= p.to)
+  if (found) return found.page
+  return number < 1 || !pages || pages.length === 0 ? 1 : pages.length
 }
 
 // ---- answers --------------------------------------------------------------------
@@ -216,46 +326,79 @@ export function flaggedNumbers(questions, answers) {
   return questions.flatMap((q, i) => (answerOf(answers, q.id).f ? [i + 1] : []))
 }
 
-// One row per page: its question numbers `from` to `to`, how many of them are
-// unanswered and how many are flagged.
-export function pageSummaries(questions, answers) {
-  const out = []
-  for (let page = 1; page <= pageCount(questions.length); page += 1) {
-    const start = (page - 1) * PAGE_SIZE
-    const slice = questions.slice(start, start + PAGE_SIZE)
-    out.push({
-      page,
-      from: start + 1,
-      to: start + slice.length,
-      unanswered: slice.filter((q) => answerOf(answers, q.id).c === null).length,
-      flagged: slice.filter((q) => answerOf(answers, q.id).f).length,
-    })
-  }
-  return out
+// One row per page: its section, its question numbers `from` to `to`, how many
+// of them are unanswered and how many are flagged. `pages` are layoutPages of
+// the same questions, for a caller that already has them. A paper with no
+// question still has its one, empty page.
+export function pageSummaries(questions, answers, pages = layoutPages(questions)) {
+  if (pages.length === 0) return [{ page: 1, section: 'shared', from: 1, to: 0, unanswered: 0, flagged: 0 }]
+  return pages.map((p) => ({
+    page: p.page,
+    section: p.section,
+    from: p.from,
+    to: p.to,
+    unanswered: p.questions.filter((q) => answerOf(answers, q.id).c === null).length,
+    flagged: p.questions.filter((q) => answerOf(answers, q.id).f).length,
+  }))
 }
 
 // ---- the paper ------------------------------------------------------------------
 
+const textOrNull = (value) => (typeof value === 'string' && value ? value : null)
+
 // A paper from the database, or the phone's copy of one, as the pages take it:
-// { exam: { title, minutes }, attempt: { id, started_at, deadline_at },
-// questions }. Null for anything that is not a whole paper, so a broken copy
-// is never shown with a question missing.
+// { exam: { title, minutes, sections }, attempt: { id, started_at,
+// deadline_at, sits }, questions, passages }. `sections` is counted from the
+// questions (sectionCounts); `sits` is the choice of blocks the database
+// holds; `passages` is { [passage id]: { body, image } } for the passages a
+// question names. Null for anything that is not a whole paper, so a broken
+// copy is never shown with a question missing.
 export function tidyPaper(value) {
   const attempt = value?.attempt
   if (!attempt || typeof attempt.id !== 'string' || !attempt.id) return null
   if (!Array.isArray(value.questions)) return null
+  // the database sends a list, the phone's copy holds the tidied map
+  const given = Array.isArray(value.passages)
+    ? value.passages
+    : Object.entries(value.passages && typeof value.passages === 'object' ? value.passages : {}).map(([id, p]) => ({ id, ...p }))
+  const texts = new Map()
+  for (const p of given) {
+    if (p && typeof p.id === 'string' && p.id) texts.set(p.id, { body: String(p.body ?? ''), image: textOrNull(p.image) })
+  }
   const seen = new Set()
   const questions = []
+  const passages = {}
   for (const q of value.questions) {
     if (!q || typeof q.id !== 'string' || !q.id || seen.has(q.id)) return null
     if (!Array.isArray(q.options) || q.options.length === 0) return null
     seen.add(q.id)
-    questions.push({ id: q.id, body: String(q.body ?? ''), options: q.options.map((o) => String(o ?? '')) })
+    // a passage the paper does not carry is no passage: the question stands alone
+    const passage = textOrNull(q.passage)
+    const known = passage && texts.has(passage) ? passage : null
+    if (known) passages[known] = texts.get(known)
+    questions.push({
+      id: q.id,
+      body: String(q.body ?? ''),
+      options: q.options.map((o) => String(o ?? '')),
+      section: sectionOf(q),
+      passage: known,
+      image: textOrNull(q.image),
+    })
   }
   return {
-    exam: { title: String(value.exam?.title ?? ''), minutes: Number(value.exam?.minutes) || 0 },
-    attempt: { id: attempt.id, started_at: attempt.started_at ?? null, deadline_at: attempt.deadline_at ?? null },
+    exam: {
+      title: String(value.exam?.title ?? ''),
+      minutes: Number(value.exam?.minutes) || 0,
+      sections: sectionCounts(questions),
+    },
+    attempt: {
+      id: attempt.id,
+      started_at: attempt.started_at ?? null,
+      deadline_at: attempt.deadline_at ?? null,
+      sits: tidySits(attempt.sits ?? { scope: attempt.sits_scope, score: attempt.sits_score }),
+    },
     questions,
+    passages,
   }
 }
 

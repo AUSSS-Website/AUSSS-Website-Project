@@ -6,11 +6,14 @@ import { ExamCard, Problem, tapOutlineCls } from '../examUi.jsx'
 //   why     'handed_in' or 'time'
 //   unsent  answers the clock beat before they reached the database; the
 //           screen then says so, since "received" would not be true of them
-export default function ReceivedScreen({ why, unsent = 0, notice = '', onSignOut }) {
+//   sat     which sections the paper covered, in an exam with two optional
+//           ones (satWords in examFlow.js); '' otherwise
+export default function ReceivedScreen({ why, unsent = 0, sat = '', notice = '', onSignOut }) {
   const words = receivedWords(why, unsent)
   return (
     <ExamCard title={words.title}>
       {words.note && <p className="mt-4 text-center text-sm font-semibold text-warn">{words.note}</p>}
+      {sat && <p className="mt-4 text-center text-sm text-ink">{sat}</p>}
       <p className="mt-4 text-center text-sm text-soft/80">You can close this page.</p>
       <Problem>{notice}</Problem>
       <button type="button" onClick={onSignOut} className={`${tapOutlineCls} mt-6 w-full`}>
