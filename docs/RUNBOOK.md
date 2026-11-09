@@ -3478,7 +3478,12 @@ node --env-file=.env.local scripts/exam-stress.mjs --live wjijkqrdaakiwbtdssio -
   hall needs raised (see "What only the webmaster can do"): a refused renewal fails the run and
   says so.
 - `SITE=https://ausss-ainshams.org` also loads the exam's page and its files from the site once
-  for every phone.
+  for every phone. With it, `BROWSERS=12` has twelve of the students sit the hall exam in real
+  headless browsers, through the page itself (`scripts/exam-stress-phones.mjs`): each waits at
+  the door, sees the exam open by itself, ticks its sections, types the start code, answers every
+  page, hands in, and must reach "Your exam was received." with no error, no failed request and
+  no "No connection" on the way. A picture of each phone's last screen is kept in the system's
+  temporary folder; the run says where.
 - `EXAM_MINUTES` is the hall exam's length (20). At 20 minutes a typical student taps every 7
   seconds, about six times the pace of a two-hour exam.
 - While it runs, open **Exam > Results** on the mock exam in the portal, as an officer would on
