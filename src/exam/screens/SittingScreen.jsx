@@ -222,8 +222,10 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
               {q.body}
             </span>
           )}
-          <Picture path={q.image} alt={`Picture for question ${q.n}`} />
         </legend>
+        {/* Under the legend, not in it: the question's name is its words, and
+            the "load again" button of a picture that failed is no part of it. */}
+        <Picture path={q.image} alt={`Picture for question ${q.n}`} />
         <div className="mt-4 space-y-2">
           {q.options.map((text, i) => {
             const chosen = answer.c === i

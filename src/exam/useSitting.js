@@ -286,7 +286,7 @@ export function createSitting({
       sections: paper?.exam.sections ?? NO_SECTIONS,
       sits,
       answers: showing ? held.answers : NO_ANSWERS,
-      save: saveStatus({ waiting: held.waiting.length, sending, failures, online: online() }),
+      save: saveStatus({ waiting: held.waiting.length, sending, failures, online: online(), choice: sitsWaiting }),
       connected: failures === 0 && online(),
       fromPhone: Boolean(paper) && !fromDatabase,
       onPhone: paperOnPhone && answersOnPhone,
@@ -379,10 +379,12 @@ export function createSitting({
     const kept = store.answers(copy.attempt.id)
     paper = copy
     held = tidyHeld(kept, copy.questions)
-    // A choice the database has not heard yet is the phone's to keep; any
-    // other is the one the paper came with.
+    // The choice is the one this phone last held: it is kept with the
+    // answers after every change and every answer from the database, so it
+    // is newer than the one the paper came with (a section left out since
+    // the paper was fetched stays left out on a refresh with no connection).
     sitsWaiting = copy.exam.sections.choice && kept?.sitsWaiting === true
-    sits = sitsWaiting ? tidySits(kept.sits) : copy.attempt.sits
+    sits = copy.exam.sections.choice && kept?.sits ? tidySits(kept.sits) : copy.attempt.sits
     clock = heldClock(kept?.clock, readClock())
     return true
   }
@@ -1046,22 +1048,35 @@ export function useSitting({ word, userId, attemptId = null }) {
     [layout],
   )
 
-  // Every picture is fetched as soon as the paper is known, so a connection
-  // that drops later does not leave a question without its picture. A block
-  // that is left out is fetched too: it may be added again with no connection.
+  // Every picture is fetched once the paper is known, so a connection that
+  // drops later does not leave a question without its picture. One at a
+  // time, so that on a hall's Wi-Fi the pictures never crowd out the saves:
+  // first those of the questions on screen, in the paper's order, then those
+  // of a block that is left out (it may be added again with no connection).
+  // A fetch that is under way is left to finish when the list changes: the
+  // browser keeps what arrived.
   useEffect(() => {
     if (typeof Image !== 'function') return undefined
-    const paths = [...allQuestions.map((q) => q.image), ...Object.values(passages).map((p) => p.image)]
-    const fetching = [...new Set(paths.filter(Boolean))].map((path) => {
+    const shown = new Set(questions.map((q) => q.id))
+    const first = allQuestions.filter((q) => shown.has(q.id))
+    const later = allQuestions.filter((q) => !shown.has(q.id))
+    const paths = [...first, ...later].flatMap((q) => [q.passage ? passages[q.passage]?.image : null, q.image])
+    const queue = [...new Set(paths.filter(Boolean))]
+    let stopped = false
+    const next = () => {
+      const path = queue.shift()
+      if (stopped || !path) return
       const picture = new Image()
       picture.decoding = 'async'
+      picture.onload = next
+      picture.onerror = next
       picture.src = pictureUrl(path)
-      return picture
-    })
-    return () => {
-      for (const picture of fetching) picture.src = ''
     }
-  }, [allQuestions, passages])
+    next()
+    return () => {
+      stopped = true
+    }
+  }, [questions, allQuestions, passages])
 
   const choose = useCallback((id, c) => sitting.current?.choose(id, c), [])
   const clear = useCallback((id) => sitting.current?.clear(id), [])

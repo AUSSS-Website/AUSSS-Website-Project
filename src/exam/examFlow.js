@@ -185,6 +185,10 @@ export function startProblem(result) {
 export function saveWords(save, { connected = true, onPhone = true } = {}) {
   if (save?.kind === 'offline') {
     const n = Number(save.count) || 0
+    // Only a change of sections waits: it is no answer, and is not called one.
+    if (n === 0 && save.choice) {
+      return `No connection: your change of sections is waiting. Keep going, ${onPhone ? 'it is kept on this phone' : 'and do not close this page'}.`
+    }
     const waiting = `No connection: ${count(n, 'answer')} waiting.`
     if (!onPhone) return `${waiting} Keep going, and do not close this page.`
     return `${waiting} Keep going, ${n === 1 ? 'it is' : 'they are'} kept on this phone.`

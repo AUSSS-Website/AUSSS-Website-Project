@@ -238,7 +238,8 @@ export default function OverviewPanel({ exam }) {
             filename={exportName(exam.title, 'question-figures')}
             columns={columns}
             rows={papers > 0 ? hardest : []}
-            summary={results.data ? resultSummary(attempts, total, programme) : []}
+            // The question figures are of every paper, whichever programme the page shows.
+            summary={results.data ? resultSummary(everyPaper, results.data.questions ?? 0) : []}
             landscape
             className={`${outlineBtnCls} ${tapCls}`}
           />

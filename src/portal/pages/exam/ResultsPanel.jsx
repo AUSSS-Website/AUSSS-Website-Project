@@ -115,10 +115,17 @@ export default function ResultsPanel({ exam }) {
   const everyPaper = results.data?.attempts
   const attempts = useMemo(() => (everyPaper ? programmeRows(everyPaper, programme) : everyPaper), [everyPaper, programme])
   const questions = programme ? programme.of : results.data?.questions ?? 0
-  const sitting = useMemo(
+  // How many papers sit each programme, for the switch.
+  const paperCounts = useMemo(
     () => Object.fromEntries(programmes.map((p) => [p.id, programmeRows(everyPaper, p).length])),
     [everyPaper, programmes],
   )
+  // Another programme is another list: it starts at its first page, however
+  // the programme changed (the switch, the browser's back button, the address).
+  const programmeId = programme?.id ?? ''
+  useEffect(() => {
+    setPage(0)
+  }, [programmeId])
   const found = useMemo(() => searchResults(attempts, term), [attempts, term])
   const counts = useMemo(() => tally(attempts), [attempts])
   const shared = useMemo(() => sharedRanks(attempts), [attempts])
@@ -195,11 +202,8 @@ export default function ResultsPanel({ exam }) {
       <ProgrammeSwitch
         programmes={programmes}
         programme={programme}
-        counts={everyPaper ? sitting : null}
-        onChange={(id) => {
-          setProgramme(id)
-          setPage(0)
-        }}
+        counts={everyPaper ? paperCounts : null}
+        onChange={setProgramme}
       />
 
       {/* In the page from the start, so a screen reader says it when it comes;

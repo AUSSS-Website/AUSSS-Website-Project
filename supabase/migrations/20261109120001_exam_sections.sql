@@ -1096,6 +1096,9 @@ $$;
 --   mark_scope, mark_score   its right answers in each block it sits; null for a block it does
 --                            not sit
 --   total_scope, total_score the shared mark plus the block's: the programme's mark; null as above
+--   answered_scope,          the questions it answered among those the programme's mark is out of
+--   answered_score           (the shared ones and the block's); null as above. `answered` counts
+--                            both blocks of a paper that sits both, so it is no measure of one.
 --   score                    everything it sits, in one number: the grade of an exam with no blocks
 -- The return type changes, so the function of 20261010120001 is dropped first.
 drop function if exists app.exam_result_rows(uuid, uuid);
@@ -1121,7 +1124,9 @@ returns table (
   mark_scope int,
   mark_score int,
   total_scope int,
-  total_score int
+  total_score int,
+  answered_scope int,
+  answered_score int
 )
 language sql
 stable
@@ -1149,6 +1154,9 @@ as $$
               where q.section = 'shared'
                  or (q.section = 'scope' and s.in_scope)
                  or (q.section = 'score' and s.in_score)))::int as answered,
+           (count(w.chosen_option) filter (where q.section = 'shared'))::int as shared_answered,
+           (count(w.chosen_option) filter (where q.section = 'scope'))::int as scope_answered,
+           (count(w.chosen_option) filter (where q.section = 'score'))::int as score_answered,
            (count(*) filter (where q.section = 'shared' and w.chosen_option = k.correct_option))::int as shared_right,
            (count(*) filter (where q.section = 'scope' and w.chosen_option = k.correct_option))::int as scope_right,
            (count(*) filter (where q.section = 'score' and w.chosen_option = k.correct_option))::int as score_right
@@ -1177,7 +1185,9 @@ as $$
          case when s.in_scope then coalesce(m.scope_right, 0) end,
          case when s.in_score then coalesce(m.score_right, 0) end,
          case when s.in_scope then coalesce(m.shared_right, 0) + coalesce(m.scope_right, 0) end,
-         case when s.in_score then coalesce(m.shared_right, 0) + coalesce(m.score_right, 0) end
+         case when s.in_score then coalesce(m.shared_right, 0) + coalesce(m.score_right, 0) end,
+         case when s.in_scope then coalesce(m.shared_answered, 0) + coalesce(m.scope_answered, 0) end,
+         case when s.in_score then coalesce(m.shared_answered, 0) + coalesce(m.score_answered, 0) end
   from sat s
   join public.profiles p on p.id = s.profile_id
   left join marks m on m.attempt_id = s.id

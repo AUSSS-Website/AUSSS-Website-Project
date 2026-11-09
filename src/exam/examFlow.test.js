@@ -624,3 +624,17 @@ describe('the two optional sections', () => {
     expect(placeFromHash('#q13', 19)).toEqual({ view: 'page', page: 2, question: 13 })
   })
 })
+
+describe('a change of sections that has not reached the database', () => {
+  it('is said in the save state, and is not called an answer', () => {
+    expect(saveWords({ kind: 'offline', count: 0, choice: true })).toBe(
+      'No connection: your change of sections is waiting. Keep going, it is kept on this phone.',
+    )
+    expect(saveWords({ kind: 'offline', count: 0, choice: true }, { onPhone: false })).toBe(
+      'No connection: your change of sections is waiting. Keep going, and do not close this page.',
+    )
+    // with answers waiting too, the answers are what is counted
+    expect(saveWords({ kind: 'offline', count: 3, choice: true })).toBe('No connection: 3 answers waiting. Keep going, they are kept on this phone.')
+    expect(saveWords({ kind: 'saving', count: 0, choice: true })).toBe('Saving…')
+  })
+})

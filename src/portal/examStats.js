@@ -160,8 +160,9 @@ export function programmesOf(sections) {
 // The papers of one programme, as a ranking of their own: only the papers
 // that sit it, each with the programme's total as its `score` and the
 // programme's rank as its `rank`, the highest first and equal marks by name.
-// `shared` and `block` are the two parts of the mark, and `both` says the
-// paper sits the other programme too. Everything that reads a ranking (the
+// `shared` and `block` are the two parts of the mark, `answered` is how many
+// of the programme's own questions it answered, and `both` says the paper
+// sits the other programme too. Everything that reads a ranking (the
 // tally, the averages, the spread, the search, the exports) reads these rows
 // as it reads any other. With no programme the papers come back as they are.
 export function programmeRows(attempts, programme) {
@@ -172,15 +173,18 @@ export function programmeRows(attempts, programme) {
     .filter((r) => r?.[`sits_${id}`] === true)
     .map((r) => ({
       ...r,
-      score: num(r[`total_${id}`]),
+      // a total that is not there is no mark of 0: the averages and the spread pass it over
+      score: isNum(r[`total_${id}`]) ? r[`total_${id}`] : null,
       rank: r[`rank_${id}`] ?? null,
+      // of the questions this programme's mark is out of, not of both blocks
+      answered: isNum(r[`answered_${id}`]) ? r[`answered_${id}`] : r.answered,
       shared: num(r.mark_shared),
       block: num(r[`mark_${id}`]),
       both: r.sits_scope === true && r.sits_score === true,
     }))
     .sort(
       (a, b) =>
-        b.score - a.score ||
+        num(b.score) - num(a.score) ||
         String(a.full_name || '').toLowerCase().localeCompare(String(b.full_name || '').toLowerCase()) ||
         String(a.attempt_id).localeCompare(String(b.attempt_id)),
     )

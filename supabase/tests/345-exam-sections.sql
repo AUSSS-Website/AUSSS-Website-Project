@@ -7,7 +7,7 @@
 -- and pictures are fixed once the first student has started. An exam with no blocks has one
 -- grade, as before.
 begin;
-select plan(65);
+select plan(66);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -379,6 +379,12 @@ select is(
     'dina taker sits 11 answered 1 shared 0 P 0 R 0 SCOPE 0#3 SCORE 0#3 all 0#4'
   ],
   'each paper has a mark for the shared questions and for each block it sits, and a total and a rank for each programme it sits'
+);
+select is(
+  (select string_agg(format('%s %s %s/%s', a ->> 'full_name', a ->> 'answered', coalesce(a ->> 'answered_scope', '-'), coalesce(a ->> 'answered_score', '-')), ' | ' order by t.ord)
+   from jsonb_array_elements(public.exam_results((select id from pgtap_ids where name = 'exam')) -> 'attempts') with ordinality as t(a, ord)),
+  'basel taker 4 -/4 | carim taker 5 4/4 | amal taker 4 4/- | dina taker 1 1/1',
+  'each paper says how many questions it answered of each programme it sits: the shared ones and that block''s, never the other block''s'
 );
 select is(
   (select string_agg(format('%s:%s:%s', r ->> 'label', coalesce(r ->> 'chosen', '-'), case when (r ->> 'counted')::boolean then 'y' else 'n' end), ' ' order by t.ord)
