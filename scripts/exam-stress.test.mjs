@@ -71,6 +71,10 @@ describe('where the stress test may run', () => {
     expect(() => readSettings([], { ...localEnv, TAKERS: 'many' })).toThrow(/TAKERS/)
     expect(() => readSettings([], { ...localEnv, TAKERS: '5000' })).toThrow(/TAKERS/)
     expect(() => readSettings([], { ...localEnv, SITE: 'ausss-ainshams.org' })).toThrow(/SITE/)
+    // the real browsers sit the exam on the site itself
+    expect(() => readSettings([], { ...localEnv, BROWSERS: '12' })).toThrow(/BROWSERS needs SITE/)
+    expect(readSettings([], { ...localEnv, BROWSERS: '12', SITE: 'http://localhost:4173/' })).toMatchObject({ browsers: 12, site: 'http://localhost:4173', storageKey: 'sb-127-auth-token' })
+    expect(readSettings(['--live', REF, '--yes'], liveEnv).storageKey).toBe(`sb-${REF}-auth-token`)
   })
 })
 

@@ -84,10 +84,16 @@
 // takers begin to arrive: 75, and 150 live), SPIKE_ROUNDS (10), SEED, STRICT,
 // RESULT_FILE (the figures as JSON), and live only:
 // SIGN_INS_PER_5_MIN (28: the sign-in service's own limit is 30 from one
-// address; 0 when the limit has been raised for the run), SITE (the site's
-// address, to load the exam's page from as every phone does), EMAIL_DOMAIN.
+// address; 0 when the limit has been raised for the run), EMAIL_DOMAIN. And
+// with the site's address in SITE: the exam's page and its files are loaded
+// from it once for every phone, and BROWSERS (0, at most 40) of the takers sit
+// the hall exam in real headless browsers, through the page itself
+// (scripts/exam-stress-phones.mjs), while the rest are played from here.
+import { spawn } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
-import { appendFileSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { appendFileSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { codeFor } from './exam-fake-provider.mjs'
 import { dice, localApi, readToken, signToken } from './exam-rehearsal.mjs'
@@ -247,6 +253,13 @@ export function readSettings(argv, env) {
     site,
     provider,
     onlySignIn: value('ONLY_SIGN_IN') === '1',
+    browsers: (() => {
+      const n = wholeNumber(env, 'BROWSERS', 0, 0, 40)
+      if (n > 0 && !site) throw new Refusal('BROWSERS needs SITE: the phones sit the exam on the site itself.')
+      return n
+    })(),
+    // where the page keeps its session: supabase-js names it after the first part of the API's host
+    storageKey: value('PHONES_STORAGE_KEY') || `sb-${new URL(api).hostname.split('.')[0]}-auth-token`,
     strict: value('STRICT') === '1',
     takers: wholeNumber(env, 'TAKERS', 400, 3, 900),
     // an exam is at least five minutes long: the database refuses a shorter one
@@ -494,6 +507,9 @@ function castTakers(roll) {
       listedId: `S${run}-${tag}`,
       roll: r,
       starts,
+      // the last few sit in a real browser, through the page itself
+      browser: i >= n - cfg.browsers,
+      session: null,
       // how this one behaves
       pace: 0.6 + r.next() * 0.9, // a quick one to a careful one
       slow: r.chance(0.15), // still answering when the time runs out
@@ -550,6 +566,7 @@ async function signIn(t, password) {
   if (!res.ok || !res.data?.access_token) throw Object.assign(new Error(`signing in ${t.email}: ${res.status} ${brief(res.data)}`), { status: res.status })
   t.token = res.data.access_token
   t.refreshToken = res.data.refresh_token
+  t.session = res.data
   t.signedInAt = Date.now()
 }
 
@@ -558,6 +575,7 @@ async function renew(t) {
   if (!res.ok || !res.data?.access_token) throw Object.assign(new Error(`renewing the session of ${t.email}: ${res.status} ${brief(res.data)}`), { status: res.status })
   t.token = res.data.access_token
   t.refreshToken = res.data.refresh_token
+  t.session = res.data
   t.signedInAt = Date.now()
 }
 
@@ -1062,6 +1080,75 @@ async function watchAsOfficer(until) {
   }
 }
 
+// A few takers sit the hall exam in real headless browsers, through the page
+// itself. They are put on the list from here (a made-up student cannot type
+// their details into Google), handed to scripts/exam-stress-phones.mjs with
+// their sessions, and what each browser met comes back.
+async function sitInBrowsers(opensAt) {
+  const phones = takers.filter((t) => t.browser)
+  if (phones.length === 0) return
+  await pool(phones, 10, async (t) => {
+    const held = await insist(t, 'exam_save_details', { p_word: hall.word, p_full_name: t.name, p_faculty_year: t.year, p_phone: t.phone, p_student_id: t.listedId })
+    if (held?.registration !== 'held') throw new Error(`exam_save_details for a browser's account should answer held, but answered ${brief(held)}`)
+  })
+  const now = Math.floor(Date.now() / 1000)
+  const sessionOf = (t) =>
+    t.session
+      ? { ...t.session, expires_at: t.session.expires_at || now + (t.session.expires_in || 3600) }
+      : {
+          // a local stack's token is signed here: the page takes it as the session a sign-in left
+          access_token: t.token,
+          refresh_token: 'signed-by-the-stress-test',
+          token_type: 'bearer',
+          expires_in: 6 * 3600,
+          expires_at: now + 6 * 3600,
+          user: { id: t.id, aud: 'authenticated', role: 'authenticated', email: t.email, app_metadata: {}, user_metadata: { full_name: t.name } },
+        }
+  const shots = path.join(tmpdir(), `exam-stress-${run}`)
+  const file = path.join(tmpdir(), `exam-stress-phones-${run}.json`)
+  writeFileSync(
+    file,
+    JSON.stringify({
+      site: cfg.site,
+      word: hall.word,
+      code: hall.code,
+      storageKey: cfg.storageKey,
+      opensAt,
+      minutes: cfg.minutes,
+      shots,
+      phones: phones.map((t) => ({ tag: t.tag, session: sessionOf(t), sits: t.starts, share: t.share })),
+    }),
+  )
+  let said = ''
+  const child = spawn(process.execPath, [fileURLToPath(new URL('./exam-stress-phones.mjs', import.meta.url)), file], { stdio: ['ignore', 'pipe', 'inherit'] })
+  child.stdout.on('data', (part) => {
+    said += part
+  })
+  const code = await new Promise((done) => child.on('exit', done))
+  rmSync(file, { force: true }) // it held sessions
+  const line = said.split('\n').find((l) => l.startsWith('PHONES '))
+  if (!line) {
+    miss(null, `the browsers should say what they met, but the script ended with ${code} and said nothing`)
+    return
+  }
+  const met = JSON.parse(line.slice(7))
+  for (const one of met) {
+    const t = phones.find((x) => x.tag === one.tag)
+    if (t) t.phone = one
+    if (!one.ok) miss(one.tag, `in a real browser it should sit the exam from the door to "Your exam was received.", but stopped: ${one.errors.join('; ') || one.stage}`)
+    else if (one.errors.length) miss(one.tag, `in a real browser the page should meet no error, but: ${one.errors.slice(0, 3).join('; ')}`)
+    if (one.noConnection) miss(one.tag, 'in a real browser the page should never say "No connection", but it did')
+  }
+  const done = met.filter((one) => one.ok)
+  const mid = (list) => (list.length ? Math.round(spreadOf(list).median) : 0)
+  say(
+    `${plural(met.length, 'real browser')} sat the hall exam on ${cfg.site}: ${done.length} reached "Your exam was received.", ` +
+      `${met.reduce((n, one) => n + one.answered, 0)} answers tapped. From Start to the first question: ${mid(done.map((one) => one.startMs))} ms at the median, ` +
+      `${Math.max(0, ...done.map((one) => one.startMs))} ms at the slowest. The hand-in: ${mid(done.map((one) => one.handInMs))} ms at the median. ` +
+      `Requests that failed: ${met.reduce((n, one) => n + one.failed, 0)}; answered with an error: ${met.reduce((n, one) => n + one.refused, 0)}. A picture of each screen at the end is in ${shots}.`,
+  )
+}
+
 // Every phone loads the exam's page and the files it names from the site.
 async function loadTheSite() {
   if (!cfg.site) return
@@ -1119,24 +1206,28 @@ async function theHall() {
         `${saves} saves, ${counts.retried} sent again, ${counts.refusedForRate} refused for rate.`,
     )
   }, 30_000)
+  const inNode = takers.filter((t) => !t.browser)
+  for (const t of takers) if (t.browser) t.at = 'in a real browser'
+  const browsers = sitInBrowsers(opensAt).catch((err) => miss(null, `the real browsers: ${err.message}`))
   const results = await Promise.allSettled(
-    takers.map((t) =>
+    inNode.map((t) =>
       sit(t, opensAt, thinkMs).catch((err) => {
         t.at = 'stopped early'
         throw err
       }),
     ),
   )
-  clearInterval(telling)
   results.forEach((res, i) => {
     if (res.status === 'rejected') {
-      takers[i].broken = res.reason?.message || String(res.reason)
-      miss(takers[i].tag, `stopped: ${takers[i].broken}`)
-      const p = takers[i].papers.get(hall.id)
+      inNode[i].broken = res.reason?.message || String(res.reason)
+      miss(inNode[i].tag, `stopped: ${inNode[i].broken}`)
+      const p = inNode[i].papers.get(hall.id)
       clearInterval(p?.beat)
       clearTimeout(p?.timer)
     }
   })
+  await browsers
+  clearInterval(telling)
   await watching
   phase = 'other'
   const papers = takers.map((t) => t.papers.get(hall.id)).filter((p) => p?.attemptId)
@@ -1156,7 +1247,7 @@ async function theHall() {
 // nothing is lost; how many needed that is said.
 async function atOnce(label, work) {
   const began = performance.now()
-  const results = await Promise.allSettled(takers.map((t) => (t.broken ? null : work(t))))
+  const results = await Promise.allSettled(takers.map((t) => (t.broken || t.browser ? null : work(t))))
   const failed = results.filter((res) => res.status === 'rejected')
   return { ms: performance.now() - began, failed: failed.length, label, reasons: [...new Set(failed.map((f) => f.reason?.message?.slice(0, 120)))].slice(0, 3) }
 }
@@ -1166,7 +1257,7 @@ async function theSpikes() {
   phase = 'spike'
   const word = { p_word: spike.word }
   const rounds = []
-  const live = () => takers.filter((t) => !t.broken)
+  const live = () => takers.filter((t) => !t.broken && !t.browser)
 
   // Before the spikes: each account's ID on the short exam's list (their
   // profile holds it already), a few at a time.
@@ -1238,8 +1329,24 @@ async function compare(exam) {
     miss(null, `nobody got as far as a paper of "${exam.title}", so nothing could be compared`)
     return null
   }
-  const attempts = await service('reading the papers', 'GET', `/rest/v1/exam_attempts?select=id,profile_id,submitted_at,sits_scope,sits_score&exam_id=eq.${exam.id}&limit=1000`)
-  if (attempts.length !== sat.length) miss(null, `"${exam.title}" should have ${sat.length} papers, but has ${attempts.length}`)
+  const every = await service('reading the papers', 'GET', `/rest/v1/exam_attempts?select=id,profile_id,submitted_at,sits_scope,sits_score&exam_id=eq.${exam.id}&limit=1000`)
+  // The papers sat in real browsers were answered by the page, not from here:
+  // what they hold is theirs. Each must be there, sit what was ticked, and be
+  // handed in if its browser saw "Your exam was received."
+  const inBrowser = new Map(takers.filter((t) => t.browser).map((t) => [t.id, t]))
+  for (const a of every) {
+    const t = inBrowser.get(a.profile_id)
+    if (!t?.phone) continue
+    if (t.phone.ok && !a.submitted_at) miss(t.tag, 'its browser saw "Your exam was received.", so its paper should be handed in, but the database says it is not')
+    if (a.sits_scope !== t.starts.scope || a.sits_score !== t.starts.score) miss(t.tag, `its paper should sit ${brief(t.starts)} as ticked in the browser, but the database holds ${brief({ scope: a.sits_scope, score: a.sits_score })}`)
+  }
+  if (exam === hall) {
+    for (const t of inBrowser.values()) {
+      if (t.phone?.startMs !== null && t.phone && !every.some((a) => a.profile_id === t.id)) miss(t.tag, 'its browser started the exam, so it should have a paper, but the database has none')
+    }
+  }
+  const attempts = every.filter((a) => !inBrowser.has(a.profile_id))
+  if (attempts.length !== sat.length) miss(null, `"${exam.title}" should have ${sat.length} papers sat from here, but has ${attempts.length}`)
   const byAttempt = new Map(attempts.map((a) => [a.id, a]))
   const rows = new Map(attempts.map((a) => [a.id, new Map()]))
   for (const part of chunks(attempts.map((a) => a.id), 6)) {
@@ -1319,7 +1426,8 @@ async function compare(exam) {
         for (const t of sat) {
           const total = t.marks?.get(exam.id)?.[programme === 'scope' ? 'totalScope' : 'totalScore']
           const row = ranked.get(t.papers.get(exam.id).attemptId)
-          if (total === null || total === undefined || !row || totals.inDoubt) continue
+          // a rank depends on every paper: with one set aside, or sat in a browser (whose answers are its own), it is not compared
+          if (total === null || total === undefined || !row || totals.inDoubt || inBrowser.size) continue
           const want = 1 + mine.filter((n) => n > total).length
           if (row[`rank_${programme}`] !== want) miss(t.tag, `its ${programme.toUpperCase()} rank should be ${want}, but the database says ${row[`rank_${programme}`]}`)
         }
