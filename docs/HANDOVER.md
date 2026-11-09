@@ -77,6 +77,11 @@ owners before removing the old ones. Rotate the secret key and the database
 password (section 6).
 
 The exchange exam (RUNBOOK section 30) needs the webmaster in this dashboard.
+Its pictures are in the public bucket `exam-pictures` (Storage), written by the
+exam officers from the portal. The stress test of the exam
+(`scripts/exam-stress.mjs`, RUNBOOK section 30) runs against this project only
+when the webmaster starts it with the project's ref typed out; for that hour the
+sign-in rate limit may be raised here and is put back after.
 Students sit it at a hidden address, `/exam/<word>`, outside the portal; the
 SCOPE and SCORE officers and the EB set it up and read the results at
 `/portal/exam`. Three settings here are in no migration. The redirect list under
