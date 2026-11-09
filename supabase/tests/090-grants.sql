@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(152);
+select plan(159);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -181,10 +181,10 @@ select ok(not has_column_privilege('authenticated', 'public.profiles', 'student_
 select ok(not has_table_privilege('anon', 'app.exam_tries', 'select') and not has_table_privilege('authenticated', 'app.exam_tries', 'select'), 'no API role reads the wrong tries');
 select ok(not has_function_privilege('anon', 'public.exam_door(text)', 'execute'), 'anon cannot come to an exam''s door');
 select ok(not has_function_privilege('anon', 'public.exam_save_details(text, text, text, text, text)', 'execute'), 'anon cannot check a student ID against the list');
-select ok(not has_function_privilege('anon', 'public.exam_start(text, text)', 'execute'), 'anon cannot start an exam');
+select ok(not has_function_privilege('anon', 'public.exam_start(text, text, boolean, boolean)', 'execute'), 'anon cannot start an exam');
 select ok(not has_function_privilege('anon', 'public.exam_paper(text)', 'execute'), 'anon cannot read a paper');
-select ok(not has_function_privilege('anon', 'public.exam_save(text, jsonb, boolean)', 'execute'), 'anon cannot save an answer');
-select ok(not has_function_privilege('anon', 'public.save_exam_question(uuid, uuid, text, jsonb, int, boolean)', 'execute'), 'anon cannot write a question');
+select ok(not has_function_privilege('anon', 'public.exam_save(text, jsonb, boolean, boolean, boolean)', 'execute'), 'anon cannot save an answer');
+select ok(not has_function_privilege('anon', 'public.save_exam_question(uuid, uuid, text, jsonb, int, boolean, jsonb)', 'execute'), 'anon cannot write a question');
 select ok(not has_function_privilege('anon', 'public.import_exam_questions(uuid, jsonb)', 'execute'), 'anon cannot import questions');
 select ok(not has_function_privilege('anon', 'public.exam_add_registrations(uuid, text[])', 'execute'), 'anon cannot put IDs on the list');
 select ok(not has_function_privilege('anon', 'public.exam_release_registration(uuid)', 'execute'), 'anon cannot free an ID');
@@ -197,6 +197,15 @@ select ok(has_function_privilege('authenticated', 'public.exam_door(text)', 'exe
 select ok(not has_function_privilege('anon', 'app.is_exam_officer()', 'execute'), 'anon cannot ask who is an exam officer');
 select ok(not has_function_privilege('authenticated', 'app.exam_by_word(text)', 'execute'), 'only the exam''s own functions look an exam up by its word');
 select ok(not has_function_privilege('authenticated', 'app.clear_exam_rows(uuid)', 'execute'), 'only the rollover clears a term''s list, papers and answers');
+-- the exam's sections, passages and pictures: a passage is read and removed by the exam officers
+-- and written by its function only; a question's section, passage and picture likewise
+select ok(not has_any_column_privilege('anon', 'public.exam_passages', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_passages', 'delete, truncate, trigger'), 'anon holds nothing on exam_passages');
+select ok(has_table_privilege('authenticated', 'public.exam_passages', 'select'), 'authenticated reads exam_passages (RLS narrows it to the exam officers)');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_passages', 'insert, update'), 'authenticated cannot write a passage directly');
+select ok(has_table_privilege('authenticated', 'public.exam_passages', 'delete'), 'authenticated removes a passage (the exam officers, by policy)');
+select ok(not has_column_privilege('authenticated', 'public.exam_questions', 'section', 'update') and not has_column_privilege('authenticated', 'public.exam_questions', 'image_path', 'update'), 'authenticated cannot move a question to another section or change its picture directly');
+select ok(not has_function_privilege('anon', 'public.save_exam_passage(uuid, uuid, text, text, text)', 'execute'), 'anon cannot write a passage');
+select ok(not has_function_privilege('authenticated', 'app.exam_result_rows(uuid, uuid)', 'execute'), 'only the officers'' functions mark the papers');
 
 select * from finish();
 rollback;

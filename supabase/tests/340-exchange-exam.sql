@@ -362,7 +362,7 @@ select is(
   (select pg_temp.keys(d) || pg_temp.keys(d -> 'exam') || pg_temp.keys(d -> 'me')
    from (select public.exam_door('pgtap-exam') as d) x),
   array['attempt', 'exam', 'me', 'now', 'registration',
-        'closes_at', 'minutes', 'opens_at', 'phase', 'questions', 'title',
+        'closes_at', 'minutes', 'opens_at', 'phase', 'questions', 'sections', 'title',
         'email', 'faculty_year', 'full_name', 'phone', 'student_id'],
   'the door says nothing else: no start code, no key'
 );
@@ -631,19 +631,19 @@ select tests.clear_auth();
 select tests.authenticate_as('amal@pgtap.test');
 select is(
   pg_temp.keys(public.exam_paper('pgtap-exam')),
-  array['answers', 'attempt', 'exam', 'now', 'questions', 'state'],
-  'a paper is the exam''s name and length, the clock, the questions and the answers so far: no key and no grade'
+  array['answers', 'attempt', 'exam', 'now', 'passages', 'questions', 'state'],
+  'a paper is the exam''s name and length, the clock, the questions, their passages and the answers so far: no key and no grade'
 );
 select is(
   (select pg_temp.keys(p -> 'exam') || pg_temp.keys(p -> 'attempt') from (select public.exam_paper('pgtap-exam') as p) x),
-  array['minutes', 'title', 'deadline_at', 'id', 'started_at'],
-  'of the exam it gives the title and the length, of the attempt its start and its deadline'
+  array['minutes', 'sections', 'title', 'deadline_at', 'id', 'sits_scope', 'sits_score', 'started_at'],
+  'of the exam it gives the title, the length and the sections, of the attempt its start, its deadline and the blocks it sits'
 );
 select is(
   (select array_agg(distinct pg_temp.keys(q)::text)
    from jsonb_array_elements(public.exam_paper('pgtap-exam') -> 'questions') as q),
-  array['{body,id,options}'],
-  'a question on the paper is its text and its options: no right answer, no officers'' order'
+  array['{body,id,image,options,passage,section}'],
+  'a question on the paper is its text, its picture, its passage, its section and its options: no right answer, no officers'' order'
 );
 select is(
   (select array_agg(q ->> 'body' order by q ->> 'body')
@@ -674,8 +674,8 @@ select is(
 );
 select is(
   pg_temp.keys(public.exam_save('pgtap-exam', '[]'::jsonb)),
-  array['deadline_at', 'now', 'saved', 'state', 'submitted'],
-  'a save answers with the clock and a count: no grade, and nothing about which answers are right'
+  array['deadline_at', 'now', 'saved', 'sits_scope', 'sits_score', 'state', 'submitted'],
+  'a save answers with the clock, a count and the blocks the paper sits: no grade, and nothing about which answers are right'
 );
 
 -- ---- saving --------------------------------------------------------------------------------------
@@ -797,7 +797,7 @@ select is(
 select is(
   (select pg_temp.keys(d -> 'attempt') || array[d -> 'attempt' ->> 'over', ((d -> 'attempt' ->> 'submitted_at') is not null)::text]
    from (select public.exam_door('pgtap-exam') as d) x),
-  array['deadline_at', 'id', 'over', 'started_at', 'submitted_at', 'true', 'true'],
+  array['deadline_at', 'id', 'over', 'sits_scope', 'sits_score', 'started_at', 'submitted_at', 'true', 'true'],
   'the door shows the paper as over and handed in, with its times and nothing else'
 );
 select tests.clear_auth();
@@ -965,8 +965,8 @@ select is(
    from (select public.exam_results((select id from pgtap_exam)) as r) x,
         jsonb_array_elements(x.r -> 'attempts') as a
    group by x.r),
-  array['attempts', 'now', 'questions',
-        '{answered,attempt_id,email,faculty_year,finished_at,full_name,phone,profile_id,rank,score,seconds,started_at,state,student_id,submitted_at}'],
+  array['attempts', 'now', 'questions', 'sections',
+        '{answered,attempt_id,email,faculty_year,finished_at,full_name,mark_scope,mark_score,mark_shared,phone,profile_id,rank,rank_scope,rank_score,score,seconds,sits_scope,sits_score,started_at,state,student_id,submitted_at,total_scope,total_score}'],
   'the results name the size of the exam, the time, and for each paper the taker''s details and marks'
 );
 select lives_ok(
@@ -994,7 +994,7 @@ select is(
   (select array[s -> 'attempt' ->> 'full_name', s -> 'attempt' ->> 'score', s -> 'attempt' ->> 'state',
                 (s -> 'attempt' ? 'rank')::text, pg_temp.keys(s)::text, pg_temp.keys(s -> 'rows' -> 0)::text]
    from (select public.exam_sheet((select id from public.exam_attempts where profile_id = tests.user_id('amal@pgtap.test'))) as s) x),
-  array['amal taker', '3', 'handed_in', 'false', '{attempt,rows}', '{answered_at,body,chosen,correct,flagged,n,options,question_id}'],
+  array['amal taker', '3', 'handed_in', 'false', '{attempt,passages,rows}', '{answered_at,body,chosen,correct,counted,flagged,image,label,n,options,passage,question_id,section}'],
   'the sheet carries the taker''s details and marks as the results do, without a rank'
 );
 select is(
@@ -1007,7 +1007,7 @@ select is(
 );
 select is(
   pg_temp.keys(public.exam_question_stats((select id from pgtap_exam)) -> 'questions' -> 0),
-  array['answered', 'body', 'correct', 'counts', 'n', 'options', 'question_id', 'right'],
+  array['answered', 'body', 'correct', 'counts', 'image', 'label', 'n', 'options', 'passage', 'question_id', 'right', 'sat', 'section'],
   'each question''s figures come with its text, its options and its right answer'
 );
 select lives_ok(
