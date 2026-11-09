@@ -102,8 +102,8 @@ export function examPaper(word) {
 // in when `handIn` is true: { state: 'sitting' | 'over', submitted, saved,
 // deadline_at, now, sits_scope, sits_score }. `timeout` (ms) gives the call up
 // sooner than the usual twenty seconds, for the saves that race the end of the
-// exam. `sits` is the taker's choice of blocks, sent with every save of an
-// exam that has one.
+// exam. `sits` is the taker's choice of blocks, sent with the saves that
+// follow a change of it until the database has answered one of them.
 export function examSave(word, answers, handIn = false, { timeout, sits = null } = {}) {
   return call('exam_save', { p_word: word, p_answers: answers, p_hand_in: handIn, ...blocks(sits) }, timeout)
 }

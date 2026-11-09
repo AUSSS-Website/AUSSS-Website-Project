@@ -256,8 +256,10 @@ export function createSitting({
 
   const ended = () => status === 'over' || status === 'gone' || status === 'elsewhere'
 
-  // The choice, when this paper has one to tell the database about.
-  const choice = () => (paper?.exam.sections.choice ? sits : null)
+  // The choice to tell the database: only one it has not heard yet. A phone
+  // that sent its choice with every save would put it back over a change made
+  // on another phone, each time its heartbeat went out.
+  const choice = () => (sitsWaiting && paper?.exam.sections.choice ? sits : null)
 
   // The same list until the paper or the choice changes, so a page draws its
   // questions again only when they are different ones.
@@ -447,8 +449,8 @@ export function createSitting({
     sending = batch.length > 0 || final
     if (sending) emit()
     const sent = readClock()
-    // The choice of blocks goes with every save of an exam that has one, so a
-    // hand-in fixes it in the same write.
+    // A choice of blocks that still waits goes with this save, whatever else
+    // it carries: with a hand-in, the two land in one write.
     const told = choice()
     const options = {}
     if (hurrying()) options.timeout = HURRY_TIMEOUT_MS
@@ -468,7 +470,9 @@ export function createSitting({
     held = settleBatch(held, batch, reply)
     if (typeof reply.sits_scope === 'boolean' && typeof reply.sits_score === 'boolean') {
       // The database has heard the choice this save carried. One made while
-      // the save was on its way still waits, and goes with the next.
+      // the save was on its way still waits, and goes with the next. With no
+      // choice waiting, the database's is the one that stands: it may have
+      // been changed from another phone.
       if (told && sitsWaiting && sameSits(told, sits)) sitsWaiting = false
       if (!sitsWaiting) {
         const stands = tidySits({ scope: reply.sits_scope, score: reply.sits_score })
@@ -760,7 +764,7 @@ export function createSitting({
     const batch = takeBatch(held)
     // A choice of blocks that still waits leaves with the page too.
     const told = choice()
-    if (batch.length === 0 && !(told && sitsWaiting)) return
+    if (batch.length === 0 && !told) return
     const text = told ? JSON.stringify([batch, told]) : JSON.stringify(batch)
     const at = readClock().wall
     if (lastLeft && lastLeft.text === text && Math.abs(at - lastLeft.at) < LEAVING_GAP_MS) return
