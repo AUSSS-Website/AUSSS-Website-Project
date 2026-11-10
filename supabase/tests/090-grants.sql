@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(159);
+select plan(165);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -57,6 +57,14 @@ select ok(not has_function_privilege('anon', 'public.profile_names(uuid[])', 'ex
 select ok(not has_table_privilege('anon', 'public.task_files', 'select'), 'anon cannot read task files');
 select ok(not has_table_privilege('authenticated', 'public.task_files', 'insert'), 'task files are linked by the function only');
 select ok(not has_function_privilege('anon', 'public.attach_task_files(uuid, jsonb, text)', 'execute'), 'anon cannot attach task files');
+-- campaigns: nothing for anon; a note's author is stamped by its trigger, and of a person's row in
+-- a subtask only the line about them can be changed
+select ok(not has_table_privilege('anon', 'public.campaigns', 'select'), 'anon cannot read campaigns');
+select ok(has_table_privilege('authenticated', 'public.campaigns', 'insert'), 'authenticated may open campaigns (where the policy allows)');
+select ok(not has_table_privilege('anon', 'public.campaign_notes', 'select'), 'anon cannot read campaign notes');
+select ok(not has_column_privilege('authenticated', 'public.campaign_notes', 'author_id', 'insert'), 'authenticated cannot choose a campaign note''s author');
+select ok(not has_table_privilege('authenticated', 'public.campaign_notes', 'update'), 'a campaign note is not rewritten');
+select ok(not has_column_privilege('authenticated', 'public.task_assignees', 'profile_id', 'update'), 'authenticated changes only the line about a person in a subtask');
 
 -- phase 5b: invites and positions are for signed-in officers; the public reads who holds the
 -- public-facing positions and nothing else; the rebuild machinery is closed to every API role

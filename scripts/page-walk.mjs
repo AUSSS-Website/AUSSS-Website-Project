@@ -47,7 +47,7 @@ const PORTAL_FIXED = [
   '/portal',
   '/portal/profile',
   '/portal/verify',
-  '/portal/tasks',
+  '/portal/campaigns',
   '/portal/updates',
   '/portal/notifications',
   '/portal/directory',
@@ -66,7 +66,7 @@ const PORTAL_FIXED = [
   '/portal/admin/audit',
 ]
 const PORTAL_DETAIL = [
-  { list: '/portal/tasks', prefix: '/portal/tasks/' },
+  { list: '/portal/campaigns', prefix: '/portal/campaigns/' },
   { list: '/portal/committees', prefix: '/portal/committees/' },
   { list: '/portal/gallery', prefix: '/portal/gallery/' },
   { list: '/portal/magazine', prefix: '/portal/magazine/' },

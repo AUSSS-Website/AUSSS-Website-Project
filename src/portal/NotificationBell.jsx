@@ -14,7 +14,7 @@ import { UnreadDot, describeNotification, notificationTarget, when } from './wor
 
 // The bell at the side of the portal header. A red dot while anything is
 // unread; the panel lists the latest notifications one line each. Opening one
-// marks it read and goes to its task, story or order. "Clear all" empties this
+// marks it read and goes to its subtask, campaign, story or order. "Clear all" empties this
 // list and nothing else: what the notifications were about is untouched. The
 // full list stays at /portal/notifications ("See all").
 //
@@ -247,7 +247,7 @@ export default function NotificationBell() {
             </ul>
           ) : listFailed ? null : (
             <p className="px-4 py-6 text-sm text-soft/60">
-              Nothing here. You’ll be told when a task involves you.
+              Nothing here. You’ll be told when a campaign involves you.
             </p>
           )}
 
