@@ -866,6 +866,27 @@ Since 2026-09-20 the portal has `/portal/tasks`, `/portal/updates` and
 updates. Migrations `20260920200001_tasks_and_notifications` and
 `20260920200002_posts_and_reads`; tests in `supabase/tests/130-tasks-and-posts.sql`.
 
+**Campaigns (November 2026).** The Tasks page is now `/portal/campaigns`
+(`/portal/tasks` leads there). An officer opens a campaign and splits it into
+subtasks and working groups; a subtask is a row of `tasks` with `campaign_id`
+set, so everything in the table below still holds for it, and its page is still
+`/portal/tasks/<id>`. Migration `20261110120001_campaigns`, tests in
+`supabase/tests/390-campaigns.sql`.
+
+| What | Table | Who sees it | Who writes |
+| --- | --- | --- | --- |
+| Campaigns | `campaigns` (committee or null = society-wide, term, status `planning`/`running`/`done`, `starts_on`, `ends_on`) | whoever may hand out tasks in the committee, the creator, and everybody on one of its subtasks | open: as for a task. Edit/delete: officers, EB, or the creator (`app.can_manage_campaign`), who also manage every subtask in it. Deleting takes the subtasks along. |
+| Subtasks | `tasks.campaign_id` | as a task; a person on one subtask does not see the others | as a task. `app.guard_task()` gives a subtask its campaign's committee and never lets it change campaign. |
+| Notes on a campaign | `campaign_notes` | whoever sees the campaign | anyone who sees it (column grant on `campaign_id, body`); removed by the author or a manager. Each one notifies the creator and the people on the subtasks (`campaign_note`). |
+| Concept note | `campaigns.concept_note_path`, `concept_note_name`; the file in the private bucket `campaign-files` under `<campaign id>/<random id>.<ext>` (migration `20261110120002_campaign_concept_note`) | whoever sees the campaign, through a signed link | the campaign's managers upload, replace and remove it from the campaign's page (PDF, Word or PowerPoint, 10 MB) |
+| Online posts | `campaign_posts` (platform, caption, link, `post_on`, status `draft`/`ready`/`posted`; migration `20261110120003_campaign_posts`). The campaign's own list of what goes out on the society's pages; the portal publishes nothing. Not `posts`, which are the Updates. | whoever sees the campaign | anyone who sees it adds one; changed or removed by whoever added it or a manager |
+| The line about a person | `task_assignees.note` | whoever sees the subtask | the subtask's managers (column grant on `note` only) |
+
+A campaign's page keeps `?tab=edit`, `?tab=new` (the new-subtask form) and
+`?view=board` in the address; the list keeps `?tab=new`, `?committee=<slug>`
+and `?done=shown`. The list of tasks described further down (its `?show=` and
+`?view=` filters) is gone with the old page.
+
 | What | Table | Who sees it | Who writes |
 | --- | --- | --- | --- |
 | Tasks | `tasks` (committee or null = society-wide, term, status `todo`/`doing`/`blocked`/`done`, priority, `due_on` as a Cairo day) | assignees, the creator, the committee's officers, the EB | create: officers of the committee, positions with `can_assign_tasks`, EB (society-wide: EB only). Edit/delete/assign: officers, EB, or the creator. An assignee changes the **status only**: `app.guard_task()` pins every other column for them. |

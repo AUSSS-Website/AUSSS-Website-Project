@@ -5,13 +5,17 @@ import { errorText } from '../lib/errorText.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { byPortalOrder, useCommittees } from './officerQueries.js'
 
-// Tasks and their timeline, updates (posts) and read receipts, and the
+// Campaigns and their subtasks (rows of `tasks`, each with its own people,
+// notes and timeline), updates (posts) and read receipts, and the
 // notifications feed. Same shape as queries.js: plain async functions first,
 // react-query hooks underneath. Who may see or change what is decided by
-// row-level security and the triggers in the 20260920200x migrations; the
+// row-level security and the triggers in the 20260920200x migrations and
+// 20261110120001_campaigns; the
 // helpers here only decide what to fetch and which buttons to offer.
 
 const workKeys = {
+  campaigns: (uid) => ['campaigns', uid],
+  campaign: (id) => ['campaign', id],
   tasks: (uid) => ['tasks', uid],
   task: (id) => ['task', id],
   assignable: (committeeId) => ['task-assignable', committeeId || 'society'],
@@ -81,6 +85,243 @@ export function useNames(ids) {
   return q.data || {}
 }
 
+// ---- campaigns -------------------------------------------------------------
+
+const CAMPAIGN_SELECT =
+  'id, title, body, status, starts_on, ends_on, concept_note_path, concept_note_name, committee_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color)'
+
+// Every campaign this person can see, newest first, each with the subtasks
+// they can see in it (for the counts on its card).
+async function fetchCampaigns() {
+  const rows = unwrap(
+    await supabase
+      .from('campaigns')
+      .select(`${CAMPAIGN_SELECT}, tasks(id,status,assignees:task_assignees(profile_id))`)
+      .order('created_at', { ascending: false })
+      .limit(200),
+  )
+  return rows || []
+}
+
+// One campaign with its subtasks (those this person can see) and its notes.
+async function fetchCampaign(id) {
+  const [campaign, tasks, notes, posts] = await Promise.all([
+    supabase.from('campaigns').select(CAMPAIGN_SELECT).eq('id', id).maybeSingle(),
+    supabase
+      .from('tasks')
+      .select(TASK_SELECT)
+      .eq('campaign_id', id)
+      .order('due_on', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('campaign_notes')
+      .select('id, campaign_id, author_id, body, created_at')
+      .eq('campaign_id', id)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true }),
+    supabase
+      .from('campaign_posts')
+      .select('id, campaign_id, author_id, platform, caption, link, post_on, status, created_at')
+      .eq('campaign_id', id)
+      .order('created_at', { ascending: true }),
+  ])
+  const row = unwrap(campaign)
+  if (!row) return null
+  return { ...row, tasks: unwrap(tasks) || [], notes: unwrap(notes) || [], posts: unwrap(posts) || [] }
+}
+
+// fields: { committee_id, title, body, status, starts_on, ends_on }
+async function createCampaign(fields) {
+  return unwrap(await supabase.from('campaigns').insert(fields).select('id').single())
+}
+
+async function updateCampaign({ id, ...patch }) {
+  unwrap(await supabase.from('campaigns').update(patch).eq('id', id).select('id').single())
+}
+
+// The concept note: one document per campaign, in the `campaign-files` bucket
+// under '<campaign id>/<random id>.<ext>' (migration 20261110120002). The type
+// is decided by the extension, as for a subtask's files.
+const CAMPAIGN_FILES_BUCKET = 'campaign-files'
+const CONCEPT_NOTE_EXTS = ['pdf', 'doc', 'docx', 'ppt', 'pptx']
+export const CONCEPT_NOTE_ACCEPT = CONCEPT_NOTE_EXTS.map((ext) => `.${ext}`).join(',')
+
+// '' when the file can be the concept note, otherwise why not.
+export function conceptNoteProblem(file) {
+  const type = fileType(file)
+  if (!type || !CONCEPT_NOTE_EXTS.includes(type.ext)) return 'Choose a PDF, a Word document or a PowerPoint.'
+  if (file.size > TASK_FILE_MAX_BYTES) return 'That file is larger than 10 MB.'
+  if (file.size === 0) return 'That file is empty.'
+  return ''
+}
+
+// Uploads the file, points the campaign at it, then removes the one it
+// replaces. If the campaign cannot be pointed at it the upload is taken back.
+async function setConceptNote({ campaign, file }) {
+  const bucket = supabase.storage.from(CAMPAIGN_FILES_BUCKET)
+  const type = fileType(file)
+  const path = `${campaign.id}/${crypto.randomUUID()}.${type.ext}`
+  const { error } = await bucket.upload(path, file, { contentType: type.mime, upsert: false })
+  if (error) throw notUploaded(file, error)
+  try {
+    unwrap(
+      await supabase
+        .from('campaigns')
+        .update({ concept_note_path: path, concept_note_name: file.name.slice(0, 200) })
+        .eq('id', campaign.id)
+        .select('id')
+        .single(),
+    )
+  } catch (err) {
+    await bucket.remove([path]).catch(() => {})
+    throw err
+  }
+  // Left behind if this fails; nothing points to it any more.
+  if (campaign.concept_note_path) await bucket.remove([campaign.concept_note_path]).catch(() => {})
+}
+
+async function removeConceptNote(campaign) {
+  unwrap(await supabase.storage.from(CAMPAIGN_FILES_BUCKET).remove([campaign.concept_note_path]))
+  unwrap(
+    await supabase
+      .from('campaigns')
+      .update({ concept_note_path: null, concept_note_name: null })
+      .eq('id', campaign.id)
+      .select('id')
+      .single(),
+  )
+}
+
+// A short-lived link that downloads the concept note under its own name.
+export async function conceptNoteUrl(campaign) {
+  const data = unwrap(
+    await supabase.storage
+      .from(CAMPAIGN_FILES_BUCKET)
+      .createSignedUrl(campaign.concept_note_path, 120, { download: campaign.concept_note_name }),
+  )
+  return data.signedUrl
+}
+
+// The files of its subtasks and its concept note go first, as in deleteTask:
+// once the campaign is gone its subtasks are too, and the objects would be
+// left behind.
+async function deleteCampaign(id) {
+  const own = unwrap(await supabase.from('campaigns').select('concept_note_path').eq('id', id).maybeSingle())
+  if (own?.concept_note_path) {
+    unwrap(await supabase.storage.from(CAMPAIGN_FILES_BUCKET).remove([own.concept_note_path]))
+  }
+  const tasks = unwrap(await supabase.from('tasks').select('id').eq('campaign_id', id)) || []
+  if (tasks.length) {
+    const ids = tasks.map((t) => t.id)
+    const files = unwrap(await supabase.from('task_files').select('path').in('task_id', ids)) || []
+    if (files.length) {
+      unwrap(await supabase.storage.from(TASK_FILES_BUCKET).remove(files.map((f) => f.path)))
+    }
+  }
+  unwrap(await supabase.from('campaigns').delete().eq('id', id))
+}
+
+async function addCampaignNote({ campaign_id, body }) {
+  unwrap(await supabase.from('campaign_notes').insert({ campaign_id, body }))
+}
+
+// An online post of the campaign (a row of campaign_posts, not one of the
+// portal's Updates). fields: { platform, caption, link, post_on, status }
+async function saveCampaignPost({ id, campaign_id, ...fields }) {
+  if (id) {
+    unwrap(await supabase.from('campaign_posts').update(fields).eq('id', id).select('id').single())
+    return
+  }
+  unwrap(await supabase.from('campaign_posts').insert({ campaign_id, ...fields }).select('id').single())
+}
+
+async function deleteCampaignPost(post) {
+  unwrap(await supabase.from('campaign_posts').delete().eq('id', post.id))
+}
+
+async function deleteCampaignNote(note) {
+  unwrap(await supabase.from('campaign_notes').delete().eq('id', note.id))
+}
+
+// How far a campaign is: its subtasks, how many are done, and the people on
+// them (each counted once). Of the subtasks this person can see.
+export function campaignProgress(tasks = []) {
+  const people = new Set()
+  let done = 0
+  for (const t of tasks) {
+    if (t.status === 'done') done += 1
+    for (const a of t.assignees || []) people.add(a.profile_id)
+  }
+  return { total: tasks.length, done, people: people.size }
+}
+
+export function useCampaigns() {
+  const { user } = useAuth()
+  return useQuery({ queryKey: workKeys.campaigns(user.id), queryFn: fetchCampaigns })
+}
+
+export function useCampaign(id) {
+  return useQuery({
+    queryKey: workKeys.campaign(id),
+    queryFn: () => fetchCampaign(id),
+    enabled: Boolean(id),
+  })
+}
+
+// One hook for every campaign write. As with tasks, a write that returns the
+// promise from onSettled is not over until the page shows what was saved.
+export function useCampaignMutations() {
+  const qc = useQueryClient()
+  const settle = (id) => {
+    qc.invalidateQueries({ queryKey: ['campaigns'] })
+    return id ? qc.invalidateQueries({ queryKey: workKeys.campaign(id) }) : undefined
+  }
+  return {
+    // Not waited for: the page leaves for the new campaign as soon as it exists.
+    create: useMutation({
+      mutationFn: createCampaign,
+      onSettled: () => {
+        settle()
+      },
+    }),
+    update: useMutation({
+      mutationFn: updateCampaign,
+      // A change of status alone shows at once, as a subtask's does.
+      onMutate: async ({ id, status }) => {
+        if (!status) return undefined
+        const key = workKeys.campaign(id)
+        await qc.cancelQueries({ queryKey: key })
+        const before = qc.getQueryData(key)
+        if (!before) return undefined
+        qc.setQueryData(key, { ...before, status })
+        return { before }
+      },
+      onError: (_e, { id }, shown) => {
+        if (shown?.before) qc.setQueryData(workKeys.campaign(id), shown.before)
+      },
+      onSettled: (_d, _e, vars) => settle(vars.id),
+    }),
+    // Not waited for: the page leaves for the list as soon as it is gone. Its
+    // subtasks went with it.
+    remove: useMutation({
+      mutationFn: deleteCampaign,
+      onSettled: (_d, _e, id) => {
+        settle(id)
+        qc.invalidateQueries({ queryKey: ['tasks'] })
+      },
+    }),
+    setConcept: useMutation({ mutationFn: setConceptNote, onSettled: (_d, _e, vars) => settle(vars.campaign.id) }),
+    removeConcept: useMutation({ mutationFn: removeConceptNote, onSettled: (_d, _e, campaign) => settle(campaign.id) }),
+    savePost: useMutation({ mutationFn: saveCampaignPost, onSettled: (_d, _e, vars) => settle(vars.campaign_id) }),
+    removePost: useMutation({ mutationFn: deleteCampaignPost, onSettled: (_d, _e, post) => settle(post.campaign_id) }),
+    addNote: useMutation({ mutationFn: addCampaignNote, onSettled: (_d, _e, vars) => settle(vars.campaign_id) }),
+    removeNote: useMutation({
+      mutationFn: deleteCampaignNote,
+      onSettled: (_d, _e, note) => qc.invalidateQueries({ queryKey: workKeys.campaign(note.campaign_id) }),
+    }),
+  }
+}
+
 // ---- tasks -----------------------------------------------------------------
 
 // Attachments: what the `task-files` bucket accepts (migration
@@ -124,8 +365,9 @@ export function taskFileProblem(file) {
   return ''
 }
 
+// A subtask's people carry a line each (`note`): what that person does in it.
 const TASK_SELECT =
-  'id, title, body, status, priority, due_on, completed_at, committee_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color), assignees:task_assignees(profile_id)'
+  'id, title, body, status, priority, due_on, completed_at, committee_id, campaign_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color), campaign:campaigns(id,title,created_by), assignees:task_assignees(profile_id,note)'
 
 async function fetchTasks() {
   const rows = unwrap(
@@ -160,19 +402,19 @@ async function fetchTask(id) {
   return { ...row, updates: unwrap(updates) || [], files: unwrap(files) || [] }
 }
 
-// Open tasks in the same committee with the same title and the same people:
+// Open subtasks of the same campaign with the same title and the same people:
 // what the editor warns about before creating a repeat. Compared here, not in
 // SQL, so the title match can ignore case and spacing.
 const sameTitle = (t) => t.trim().replace(/\s+/g, ' ').toLowerCase()
 
-export async function findDuplicateTasks({ committee_id, title, assignees = [] }) {
+export async function findDuplicateTasks({ campaign_id, title, assignees = [] }) {
   let q = supabase
     .from('tasks')
     .select('id, title, due_on, status, assignees:task_assignees(profile_id)')
     .neq('status', 'done')
     .order('created_at', { ascending: false })
     .limit(300)
-  q = committee_id ? q.eq('committee_id', committee_id) : q.is('committee_id', null)
+  q = campaign_id ? q.eq('campaign_id', campaign_id) : q.is('campaign_id', null)
   const rows = unwrap(await q) || []
   const wanted = sameTitle(title)
   const people = [...assignees].sort().join(',')
@@ -193,25 +435,29 @@ async function fetchAssignable(committeeId) {
   return (rows || []).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
 }
 
-async function addAssignees(taskId, ids) {
+// `notes` is { profile id: the line about that person }, where there is one.
+const noteOf = (notes, id) => (notes?.[id] || '').trim().slice(0, 200)
+
+async function addAssignees(taskId, ids, notes) {
   if (!ids.length) return
   unwrap(
     await supabase
       .from('task_assignees')
-      .insert(ids.map((profile_id) => ({ task_id: taskId, profile_id }))),
+      .insert(ids.map((profile_id) => ({ task_id: taskId, profile_id, note: noteOf(notes, profile_id) }))),
   )
 }
 
-// fields: { committee_id, title, body, priority, due_on, status }
+// fields: { campaign_id, title, body, priority, due_on, status }. The database
+// gives a subtask its campaign's committee.
 // The task is saved before its people are added and its files go up. If either
 // of those then fails the task still stands, and the caller is told through
 // `notice` (whole sentences, fit to show) instead of an exception, so nobody
 // retries and creates the task twice. `onProgress` is handed to the upload.
-async function createTask({ assignees = [], files = [], onProgress, ...fields }) {
+async function createTask({ assignees = [], notes = {}, files = [], onProgress, ...fields }) {
   const row = unwrap(await supabase.from('tasks').insert(fields).select('id').single())
   const missing = []
   try {
-    await addAssignees(row.id, assignees)
+    await addAssignees(row.id, assignees, notes)
   } catch (err) {
     missing.push(['nobody was assigned to it', errorText(err, '')])
   }
@@ -226,23 +472,41 @@ async function createTask({ assignees = [], files = [], onProgress, ...fields })
   const what = missing.map(([part]) => part).join(' and ')
   // Both usually fail for the one reason; it is said once.
   const why = [...new Set(missing.map(([, reason]) => reason).filter(Boolean))].join(' ')
-  return { ...row, notice: `The task was created, but ${what}.${why ? ` ${why}` : ''}` }
+  return { ...row, notice: `The subtask was created, but ${what}.${why ? ` ${why}` : ''}` }
 }
 
 // `assignees` (when given) is the wanted set; only the difference is written,
-// so the timeline shows who was added and who was dropped.
-async function updateTask({ id, assignees, previousAssignees = [], ...patch }) {
+// so the timeline shows who was added and who was dropped. `notes` and
+// `previousNotes` are the lines about the people; one that changed for a
+// person who stays is written by itself.
+async function updateTask({ id, assignees, previousAssignees = [], notes, previousNotes = {}, ...patch }) {
   if (Object.keys(patch).length) {
     unwrap(await supabase.from('tasks').update(patch).eq('id', id).select('id').single())
   }
   if (assignees) {
     const add = assignees.filter((p) => !previousAssignees.includes(p))
     const drop = previousAssignees.filter((p) => !assignees.includes(p))
-    await addAssignees(id, add)
+    await addAssignees(id, add, notes)
     if (drop.length) {
       unwrap(
         await supabase.from('task_assignees').delete().eq('task_id', id).in('profile_id', drop),
       )
+    }
+    if (notes) {
+      const kept = assignees.filter((p) => previousAssignees.includes(p))
+      for (const p of kept) {
+        const note = noteOf(notes, p)
+        if (note === (previousNotes[p] || '')) continue
+        unwrap(
+          await supabase
+            .from('task_assignees')
+            .update({ note })
+            .eq('task_id', id)
+            .eq('profile_id', p)
+            .select('profile_id')
+            .single(),
+        )
+      }
     }
   }
 }
@@ -345,8 +609,11 @@ export function useTaskMutations() {
   // from onSettled is not over until the page shows what was saved, so
   // "Saving…" and "Posting…" last until then, and the page never shows the old
   // task for a moment after them.
+  // A subtask's change shows on its campaign's page and in the list of them.
   const settle = (id) => {
     qc.invalidateQueries({ queryKey: ['tasks'] })
+    qc.invalidateQueries({ queryKey: ['campaigns'] })
+    qc.invalidateQueries({ queryKey: ['campaign'] })
     return id ? qc.invalidateQueries({ queryKey: workKeys.task(id) }) : undefined
   }
   return {

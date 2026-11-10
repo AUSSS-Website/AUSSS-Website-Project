@@ -8,7 +8,7 @@
 //
 //   npm run walk:portal-sample                      everything (needs npm run dev)
 //   npm run walk:portal-sample -- light 320,375     themes, then widths
-//   npm run walk:portal-sample -- dark 1440 /portal/tasks
+//   npm run walk:portal-sample -- dark 1440 /portal/campaigns
 //
 // The session, the sample rows and the list of screens are in
 // scripts/portal-sample.mjs, which the website guide's screenshots use too.

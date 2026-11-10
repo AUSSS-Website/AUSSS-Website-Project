@@ -391,10 +391,30 @@ const tables = {
     { id: 'a1', status: 'active', position: { id: 'p1', key: 'society.webmaster', title: 'Webmaster', short_title: 'Webmaster', level: 'webmaster', can_assign_tasks: true, committee: null }, term: { id: 't1', label: '2026-27', is_current: true } },
   ],
   tasks: [
-    { id: 't-1', title: 'Collect the incomings welcome booklet photos from every contact person', body: 'One folder per student. Names on the files, please.', status: 'todo', priority: 'high', due_on: day(2), completed_at: null, committee_id: 'c-scope', created_by: uid, created_at: iso(3), updated_at: iso(1), committee: scope, assignees: [{ profile_id: uid }, { profile_id: other }] },
-    { id: 't-2', title: 'Book the hall for the first general assembly', body: '', status: 'doing', priority: 'normal', due_on: day(-1), completed_at: null, committee_id: null, created_by: other, created_at: iso(6), updated_at: iso(2), committee: null, assignees: [{ profile_id: uid }] },
-    { id: 't-3', title: 'Send the orientation recap', body: '', status: 'done', priority: 'normal', due_on: day(-6), completed_at: iso(5), committee_id: 'c-scope', created_by: uid, created_at: iso(12), updated_at: iso(5), committee: scope, assignees: [{ profile_id: other }] },
-    { id: 't-4', title: 'Print the World Health Day leaflets', body: '', status: 'blocked', priority: 'urgent', due_on: day(4), completed_at: null, committee_id: 'c-scoph', created_by: uid, created_at: iso(2), updated_at: iso(1), committee: scoph, assignees: [] },
+    { id: 't-1', title: 'Collect the incomings welcome booklet photos from every contact person', body: 'One folder per student. Names on the files, please.', status: 'todo', priority: 'high', due_on: day(2), completed_at: null, campaign_id: 'cp-1', campaign: { id: 'cp-1', title: 'Incomings welcome week', created_by: uid }, committee_id: 'c-scope', created_by: uid, created_at: iso(3), updated_at: iso(1), committee: scope, assignees: [{ profile_id: uid, note: 'Coordinator' }, { profile_id: other, note: 'Collects from the contact persons of the surgery and paediatrics departments' }] },
+    { id: 't-2', title: 'Book the hall for the first general assembly', body: '', status: 'doing', priority: 'normal', due_on: day(-1), completed_at: null, campaign_id: 'cp-2', campaign: { id: 'cp-2', title: 'First general assembly', created_by: uid }, committee_id: null, created_by: other, created_at: iso(6), updated_at: iso(2), committee: null, assignees: [{ profile_id: uid, note: '' }] },
+    { id: 't-3', title: 'Send the orientation recap', body: '', status: 'done', priority: 'normal', due_on: day(-6), completed_at: iso(5), campaign_id: 'cp-1', campaign: { id: 'cp-1', title: 'Incomings welcome week', created_by: uid }, committee_id: 'c-scope', created_by: uid, created_at: iso(12), updated_at: iso(5), committee: scope, assignees: [{ profile_id: other, note: '' }] },
+    { id: 't-4', title: 'Print the World Health Day leaflets', body: '', status: 'blocked', priority: 'urgent', due_on: day(4), completed_at: null, campaign_id: 'cp-3', campaign: { id: 'cp-3', title: 'World Health Day', created_by: uid }, committee_id: 'c-scoph', created_by: uid, created_at: iso(2), updated_at: iso(1), committee: scoph, assignees: [] },
+  ],
+  // The campaigns those subtasks belong to: one running with two of them, one
+  // for the whole society still being planned, one with nobody on it yet, and
+  // one that is done. Each carries its subtasks, as the list reads them (they
+  // are filled in under this table).
+  campaigns: [
+    { id: 'cp-1', title: 'Incomings welcome week', body: 'A week for the students who arrive in November: the booklet, the airport runs and the social programme. Each working group has its own subtask.\n\nThe plan: https://example.org/exchange/incomings/welcome-week', status: 'running', starts_on: day(5), ends_on: day(12), concept_note_path: 'cp-1/a.pdf', concept_note_name: 'Incomings welcome week - concept note.pdf', committee_id: 'c-scope', created_by: uid, created_at: iso(8), updated_at: iso(1), committee: scope },
+    { id: 'cp-2', title: 'First general assembly', body: '', status: 'planning', starts_on: day(20), ends_on: day(20), committee_id: null, created_by: other, created_at: iso(6), updated_at: iso(2), committee: null },
+    { id: 'cp-3', title: 'World Health Day', body: 'Leaflets and a stand in the main hall.', status: 'running', starts_on: null, ends_on: day(30), committee_id: 'c-scoph', created_by: uid, created_at: iso(2), updated_at: iso(1), committee: scoph },
+    { id: 'cp-4', title: 'Orientation day', body: '', status: 'done', starts_on: day(-40), ends_on: day(-40), committee_id: 'c-scope', created_by: uid, created_at: iso(60), updated_at: iso(39), committee: scope },
+  ],
+  // The online posts of the first campaign: one out, one ready, one still a draft with no day.
+  campaign_posts: [
+    { id: 'co-1', campaign_id: 'cp-1', author_id: other, platform: 'instagram', caption: 'Welcome to Cairo! Our incoming exchange students land this week. Meet them on Thursday in the main hall.', link: 'https://example.org/p/welcome-week-announcement', post_on: day(-1), status: 'posted', created_at: iso(5) },
+    { id: 'co-2', campaign_id: 'cp-1', author_id: uid, platform: 'facebook', caption: 'The welcome dinner: Thursday, 7 pm. Contact persons, bring your students.', link: 'https://example.org/designs/welcome-dinner-poster-with-a-rather-long-address-that-has-to-wrap', post_on: day(3), status: 'ready', created_at: iso(2) },
+    { id: 'co-3', campaign_id: 'cp-1', author_id: other, platform: 'tiktok', caption: 'A day with an incoming: reel idea, to be filmed at the pyramids trip.', link: '', post_on: null, status: 'draft', created_at: iso(1) },
+  ],
+  campaign_notes: [
+    { id: 'cn-1', campaign_id: 'cp-1', author_id: uid, body: 'The first students land on the 14th. Every working group has its plan in by Sunday.', created_at: iso(4) },
+    { id: 'cn-2', campaign_id: 'cp-1', author_id: other, body: 'The hall is free on Thursday evening for the welcome dinner: https://example.org/halls/booking/2026-11/thursday-evening-main-hall', created_at: iso(1) },
   ],
   // The first task's timeline, one row of every kind, and the files that came
   // with two of them.
@@ -423,6 +443,7 @@ const tables = {
   ],
   notifications: [
     { id: 'n-1', kind: 'task_assigned', payload: { task_id: 't-1', title: 'Collect the incomings welcome booklet photos', actor_id: other }, read_at: null, created_at: iso(0.1) },
+    { id: 'n-7', kind: 'campaign_note', payload: { campaign_id: 'cp-1', title: 'Incomings welcome week', actor_id: other, excerpt: 'The hall is free on Thursday evening for the welcome dinner.' }, read_at: null, created_at: iso(0.2) },
     { id: 'n-3', kind: 'order_new', payload: { name: 'Fourth Buyer With A Long Name That Wraps On A Phone', ref: 'AUSSS-4D8R1T', subtotal: 120, flagged: true }, read_at: null, created_at: iso(0.5) },
     { id: 'n-6', kind: 'signup_new', payload: { submission_id: 'g-1', name: 'Waiting One', count: 3 }, read_at: null, created_at: iso(0.3) },
     { id: 'n-4', kind: 'story_new', payload: { name: 'Second Outgoing With A Rather Long Four Part Name', destination: 'Brno, Czech Republic', ref: 'STORY-BBB222' }, read_at: null, created_at: iso(1) },
@@ -891,12 +912,18 @@ const rpcs = {
   exam_start: () => ({ ok: false, reason: 'code', tries_left: 7 }),
 }
 
+// Each campaign carries its subtasks, as /portal/campaigns reads them.
+for (const c of tables.campaigns) c.tasks = tables.tasks.filter((t) => t.campaign_id === c.id)
+
 // Every screen of the sample, in the order the walk opens them.
 export const ROUTES = [
   // the dashboard, and the same with the bell's panel open
   '/portal', '/portal#bell', '/portal/profile', '/portal/verify',
-  // tasks and updates: the lists, the forms that take a page's place, and who has read an update
-  '/portal/tasks', '/portal/tasks?view=board', '/portal/tasks?tab=new', '/portal/tasks/t-1', '/portal/tasks/t-1?tab=edit',
+  // campaigns and updates: the list, a campaign and its subtasks as a list and a board, a subtask,
+  // the forms that take a page's place, and who has read an update
+  '/portal/campaigns', '/portal/campaigns?done=shown', '/portal/campaigns?tab=new',
+  '/portal/campaigns/cp-1', '/portal/campaigns/cp-1?view=board', '/portal/campaigns/cp-1?tab=edit', '/portal/campaigns/cp-1?tab=new',
+  '/portal/tasks/t-1', '/portal/tasks/t-1?tab=edit',
   '/portal/updates', '/portal/updates#audience', '/portal/updates?tab=new', '/portal/updates?edit=po-1',
   '/portal/notifications', '/portal/directory', '/portal/committees',
   // a committee's editor tab by tab: a new call, a call being changed, its applications, a member opened
