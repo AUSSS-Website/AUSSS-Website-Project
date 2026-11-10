@@ -28,6 +28,7 @@ const TABLES = [
   ['signups', 'Waitlist sign-ups'],
   ['campaigns', 'Campaigns'],
   ['campaign_notes', 'Campaign notes'],
+  ['campaign_posts', 'Campaign online posts'],
   ['tasks', 'Subtasks'],
   ['task_assignees', 'People on subtasks'],
   ['task_files', 'Subtask files'],
