@@ -88,7 +88,7 @@ export function useNames(ids) {
 // ---- campaigns -------------------------------------------------------------
 
 const CAMPAIGN_SELECT =
-  'id, title, body, status, starts_on, ends_on, committee_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color)'
+  'id, title, body, status, starts_on, ends_on, concept_note_path, concept_note_name, committee_id, created_by, created_at, updated_at, committee:committees(id,slug,abbr,name,color)'
 
 // Every campaign this person can see, newest first, each with the subtasks
 // they can see in it (for the counts on its card).
@@ -134,9 +134,77 @@ async function updateCampaign({ id, ...patch }) {
   unwrap(await supabase.from('campaigns').update(patch).eq('id', id).select('id').single())
 }
 
-// The files of its subtasks go first, as in deleteTask: once the campaign is
-// gone its subtasks are too, and the objects would be left behind.
+// The concept note: one document per campaign, in the `campaign-files` bucket
+// under '<campaign id>/<random id>.<ext>' (migration 20261110120002). The type
+// is decided by the extension, as for a subtask's files.
+const CAMPAIGN_FILES_BUCKET = 'campaign-files'
+const CONCEPT_NOTE_EXTS = ['pdf', 'doc', 'docx', 'ppt', 'pptx']
+export const CONCEPT_NOTE_ACCEPT = CONCEPT_NOTE_EXTS.map((ext) => `.${ext}`).join(',')
+
+// '' when the file can be the concept note, otherwise why not.
+export function conceptNoteProblem(file) {
+  const type = fileType(file)
+  if (!type || !CONCEPT_NOTE_EXTS.includes(type.ext)) return 'Choose a PDF, a Word document or a PowerPoint.'
+  if (file.size > TASK_FILE_MAX_BYTES) return 'That file is larger than 10 MB.'
+  if (file.size === 0) return 'That file is empty.'
+  return ''
+}
+
+// Uploads the file, points the campaign at it, then removes the one it
+// replaces. If the campaign cannot be pointed at it the upload is taken back.
+async function setConceptNote({ campaign, file }) {
+  const bucket = supabase.storage.from(CAMPAIGN_FILES_BUCKET)
+  const type = fileType(file)
+  const path = `${campaign.id}/${crypto.randomUUID()}.${type.ext}`
+  const { error } = await bucket.upload(path, file, { contentType: type.mime, upsert: false })
+  if (error) throw notUploaded(file, error)
+  try {
+    unwrap(
+      await supabase
+        .from('campaigns')
+        .update({ concept_note_path: path, concept_note_name: file.name.slice(0, 200) })
+        .eq('id', campaign.id)
+        .select('id')
+        .single(),
+    )
+  } catch (err) {
+    await bucket.remove([path]).catch(() => {})
+    throw err
+  }
+  // Left behind if this fails; nothing points to it any more.
+  if (campaign.concept_note_path) await bucket.remove([campaign.concept_note_path]).catch(() => {})
+}
+
+async function removeConceptNote(campaign) {
+  unwrap(await supabase.storage.from(CAMPAIGN_FILES_BUCKET).remove([campaign.concept_note_path]))
+  unwrap(
+    await supabase
+      .from('campaigns')
+      .update({ concept_note_path: null, concept_note_name: null })
+      .eq('id', campaign.id)
+      .select('id')
+      .single(),
+  )
+}
+
+// A short-lived link that downloads the concept note under its own name.
+export async function conceptNoteUrl(campaign) {
+  const data = unwrap(
+    await supabase.storage
+      .from(CAMPAIGN_FILES_BUCKET)
+      .createSignedUrl(campaign.concept_note_path, 120, { download: campaign.concept_note_name }),
+  )
+  return data.signedUrl
+}
+
+// The files of its subtasks and its concept note go first, as in deleteTask:
+// once the campaign is gone its subtasks are too, and the objects would be
+// left behind.
 async function deleteCampaign(id) {
+  const own = unwrap(await supabase.from('campaigns').select('concept_note_path').eq('id', id).maybeSingle())
+  if (own?.concept_note_path) {
+    unwrap(await supabase.storage.from(CAMPAIGN_FILES_BUCKET).remove([own.concept_note_path]))
+  }
   const tasks = unwrap(await supabase.from('tasks').select('id').eq('campaign_id', id)) || []
   if (tasks.length) {
     const ids = tasks.map((t) => t.id)
@@ -223,6 +291,8 @@ export function useCampaignMutations() {
         qc.invalidateQueries({ queryKey: ['tasks'] })
       },
     }),
+    setConcept: useMutation({ mutationFn: setConceptNote, onSettled: (_d, _e, vars) => settle(vars.campaign.id) }),
+    removeConcept: useMutation({ mutationFn: removeConceptNote, onSettled: (_d, _e, campaign) => settle(campaign.id) }),
     addNote: useMutation({ mutationFn: addCampaignNote, onSettled: (_d, _e, vars) => settle(vars.campaign_id) }),
     removeNote: useMutation({
       mutationFn: deleteCampaignNote,

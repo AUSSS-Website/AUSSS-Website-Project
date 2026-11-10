@@ -5,7 +5,7 @@
 -- a subtask is its manager's to write. Deleting a campaign takes its subtasks, its notes and
 -- their notifications along.
 begin;
-select plan(34);
+select plan(37);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -63,6 +63,22 @@ select throws_ok(
 select throws_ok(
   $$ update public.campaigns set ends_on = '2026-11-01' $$,
   '23514', null, 'a campaign cannot end before it starts'
+);
+
+-- ---- the concept note --------------------------------------------------------------------------
+select lives_ok(
+  $$ update public.campaigns
+     set concept_note_path = id::text || '/11111111-1111-4111-8111-111111111111.pdf', concept_note_name = 'Concept note.pdf' $$,
+  'the officer points the campaign at its concept note'
+);
+select throws_ok(
+  $$ update public.campaigns
+     set concept_note_path = gen_random_uuid()::text || '/11111111-1111-4111-8111-111111111111.pdf' $$,
+  '23514', null, 'the concept note sits in the campaign''s own folder'
+);
+select is(
+  (select app.campaign_file_campaign(concept_note_path) = id from public.campaigns),
+  true, 'a well-formed storage key resolves to its campaign'
 );
 select tests.clear_auth();
 select tests.authenticate_as('sara@pgtap.test');

@@ -5,7 +5,10 @@ import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
 import useTabParam from '../../../hooks/useTabParam.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import {
+  CONCEPT_NOTE_ACCEPT,
   campaignProgress,
+  conceptNoteProblem,
+  conceptNoteUrl,
   useCampaign,
   useCampaignMutations,
   useNames,
@@ -116,6 +119,113 @@ function SubtaskCard({ task, names, compact }) {
   )
 }
 
+// The campaign's concept note: one document. Everybody on the campaign opens
+// it; a manager uploads, replaces or removes it. `onOpening` is told while a
+// download starts, so the page does not ask "Leave site?" about it.
+function ConceptNote({ campaign, canManage, onOpening }) {
+  const { setConcept, removeConcept } = useCampaignMutations()
+  const input = useRef(null)
+  const [opening, setOpening] = useState(false)
+  const [error, setError] = useState('')
+  const has = Boolean(campaign.concept_note_path)
+  const busy = setConcept.isPending || removeConcept.isPending
+
+  const open = async () => {
+    setError('')
+    setOpening(true)
+    onOpening?.(true)
+    try {
+      window.location.assign(await conceptNoteUrl(campaign))
+      // Long enough for the browser to have started the download.
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    } catch (e) {
+      setError(errorText(e, 'Couldn’t open the concept note. Try again.'))
+    } finally {
+      setOpening(false)
+      onOpening?.(false)
+    }
+  }
+
+  const choose = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const problem = conceptNoteProblem(file)
+    setError(problem)
+    if (problem) return
+    try {
+      await setConcept.mutateAsync({ campaign, file })
+    } catch (err) {
+      setError(errorText(err, 'Could not upload the concept note.'))
+    }
+  }
+
+  const remove = async () => {
+    setError('')
+    try {
+      await removeConcept.mutateAsync(campaign)
+    } catch (err) {
+      setError(errorText(err, 'Could not remove the concept note.'))
+    }
+  }
+
+  return (
+    <Panel title="Concept note">
+      {has ? (
+        <button
+          type="button"
+          onClick={open}
+          disabled={opening}
+          className={`mt-4 block max-w-full truncate text-left text-sm font-semibold text-accent underline decoration-line/20 underline-offset-2 ${pressCls} hover:text-ink ${tapCls}`}
+        >
+          {opening ? 'Opening…' : campaign.concept_note_name}
+        </button>
+      ) : (
+        <p className="mt-4 text-sm text-soft/60">
+          {canManage ? 'None yet. Upload the campaign’s concept note for everybody on it to read.' : 'None yet.'}
+        </p>
+      )}
+      {canManage && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <input
+            ref={input}
+            type="file"
+            accept={CONCEPT_NOTE_ACCEPT}
+            onChange={choose}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => input.current?.click()}
+            className={`${outlineBtnCls} ${tapCls}`}
+          >
+            {setConcept.isPending ? 'Uploading…' : has ? 'Replace' : 'Upload'}
+          </button>
+          {has && (
+            <ConfirmButton
+              label="Remove"
+              busyLabel="Removing…"
+              busy={removeConcept.isPending}
+              disabled={busy}
+              onConfirm={remove}
+              className={`${outlineBtnCls} ${tapCls}`}
+            />
+          )}
+        </div>
+      )}
+      {canManage && <p className="mt-3 text-xs text-soft/50">A PDF, a Word document or a PowerPoint, up to 10 MB.</p>}
+      {error && (
+        <div className="mt-3">
+          <ErrorText>{error}</ErrorText>
+        </div>
+      )}
+    </Panel>
+  )
+}
+
 // Each campaign is a page of its own: a note half written for one is never
 // posted on the next.
 export default function CampaignPage() {
@@ -142,7 +252,10 @@ function CampaignView({ id }) {
   // and would post the note twice.
   const posting = useRef(false)
   usePageTitle(campaign.data?.title || 'Campaign')
-  useLeaveWarning(draft.trim() !== '' || addNote.isPending)
+  // Opening the concept note stands the question down: to the browser a
+  // download begins as if the page were being left.
+  const [fileOpening, setFileOpening] = useState(false)
+  useLeaveWarning(!fileOpening && (draft.trim() !== '' || addNote.isPending))
 
   // A form says when it holds typed work. While it does it stays open whatever
   // the address says, and the address is put back (see TaskPage.jsx).
@@ -541,6 +654,8 @@ function CampaignView({ id }) {
             <ProgressBar {...progress} className="mt-5" />
             <p className="mt-2 text-xs text-soft/55">{progressText(progress)}</p>
           </Panel>
+
+          <ConceptNote campaign={c} canManage={isManager} onOpening={setFileOpening} />
 
           <Panel title={people.length ? `People (${people.length})` : 'People'}>
             {people.length === 0 ? (
