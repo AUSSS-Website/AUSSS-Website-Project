@@ -105,7 +105,7 @@ async function fetchCampaigns() {
 
 // One campaign with its subtasks (those this person can see) and its notes.
 async function fetchCampaign(id) {
-  const [campaign, tasks, notes] = await Promise.all([
+  const [campaign, tasks, notes, posts] = await Promise.all([
     supabase.from('campaigns').select(CAMPAIGN_SELECT).eq('id', id).maybeSingle(),
     supabase
       .from('tasks')
@@ -119,10 +119,15 @@ async function fetchCampaign(id) {
       .eq('campaign_id', id)
       .order('created_at', { ascending: true })
       .order('id', { ascending: true }),
+    supabase
+      .from('campaign_posts')
+      .select('id, campaign_id, author_id, platform, caption, link, post_on, status, created_at')
+      .eq('campaign_id', id)
+      .order('created_at', { ascending: true }),
   ])
   const row = unwrap(campaign)
   if (!row) return null
-  return { ...row, tasks: unwrap(tasks) || [], notes: unwrap(notes) || [] }
+  return { ...row, tasks: unwrap(tasks) || [], notes: unwrap(notes) || [], posts: unwrap(posts) || [] }
 }
 
 // fields: { committee_id, title, body, status, starts_on, ends_on }
@@ -220,6 +225,20 @@ async function addCampaignNote({ campaign_id, body }) {
   unwrap(await supabase.from('campaign_notes').insert({ campaign_id, body }))
 }
 
+// An online post of the campaign (a row of campaign_posts, not one of the
+// portal's Updates). fields: { platform, caption, link, post_on, status }
+async function saveCampaignPost({ id, campaign_id, ...fields }) {
+  if (id) {
+    unwrap(await supabase.from('campaign_posts').update(fields).eq('id', id).select('id').single())
+    return
+  }
+  unwrap(await supabase.from('campaign_posts').insert({ campaign_id, ...fields }).select('id').single())
+}
+
+async function deleteCampaignPost(post) {
+  unwrap(await supabase.from('campaign_posts').delete().eq('id', post.id))
+}
+
 async function deleteCampaignNote(note) {
   unwrap(await supabase.from('campaign_notes').delete().eq('id', note.id))
 }
@@ -293,6 +312,8 @@ export function useCampaignMutations() {
     }),
     setConcept: useMutation({ mutationFn: setConceptNote, onSettled: (_d, _e, vars) => settle(vars.campaign.id) }),
     removeConcept: useMutation({ mutationFn: removeConceptNote, onSettled: (_d, _e, campaign) => settle(campaign.id) }),
+    savePost: useMutation({ mutationFn: saveCampaignPost, onSettled: (_d, _e, vars) => settle(vars.campaign_id) }),
+    removePost: useMutation({ mutationFn: deleteCampaignPost, onSettled: (_d, _e, post) => settle(post.campaign_id) }),
     addNote: useMutation({ mutationFn: addCampaignNote, onSettled: (_d, _e, vars) => settle(vars.campaign_id) }),
     removeNote: useMutation({
       mutationFn: deleteCampaignNote,

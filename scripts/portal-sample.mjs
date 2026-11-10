@@ -406,6 +406,12 @@ const tables = {
     { id: 'cp-3', title: 'World Health Day', body: 'Leaflets and a stand in the main hall.', status: 'running', starts_on: null, ends_on: day(30), committee_id: 'c-scoph', created_by: uid, created_at: iso(2), updated_at: iso(1), committee: scoph },
     { id: 'cp-4', title: 'Orientation day', body: '', status: 'done', starts_on: day(-40), ends_on: day(-40), committee_id: 'c-scope', created_by: uid, created_at: iso(60), updated_at: iso(39), committee: scope },
   ],
+  // The online posts of the first campaign: one out, one ready, one still a draft with no day.
+  campaign_posts: [
+    { id: 'co-1', campaign_id: 'cp-1', author_id: other, platform: 'instagram', caption: 'Welcome to Cairo! Our incoming exchange students land this week. Meet them on Thursday in the main hall.', link: 'https://example.org/p/welcome-week-announcement', post_on: day(-1), status: 'posted', created_at: iso(5) },
+    { id: 'co-2', campaign_id: 'cp-1', author_id: uid, platform: 'facebook', caption: 'The welcome dinner: Thursday, 7 pm. Contact persons, bring your students.', link: 'https://example.org/designs/welcome-dinner-poster-with-a-rather-long-address-that-has-to-wrap', post_on: day(3), status: 'ready', created_at: iso(2) },
+    { id: 'co-3', campaign_id: 'cp-1', author_id: other, platform: 'tiktok', caption: 'A day with an incoming: reel idea, to be filmed at the pyramids trip.', link: '', post_on: null, status: 'draft', created_at: iso(1) },
+  ],
   campaign_notes: [
     { id: 'cn-1', campaign_id: 'cp-1', author_id: uid, body: 'The first students land on the 14th. Every working group has its plan in by Sunday.', created_at: iso(4) },
     { id: 'cn-2', campaign_id: 'cp-1', author_id: other, body: 'The hall is free on Thursday evening for the welcome dinner: https://example.org/halls/booking/2026-11/thursday-evening-main-hall', created_at: iso(1) },

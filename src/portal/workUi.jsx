@@ -29,6 +29,23 @@ export const CAMPAIGN_STATUSES = [
 ]
 export const CAMPAIGN_STATUS_LABEL = Object.fromEntries(CAMPAIGN_STATUSES)
 
+// A campaign's online posts (campaign_posts): where one goes and how far it is.
+export const ONLINE_POST_PLATFORMS = [
+  ['instagram', 'Instagram'],
+  ['facebook', 'Facebook'],
+  ['tiktok', 'TikTok'],
+  ['linkedin', 'LinkedIn'],
+  ['x', 'X'],
+  ['youtube', 'YouTube'],
+  ['other', 'Other'],
+]
+export const PLATFORM_LABEL = Object.fromEntries(ONLINE_POST_PLATFORMS)
+export const ONLINE_POST_STATUSES = [
+  ['draft', 'Draft'],
+  ['ready', 'Ready'],
+  ['posted', 'Posted'],
+]
+
 export const POST_KINDS = [
   ['announcement', 'Announcement'],
   ['news', 'News'],
@@ -69,6 +86,16 @@ export function CampaignStatusPill({ status }) {
   return (
     <span className={`${pillCls} ${CAMPAIGN_STATUS_CLS[status] || STATUS_CLS.todo}`}>
       {CAMPAIGN_STATUS_LABEL[status] || status}
+    </span>
+  )
+}
+
+const ONLINE_POST_CLS = { draft: STATUS_CLS.todo, ready: STATUS_CLS.doing, posted: STATUS_CLS.done }
+
+export function OnlinePostStatusPill({ status }) {
+  return (
+    <span className={`${pillCls} ${ONLINE_POST_CLS[status] || STATUS_CLS.todo}`}>
+      {Object.fromEntries(ONLINE_POST_STATUSES)[status] || status}
     </span>
   )
 }

@@ -42,6 +42,7 @@ import {
   when,
 } from '../../workUi.jsx'
 import CampaignEditor from './CampaignEditor.jsx'
+import CampaignPosts from './CampaignPosts.jsx'
 import TaskEditor from '../tasks/TaskEditor.jsx'
 import { Avatar } from '../../Avatar.jsx'
 import { errorText } from '../../../lib/errorText.js'
@@ -297,6 +298,7 @@ function CampaignView({ id }) {
       c.created_by,
       ...c.tasks.flatMap((t) => t.assignees.map((a) => a.profile_id)),
       ...c.notes.map((n) => n.author_id),
+      ...c.posts.map((p) => p.author_id),
     ]
   }, [c])
   const names = useNames(ids)
@@ -553,6 +555,8 @@ function CampaignView({ id }) {
               <p className="mt-3 text-xs text-soft/50">You see the subtasks you are on or made.</p>
             )}
           </section>
+
+          <CampaignPosts campaign={c} names={names} userId={user.id} isManager={isManager} />
 
           <section aria-label="Notes">
             <p className={`mb-4 ${panelTitleCls}`}>

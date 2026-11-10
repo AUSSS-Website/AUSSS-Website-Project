@@ -5,7 +5,7 @@
 -- a subtask is its manager's to write. Deleting a campaign takes its subtasks, its notes and
 -- their notifications along.
 begin;
-select plan(37);
+select plan(42);
 
 update public.terms set is_current = false where is_current;
 insert into public.terms (label, starts_on, ends_on, is_current)
@@ -226,6 +226,33 @@ insert into public.campaign_notes (campaign_id, body) select id, 'Scrap that.' f
 delete from public.campaign_notes where body = 'Scrap that.';
 select is((select count(*)::int from public.campaign_notes), 1, 'the author removes their own note');
 
+-- ---- online posts -----------------------------------------------------------------------------
+select lives_ok(
+  $$ insert into public.campaign_posts (campaign_id, platform, caption, post_on)
+     select id, 'instagram', '  Welcome week starts Sunday. ', date '2026-11-20' from pgtap_campaign $$,
+  'a person on a subtask adds an online post to the campaign'
+);
+select is(
+  (select jsonb_build_object('caption', caption, 'by', author_id, 'status', status) from public.campaign_posts),
+  jsonb_build_object('caption', 'Welcome week starts Sunday.', 'by', tests.user_id('sara@pgtap.test'), 'status', 'draft'),
+  'the caption is trimmed, the author stamped, and it starts as a draft'
+);
+select throws_ok(
+  $$ insert into public.campaign_posts (campaign_id, link) select id, 'javascript:alert(1)' from pgtap_campaign $$,
+  '22023', null, 'a link has to be a web address'
+);
+select tests.clear_auth();
+select tests.authenticate_as('omar@pgtap.test');
+update public.campaign_posts set status = 'posted';
+delete from public.campaign_posts;
+select is(
+  (select status from public.campaign_posts), 'draft',
+  'somebody else on the campaign reads the post but neither changes nor removes it'
+);
+select tests.clear_auth();
+select tests.authenticate_as('lora@pgtap.test');
+select is((select count(*)::int from public.campaign_posts), 0, 'another committee''s officer does not see the posts');
+
 -- ---- deleting a campaign ----------------------------------------------------------------------
 select tests.clear_auth();
 select tests.authenticate_as('leo@pgtap.test');
@@ -238,9 +265,10 @@ select is(
   (select jsonb_build_object(
      'subtasks', (select count(*) from public.tasks where title like '% SWG'),
      'notes', (select count(*) from public.campaign_notes),
+     'posts', (select count(*) from public.campaign_posts),
      'notifications', (select count(*) from public.notifications where payload ? 'campaign_id'))),
-  '{"subtasks": 0, "notes": 0, "notifications": 0}'::jsonb,
-  'its subtasks, its notes and the notifications about them go with it'
+  '{"subtasks": 0, "notes": 0, "posts": 0, "notifications": 0}'::jsonb,
+  'its subtasks, its notes, its online posts and the notifications about them go with it'
 );
 select is(
   (select count(*)::int from public.tasks where title = 'Name badges'),

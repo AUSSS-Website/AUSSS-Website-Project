@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(165);
+select plan(167);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -64,6 +64,8 @@ select ok(has_table_privilege('authenticated', 'public.campaigns', 'insert'), 'a
 select ok(not has_table_privilege('anon', 'public.campaign_notes', 'select'), 'anon cannot read campaign notes');
 select ok(not has_column_privilege('authenticated', 'public.campaign_notes', 'author_id', 'insert'), 'authenticated cannot choose a campaign note''s author');
 select ok(not has_table_privilege('authenticated', 'public.campaign_notes', 'update'), 'a campaign note is not rewritten');
+select ok(not has_table_privilege('anon', 'public.campaign_posts', 'select'), 'anon cannot read a campaign''s online posts');
+select ok(not has_column_privilege('authenticated', 'public.campaign_posts', 'author_id', 'update'), 'authenticated cannot change who added an online post');
 select ok(not has_column_privilege('authenticated', 'public.task_assignees', 'profile_id', 'update'), 'authenticated changes only the line about a person in a subtask');
 
 -- phase 5b: invites and positions are for signed-in officers; the public reads who holds the
