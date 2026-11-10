@@ -878,6 +878,7 @@ set, so everything in the table below still holds for it, and its page is still
 | Campaigns | `campaigns` (committee or null = society-wide, term, status `planning`/`running`/`done`, `starts_on`, `ends_on`) | whoever may hand out tasks in the committee, the creator, and everybody on one of its subtasks | open: as for a task. Edit/delete: officers, EB, or the creator (`app.can_manage_campaign`), who also manage every subtask in it. Deleting takes the subtasks along. |
 | Subtasks | `tasks.campaign_id` | as a task; a person on one subtask does not see the others | as a task. `app.guard_task()` gives a subtask its campaign's committee and never lets it change campaign. |
 | Notes on a campaign | `campaign_notes` | whoever sees the campaign | anyone who sees it (column grant on `campaign_id, body`); removed by the author or a manager. Each one notifies the creator and the people on the subtasks (`campaign_note`). |
+| Concept note | `campaigns.concept_note_path`, `concept_note_name`; the file in the private bucket `campaign-files` under `<campaign id>/<random id>.<ext>` (migration `20261110120002_campaign_concept_note`) | whoever sees the campaign, through a signed link | the campaign's managers upload, replace and remove it from the campaign's page (PDF, Word or PowerPoint, 10 MB) |
 | The line about a person | `task_assignees.note` | whoever sees the subtask | the subtask's managers (column grant on `note` only) |
 
 A campaign's page keeps `?tab=edit`, `?tab=new` (the new-subtask form) and
