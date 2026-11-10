@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 // itself, so the client is left out.
 vi.mock('../lib/supabase.js', () => ({ supabase: null, supabaseEnabled: false }))
 
-import { postTimeProblems } from './workQueries.js'
+import { campaignProgress, postTimeProblems } from './workQueries.js'
 
 const NOW = Date.parse('2026-10-11T12:00:00Z')
 // A time so many hours from NOW, as the editor hands it over.
@@ -77,5 +77,20 @@ describe('postTimeProblems: both fields', () => {
     const behind = new Date(Date.now() - 3600e3).toISOString()
     expect(postTimeProblems({ timing: 'at', publishAt: ahead, expiresAt: null })).toEqual(NONE)
     expect(postTimeProblems({ timing: 'at', publishAt: behind, expiresAt: null })).toEqual({ publishAt: PASSED, expiresAt: '' })
+  })
+})
+
+describe('campaignProgress', () => {
+  it('counts the subtasks, the done ones, and each person once', () => {
+    const tasks = [
+      { status: 'done', assignees: [{ profile_id: 'a' }, { profile_id: 'b' }] },
+      { status: 'doing', assignees: [{ profile_id: 'a' }] },
+      { status: 'todo', assignees: [] },
+    ]
+    expect(campaignProgress(tasks)).toEqual({ total: 3, done: 1, people: 2 })
+  })
+  it('is all zeros for a campaign with no subtasks', () => {
+    expect(campaignProgress([])).toEqual({ total: 0, done: 0, people: 0 })
+    expect(campaignProgress()).toEqual({ total: 0, done: 0, people: 0 })
   })
 })

@@ -56,7 +56,7 @@ const privacySections = (domainEmails) => [
     bullets: [
       'From your sign-in provider: your email address, display name and profile picture.',
       'What you add yourself: phone number, faculty year, and a photo if you choose one.',
-      'Work in the portal: the tasks you create or are given, your comments on them and any files you attach. A file can be opened by the people on that task and the officers of its committee.',
+      'Work in the portal: the campaigns and subtasks you create or are put on, the notes you write on them, the line an officer writes about your part in a subtask, and any files you attach. A file can be opened by the people on that subtask and the officers of its committee.',
       'From the membership roster: your membership status and tier, the year you joined and the positions you hold each term. The roster is the same membership record the society already keeps; the portal links your account to it by email.',
       'Verification requests: if the roster does not match your email, you can ask the Executive Board to confirm you. We keep the request and the decision.',
       'An audit trail: the portal records who changed what and when, so that membership and position changes can always be traced.',

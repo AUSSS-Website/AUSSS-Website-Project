@@ -67,14 +67,16 @@ const STATUS: Record<string, string> = {
 // The actor's name is deliberately left out: profiles are private between members and an
 // email is forever. The portal shows who did it.
 function describe(n: Notification) {
-  const title = n.payload.title || 'a task'
+  const title = n.payload.title || 'a subtask'
   switch (n.kind) {
     case 'task_assigned':
-      return `You were assigned “${title}”`
+      return `You were put on “${title}”`
     case 'task_status':
       return `“${title}” moved to ${STATUS[n.payload.to ?? ''] || n.payload.to}`
     case 'task_comment':
-      return `New comment on “${title}”`
+      return `New note on “${title}”`
+    case 'campaign_note':
+      return `New note on the campaign “${title}”`
     case 'task_files':
       return `${Number(n.payload.count) > 1 ? 'New files' : 'A new file'} on “${title}”`
     case 'order_new':
@@ -97,6 +99,8 @@ function render(p: Person) {
     text: describe(n),
     url: n.payload.task_id
       ? `${PORTAL}/tasks/${n.payload.task_id}`
+      : n.payload.campaign_id
+        ? `${PORTAL}/campaigns/${n.payload.campaign_id}`
       : n.kind === 'order_new'
         ? `${PORTAL}/submissions?tab=orders`
         : n.kind === 'story_new'
@@ -123,7 +127,7 @@ function render(p: Person) {
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1b1b1b;max-width:560px">
     <p>${esc(hello)}</p>
     <p>Here is what is waiting for you in the AUSSS members portal.</p>
-    ${section('Your tasks and new submissions', tasks)}
+    ${section('Your campaigns and new submissions', tasks)}
     ${section('Updates you have not read', posts)}
     <p style="margin-top:28px"><a href="${esc(PORTAL)}" style="background:#06402B;color:#ffffff;padding:10px 18px;border-radius:999px;text-decoration:none">Open the portal</a></p>
     <p style="margin-top:28px;font-size:12px;color:#777">You get this at most once a day, only when something is unread.
@@ -131,7 +135,7 @@ function render(p: Person) {
   </div>`
 
   const lines = [hello, '', 'Here is what is waiting for you in the AUSSS members portal.']
-  if (tasks.length) lines.push('', 'YOUR TASKS AND NEW SUBMISSIONS', ...tasks.map((r) => `- ${r.text}\n  ${r.url}`))
+  if (tasks.length) lines.push('', 'YOUR CAMPAIGNS AND NEW SUBMISSIONS', ...tasks.map((r) => `- ${r.text}\n  ${r.url}`))
   if (posts.length) lines.push('', 'UPDATES YOU HAVE NOT READ', ...posts.map((r) => `- ${r.text}`), `  ${PORTAL}/updates`)
   lines.push('', `Open the portal: ${PORTAL}`, '', `At most once a day, only when something is unread. Switch it off under Profile: ${PORTAL}/profile`)
   return { subject: subject.slice(0, 180), html, text: lines.join('\n') }

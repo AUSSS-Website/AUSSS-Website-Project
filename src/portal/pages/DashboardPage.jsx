@@ -25,20 +25,21 @@ const moreLinkCls = `mt-1 -mb-3 ${linkCls}`
 // finger the difference without changing how they look.
 const tapCls = "relative after:absolute after:inset-x-0 after:-inset-y-[10px] after:content-['']"
 
-// Open tasks assigned to this person, soonest due first (the query's order).
+// Open subtasks this person is on, in any campaign, soonest due first (the
+// query's order).
 function MyTasksPanel({ uid }) {
   const tasks = useTasks()
   const mine = (tasks.data || []).filter(
     (t) => t.status !== 'done' && t.assignees.some((a) => a.profile_id === uid),
   )
   return (
-    <Panel title="Your tasks">
+    <Panel title="Your subtasks">
       {tasks.isPending ? (
         <p className="mt-4 text-sm text-soft/60">Loading…</p>
       ) : tasks.error ? (
-        <p className="mt-4 text-sm text-soft/60">Couldn’t load your tasks.</p>
+        <p className="mt-4 text-sm text-soft/60">Couldn’t load your subtasks.</p>
       ) : mine.length === 0 ? (
-        <p className="mt-4 text-sm text-soft/60">Nothing open is assigned to you.</p>
+        <p className="mt-4 text-sm text-soft/60">You are on no open subtask.</p>
       ) : (
         <ul className="mt-4 divide-y divide-line/10">
           {mine.slice(0, 5).map((t) => (
@@ -56,8 +57,8 @@ function MyTasksPanel({ uid }) {
           ))}
         </ul>
       )}
-      <Link to="/portal/tasks" className={moreLinkCls}>
-        {mine.length > 5 ? `All ${mine.length} open tasks` : 'All tasks'} &rarr;
+      <Link to="/portal/campaigns" className={moreLinkCls}>
+        {mine.length > 5 ? `${mine.length} open subtasks, in your campaigns` : 'Your campaigns'} &rarr;
       </Link>
     </Panel>
   )

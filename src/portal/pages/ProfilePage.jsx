@@ -329,7 +329,7 @@ function ProfileForm({ user, profile: given }) {
                 checked={form.digest}
                 onChange={(on) => change('digest', on)}
                 label="Email me a daily digest"
-                hint="At most one email a day, only when a task or an update is waiting for you. Everything stays in the portal either way."
+                hint="At most one email a day, only when a campaign, a subtask or an update is waiting for you. Everything stays in the portal either way."
               />
             </div>
           )}

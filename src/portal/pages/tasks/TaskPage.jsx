@@ -33,16 +33,20 @@ import { Avatar } from '../../Avatar.jsx'
 import { errorText } from '../../../lib/errorText.js'
 import { pressCls } from '../../../lib/motion.js'
 
-// /portal/tasks/:id. The task, who has it, a status control for anyone
-// involved, and the timeline (comments plus what the triggers recorded).
+// /portal/tasks/:id. One subtask of a campaign (a working group or a single
+// job): who is on it, a status control for anyone involved, and the timeline
+// (notes plus what the triggers recorded). The address still says "tasks": a
+// subtask is a row of that table, and the links in notifications already sent
+// lead here.
 // "Manager" here mirrors app.can_manage_task: a committee officer / the EB, or
-// the creator while they may still assign there. The database enforces it; a
-// non-manager's edit of anything but the status is simply pinned back.
+// the creator of the subtask or of its campaign while they may still hand out
+// work there. The database enforces it; a non-manager's edit of anything but
+// the status is simply pinned back.
 //
 // Whether the editor is open is kept in the address (?tab=edit), so a reload
 // stays in it. Each part of the page that can fail says so itself: the status
-// under its chips, a file under the list it is in, the comment under its box
-// and the delete under its button.
+// under its chips, a file under the list it is in, the note under its box and
+// the delete under its button.
 
 const FIELD_LABEL = { title: 'the title', body: 'the details', priority: 'the priority', due_on: 'the due date' }
 
@@ -57,15 +61,15 @@ function eventText(u, names) {
   const who = personName(names, u.author_id, 'Someone')
   switch (u.kind) {
     case 'created':
-      return `${who} created the task`
+      return `${who} created the subtask`
     case 'status':
       return `${who} moved it from ${STATUS_LABEL[u.meta?.from] || u.meta?.from} to ${
         STATUS_LABEL[u.meta?.to] || u.meta?.to
       }`
     case 'assigned':
       return u.meta?.profile_id === u.author_id
-        ? `${who} took the task`
-        : `${who} assigned ${personName(names, u.meta?.profile_id, 'someone')}`
+        ? `${who} joined the subtask`
+        : `${who} added ${personName(names, u.meta?.profile_id, 'someone')}`
     case 'unassigned':
       return `${who} removed ${personName(names, u.meta?.profile_id, 'someone')}`
     case 'edited':
@@ -122,9 +126,9 @@ function Timeline({ updates, names, files, fileProps }) {
   )
 }
 
-// Each task is a page of its own. Opening another from this one (a notification
-// in the header leads straight there) starts it afresh, so a comment half
-// written for one task is never posted on the next.
+// Each subtask is a page of its own. Opening another from this one (a
+// notification in the header leads straight there) starts it afresh, so a note
+// half written for one is never posted on the next.
 export default function TaskPage() {
   const { id } = useParams()
   return <TaskView key={id} id={id} />
@@ -140,16 +144,16 @@ function TaskView({ id }) {
   const [tab, setTab] = useTabParam(VIEWS, 'task')
   const [draft, setDraft] = useState('')
   const [draftFiles, setDraftFiles] = useState([])
-  // Which file of a comment is going up, for the line beside its button.
+  // Which file of a note is going up, for the line beside its button.
   const [progress, setProgress] = useState(null)
   const [statusError, setStatusError] = useState('')
   const [commentError, setCommentError] = useState('')
   const [deleteError, setDeleteError] = useState('')
   // A second click lands before React has re-rendered the disabled button,
-  // and would post the comment twice.
+  // and would post the note twice.
   const posting = useRef(false)
-  usePageTitle(task.data?.title || 'Task')
-  // A comment half written, or its files still going up, would be lost with the
+  usePageTitle(task.data?.title || 'Subtask')
+  // A note half written, or its files still going up, would be lost with the
   // tab. Opening one of the task's files stands the question down for as long
   // as that takes: to the browser a download begins as if the page were being
   // left, and it would ask "Leave site?" about a file. Counted, since the same
@@ -210,18 +214,18 @@ function TaskView({ id }) {
   if (!t) {
     return (
       <>
-        <PageHeader eyebrow="Tasks" title="Task not found" />
+        <PageHeader eyebrow="Campaigns" title="Subtask not found" />
         <Panel>
           <p className="text-sm text-soft/70">
             {task.error
-              ? errorText(task.error, 'Couldn’t load the task.')
-              : 'It was deleted, or it isn’t shared with you.'}
+              ? errorText(task.error, 'Couldn’t load the subtask.')
+              : 'It was deleted, or you are not on it.'}
           </p>
           <Link
-            to="/portal/tasks"
+            to="/portal/campaigns"
             className={`-mb-3 mt-1 inline-flex min-h-[44px] items-center text-sm font-semibold text-accent ${pressCls} hover:text-ink`}
           >
-            &larr; All tasks
+            &larr; All campaigns
           </Link>
         </Panel>
       </>
@@ -230,15 +234,18 @@ function TaskView({ id }) {
 
   const inScope = t.committee_id ? scopes.task.some((c) => c.id === t.committee_id) : scopes.society
   const officer = t.committee_id ? scopes.post.some((c) => c.id === t.committee_id) : scopes.society
-  const isManager = officer || (t.created_by === user.id && inScope)
+  const isManager = officer || ((t.created_by === user.id || t.campaign?.created_by === user.id) && inScope)
+  // Where the subtask lives: its campaign's page, or the list of them for a
+  // task made before there were campaigns.
+  const home = t.campaign_id ? `/portal/campaigns/${t.campaign_id}` : '/portal/campaigns'
   const isAssignee = t.assignees.some((a) => a.profile_id === user.id)
   const canMove = isManager || isAssignee
 
   if (editorAsked && isManager) {
     return (
       <>
-        <PageHeader eyebrow="Tasks" title="Edit task" />
-        <TaskEditor task={t} scopes={scopes} onHold={setHolding} onCancel={closeEditor} onDone={closeEditor} />
+        <PageHeader eyebrow={t.campaign?.title || 'Campaigns'} title="Edit subtask" />
+        <TaskEditor task={t} onHold={setHolding} onCancel={closeEditor} onDone={closeEditor} />
       </>
     )
   }
@@ -262,7 +269,7 @@ function TaskView({ id }) {
       setDraft('')
       setDraftFiles([])
     } catch (err) {
-      setCommentError(errorText(err, 'Could not post the comment.'))
+      setCommentError(errorText(err, 'Could not add the note.'))
     } finally {
       setProgress(null)
       posting.current = false
@@ -282,23 +289,23 @@ function TaskView({ id }) {
     setDeleteError('')
     try {
       await remove.mutateAsync(t.id)
-      navigate('/portal/tasks', { replace: true })
+      navigate(home, { replace: true })
     } catch (e) {
-      setDeleteError(errorText(e, 'Could not delete the task.'))
+      setDeleteError(errorText(e, 'Could not delete the subtask.'))
     }
   }
 
   return (
     <>
       <Link
-        to="/portal/tasks"
-        className="-mt-[14px] mb-[10px] inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
+        to={home}
+        className="-mt-[14px] mb-[10px] inline-flex min-h-[44px] max-w-full items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-soft/60 transition-colors hover:text-ink"
       >
-        &larr; All tasks
+        &larr; <span className="min-w-0 truncate">{t.campaign?.title || 'All campaigns'}</span>
       </Link>
 
       <PageHeader
-        eyebrow="Task"
+        eyebrow="Subtask"
         title={t.title}
         subtitle={`Created by ${personName(names, t.created_by)} · ${when(t.created_at)}`}
         action={
@@ -353,18 +360,18 @@ function TaskView({ id }) {
             <Timeline updates={t.updates} names={names} files={t.files} fileProps={fileProps} />
             <form onSubmit={postComment} className="mt-5">
               <label htmlFor="task-comment" className="sr-only">
-                Add a comment
+                Add a note
               </label>
               <textarea
                 id="task-comment"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 // Held still while it is sent, so nothing typed meanwhile is
-                // cleared away with the comment that went.
+                // cleared away with the note that went.
                 readOnly={comment.isPending}
                 rows={3}
                 maxLength={4000}
-                placeholder="Add a comment or a progress note…"
+                placeholder="Add a note for the people on this subtask…"
                 className={inputCls}
               />
               <div className="mt-3">
@@ -381,7 +388,7 @@ function TaskView({ id }) {
                       ? 'Uploading…'
                       : 'Posting…'
                     : draft.trim() || !draftFiles.length
-                      ? 'Comment'
+                      ? 'Add note'
                       : 'Attach'}
                 </button>
                 <UploadStatus progress={progress} />
@@ -425,17 +432,21 @@ function TaskView({ id }) {
             {t.completed_at && <p className="mt-3 text-xs text-soft/50">Completed {when(t.completed_at)}</p>}
           </Panel>
 
-          <Panel title="Assigned to">
+          <Panel title={t.assignees.length ? `People (${t.assignees.length})` : 'People'}>
             {t.assignees.length === 0 ? (
               <p className="mt-4 text-sm text-soft/60">Nobody yet.</p>
             ) : (
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-4 space-y-3">
                 {t.assignees.map((a) => (
-                  <li key={a.profile_id} className="flex items-center gap-2 text-sm text-ink">
+                  <li key={a.profile_id} className="flex items-start gap-2 text-sm text-ink">
                     <Avatar name={personName(names, a.profile_id, '')} src={names[a.profile_id]?.avatar_url} size="sm" />
-                    <span className="min-w-0 truncate">
-                      {personName(names, a.profile_id, '…')}
-                      {a.profile_id === user.id && <span className="text-soft/50"> (you)</span>}
+                    <span className="min-w-0">
+                      <span className="block truncate">
+                        {personName(names, a.profile_id, '…')}
+                        {a.profile_id === user.id && <span className="text-soft/50"> (you)</span>}
+                      </span>
+                      {/* The line about this person: what they do in the subtask. */}
+                      {a.note && <span className="block break-words text-xs text-soft/55">{a.note}</span>}
                     </span>
                   </li>
                 ))}
@@ -455,7 +466,7 @@ function TaskView({ id }) {
           <Panel title={t.files.length ? `Files (${t.files.length})` : 'Files'}>
             {t.files.length === 0 ? (
               <p className="mt-4 text-sm text-soft/60">
-                None yet. Attach one from the comment box.
+                None yet. Attach one from the note box.
               </p>
             ) : (
               <FileLinks files={t.files} {...fileProps} className="mt-4" />

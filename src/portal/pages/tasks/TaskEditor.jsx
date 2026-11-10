@@ -14,21 +14,24 @@ import {
   outlineBtnCls,
   primaryBtnCls,
 } from '../../portalUi.jsx'
-import { DueLabel, TASK_PRIORITIES, chipBtnCls } from '../../workUi.jsx'
+import { DueLabel, TASK_PRIORITIES, chipBtnCls, smallInputCls } from '../../workUi.jsx'
 import { FileChooser, UploadStatus } from './TaskFiles.jsx'
 import { Avatar } from '../../Avatar.jsx'
 import { errorText } from '../../../lib/errorText.js'
 import { scrollBehavior } from '../../../lib/motion.js'
 
-// Create or edit a task. `scopes` comes from useWorkScopes(): the committees
-// this person may hand work out in, plus `society` for the EB. A task never
-// changes committee once saved (the database pins it), so the picker is only
-// live on create.
+// Create or edit a subtask of a campaign: a working group or a single job, with
+// its own people. A new one is given its `campaign`; one being edited is given
+// itself as `task`. A subtask sits in its campaign's committee and never
+// changes campaign (the database pins both), so neither is asked for.
 //
-// A new task opens with today's date (the Cairo day). Before it is created the
-// open tasks of that committee are checked for one with the same title and the
-// same people; a match is shown with a link and the person decides. It warns
-// and never blocks, since a repeat can be deliberate.
+// Each person ticked can be given a line of their own: what they do in the
+// subtask ("Coordinator", "Handles the sponsors").
+//
+// A new subtask opens with today's date (the Cairo day). Before it is created
+// the open subtasks of the campaign are checked for one with the same title and
+// the same people; a match is shown with a link and the person decides. It
+// warns and never blocks, since a repeat can be deliberate.
 //
 // The title is checked where it is typed, from the first keystroke in it or
 // the first try at saving. Cancel asks before it throws typed work away, and so
@@ -37,8 +40,6 @@ import { scrollBehavior } from '../../../lib/motion.js'
 // once it does not or the form has gone: the page uses it to keep the form open
 // when a link changes the address under it.
 
-const SOCIETY = 'society'
-
 // On a touch screen a button stands at least a thumb tall; with a mouse it
 // keeps the portal's small pill. In px and not rem, because the root size
 // shrinks on a 320px phone.
@@ -46,24 +47,27 @@ const tapCls = '[@media(pointer:coarse)]:min-h-[44px]'
 
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x))
 
-export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
+export default function TaskEditor({ task, campaign, onDone, onCancel, onHold }) {
   const editing = Boolean(task)
   const previousAssignees = task ? task.assignees.map((a) => a.profile_id) : []
+  const previousNotes = task ? Object.fromEntries(task.assignees.map((a) => [a.profile_id, a.note || ''])) : {}
   // The form as it opened, to tell whether anything has been typed since.
   const [opened] = useState(() => ({
-    scope: task ? task.committee_id || SOCIETY : scopes.society ? SOCIETY : scopes.task[0]?.id || '',
     title: task?.title || '',
     body: task?.body || '',
     priority: task?.priority || 'normal',
     dueOn: task ? task.due_on || '' : todayCairo(),
     assignees: previousAssignees,
+    notes: previousNotes,
   }))
-  const [scope, setScope] = useState(opened.scope)
   const [title, setTitle] = useState(opened.title)
   const [body, setBody] = useState(opened.body)
   const [priority, setPriority] = useState(opened.priority)
   const [dueOn, setDueOn] = useState(opened.dueOn)
   const [assignees, setAssignees] = useState(opened.assignees)
+  // The line about each person, by their id. A person unticked keeps theirs
+  // here, so ticking them again brings it back.
+  const [notes, setNotes] = useState(opened.notes)
   const [files, setFiles] = useState([])
   const [error, setError] = useState('')
   // The title's own message waits until the title has been typed in, or a save
@@ -87,19 +91,21 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
     if (repeats) warning.current?.scrollIntoView({ block: 'center', behavior: scrollBehavior() })
   }, [repeats])
 
-  const committeeId = scope === SOCIETY ? null : scope
-  const people = useAssignable(committeeId, Boolean(scope))
+  const campaignId = task ? task.campaign_id : campaign.id
+  const committeeId = (task ? task.committee_id : campaign.committee_id) || null
+  const people = useAssignable(committeeId)
   const { create, update } = useTaskMutations()
   const busy = checking || create.isPending || update.isPending
 
+  const noteOf = (id) => (notes[id] || '').trim()
   const dirty =
-    scope !== opened.scope ||
     title !== opened.title ||
     body !== opened.body ||
     priority !== opened.priority ||
     dueOn !== opened.dueOn ||
     files.length > 0 ||
-    !sameSet(assignees, opened.assignees)
+    !sameSet(assignees, opened.assignees) ||
+    assignees.some((id) => noteOf(id) !== (opened.notes[id] || ''))
   const holding = dirty || busy
   useLeaveWarning(holding)
   useEffect(() => {
@@ -107,16 +113,10 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
     return () => onHold?.(false)
   }, [holding, onHold])
 
-  const titleProblem = title.trim() ? '' : 'Give the task a title.'
+  const titleProblem = title.trim() ? '' : 'Give the subtask a title.'
   const showTitleProblem = titleSeen && Boolean(titleProblem)
   // Said, never enforced: a task can be written up after its day.
   const dueHasPassed = Boolean(dueOn) && dueOn !== opened.dueOn && dueOn < todayCairo()
-
-  const changeScope = (next) => {
-    setScope(next)
-    setAssignees([]) // people differ per committee
-    setRepeats(null)
-  }
 
   const changeTitle = (next) => {
     setTitle(next)
@@ -141,7 +141,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
     const fields = { title, body, priority, due_on: dueOn || null }
     try {
       if (editing) {
-        await update.mutateAsync({ id: task.id, ...fields, assignees, previousAssignees })
+        await update.mutateAsync({ id: task.id, ...fields, assignees, previousAssignees, notes, previousNotes })
         onDone(task.id)
         return
       }
@@ -149,7 +149,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
         setChecking(true)
         // If the check itself fails the task is still created: the warning is
         // a courtesy, not a gate.
-        const found = await findDuplicateTasks({ committee_id: committeeId, title, assignees }).catch(
+        const found = await findDuplicateTasks({ campaign_id: campaignId, title, assignees }).catch(
           () => [],
         )
         setChecking(false)
@@ -159,15 +159,16 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
         }
       }
       const row = await create.mutateAsync({
-        committee_id: committeeId,
+        campaign_id: campaignId,
         ...fields,
         assignees,
+        notes,
         files,
         onProgress: setProgress,
       })
       onDone(row.id, row.notice)
     } catch (err) {
-      setError(errorText(err, 'Could not save the task.'))
+      setError(errorText(err, 'Could not save the subtask.'))
     } finally {
       setChecking(false)
       setProgress(null)
@@ -183,24 +184,6 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
   return (
     <form onSubmit={submit} noValidate className="max-w-3xl">
       <Panel className="space-y-6">
-        {!editing && (scopes.task.length > 1 || scopes.society) && (
-          <Field label="For" htmlFor="task-scope">
-            <select
-              id="task-scope"
-              value={scope}
-              onChange={(e) => changeScope(e.target.value)}
-              className={inputCls}
-            >
-              {scopes.society && <option value={SOCIETY}>Whole society (EB)</option>}
-              {scopes.task.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.abbr} · {c.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
-
         <Field label="Title" htmlFor="task-title">
           <input
             ref={titleInput}
@@ -211,7 +194,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
             required
             aria-invalid={showTitleProblem || undefined}
             aria-describedby={showTitleProblem ? 'task-title-problem' : undefined}
-            placeholder="What needs doing?"
+            placeholder="Media working group"
             className={`${inputCls} ${tapCls}`}
           />
           {showTitleProblem && (
@@ -244,7 +227,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
             />
             {dueHasPassed && (
               <p id="task-due-note" className="mt-2 text-xs text-warn">
-                That day has passed, so the task will show as overdue.
+                That day has passed, so the subtask will show as overdue.
               </p>
             )}
           </Field>
@@ -266,8 +249,8 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
         </div>
 
         <Field
-          label="Assign to"
-          hint="People holding a position there this term. They are notified, and can move the status and comment."
+          label="People"
+          hint="People holding a position in the committee this term. They are notified, and can move the status and add notes. A ticked person can be given a line of their own."
         >
           {people.isPending ? (
             <Spinner className="h-5 w-5" />
@@ -275,17 +258,17 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
             <ErrorText>{errorText(people.error, 'Couldn’t load the people there.')}</ErrorText>
           ) : people.data.length === 0 ? (
             <p className="text-sm text-soft/60">
-              Nobody with an account holds a position there yet. You can save the task and assign
-              it later.
+              Nobody with an account holds a position there yet. You can save the subtask and put
+              people on it later.
             </p>
           ) : (
             // A column that may shrink (grid-cols-1), and the position under
             // the name: side by side, a long position title pushed the row off
             // a phone, and cut the name down to a few letters when held in.
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Assign to">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="People">
               {people.data.map((p) => (
-                <li key={p.id} className="min-w-0">
-                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line/10 bg-sunk px-3 py-2 text-sm text-ink transition-colors hover:border-line/25">
+                <li key={p.id} className="min-w-0 rounded-xl border border-line/10 bg-sunk transition-colors hover:border-line/25">
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 px-3 py-2 text-sm text-ink">
                     <input
                       type="checkbox"
                       checked={assignees.includes(p.id)}
@@ -298,6 +281,18 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
                       <span className="block truncate text-xs text-soft/50">{p.position_title}</span>
                     </span>
                   </label>
+                  {assignees.includes(p.id) && (
+                    <div className="px-3 pb-3">
+                      <input
+                        value={notes[p.id] || ''}
+                        onChange={(e) => setNotes((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                        maxLength={200}
+                        aria-label={`What ${p.full_name || 'this person'} does in it`}
+                        placeholder="What they do in it (optional)"
+                        className={smallInputCls}
+                      />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -307,7 +302,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
         {!editing && (
           <Field
             label="Files"
-            hint="Optional. Up to 5 files of 10 MB each: documents, sheets, slides, PDFs, images or a zip. Everyone on the task can open them."
+            hint="Optional. Up to 5 files of 10 MB each: documents, sheets, slides, PDFs, images or a zip. Everyone on the subtask can open them."
           >
             <FileChooser files={files} onChange={setFiles} disabled={busy} />
           </Field>
@@ -321,10 +316,10 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
           className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-5"
         >
           <p className="text-sm font-semibold text-warn">
-            This task already exists. Create it again?
+            This subtask already exists. Create it again?
           </p>
           <p className="mt-1 text-xs text-soft/70">
-            {repeats.length === 1 ? 'An open task has' : `${repeats.length} open tasks have`} the same
+            {repeats.length === 1 ? 'An open subtask has' : `${repeats.length} open subtasks have`} the same
             title and the same people.
           </p>
           <ul className="mt-3 space-y-1.5">
@@ -365,7 +360,7 @@ export default function TaskEditor({ task, scopes, onDone, onCancel, onHold }) {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button type="submit" disabled={busy || Boolean(repeats)} className={`${primaryBtnCls} ${tapCls}`}>
-          {checking ? 'Checking…' : busy ? 'Saving…' : editing ? 'Save changes' : 'Create task'}
+          {checking ? 'Checking…' : busy ? 'Saving…' : editing ? 'Save changes' : 'Add subtask'}
         </button>
         {dirty ? (
           // Typed work is about to go: the button turns red and asks once more.
