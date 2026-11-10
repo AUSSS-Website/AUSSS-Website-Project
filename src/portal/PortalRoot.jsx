@@ -12,7 +12,8 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import DirectoryPage from './pages/DirectoryPage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
-import TasksPage from './pages/tasks/TasksPage.jsx'
+import CampaignsPage from './pages/campaigns/CampaignsPage.jsx'
+import CampaignPage from './pages/campaigns/CampaignPage.jsx'
 import TaskPage from './pages/tasks/TaskPage.jsx'
 import UpdatesPage from './pages/updates/UpdatesPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
@@ -75,8 +76,12 @@ export default function PortalRoot() {
             <Route path="verify" element={<VerifyPage />} />
             {/* Members who opted in; the database refuses an unverified account. */}
             <Route path="directory" element={<DirectoryPage />} />
-            {/* The database decides which tasks and updates each person gets. */}
-            <Route path="tasks" element={<TasksPage />} />
+            {/* The database decides which campaigns, subtasks and updates each
+                person gets. A subtask is a row of `tasks` and keeps that address;
+                the old list of tasks leads to the campaigns. */}
+            <Route path="campaigns" element={<CampaignsPage />} />
+            <Route path="campaigns/:id" element={<CampaignPage />} />
+            <Route path="tasks" element={<Navigate to="/portal/campaigns" replace />} />
             <Route path="tasks/:id" element={<TaskPage />} />
             <Route path="updates" element={<UpdatesPage />} />
             <Route path="notifications" element={<NotificationsPage />} />

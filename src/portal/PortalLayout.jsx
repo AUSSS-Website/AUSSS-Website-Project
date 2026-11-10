@@ -124,7 +124,7 @@ export default function PortalLayout() {
   const groups = [
     [
       { to: '/portal', label: 'Dashboard', end: true },
-      { to: '/portal/tasks', label: 'Tasks' },
+      { to: '/portal/campaigns', label: 'Campaigns', within: ['/portal/tasks'] },
       { to: '/portal/updates', label: 'Updates' },
       { to: '/portal/directory', label: 'Directory' },
     ],

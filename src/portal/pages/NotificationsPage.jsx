@@ -6,9 +6,9 @@ import { ConfirmButton, ErrorText, PageHeader, PageLoading, Panel, outlineBtnCls
 import { UnreadDot, describeNotification, notificationTarget, when } from '../workUi.jsx'
 import { errorText } from '../../lib/errorText.js'
 
-// /portal/notifications. What happened on tasks this person is part of. Rows
+// /portal/notifications. What happened on the campaigns and subtasks this person is part of. Rows
 // are written by database triggers (never for your own actions); opening one
-// marks it read and goes to the task.
+// marks it read and goes to the subtask or the campaign.
 
 const EMPTY = []
 
@@ -51,7 +51,7 @@ export default function NotificationsPage() {
       <PageHeader
         eyebrow="Notifications"
         title="Notifications"
-        subtitle="Activity on your tasks, and what came in through the website forms."
+        subtitle="Activity on your campaigns and subtasks, and what came in through the website forms."
         action={
           rows.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-5">
@@ -106,7 +106,7 @@ export default function NotificationsPage() {
         </Panel>
       ) : rows.length === 0 ? (
         <Panel>
-          <p className="text-sm text-soft/70">Nothing yet. You’ll be notified here when a task involves you.</p>
+          <p className="text-sm text-soft/70">Nothing yet. You’ll be notified here when a campaign involves you.</p>
         </Panel>
       ) : (
         <ul className="max-w-3xl space-y-3">

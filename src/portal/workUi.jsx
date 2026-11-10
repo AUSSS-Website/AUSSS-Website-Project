@@ -2,7 +2,7 @@ import { pressCls } from '../lib/motion.js'
 import { todayCairo } from './officerQueries.js'
 import { tapCls } from './portalUi.jsx'
 
-// Small shared pieces for the tasks, updates and notifications pages: labels
+// Small shared pieces for the campaigns, updates and notifications pages: labels
 // for the database's status / priority / kind values, due-date wording, and
 // the chips every list renders.
 
@@ -21,6 +21,13 @@ export const TASK_PRIORITIES = [
   ['urgent', 'Urgent'],
 ]
 export const PRIORITY_RANK = { urgent: 3, high: 2, normal: 1, low: 0 }
+
+export const CAMPAIGN_STATUSES = [
+  ['planning', 'Planning'],
+  ['running', 'Running'],
+  ['done', 'Done'],
+]
+export const CAMPAIGN_STATUS_LABEL = Object.fromEntries(CAMPAIGN_STATUSES)
 
 export const POST_KINDS = [
   ['announcement', 'Announcement'],
@@ -49,6 +56,51 @@ export function TaskStatusPill({ status }) {
     <span className={`${pillCls} ${STATUS_CLS[status] || STATUS_CLS.todo}`}>
       {STATUS_LABEL[status] || status}
     </span>
+  )
+}
+
+const CAMPAIGN_STATUS_CLS = {
+  planning: STATUS_CLS.todo,
+  running: STATUS_CLS.doing,
+  done: STATUS_CLS.done,
+}
+
+export function CampaignStatusPill({ status }) {
+  return (
+    <span className={`${pillCls} ${CAMPAIGN_STATUS_CLS[status] || STATUS_CLS.todo}`}>
+      {CAMPAIGN_STATUS_LABEL[status] || status}
+    </span>
+  )
+}
+
+// When a campaign runs, in words: both days, one of them, or '' for neither.
+// The days are Cairo calendar days, read at noon so no time zone moves them.
+export function campaignDates({ starts_on, ends_on }) {
+  const day = (iso) =>
+    new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  if (starts_on && ends_on) return starts_on === ends_on ? day(starts_on) : `${day(starts_on)} to ${day(ends_on)}`
+  if (starts_on) return `From ${day(starts_on)}`
+  if (ends_on) return `Until ${day(ends_on)}`
+  return ''
+}
+
+// How far along a campaign is, in words (the counts of campaignProgress in
+// workQueries.js).
+export function progressText({ total, done, people }) {
+  if (total === 0) return 'No subtasks yet'
+  const parts = [`${done} of ${total} ${total === 1 ? 'subtask' : 'subtasks'} done`]
+  if (people > 0) parts.push(`${people} ${people === 1 ? 'person' : 'people'}`)
+  return parts.join(' · ')
+}
+
+// The share of subtasks done, as a thin bar. Decoration: the words beside it
+// say the same.
+export function ProgressBar({ total, done, className = '' }) {
+  const share = total ? Math.round((done / total) * 100) : 0
+  return (
+    <div aria-hidden="true" className={`h-1.5 overflow-hidden rounded-full bg-veil/10 ${className}`}>
+      <div className="h-full rounded-full bg-medical" style={{ width: `${share}%` }} />
+    </div>
   )
 }
 
@@ -134,16 +186,18 @@ export function describeNotification(n, names) {
   const who = personName(names, p.actor_id, 'Someone')
   switch (n.kind) {
     case 'task_assigned':
-      return { line: `${who} assigned you a task`, detail: p.title }
+      return { line: `${who} put you on a subtask`, detail: p.title }
     case 'task_status':
-      return { line: `${who} moved a task to ${STATUS_LABEL[p.to] || p.to}`, detail: p.title }
+      return { line: `${who} moved a subtask to ${STATUS_LABEL[p.to] || p.to}`, detail: p.title }
     case 'task_comment':
-      return { line: `${who} commented on “${p.title}”`, detail: p.excerpt }
+      return { line: `${who} left a note on “${p.title}”`, detail: p.excerpt }
     case 'task_files':
       return {
         line: `${who} attached ${Number(p.count) > 1 ? `${p.count} files` : 'a file'} to “${p.title}”`,
         detail: p.name,
       }
+    case 'campaign_note':
+      return { line: `${who} left a note on “${p.title}”`, detail: p.excerpt }
     case 'order_new':
       return {
         line: `New merch order${p.flagged ? ' (check the amount)' : ''}`,
@@ -171,6 +225,7 @@ export function describeNotification(n, names) {
 // Where opening a notification leads; null when it has nowhere to go.
 export function notificationTarget(n) {
   if (n.payload?.task_id) return `/portal/tasks/${n.payload.task_id}`
+  if (n.payload?.campaign_id) return `/portal/campaigns/${n.payload.campaign_id}`
   if (n.kind === 'order_new') return '/portal/submissions?tab=orders'
   if (n.kind === 'story_new') return '/portal/submissions?tab=stories'
   if (n.kind === 'signup_new') return '/portal/submissions?tab=signups'

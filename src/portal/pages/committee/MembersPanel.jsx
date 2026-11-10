@@ -310,9 +310,9 @@ function Member({ member, committee, positions, extras, open, onToggle }) {
             {member.profile_id ? 'Has signed in to the portal.' : 'Has not signed in to the portal yet.'}{' '}
             {member.positions.length > 0 && (
               <>
-                Holds a position here, so they can be given{' '}
-                <Link to="/portal/tasks" className="font-semibold text-accent hover:text-ink">
-                  tasks
+                Holds a position here, so they can be put on a subtask of a{' '}
+                <Link to="/portal/campaigns" className="font-semibold text-accent hover:text-ink">
+                  campaign
                 </Link>
                 .
               </>
