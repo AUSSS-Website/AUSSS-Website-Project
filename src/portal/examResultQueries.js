@@ -46,7 +46,7 @@ export function useExamResults(examId, exam = null) {
 // How many times each taker left the exam's page while their paper was
 // running, and how many times they pressed the Print Screen key
 // (exam_attempts.times_left and times_printed, migration
-// 20261116120001_exam_leaves.sql): a Map from a paper's id to { times, printed,
+// 20261116221911_exam_leaves.sql): a Map from a paper's id to { times, printed,
 // lastAt }, holding only the papers with either. The officers may read the papers' rows themselves, so this is a plain
 // select; it is read again with the ranking, while anyone is still sitting.
 export function useExamLeaves(examId, live = false) {

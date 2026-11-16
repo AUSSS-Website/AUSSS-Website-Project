@@ -3618,7 +3618,7 @@ still the only guard against a second phone.
 **Leaving the page (2026-11-16).** The paper counts how many times a taker left the page
 while it was running: another app, another tab or another window in front for a second or
 more (`src/exam/useLeaves.js`, `exam_attempts.times_left`, `rpc/exam_left`, migration
-`20261116120001_exam_leaves.sql`). When they come back the first time, a warning says it was
+`20261116221911_exam_leaves.sql`). When they come back the first time, a warning says it was
 recorded and that the next time will be reported; from the second time on it says it is
 reported. The officers see the count under the paper's row in Results ("Left the page once
 (warned)", "Left the page 3 times (reported)"), on the paper itself, and in the exported
