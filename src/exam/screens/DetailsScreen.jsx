@@ -13,6 +13,11 @@ import { ExamCard, Problem, tapLinkCls, tapPrimaryCls } from '../examUi.jsx'
 //             edits the name, year and phone only
 //   onSaved   called with the database's answer ({ registration, me })
 //   onCancel  set when there is a screen to go back to
+//
+// Each box shows a faded example of what goes in it until something is typed.
+// The phone number is asked for with its country code, because the exchange
+// officers write to students on it from abroad too; the database still takes
+// a number without one.
 const inputId = { full_name: 'exam-name', faculty_year: 'exam-year', phone: 'exam-phone', student_id: 'exam-student-id' }
 const PROBLEM_ID = 'exam-details-problem'
 // The field a problem is about (aria-invalid) has a red edge, so the eye
@@ -87,6 +92,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
             autoComplete="name"
             autoCapitalize="words"
             maxLength={120}
+            placeholder="e.g. Sara Adel Mansour"
             aria-required="true"
             {...about('full_name')}
             className={fieldCls}
@@ -111,7 +117,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
           </select>
         </Field>
 
-        <Field label="Phone" htmlFor={inputId.phone}>
+        <Field label="Phone number" htmlFor={inputId.phone} hint="Include the country code, for example +20 for Egypt.">
           <input
             id={inputId.phone}
             type="tel"
@@ -120,6 +126,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
             onChange={edit('phone', setPhone)}
             autoComplete="tel"
             maxLength={30}
+            placeholder="e.g. +20 100 123 4567"
             aria-required="true"
             {...about('phone')}
             className={fieldCls}
@@ -140,6 +147,7 @@ export default function DetailsScreen({ word, me, email, held = false, notice = 
             autoCapitalize="characters"
             spellCheck={false}
             maxLength={40}
+            placeholder="e.g. 27998"
             readOnly={held}
             aria-required="true"
             {...about('student_id')}
