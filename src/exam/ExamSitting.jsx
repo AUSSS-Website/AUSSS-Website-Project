@@ -24,8 +24,9 @@ import TimeUpScreen from './screens/TimeUpScreen.jsx'
 //   attemptId  the paper's id when the database has just said it (it made the
 //              paper, or the door listed it), so a copy of another paper left
 //              on the phone is not shown; null when the door did not ask
+//   mark       the words printed across the paper (markWords in examFlow.js)
 //   onGone     called once with the database's sentence
-export default function ExamSitting({ word, userId, attemptId = null, title = '', notice = '', onGone, onSignOut }) {
+export default function ExamSitting({ word, userId, attemptId = null, title = '', mark = '', notice = '', onGone, onSignOut }) {
   const sitting = useSitting({ word, userId, attemptId })
   const { status, problem } = sitting
   const name = sitting.exam?.title || title
@@ -37,7 +38,7 @@ export default function ExamSitting({ word, userId, attemptId = null, title = ''
     onGone(problem)
   }, [status, problem, onGone])
 
-  if (status === 'sitting') return <SittingScreen sitting={sitting} title={name} />
+  if (status === 'sitting') return <SittingScreen sitting={sitting} title={name} mark={mark} />
 
   return (
     <ExamLayout title={name}>

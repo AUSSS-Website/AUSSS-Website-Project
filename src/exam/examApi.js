@@ -237,6 +237,32 @@ export async function signOut() {
   if (error) throw new ExamError('offline', UNREACHED)
 }
 
+// ---- the mark on the paper --------------------------------------------------------
+
+// The words printed across a taker's paper (markWords in examFlow.js), kept on
+// the phone: after a refresh the paper is shown from the phone's copy before
+// the door has said who the taker is, and it must carry their mark from the
+// first moment. Kept with the account it belongs to, and never read for another.
+const MARK_KEY = 'ausss-exam-mark'
+
+export function rememberMark(userId, words) {
+  if (!userId || !words) return
+  try {
+    localStorage.setItem(MARK_KEY, JSON.stringify({ uid: userId, words }))
+  } catch {
+    // No storage: the mark falls back to the account's id.
+  }
+}
+
+export function heldMark(userId) {
+  try {
+    const kept = JSON.parse(localStorage.getItem(MARK_KEY) || 'null')
+    return kept && kept.uid === userId && typeof kept.words === 'string' ? kept.words : ''
+  } catch {
+    return ''
+  }
+}
+
 // ---- the word to come back to -----------------------------------------------------
 
 // Lives in sessionStorage, as the portal's `next` does (src/portal/constants.js).

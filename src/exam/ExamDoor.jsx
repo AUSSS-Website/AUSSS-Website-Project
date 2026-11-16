@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import usePageTitle from '../hooks/usePageTitle.js'
-import { examDoor, examWord, getSession, lastUserId, onAuthStateChange, signOut } from './examApi.js'
-import { screenFor, signedOutWords } from './examFlow.js'
+import { examDoor, examWord, getSession, heldMark, lastUserId, onAuthStateChange, rememberMark, signOut } from './examApi.js'
+import { markWords, screenFor, signedOutWords } from './examFlow.js'
 import ExamLayout from './ExamLayout.jsx'
 import ExamSitting from './ExamSitting.jsx'
 import { Waiting } from './examUi.jsx'
@@ -194,6 +194,15 @@ function Door({ word }) {
     if (screen === 'sitting' || screen === 'listed') was.current.inside = true
   }, [screen])
 
+  // What is printed across the taker's paper. The door knows their student ID;
+  // when it was not asked (the phone holds the paper), the phone's note of the
+  // last answer is used, and failing that what is known of the account.
+  const known = data?.me?.student_id ? markWords(data.me, user) : ''
+  useEffect(() => {
+    rememberMark(userId, known)
+  }, [userId, known])
+  const mark = known || heldMark(userId) || markWords(null, user)
+
   // A wait this long is the network (or a session being renewed over it):
   // the spinner's line says so, where "One moment" would look stuck.
   const [slow, setSlow] = useState(false)
@@ -311,6 +320,7 @@ function Door({ word }) {
         // null when the door did not ask because the phone holds the paper
         attemptId={startedId || data?.attempt?.id || null}
         title={exam?.title || ''}
+        mark={mark}
         notice={notice}
         onGone={leaveSitting}
         onSignOut={leave}

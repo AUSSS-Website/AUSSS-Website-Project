@@ -13,6 +13,8 @@ import {
   handInWords,
   hasChoice,
   hashFor,
+  markTile,
+  markWords,
   inAppBrowser,
   leaveOutWords,
   missingDetail,
@@ -636,5 +638,37 @@ describe('a change of sections that has not reached the database', () => {
     // with answers waiting too, the answers are what is counted
     expect(saveWords({ kind: 'offline', count: 3, choice: true })).toBe('No connection: 3 answers waiting. Keep going, they are kept on this phone.')
     expect(saveWords({ kind: 'saving', count: 0, choice: true })).toBe('Saving…')
+  })
+})
+
+describe('the mark on the paper', () => {
+  it('prints the student ID and the email the door gave', () => {
+    expect(markWords({ student_id: ' 2100123 ', email: 'a@med.asu.edu.eg' }, { id: 'u1', email: 'other@x.org' })).toBe(
+      '2100123 · a@med.asu.edu.eg',
+    )
+  })
+
+  it('falls back to the account when the door said nothing', () => {
+    expect(markWords(null, { id: 'u1', email: 'a@x.org' })).toBe('a@x.org')
+    expect(markWords(null, { id: '0123456789abcdef', email: '' })).toBe('Account 01234567')
+    expect(markWords(null, null)).toBe('')
+  })
+
+  it('draws nothing for no words, and a picture that holds them otherwise', () => {
+    expect(markTile('')).toBe('')
+    const tile = markTile('2100123 · a@x.org')
+    expect(tile.startsWith('url("data:image/svg+xml,')).toBe(true)
+    expect(decodeURIComponent(tile)).toContain('2100123 · a@x.org')
+  })
+
+  it('cannot be broken out of by what a taker typed as their ID', () => {
+    const svg = decodeURIComponent(markTile('<svg onload=x>&"'))
+    expect(svg).toContain('&lt;svg onload=x&gt;&amp;"')
+    expect(markTile('a"b')).not.toMatch(/a"b/)
+  })
+
+  it('gives a long line a taller tile, so its ends are not cut', () => {
+    const size = (tile) => Number(/height="(\d+)"/.exec(decodeURIComponent(tile))[1])
+    expect(size(markTile('x'.repeat(90)))).toBeGreaterThan(size(markTile('x'.repeat(20))))
   })
 })

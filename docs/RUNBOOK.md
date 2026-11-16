@@ -3601,6 +3601,20 @@ keeps the rehearsal on `127.0.0.1` or `localhost`, and the tokens it signs).
   phone, Safari, Firefox or a screen reader. The sitting in the hall is where real phones, and
   Safari on iPhones, are tried.
 
+**Screenshots (2026-11-16).** A web page cannot stop a phone from taking a screenshot, and it
+cannot see a second phone's camera: the phone tells the page nothing. What the paper does
+instead (`src/exam/ExamGuard.jsx`):
+
+- The taker's student ID and email are printed faintly across every page of the paper, so a
+  picture of it says whose it was. The start card tells them so before they begin.
+- The paper is blurred whenever the page is not the one in front (another app or window, the
+  app switcher, a snipping tool) and after the Print Screen key. One tap or key shows it
+  again, and that tap still counts. The clock stays readable.
+- Nothing on the paper can be selected, copied, dragged out or printed.
+
+If a picture of a question turns up, read the ID across it. The invigilators in the hall are
+still the only guard against a second phone.
+
 ## 31. The website guide
 
 One PDF that explains every public page and every part of the portal, with a picture of

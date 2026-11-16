@@ -1,5 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import ExamGuard from '../ExamGuard.jsx'
 import ExamLayout from '../ExamLayout.jsx'
 import { pictureUrl } from '../examApi.js'
 import {
@@ -36,7 +37,10 @@ import ReviewScreen from './ReviewScreen.jsx'
 //   - the second half of a double tap changes nothing: for a moment after the
 //     page of questions changes, a press on the questions is not counted
 //     (strayTap in examFlow.js, and `tapGuard` below).
-// `sitting` is what useSitting returns while its status is 'sitting'.
+//   - a picture of the paper says whose it was, and the paper is hidden while
+//     the page is not in front (ExamGuard).
+// `sitting` is what useSitting returns while its status is 'sitting'; `mark`
+// is what is printed across the paper (markWords in examFlow.js).
 
 // ---- the bar that stays in view -------------------------------------------------
 
@@ -168,6 +172,7 @@ function Picture({ path, alt }) {
       src={`${pictureUrl(path)}${tries > 0 ? `?try=${tries}` : ''}`}
       alt={alt}
       decoding="async"
+      draggable={false}
       onError={() => setFailed(true)}
       className="mt-3 block h-auto max-h-[75vh] w-auto max-w-full rounded-xl border border-line/10 bg-white"
     />
@@ -464,7 +469,7 @@ function bringToTop(element) {
   }
 }
 
-export default function SittingScreen({ sitting, title }) {
+export default function SittingScreen({ sitting, title, mark = '' }) {
   const { hash, pathname, search } = useLocation()
   const navigate = useNavigate()
   const { total, pageCount, pages, layout } = sitting
@@ -542,12 +547,14 @@ export default function SittingScreen({ sitting, title }) {
           This phone cannot keep a copy of your answers. Do not close or refresh this page until you have handed in.
         </p>
       )}
-      {place.view === 'review' ? (
-        <ReviewScreen sitting={sitting} go={go} headingRef={headingRef} headingCls={headingCls} />
-      ) : (
-        <PaperPage sitting={sitting} place={place} headingRef={headingRef} tapGuard={tapGuard} />
-      )}
-      <PageNav place={place} pages={pages} go={go} />
+      <ExamGuard mark={mark}>
+        {place.view === 'review' ? (
+          <ReviewScreen sitting={sitting} go={go} headingRef={headingRef} headingCls={headingCls} />
+        ) : (
+          <PaperPage sitting={sitting} place={place} headingRef={headingRef} tapGuard={tapGuard} />
+        )}
+        <PageNav place={place} pages={pages} go={go} />
+      </ExamGuard>
     </ExamLayout>
   )
 }

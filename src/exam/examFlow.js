@@ -336,6 +336,39 @@ export function strayTap(changedAt, now, detail) {
   return since >= 0 && since < DOUBLE_TAP_MS
 }
 
+// ---- the taker's mark on the paper ------------------------------------------------
+
+// What is printed faintly across the paper while it is sat (ExamGuard), so a
+// screenshot or a photo of it says whose paper it was. The student ID and the
+// email where the door gave them, else whatever is known of the account.
+//   me    the door's { student_id, email }
+//   user  the signed-in account's { id, email }
+export function markWords(me, user) {
+  const tidy = (value) => String(value ?? '').replace(/\s+/g, ' ').trim()
+  const parts = [tidy(me?.student_id), tidy(me?.email) || tidy(user?.email)].filter(Boolean)
+  if (parts.length > 0) return parts.join(' · ').slice(0, 90)
+  const id = tidy(user?.id)
+  return id ? `Account ${id.slice(0, 8)}` : ''
+}
+
+// The mark as a picture to tile behind nothing and over everything: a CSS
+// background-image, grey enough to show on both themes and faint enough to
+// read the questions through for two hours. '' when there is nothing to print.
+export function markTile(words) {
+  const text = String(words || '')
+  if (!text) return ''
+  const long = Math.round(text.length * 7.5)
+  const width = Math.max(240, long + 80)
+  // The line slopes, so a long one needs a taller tile or its ends are cut.
+  const height = Math.max(140, Math.round(long * 0.36) + 60)
+  const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+    `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" transform="rotate(-20 ${width / 2} ${height / 2})" ` +
+    `font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#808080" fill-opacity="0.2">${safe}</text></svg>`
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+
 // ---- the clock ------------------------------------------------------------------
 
 const MINUTE = 60 * 1000
