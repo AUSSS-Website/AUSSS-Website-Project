@@ -369,6 +369,28 @@ export function markTile(words) {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
+// ---- leaving the page ---------------------------------------------------------------
+
+// The page was not the one in front for at least this long: the taker left it.
+// Less is a flicker (a window that takes the focus and gives it straight
+// back), and nobody looks anything up in under a second.
+export const LEAVE_MS = 1000
+
+// What a taker is told when they come back, for the number of times they have
+// now left: the first time is a warning, and from the second on it is reported.
+export function leaveWords(count) {
+  if (count <= 1) {
+    return {
+      title: 'You left the exam page.',
+      body: 'This was recorded. This is a warning. If you leave the page again, it will be recorded again and reported to the exam officers.',
+    }
+  }
+  return {
+    title: 'You left the exam page again.',
+    body: `This was recorded and will be reported to the exam officers. You have now left the page ${count} times. Stay on this page until you hand in.`,
+  }
+}
+
 // ---- the clock ------------------------------------------------------------------
 
 const MINUTE = 60 * 1000

@@ -38,7 +38,7 @@ export default function ExamSitting({ word, userId, attemptId = null, title = ''
     onGone(problem)
   }, [status, problem, onGone])
 
-  if (status === 'sitting') return <SittingScreen sitting={sitting} title={name} mark={mark} />
+  if (status === 'sitting') return <SittingScreen sitting={sitting} word={word} title={name} mark={mark} />
 
   return (
     <ExamLayout title={name}>

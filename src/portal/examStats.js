@@ -434,6 +434,7 @@ export function typedCell(v) {
 // from this file. Times are Cairo's. For one programme's ranking (rows from
 // programmeRows) the grade is the programme's mark, with its two parts and
 // which sections the paper sits beside it.
+// `left` is how many times the taker left the exam's page (withLeaves).
 export function resultColumns(questions, programme = null) {
   const marks = programme
     ? [
@@ -452,11 +453,27 @@ export function resultColumns(questions, programme = null) {
     { label: 'Answered', value: (r) => r.answered },
     { label: 'Time taken', value: (r) => durationWords(r.seconds) },
     { label: 'State', value: (r) => stateLabel(r.state) },
+    { label: 'Left the page (times)', value: (r) => r.left ?? 0 },
     { label: 'Email', value: (r) => typedCell(r.email) },
     { label: 'Phone', value: (r) => typedCell(r.phone) },
     { label: 'Started (Cairo time)', value: (r) => cairoStamp(r.started_at) },
     { label: 'Finished (Cairo time)', value: (r) => cairoStamp(r.finished_at) },
   ]
+}
+
+// The ranking's rows, each with how many times its taker left the exam's page:
+// `left`, 0 for a paper that never did. `leaves` is the Map useExamLeaves
+// reads; without it the rows are handed back as they are.
+export function withLeaves(rows, leaves) {
+  if (!rows || !leaves) return rows
+  return rows.map((r) => ({ ...r, left: leaves.get(r.attempt_id)?.times ?? 0 }))
+}
+
+// Beside a paper: nothing for a taker who stayed, the warning they were given
+// for one time, and from the second on that it is reported.
+export function leftWords(times) {
+  if (!times) return ''
+  return times === 1 ? 'Left the page once (warned)' : `Left the page ${times} times (reported)`
 }
 
 // The lines printed above a list of papers: how many, and the averages. For

@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(159);
+select plan(160);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -184,6 +184,7 @@ select ok(not has_function_privilege('anon', 'public.exam_save_details(text, tex
 select ok(not has_function_privilege('anon', 'public.exam_start(text, text, boolean, boolean)', 'execute'), 'anon cannot start an exam');
 select ok(not has_function_privilege('anon', 'public.exam_paper(text)', 'execute'), 'anon cannot read a paper');
 select ok(not has_function_privilege('anon', 'public.exam_save(text, jsonb, boolean, boolean, boolean)', 'execute'), 'anon cannot save an answer');
+select ok(not has_function_privilege('anon', 'public.exam_left(text, int)', 'execute'), 'anon cannot send a count of leaves');
 select ok(not has_function_privilege('anon', 'public.save_exam_question(uuid, uuid, text, jsonb, int, boolean, jsonb)', 'execute'), 'anon cannot write a question');
 select ok(not has_function_privilege('anon', 'public.import_exam_questions(uuid, jsonb)', 'execute'), 'anon cannot import questions');
 select ok(not has_function_privilege('anon', 'public.exam_add_registrations(uuid, text[])', 'execute'), 'anon cannot put IDs on the list');

@@ -140,7 +140,7 @@ export default function OnTheListScreen({ word, exam, me, notice = '', onEdit, o
               {chosen ? startLine(exam, choosing ? sits : null) : 'Choose at least one section to see how many questions you will have.'}
             </p>
             <p className="mt-2 text-sm text-soft/70">
-              Screenshots and photos of the exam are not allowed. Your student ID and email are printed across every page of your paper.
+              Screenshots and photos of the exam are not allowed. Your student ID and email are printed across every page of your paper. Stay on this page until you hand in. Leaving it is recorded.
             </p>
             <Problem>{problem || notice}</Problem>
             <button type="submit" disabled={busy || !code.trim() || !chosen} className={`${tapPrimaryCls} mt-5 w-full`}>

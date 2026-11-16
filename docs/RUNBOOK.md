@@ -3615,6 +3615,22 @@ instead (`src/exam/ExamGuard.jsx`):
 If a picture of a question turns up, read the ID across it. The invigilators in the hall are
 still the only guard against a second phone.
 
+**Leaving the page (2026-11-16).** The paper counts how many times a taker left the page
+while it was running: another app, another tab or another window in front for a second or
+more (`src/exam/useLeaves.js`, `exam_attempts.times_left`, `rpc/exam_left`, migration
+`20261116120001_exam_leaves.sql`). When they come back the first time, a warning says it was
+recorded and that the next time will be reported; from the second time on it says it is
+reported. The officers see the count under the paper's row in Results ("Left the page once
+(warned)", "Left the page 3 times (reported)"), on the paper itself, and in the exported
+ranking.
+
+Read the count as a flag, not as proof. A phone call, a notification that is opened, or a
+tap on the browser's address bar also takes the page out of front. The page asks the phone
+to keep its screen on during the paper, so a screen that locks by itself should not count,
+but an old phone may refuse. A taker who closes the tab and opens the exam again is not
+counted for it, since a refresh must stay free. Tell the hall before the start: close every
+other app, silence the phone, stay on the page.
+
 ## 31. The website guide
 
 One PDF that explains every public page and every part of the portal, with a picture of
