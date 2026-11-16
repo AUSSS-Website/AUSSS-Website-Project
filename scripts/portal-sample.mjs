@@ -872,8 +872,8 @@ const rpcs = {
   // The exam for a student, by the word in the address.
   exam_door: ({ p_word }) => (p_word === 'sample-unreached' ? DROPPED : doors[p_word]?.() ?? { exam: null }),
   exam_paper: ({ p_word }) => paperOf(p_word),
-  // The count the phone sends is the count the database then holds.
-  exam_left: ({ p_count }) => ({ left: p_count }),
+  // The counts the phone sends are the counts the database then holds.
+  exam_left: ({ p_count, p_prints }) => ({ left: p_count, printed: p_prints ?? 0 }),
   // Every save lands, except where the walk shows what a lost one looks like.
   // The choice of sections a save carries is the choice the database then holds.
   exam_save: ({ p_word, p_answers, p_scope, p_score }) =>

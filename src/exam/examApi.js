@@ -108,12 +108,13 @@ export function examSave(word, answers, handIn = false, { timeout, sits = null }
   return call('exam_save', { p_word: word, p_answers: answers, p_hand_in: handIn, ...blocks(sits) }, timeout)
 }
 
-// The taker left the page while their paper was running: `count` is how many
-// times so far, the whole number and not "one more", so sending it twice
-// counts once. Resolves to { left }, what the database now holds, which is
-// never less than it held before.
-export function examLeft(word, count) {
-  return call('exam_left', { p_word: word, p_count: count })
+// The taker left the page while their paper was running, or pressed the Print
+// Screen key: `count` is how many times they have left so far and `prints` how
+// many presses, each the whole number and not "one more", so sending them
+// twice counts once. Resolves to { left, printed }, what the database now
+// holds, which is never less than it held before.
+export function examLeft(word, count, prints = 0) {
+  return call('exam_left', { p_word: word, p_count: count, p_prints: prints })
 }
 
 // Where a picture of the exam is served from. `path` is its place in the

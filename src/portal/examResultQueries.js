@@ -43,19 +43,20 @@ export function useExamResults(examId, exam = null) {
   })
 }
 
-// How many times each taker left the exam's page while their paper was running
-// (exam_attempts.times_left, migration 20261116120001_exam_leaves.sql): a Map
-// from a paper's id to { times, lastAt }, holding only the papers that left at
-// all. The officers may read the papers' rows themselves, so this is a plain
+// How many times each taker left the exam's page while their paper was
+// running, and how many times they pressed the Print Screen key
+// (exam_attempts.times_left and times_printed, migration
+// 20261116120001_exam_leaves.sql): a Map from a paper's id to { times, printed,
+// lastAt }, holding only the papers with either. The officers may read the papers' rows themselves, so this is a plain
 // select; it is read again with the ranking, while anyone is still sitting.
 export function useExamLeaves(examId, live = false) {
   return useQuery({
     queryKey: [...RESULTS_ROOT, examId, 'leaves'],
     queryFn: async () => {
       const rows = unwrap(
-        await supabase.from('exam_attempts').select('id, times_left, last_left_at').eq('exam_id', examId).gt('times_left', 0),
+        await supabase.from('exam_attempts').select('id, times_left, times_printed, last_left_at').eq('exam_id', examId).or('times_left.gt.0,times_printed.gt.0'),
       )
-      return new Map((rows || []).map((r) => [r.id, { times: r.times_left, lastAt: r.last_left_at }]))
+      return new Map((rows || []).map((r) => [r.id, { times: r.times_left, printed: r.times_printed, lastAt: r.last_left_at }]))
     },
     enabled: Boolean(examId),
     refetchInterval: () => (live ? LIVE_MS : false),

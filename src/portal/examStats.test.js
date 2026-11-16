@@ -21,6 +21,7 @@ import {
   questionLabel,
   readProblem,
   refreshIn,
+  leftReported,
   leftWords,
   withLeaves,
   resultColumns,
@@ -502,6 +503,7 @@ describe('the exports', () => {
       'Time taken': '1 h 12 min',
       State: 'Handed in',
       'Left the page (times)': 0,
+      'Pressed Print Screen (times)': 0,
       Email: 'sara.adel@gmail.com',
       Phone: '+20 100 123 4567',
       'Started (Cairo time)': '2026-11-14 18:05',
@@ -789,12 +791,13 @@ describe('a paper in an exam with sections', () => {
 describe('leaving the exam page', () => {
   const rows = [{ attempt_id: 'a' }, { attempt_id: 'b' }, { attempt_id: 'c' }]
   const leaves = new Map([
-    ['a', { times: 1, lastAt: null }],
-    ['c', { times: 4, lastAt: null }],
+    ['a', { times: 1, printed: 0, lastAt: null }],
+    ['c', { times: 4, printed: 2, lastAt: null }],
   ])
 
   it('gives each paper its count, and nought to a taker who stayed', () => {
     expect(withLeaves(rows, leaves).map((r) => r.left)).toEqual([1, 0, 4])
+    expect(withLeaves(rows, leaves).map((r) => r.printed)).toEqual([0, 0, 2])
   })
 
   it('hands the rows back as they are until the counts are read', () => {
@@ -806,6 +809,13 @@ describe('leaving the exam page', () => {
     expect(leftWords(0)).toBe('')
     expect(leftWords(1)).toBe('Left the page once (warned)')
     expect(leftWords(3)).toBe('Left the page 3 times (reported)')
+  })
+
+  it('says a press of Print Screen is reported from the first', () => {
+    expect(leftWords(0, 1)).toBe('Pressed Print Screen once (reported)')
+    expect(leftWords(1, 2)).toBe('Left the page once (warned) · Pressed Print Screen 2 times (reported)')
+    expect([leftReported(0, 0), leftReported(1, 0), leftReported(2, 0), leftReported(0, 1), leftReported(1, 1)]).toEqual([false, false, true, true, true])
+    expect(resultColumns(100).find((c) => c.label === 'Pressed Print Screen (times)').value({ printed: 3 })).toBe(3)
   })
 
   it('puts the count in the exported ranking', () => {

@@ -553,7 +553,7 @@ export default function SittingScreen({ sitting, word, title, mark = '' }) {
           This phone cannot keep a copy of your answers. Do not close or refresh this page until you have handed in.
         </p>
       )}
-      <ExamGuard mark={mark} onLeft={leaves.left}>
+      <ExamGuard mark={mark} onLeft={leaves.left} onPrint={leaves.printed}>
         {place.view === 'review' ? (
           <ReviewScreen sitting={sitting} go={go} headingRef={headingRef} headingCls={headingCls} />
         ) : (
@@ -561,7 +561,7 @@ export default function SittingScreen({ sitting, word, title, mark = '' }) {
         )}
         <PageNav place={place} pages={pages} go={go} />
       </ExamGuard>
-      {leaves.open && <LeftWarning count={leaves.count} onDismiss={leaves.dismiss} />}
+      {leaves.open && <LeftWarning kind={leaves.open} count={leaves.count} prints={leaves.prints} onDismiss={leaves.dismiss} />}
     </ExamLayout>
   )
 }

@@ -365,7 +365,7 @@ export function markTile(words) {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
     `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" transform="rotate(-20 ${width / 2} ${height / 2})" ` +
-    `font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#808080" fill-opacity="0.2">${safe}</text></svg>`
+    `font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#808080" fill-opacity="0.11">${safe}</text></svg>`
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
@@ -388,6 +388,19 @@ export function leaveWords(count) {
   return {
     title: 'You left the exam page again.',
     body: `This was recorded and will be reported to the exam officers. You have now left the page ${count} times. Stay on this page until you hand in.`,
+  }
+}
+
+// What a taker is told when they press the Print Screen key, for the number of
+// times they now have. There is no first warning for this one: the start card
+// has already said that screenshots are not allowed.
+export function printWords(count) {
+  return {
+    title: 'Screenshots are not allowed.',
+    body:
+      count <= 1
+        ? 'You pressed the Print Screen key. This was recorded and will be reported to the exam officers.'
+        : `You pressed the Print Screen key again. This was recorded and will be reported to the exam officers. It has now been recorded ${count} times.`,
   }
 }
 

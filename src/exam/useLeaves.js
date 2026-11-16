@@ -1,43 +1,50 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { examLeft } from './examApi.js'
 
-// How many times the taker left the page while their paper was running
-// (ExamGuard says when), kept on the phone and sent to the database
-// (rpc/exam_left), where the officers read it beside the paper.
+// Two counts for a running paper, kept on the phone and sent to the database
+// (rpc/exam_left), where the officers read them beside the paper:
+//   left     how many times the taker left the page (ExamGuard says when)
+//   printed  how many times they pressed the Print Screen key
 //
-// The phone sends its whole count, never "one more", so a request sent twice
+// The phone sends each whole count, never "one more", so a request sent twice
 // or sent again after a dead connection counts once. Two numbers are kept for
-// each paper, under ausss-exam-left:<attempt id>:
+// each count, under ausss-exam-left:<attempt id>:
 //   sure  what the database is known to hold
 //   owed  the times since, not yet received by it
 // Before the first send of a page load the database is asked what it holds,
-// so a phone whose storage was cleared carries on from the real number and
-// not from nought. What could not be sent waits for the next time the taker
-// leaves, or for the connection to come back; nothing is tried in a loop.
+// so a phone whose storage was cleared carries on from the real numbers and
+// not from nought. What could not be sent waits for the next time something
+// is counted, or for the connection to come back; nothing is tried in a loop.
 //
-//   count    the times so far, sent or not
-//   open     whether the warning is up: from each return until it is dismissed
-//   left()   the taker has just come back from leaving the page
+//   count      the times the taker left, sent or not
+//   prints     the presses of Print Screen, sent or not
+//   open       which warning is up, 'left' or 'printed', from the moment it is
+//              counted until it is dismissed; null for none
+//   left()     the taker has just come back from leaving the page
+//   printed()  the taker has just pressed Print Screen
 //   dismiss()
 
 const LEFT_KEY = 'ausss-exam-left:'
+const KINDS = ['left', 'printed']
 
 const whole = (value) => (Number.isInteger(value) && value > 0 ? Math.min(value, 999) : 0)
+const pair = (kept) => ({ sure: whole(kept?.sure), owed: whole(kept?.owed) })
+const total = (b, kind) => b[kind].sure + b[kind].owed
 
 function read(attemptId) {
   try {
     const kept = JSON.parse(localStorage.getItem(LEFT_KEY + attemptId) || 'null')
-    return { sure: whole(kept?.sure), owed: whole(kept?.owed) }
+    return { left: pair(kept?.left), printed: pair(kept?.printed) }
   } catch {
-    return { sure: 0, owed: 0 }
+    return { left: pair(null), printed: pair(null) }
   }
 }
 
-function keep(attemptId, { sure, owed }) {
+function keep(attemptId, { left, printed }) {
   try {
-    localStorage.setItem(LEFT_KEY + attemptId, JSON.stringify({ sure, owed }))
+    localStorage.setItem(LEFT_KEY + attemptId, JSON.stringify({ left, printed }))
   } catch {
-    // No storage: the count lives as long as the page does.
+    // No storage: the counts live as long as the page does.
   }
 }
 
@@ -46,8 +53,8 @@ export function useLeaves({ word, attemptId }) {
   if (book.current === null || book.current.id !== attemptId) {
     book.current = { id: attemptId, ...read(attemptId), asked: false, busy: false }
   }
-  const [count, setCount] = useState(() => book.current.sure + book.current.owed)
-  const [open, setOpen] = useState(false)
+  const [counts, setCounts] = useState(() => ({ left: total(book.current, 'left'), printed: total(book.current, 'printed') }))
+  const [open, setOpen] = useState(null)
   const alive = useRef(true)
   useEffect(() => {
     alive.current = true
@@ -56,27 +63,32 @@ export function useLeaves({ word, attemptId }) {
     }
   }, [])
 
+  const show = () => setCounts({ left: total(book.current, 'left'), printed: total(book.current, 'printed') })
+
   const send = useCallback(async () => {
     const b = book.current
-    if (!b.id || b.busy || (b.asked && b.owed === 0)) return
+    if (!b.id || b.busy || (b.asked && b.left.owed + b.printed.owed === 0)) return
     b.busy = true
     try {
       if (!b.asked) {
-        b.sure = Math.max(b.sure, whole((await examLeft(word, b.sure))?.left))
+        const held = await examLeft(word, b.left.sure, b.printed.sure)
+        for (const kind of KINDS) b[kind].sure = Math.max(b[kind].sure, whole(held?.[kind]))
         b.asked = true
       }
-      while (b.owed > 0) {
-        const sending = b.owed
-        const held = whole((await examLeft(word, b.sure + sending))?.left)
-        b.sure = Math.max(b.sure + sending, held)
-        b.owed -= sending
+      while (b.left.owed + b.printed.owed > 0) {
+        const sending = { left: b.left.owed, printed: b.printed.owed }
+        const held = await examLeft(word, b.left.sure + sending.left, b.printed.sure + sending.printed)
+        for (const kind of KINDS) {
+          b[kind].sure = Math.max(b[kind].sure + sending[kind], whole(held?.[kind]))
+          b[kind].owed -= sending[kind]
+        }
       }
     } catch {
       // Offline, or the paper is over: what is owed stays owed.
     } finally {
       b.busy = false
       keep(b.id, b)
-      if (alive.current) setCount(b.sure + b.owed)
+      if (alive.current) show()
     }
   }, [word])
 
@@ -85,17 +97,21 @@ export function useLeaves({ word, attemptId }) {
     return () => window.removeEventListener('online', send)
   }, [send])
 
-  const left = useCallback(() => {
-    const b = book.current
-    if (!b.id) return
-    b.owed += 1
-    keep(b.id, b)
-    setCount(b.sure + b.owed)
-    setOpen(true)
-    send()
-  }, [send])
+  const note = useCallback(
+    (kind) => {
+      const b = book.current
+      if (!b.id) return
+      b[kind].owed += 1
+      keep(b.id, b)
+      show()
+      setOpen(kind)
+      send()
+    },
+    [send],
+  )
+  const left = useCallback(() => note('left'), [note])
+  const printed = useCallback(() => note('printed'), [note])
+  const dismiss = useCallback(() => setOpen(null), [])
 
-  const dismiss = useCallback(() => setOpen(false), [])
-
-  return { count, open, left, dismiss }
+  return { count: counts.left, prints: counts.printed, open, left, printed, dismiss }
 }

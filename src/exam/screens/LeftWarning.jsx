@@ -1,25 +1,28 @@
 import { useEffect, useRef } from 'react'
-import { DOUBLE_TAP_MS, leaveWords } from '../examFlow.js'
+import { DOUBLE_TAP_MS, leaveWords, printWords } from '../examFlow.js'
 import { tapPrimaryCls } from '../examUi.jsx'
 
 // What a taker meets when they come back from leaving the page: the first
 // time a warning, from the second on that it will be reported (leaveWords in
-// examFlow.js). It stays until "I understand" is pressed, over the paper and
+// examFlow.js). The same card says so when the Print Screen key is pressed
+// (printWords). It stays until "I understand" is pressed, over the paper and
 // under nothing; the clock above it keeps running and stays readable.
 //
 // The tap that brought the taker back must not also dismiss it: for a moment
 // after it appears, or after the count goes up, the button takes no press.
 //
+//   kind       'left' or 'printed': which of the two has just been counted
 //   count      how many times the taker has left the page
+//   prints     how many times they have pressed Print Screen
 //   onDismiss  "I understand" was pressed
-export default function LeftWarning({ count, onDismiss }) {
-  const words = leaveWords(count)
+export default function LeftWarning({ kind = 'left', count, prints = 0, onDismiss }) {
+  const words = kind === 'printed' ? printWords(prints) : leaveWords(count)
   const button = useRef(null)
   const shownAt = useRef(0)
   useEffect(() => {
     shownAt.current = performance.now()
     button.current?.focus()
-  }, [count])
+  }, [kind, count, prints])
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-4 print:hidden">
