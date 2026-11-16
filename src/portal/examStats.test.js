@@ -21,6 +21,8 @@ import {
   questionLabel,
   readProblem,
   refreshIn,
+  leftWords,
+  withLeaves,
   resultColumns,
   resultSummary,
   rowOutcome,
@@ -35,6 +37,7 @@ import {
   sitsWords,
   stateLabel,
   tally,
+  withLeaves,
   typedCell,
 } from './examStats.js'
 
@@ -498,6 +501,7 @@ describe('the exports', () => {
       Answered: 100,
       'Time taken': '1 h 12 min',
       State: 'Handed in',
+      'Left the page (times)': 0,
       Email: 'sara.adel@gmail.com',
       Phone: '+20 100 123 4567',
       'Started (Cairo time)': '2026-11-14 18:05',
@@ -779,5 +783,34 @@ describe('a paper in an exam with sections', () => {
     expect(cells(rows[3])).toMatchObject({ 'No.': '3R', Section: 'Research exchange (SCORE)', Result: 'Section left out, not marked' })
     expect(sheetColumns().map((c) => c.label)).not.toContain('Section')
     expect(sheetColumns()[1].value({ body: '', image: 'e/x.jpg' })).toBe('(A picture with no words)')
+  })
+})
+
+describe('leaving the exam page', () => {
+  const rows = [{ attempt_id: 'a' }, { attempt_id: 'b' }, { attempt_id: 'c' }]
+  const leaves = new Map([
+    ['a', { times: 1, lastAt: null }],
+    ['c', { times: 4, lastAt: null }],
+  ])
+
+  it('gives each paper its count, and nought to a taker who stayed', () => {
+    expect(withLeaves(rows, leaves).map((r) => r.left)).toEqual([1, 0, 4])
+  })
+
+  it('hands the rows back as they are until the counts are read', () => {
+    expect(withLeaves(rows, undefined)).toBe(rows)
+    expect(withLeaves(undefined, leaves)).toBe(undefined)
+  })
+
+  it('says once is a warning and more is reported', () => {
+    expect(leftWords(0)).toBe('')
+    expect(leftWords(1)).toBe('Left the page once (warned)')
+    expect(leftWords(3)).toBe('Left the page 3 times (reported)')
+  })
+
+  it('puts the count in the exported ranking', () => {
+    const column = resultColumns(100).find((c) => c.label === 'Left the page (times)')
+    expect(column.value({ left: 2 })).toBe(2)
+    expect(column.value({})).toBe(0)
   })
 })

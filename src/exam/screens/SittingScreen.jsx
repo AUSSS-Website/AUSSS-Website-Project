@@ -17,7 +17,9 @@ import {
 } from '../examFlow.js'
 import { FlagIcon, focusCls, focusTargetCls, moveFocus, noteScreen, tapLinkCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
 import { answerOf, formatClock } from '../sitting.js'
+import { useLeaves } from '../useLeaves.js'
 import { useTimeLeft } from '../useSitting.js'
+import LeftWarning from './LeftWarning.jsx'
 import ReviewScreen from './ReviewScreen.jsx'
 
 // The paper: about ten questions a page, the clock and the save state in a bar
@@ -38,9 +40,12 @@ import ReviewScreen from './ReviewScreen.jsx'
 //     page of questions changes, a press on the questions is not counted
 //     (strayTap in examFlow.js, and `tapGuard` below).
 //   - a picture of the paper says whose it was, and the paper is hidden while
-//     the page is not in front (ExamGuard).
-// `sitting` is what useSitting returns while its status is 'sitting'; `mark`
-// is what is printed across the paper (markWords in examFlow.js).
+//     the page is not in front (ExamGuard);
+//   - leaving the page is counted, and the taker is told so when they come
+//     back (useLeaves, LeftWarning).
+// `sitting` is what useSitting returns while its status is 'sitting'; `word`
+// is the exam's address; `mark` is what is printed across the paper
+// (markWords in examFlow.js).
 
 // ---- the bar that stays in view -------------------------------------------------
 
@@ -469,10 +474,11 @@ function bringToTop(element) {
   }
 }
 
-export default function SittingScreen({ sitting, title, mark = '' }) {
+export default function SittingScreen({ sitting, word, title, mark = '' }) {
   const { hash, pathname, search } = useLocation()
   const navigate = useNavigate()
   const { total, pageCount, pages, layout } = sitting
+  const leaves = useLeaves({ word, attemptId: sitting.attempt?.id || null })
 
   const place = useMemo(() => placeFromHash(hash, total, layout), [hash, total, layout])
   // Each move is an entry in the phone's history: its back button goes to the
@@ -547,7 +553,7 @@ export default function SittingScreen({ sitting, title, mark = '' }) {
           This phone cannot keep a copy of your answers. Do not close or refresh this page until you have handed in.
         </p>
       )}
-      <ExamGuard mark={mark}>
+      <ExamGuard mark={mark} onLeft={leaves.left}>
         {place.view === 'review' ? (
           <ReviewScreen sitting={sitting} go={go} headingRef={headingRef} headingCls={headingCls} />
         ) : (
@@ -555,6 +561,7 @@ export default function SittingScreen({ sitting, title, mark = '' }) {
         )}
         <PageNav place={place} pages={pages} go={go} />
       </ExamGuard>
+      {leaves.open && <LeftWarning count={leaves.count} onDismiss={leaves.dismiss} />}
     </ExamLayout>
   )
 }

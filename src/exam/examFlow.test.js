@@ -13,6 +13,7 @@ import {
   handInWords,
   hasChoice,
   hashFor,
+  leaveWords,
   markTile,
   markWords,
   inAppBrowser,
@@ -670,5 +671,20 @@ describe('the mark on the paper', () => {
   it('gives a long line a taller tile, so its ends are not cut', () => {
     const size = (tile) => Number(/height="(\d+)"/.exec(decodeURIComponent(tile))[1])
     expect(size(markTile('x'.repeat(90)))).toBeGreaterThan(size(markTile('x'.repeat(20))))
+  })
+})
+
+describe('coming back from leaving the page', () => {
+  it('warns the first time, and says what happens the next', () => {
+    const words = leaveWords(1)
+    expect(words.title).toBe('You left the exam page.')
+    expect(words.body).toMatch(/This was recorded\. This is a warning\./)
+    expect(words.body).toMatch(/reported/)
+  })
+
+  it('says it is reported from the second time on, with the count', () => {
+    expect(leaveWords(2).title).toBe('You left the exam page again.')
+    expect(leaveWords(2).body).toMatch(/will be reported/)
+    expect(leaveWords(5).body).toMatch(/left the page 5 times/)
   })
 })

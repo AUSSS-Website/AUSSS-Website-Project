@@ -1,11 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ExportButtons from '../../ExportButtons.jsx'
-import { useExamResults } from '../../examResultQueries.js'
+import { useExamLeaves, useExamResults } from '../../examResultQueries.js'
 import {
+  anySitting,
   durationWords,
   examPhase,
   exportName,
+  leftWords,
   programmeRows,
   readProblem,
   resultColumns,
@@ -13,6 +15,7 @@ import {
   searchResults,
   sharedRanks,
   tally,
+  withLeaves,
 } from '../../examStats.js'
 import { ErrorText, Panel, Spinner, inputCls, outlineBtnCls } from '../../portalUi.jsx'
 import AttemptSheet, { StateChip } from './AttemptSheet.jsx'
@@ -88,6 +91,9 @@ function Row({ row, questions, to, tied, programme = null }) {
               <StateChip state={row.state} />
             </span>
           </span>
+          {row.left > 0 && (
+            <span className={`w-full text-xs font-semibold ${row.left > 1 ? 'text-danger' : 'text-warn'}`}>{leftWords(row.left)}</span>
+          )}
         </span>
       </Link>
     </li>
@@ -112,7 +118,10 @@ export default function ResultsPanel({ exam }) {
   // In an exam with two optional sections the ranking is one programme's at a
   // time: only the papers that sit it, by that programme's mark.
   const [programme, setProgramme, programmes] = useProgramme(results.data?.sections)
-  const everyPaper = results.data?.attempts
+  // Each paper with how many times its taker left the exam's page.
+  const papers = results.data?.attempts
+  const leaves = useExamLeaves(exam.id, anySitting(papers))
+  const everyPaper = useMemo(() => withLeaves(papers, leaves.data), [papers, leaves.data])
   const attempts = useMemo(() => (everyPaper ? programmeRows(everyPaper, programme) : everyPaper), [everyPaper, programme])
   const questions = programme ? programme.of : results.data?.questions ?? 0
   // How many papers sit each programme, for the switch.
@@ -166,6 +175,7 @@ export default function ResultsPanel({ exam }) {
         rank={rank}
         tied={shared.has(rank)}
         programme={programme}
+        left={leaves.data?.get(paper)?.times ?? 0}
         backTo={{ search: withPaper(params, '').toString() }}
         onDeleted={() => {
           deleted.current = true

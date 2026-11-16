@@ -108,6 +108,14 @@ export function examSave(word, answers, handIn = false, { timeout, sits = null }
   return call('exam_save', { p_word: word, p_answers: answers, p_hand_in: handIn, ...blocks(sits) }, timeout)
 }
 
+// The taker left the page while their paper was running: `count` is how many
+// times so far, the whole number and not "one more", so sending it twice
+// counts once. Resolves to { left }, what the database now holds, which is
+// never less than it held before.
+export function examLeft(word, count) {
+  return call('exam_left', { p_word: word, p_count: count })
+}
+
 // Where a picture of the exam is served from. `path` is its place in the
 // bucket, as rpc/exam_paper gives it; '' for none.
 const PICTURES_URL = `${(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '')}/storage/v1/object/public/exam-pictures/`

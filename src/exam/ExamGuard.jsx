@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { markTile } from './examFlow.js'
+import { LEAVE_MS, markTile } from './examFlow.js'
 
 // What stands between the paper and a screenshot of it. A web page cannot
 // stop the phone from taking one (the phone does that, and tells the page
@@ -19,25 +19,71 @@ import { markTile } from './examFlow.js'
 // it was aimed at. The clock and the save state are outside the guard and
 // stay readable throughout.
 //
-//   mark  the words to print across the paper (markWords in examFlow.js)
+// It also says when the taker left the page and came back (`onLeft`): the page
+// stopped being the one in front, through another app, tab or window, for a
+// second or more. The sitting counts those times (useLeaves). And it asks the
+// phone to keep its screen on, so a taker who reads a long question without
+// touching the screen is not locked out of the page and counted as gone.
+//
+//   mark    the words to print across the paper (markWords in examFlow.js)
+//   onLeft  called each time the taker comes back from leaving the page
 
 // Keys held to take a screenshot. Pressing one must not show the paper again.
 const QUIET_KEYS = new Set(['PrintScreen', 'Meta', 'OS', 'Shift', 'Control', 'Alt'])
 
 const stop = (event) => event.preventDefault()
 
-export default function ExamGuard({ mark = '', children }) {
+export default function ExamGuard({ mark = '', onLeft, children }) {
   const root = useRef(null)
   const tile = useMemo(() => markTile(mark), [mark])
+  const tell = useRef(onLeft)
+  tell.current = onLeft
+
+  // The screen stays on while the paper is. The phone drops the request each
+  // time the page is hidden, so it is made again on every return.
+  useEffect(() => {
+    let lock = null
+    let over = false
+    const ask = async () => {
+      if (over || document.visibilityState !== 'visible' || !navigator.wakeLock) return
+      try {
+        const got = await navigator.wakeLock.request('screen')
+        if (over) got.release().catch(() => {})
+        else lock = got
+      } catch {
+        // Refused (a low battery, an old phone): the screen dims as it always did.
+      }
+    }
+    ask()
+    document.addEventListener('visibilitychange', ask)
+    return () => {
+      over = true
+      document.removeEventListener('visibilitychange', ask)
+      lock?.release().catch(() => {})
+    }
+  }, [])
 
   useEffect(() => {
     // Set on the element itself, not through React: the blur has to be on
     // screen before the phone draws the page's picture for its app switcher.
     const set = (away) => root.current?.toggleAttribute('data-away', away)
     const hide = () => set(true)
-    const show = () => set(false)
+    // When the page stopped being the one in front, on both clocks: the one
+    // that only runs forwards can stand still while a phone sleeps.
+    let since = null
+    const leave = () => {
+      if (since === null) since = { run: performance.now(), wall: Date.now() }
+      hide()
+    }
+    const show = () => {
+      set(false)
+      if (since === null) return
+      const gone = Math.max(performance.now() - since.run, Date.now() - since.wall)
+      since = null
+      if (gone >= LEAVE_MS) tell.current?.()
+    }
     const onVisibility = () => {
-      if (document.visibilityState === 'hidden') hide()
+      if (document.visibilityState === 'hidden') leave()
       else if (document.hasFocus()) show()
     }
     const onKeyDown = (event) => {
@@ -58,7 +104,7 @@ export default function ExamGuard({ mark = '', children }) {
         // No clipboard to write to.
       }
     }
-    window.addEventListener('blur', hide)
+    window.addEventListener('blur', leave)
     window.addEventListener('focus', show)
     window.addEventListener('pageshow', show)
     window.addEventListener('pointerdown', show, true)
@@ -66,7 +112,7 @@ export default function ExamGuard({ mark = '', children }) {
     window.addEventListener('keyup', onKeyUp, true)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
-      window.removeEventListener('blur', hide)
+      window.removeEventListener('blur', leave)
       window.removeEventListener('focus', show)
       window.removeEventListener('pageshow', show)
       window.removeEventListener('pointerdown', show, true)
