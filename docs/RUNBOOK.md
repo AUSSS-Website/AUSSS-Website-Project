@@ -3631,6 +3631,13 @@ but an old phone may refuse. A taker who closes the tab and opens the exam again
 counted for it, since a refresh must stay free. Tell the hall before the start: close every
 other app, silence the phone, stay on the page.
 
+**The Print Screen key (2026-11-16).** A press of Print Screen during the paper is counted
+too (`exam_attempts.times_printed`, sent with the leaves by `rpc/exam_left`). The taker is
+told at once that it was recorded and will be reported, and the officers see "Pressed Print
+Screen once (reported)" beside the leaves and a column in the export. It is the only kind of
+screenshot a page is ever told of, and only on a computer's keyboard: a phone's buttons,
+Windows' snipping shortcut and a Mac's keys tell the page nothing.
+
 ## 31. The website guide
 
 One PDF that explains every public page and every part of the portal, with a picture of

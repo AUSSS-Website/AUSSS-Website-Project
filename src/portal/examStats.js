@@ -454,6 +454,7 @@ export function resultColumns(questions, programme = null) {
     { label: 'Time taken', value: (r) => durationWords(r.seconds) },
     { label: 'State', value: (r) => stateLabel(r.state) },
     { label: 'Left the page (times)', value: (r) => r.left ?? 0 },
+    { label: 'Pressed Print Screen (times)', value: (r) => r.printed ?? 0 },
     { label: 'Email', value: (r) => typedCell(r.email) },
     { label: 'Phone', value: (r) => typedCell(r.phone) },
     { label: 'Started (Cairo time)', value: (r) => cairoStamp(r.started_at) },
@@ -461,19 +462,32 @@ export function resultColumns(questions, programme = null) {
   ]
 }
 
-// The ranking's rows, each with how many times its taker left the exam's page:
-// `left`, 0 for a paper that never did. `leaves` is the Map useExamLeaves
-// reads; without it the rows are handed back as they are.
+// The ranking's rows, each with how many times its taker left the exam's page
+// (`left`) and pressed the Print Screen key (`printed`), 0 for a paper that
+// never did. `leaves` is the Map useExamLeaves reads; without it the rows are
+// handed back as they are.
 export function withLeaves(rows, leaves) {
   if (!rows || !leaves) return rows
-  return rows.map((r) => ({ ...r, left: leaves.get(r.attempt_id)?.times ?? 0 }))
+  return rows.map((r) => {
+    const found = leaves.get(r.attempt_id)
+    return { ...r, left: found?.times ?? 0, printed: found?.printed ?? 0 }
+  })
 }
 
-// Beside a paper: nothing for a taker who stayed, the warning they were given
-// for one time, and from the second on that it is reported.
-export function leftWords(times) {
-  if (!times) return ''
-  return times === 1 ? 'Left the page once (warned)' : `Left the page ${times} times (reported)`
+// Beside a paper: nothing for a taker who stayed and pressed nothing; for
+// leaving, the warning they were given for one time and from the second on
+// that it is reported; and the presses of Print Screen, reported from the first.
+export function leftWords(times, printed = 0) {
+  const said = []
+  if (times) said.push(times === 1 ? 'Left the page once (warned)' : `Left the page ${times} times (reported)`)
+  if (printed) said.push(printed === 1 ? 'Pressed Print Screen once (reported)' : `Pressed Print Screen ${printed} times (reported)`)
+  return said.join(' · ')
+}
+
+// Whether what leftWords says of a paper is to be reported, and not only a
+// first warning: the page draws it in red then.
+export function leftReported(times, printed = 0) {
+  return times > 1 || printed > 0
 }
 
 // The lines printed above a list of papers: how many, and the averages. For

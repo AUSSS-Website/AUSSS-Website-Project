@@ -27,17 +27,23 @@ import { LEAVE_MS, markTile } from './examFlow.js'
 //
 //   mark    the words to print across the paper (markWords in examFlow.js)
 //   onLeft  called each time the taker comes back from leaving the page
+//   onPrint called each time the Print Screen key is pressed, the one way of
+//           taking a screenshot that a page is told of (a computer's keyboard
+//           only: a phone's buttons, a snipping shortcut and a Mac's keys say
+//           nothing to the page)
 
 // Keys held to take a screenshot. Pressing one must not show the paper again.
 const QUIET_KEYS = new Set(['PrintScreen', 'Meta', 'OS', 'Shift', 'Control', 'Alt'])
 
 const stop = (event) => event.preventDefault()
 
-export default function ExamGuard({ mark = '', onLeft, children }) {
+export default function ExamGuard({ mark = '', onLeft, onPrint, children }) {
   const root = useRef(null)
   const tile = useMemo(() => markTile(mark), [mark])
   const tell = useRef(onLeft)
   tell.current = onLeft
+  const print = useRef(onPrint)
+  print.current = onPrint
 
   // The screen stays on while the paper is. The phone drops the request each
   // time the page is hidden, so it is made again on every return.
@@ -97,6 +103,7 @@ export default function ExamGuard({ mark = '', onLeft, children }) {
     const onKeyUp = (event) => {
       if (event.key !== 'PrintScreen') return
       hide()
+      print.current?.()
       // The key has already copied the screen: write over it.
       try {
         navigator.clipboard?.writeText('Screenshots of the exam are not allowed.')?.catch(() => {})

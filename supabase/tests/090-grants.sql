@@ -184,7 +184,7 @@ select ok(not has_function_privilege('anon', 'public.exam_save_details(text, tex
 select ok(not has_function_privilege('anon', 'public.exam_start(text, text, boolean, boolean)', 'execute'), 'anon cannot start an exam');
 select ok(not has_function_privilege('anon', 'public.exam_paper(text)', 'execute'), 'anon cannot read a paper');
 select ok(not has_function_privilege('anon', 'public.exam_save(text, jsonb, boolean, boolean, boolean)', 'execute'), 'anon cannot save an answer');
-select ok(not has_function_privilege('anon', 'public.exam_left(text, int)', 'execute'), 'anon cannot send a count of leaves');
+select ok(not has_function_privilege('anon', 'public.exam_left(text, int, int)', 'execute'), 'anon cannot send a count of leaves');
 select ok(not has_function_privilege('anon', 'public.save_exam_question(uuid, uuid, text, jsonb, int, boolean, jsonb)', 'execute'), 'anon cannot write a question');
 select ok(not has_function_privilege('anon', 'public.import_exam_questions(uuid, jsonb)', 'execute'), 'anon cannot import questions');
 select ok(not has_function_privilege('anon', 'public.exam_add_registrations(uuid, text[])', 'execute'), 'anon cannot put IDs on the list');

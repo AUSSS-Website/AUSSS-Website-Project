@@ -7,6 +7,7 @@ import {
   durationWords,
   examPhase,
   exportName,
+  leftReported,
   leftWords,
   programmeRows,
   readProblem,
@@ -91,8 +92,10 @@ function Row({ row, questions, to, tied, programme = null }) {
               <StateChip state={row.state} />
             </span>
           </span>
-          {row.left > 0 && (
-            <span className={`w-full text-xs font-semibold ${row.left > 1 ? 'text-danger' : 'text-warn'}`}>{leftWords(row.left)}</span>
+          {(row.left > 0 || row.printed > 0) && (
+            <span className={`w-full text-xs font-semibold ${leftReported(row.left, row.printed) ? 'text-danger' : 'text-warn'}`}>
+              {leftWords(row.left, row.printed)}
+            </span>
           )}
         </span>
       </Link>
@@ -176,6 +179,7 @@ export default function ResultsPanel({ exam }) {
         tied={shared.has(rank)}
         programme={programme}
         left={leaves.data?.get(paper)?.times ?? 0}
+        printed={leaves.data?.get(paper)?.printed ?? 0}
         backTo={{ search: withPaper(params, '').toString() }}
         onDeleted={() => {
           deleted.current = true

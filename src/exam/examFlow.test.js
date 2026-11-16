@@ -23,6 +23,7 @@ import {
   opensLine,
   pageLabel,
   placeFromHash,
+  printWords,
   questionsFor,
   receivedWords,
   satWords,
@@ -686,5 +687,14 @@ describe('coming back from leaving the page', () => {
     expect(leaveWords(2).title).toBe('You left the exam page again.')
     expect(leaveWords(2).body).toMatch(/will be reported/)
     expect(leaveWords(5).body).toMatch(/left the page 5 times/)
+  })
+})
+
+describe('pressing Print Screen', () => {
+  it('is reported from the first press, with no warning first', () => {
+    expect(printWords(1).title).toBe('Screenshots are not allowed.')
+    expect(printWords(1).body).toMatch(/recorded and will be reported/)
+    expect(printWords(1).body).not.toMatch(/warning/)
+    expect(printWords(3).body).toMatch(/recorded 3 times/)
   })
 })

@@ -9,6 +9,7 @@ import {
   OUTCOME_LABEL,
   durationWords,
   exportName,
+  leftReported,
   leftWords,
   optionLetter,
   questionLabel,
@@ -159,7 +160,7 @@ function QuestionRow({ row, passage = null }) {
 // `programme` is the programme whose ranking the paper was opened from, in an
 // exam with two optional sections: the rank is the paper's place in that one.
 // `backTo` is the ranking's address; `onDeleted` runs once the paper is gone.
-export default function AttemptSheet({ exam, attemptId, rank = null, tied = false, programme = null, left = 0, backTo, onDeleted }) {
+export default function AttemptSheet({ exam, attemptId, rank = null, tied = false, programme = null, left = 0, printed = 0, backTo, onDeleted }) {
   const remove = useDeleteAttempt()
   // From the moment the delete is sent the sheet stops asking for a paper
   // that is about to be gone.
@@ -252,8 +253,10 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
                 </a>
               )}
             </p>
-            {left > 0 && (
-              <p className={`mt-1 text-xs font-semibold ${left > 1 ? 'text-danger' : 'text-warn'}`}>{leftWords(left)} during the exam.</p>
+            {(left > 0 || printed > 0) && (
+              <p className={`mt-1 text-xs font-semibold ${leftReported(left, printed) ? 'text-danger' : 'text-warn'}`}>
+                During the exam: {leftWords(left, printed)}
+              </p>
             )}
           </div>
           <ExportButtons
