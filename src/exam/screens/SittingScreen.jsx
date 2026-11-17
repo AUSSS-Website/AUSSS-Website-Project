@@ -241,11 +241,14 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
             const chosen = answer.c === i
             return (
               // dir="auto": an option written in Arabic has its mark on the right.
+              // The row darkens under the thumb, as the flag and the page
+              // steps do, so a press is answered before the answer changes.
+              // Nothing moves. Not while the paper is locked.
               <label
                 key={i}
                 dir="auto"
                 className={`relative flex min-h-[48px] items-start gap-3 rounded-xl border px-3 py-3 ${
-                  locked ? 'opacity-60' : 'cursor-pointer'
+                  locked ? 'opacity-60' : `cursor-pointer ${chosen ? 'active:bg-accent/20' : 'active:bg-sunk'}`
                 } ${chosen ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-line/15 bg-card'}`}
               >
                 <input
