@@ -187,11 +187,11 @@ export function saveWords(save, { connected = true, onPhone = true } = {}) {
     const n = Number(save.count) || 0
     // Only a change of sections waits: it is no answer, and is not called one.
     if (n === 0 && save.choice) {
-      return `No connection: your change of sections is waiting. Keep going, ${onPhone ? 'it is kept on this phone' : 'and do not close this page'}.`
+      return `No connection: your change of sections is waiting. ${onPhone ? 'Keep going. It is kept on this phone.' : 'Keep going, and do not close this page.'}`
     }
     const waiting = `No connection: ${count(n, 'answer')} waiting.`
     if (!onPhone) return `${waiting} Keep going, and do not close this page.`
-    return `${waiting} Keep going, ${n === 1 ? 'it is' : 'they are'} kept on this phone.`
+    return `${waiting} Keep going. ${n === 1 ? 'It is' : 'They are'} kept on this phone.`
   }
   if (save?.kind === 'saving') return 'Saving…'
   return connected ? 'All answers saved' : 'All answers saved. No connection just now.'
@@ -382,7 +382,7 @@ export function leaveWords(count) {
   if (count <= 1) {
     return {
       title: 'You left the exam page.',
-      body: 'This was recorded. This is a warning. If you leave the page again, it will be recorded again and reported to the exam officers.',
+      body: 'This was recorded, and this time it is only a warning. If you leave the page again, it will be recorded again and reported to the exam officers.',
     }
   }
   return {
