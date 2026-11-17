@@ -10,7 +10,7 @@ import { byPortalOrder, useCommittees } from './officerQueries.js'
 // notifications feed. Same shape as queries.js: plain async functions first,
 // react-query hooks underneath. Who may see or change what is decided by
 // row-level security and the triggers in the 20260920200x migrations and
-// 20261110120001_campaigns; the
+// 20261117120001_campaigns; the
 // helpers here only decide what to fetch and which buttons to offer.
 
 const workKeys = {
@@ -140,7 +140,7 @@ async function updateCampaign({ id, ...patch }) {
 }
 
 // The concept note: one document per campaign, in the `campaign-files` bucket
-// under '<campaign id>/<random id>.<ext>' (migration 20261110120002). The type
+// under '<campaign id>/<random id>.<ext>' (migration 20261117120002). The type
 // is decided by the extension, as for a subtask's files.
 const CAMPAIGN_FILES_BUCKET = 'campaign-files'
 const CONCEPT_NOTE_EXTS = ['pdf', 'doc', 'docx', 'ppt', 'pptx']
