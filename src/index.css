@@ -285,7 +285,7 @@
   }
 
   body {
-    @apply bg-page text-soft font-sans antialiased transition-colors duration-300;
+    @apply bg-page text-soft font-sans antialiased;
     /* Force lining + tabular figures across the site. Cormorant Garamond
        defaults to oldstyle figures (3, 4, 5, 7, 9 sit below baseline) and
        proportional widths, which makes counts and animated counters jiggle.
