@@ -86,6 +86,10 @@
      stronger until the usual hairline (border-line/10) reaches 3:1 against a
      page, a band and a card, and muted text is lifted until every step from
      30% up reaches 7:1 on all three (opacity 30%..100% becomes 86%..100%).
+     The coloured text (links, errors, warnings, "saved") and the blue button
+     take a deeper shade on light and a paler one on dark, the nearest that
+     reaches 7:1 on all three too; the dark theme's red, amber and green
+     already do, and are said again so that they stay.
      These come after both palettes on purpose: on <html class="dark"> the
      `.dark` rule here must be the last one read. */
   @media (prefers-contrast: more) {
@@ -93,11 +97,25 @@
       --line-k: 5.5;
       --soft-c0: 0.8;
       --soft-c1: 0.2;
+      --c-cta: 37 86 125; /* white on it is 7.8:1 */
+      --c-cta-hover: 26 66 98;
+      --c-accent: 37 86 125;
+      --c-danger: 163 25 25;
+      --c-warn: 137 60 13;
+      --c-ok: 3 94 68;
     }
     .dark {
       --line-k: 3.6;
       --soft-c0: 0.8;
       --soft-c1: 0.2;
+      --c-cta: 143 180 212; /* medical-light; forest-950 on it is 8.2:1 */
+      --c-cta-hover: 178 204 227;
+      --c-accent: 158 190 218;
+      /* Said again, or the light theme's deeper shades above would win on
+         <html class="dark">, which is :root as well. */
+      --c-danger: 252 165 165;
+      --c-warn: 253 230 138;
+      --c-ok: 110 231 183;
     }
   }
 
@@ -309,6 +327,13 @@
 
   .eyebrow {
     @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-accent dark:text-medical;
+  }
+  /* More contrast: the dark theme's eyebrow takes the link blue, which the
+     base rules above lift to 7:1. */
+  @media (prefers-contrast: more) {
+    .eyebrow {
+      @apply dark:text-accent;
+    }
   }
 
   /* Tracking follows the size. A display heading (text-4xl, 2.25rem, and up)
