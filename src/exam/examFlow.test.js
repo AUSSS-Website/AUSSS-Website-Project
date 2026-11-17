@@ -233,13 +233,13 @@ describe('the save state in words', () => {
     expect(saveWords({ kind: 'saved', count: 0 })).toBe('All answers saved')
     expect(saveWords({ kind: 'saving', count: 2 })).toBe('Saving…')
     expect(saveWords({ kind: 'offline', count: 3 })).toBe(
-      'No connection: 3 answers waiting. Keep going, they are kept on this phone.',
+      'No connection: 3 answers waiting. Keep going. They are kept on this phone.',
     )
   })
 
   it('counts one answer as one', () => {
     expect(saveWords({ kind: 'offline', count: 1 })).toBe(
-      'No connection: 1 answer waiting. Keep going, it is kept on this phone.',
+      'No connection: 1 answer waiting. Keep going. It is kept on this phone.',
     )
   })
 
@@ -632,13 +632,13 @@ describe('the two optional sections', () => {
 describe('a change of sections that has not reached the database', () => {
   it('is said in the save state, and is not called an answer', () => {
     expect(saveWords({ kind: 'offline', count: 0, choice: true })).toBe(
-      'No connection: your change of sections is waiting. Keep going, it is kept on this phone.',
+      'No connection: your change of sections is waiting. Keep going. It is kept on this phone.',
     )
     expect(saveWords({ kind: 'offline', count: 0, choice: true }, { onPhone: false })).toBe(
       'No connection: your change of sections is waiting. Keep going, and do not close this page.',
     )
     // with answers waiting too, the answers are what is counted
-    expect(saveWords({ kind: 'offline', count: 3, choice: true })).toBe('No connection: 3 answers waiting. Keep going, they are kept on this phone.')
+    expect(saveWords({ kind: 'offline', count: 3, choice: true })).toBe('No connection: 3 answers waiting. Keep going. They are kept on this phone.')
     expect(saveWords({ kind: 'saving', count: 0, choice: true })).toBe('Saving…')
   })
 })
@@ -679,7 +679,7 @@ describe('coming back from leaving the page', () => {
   it('warns the first time, and says what happens the next', () => {
     const words = leaveWords(1)
     expect(words.title).toBe('You left the exam page.')
-    expect(words.body).toMatch(/This was recorded\. This is a warning\./)
+    expect(words.body).toMatch(/This was recorded, and this time it is only a warning\./)
     expect(words.body).toMatch(/reported/)
   })
 

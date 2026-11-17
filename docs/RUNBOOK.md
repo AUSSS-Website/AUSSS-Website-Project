@@ -3198,7 +3198,7 @@ the hall does not begin with 400 first sign-ins at once.
   either way at any time, also while papers are running, and it never cuts a paper short.
 - **What to tell the hall.** If the connection drops, keep answering and do not refresh. Use one
   tab. The bar at the top of the paper says where things stand: "All answers saved", "Saving…" or
-  "No connection: 3 answers waiting. Keep going, they are kept on this phone." Waiting answers go
+  "No connection: 3 answers waiting. Keep going. They are kept on this phone." Waiting answers go
   out when the connection is back: the page tries again after 2, 5 and 10 seconds, then every 15,
   and at once when the phone says it is online. A refresh loses no answer, but with no connection
   the page itself cannot load again, because it is never served from the phone's cache.
