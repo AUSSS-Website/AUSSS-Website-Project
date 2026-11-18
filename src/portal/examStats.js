@@ -508,11 +508,13 @@ export function resultSummary(attempts, questions, programme = null) {
 }
 
 // One paper, a line for each question in the officers' order. `inSections`
-// adds each question's section, for an exam that has the two optional ones.
-export function sheetColumns(inSections = false) {
+// adds each question's section, for an exam that has the two optional ones,
+// and `inTopics` its topic, for an exam whose sections are split into topics.
+export function sheetColumns(inSections = false, inTopics = false) {
   return [
     { label: 'No.', value: (r) => questionLabel(r) },
     ...(inSections ? [{ label: 'Section', value: (r) => SECTION_WORDS[r.section] ?? SECTION_WORDS.shared }] : []),
+    ...(inTopics ? [{ label: 'Topic', value: (r) => topicOf(r) }] : []),
     { label: 'Question', value: (r) => r.body || (r.image ? '(A picture with no words)' : '') },
     { label: 'Right answer', value: (r) => optionText(r, r.correct) },
     { label: 'Chosen answer', value: (r) => optionText(r, r.chosen) },
@@ -522,6 +524,12 @@ export function sheetColumns(inSections = false) {
 }
 
 const SECTION_WORDS = { shared: 'Shared', scope: 'Professional exchange (SCOPE)', score: 'Research exchange (SCORE)' }
+
+// The topic of a question's line (a row of rpc/exam_sheet or of
+// rpc/exam_question_stats): the name of its part of the section, '' for none.
+export const topicOf = (row) => (typeof row?.topic === 'string' ? row.topic.trim() : '')
+// Whether any of these lines is in a topic.
+export const hasTopics = (rows) => list(rows).some((row) => topicOf(row) !== '')
 
 // How many questions of a paper's lines are in each section, and how many of
 // them the paper sits.
@@ -577,9 +585,11 @@ export function questionColumns(stats) {
   const papers = num(stats?.attempts)
   const most = Math.max(0, ...list(stats?.questions).map((q) => list(q?.options).length))
   const inSections = list(stats?.questions).some((q) => q?.section === 'scope' || q?.section === 'score')
+  const inTopics = hasTopics(stats?.questions)
   return [
     { label: 'No.', value: (q) => questionLabel(q) },
     ...(inSections ? [{ label: 'Section', value: (q) => SECTION_WORDS[q.section] ?? SECTION_WORDS.shared }] : []),
+    ...(inTopics ? [{ label: 'Topic', value: (q) => topicOf(q) }] : []),
     { label: 'Question', value: (q) => q.body || (q.image ? '(A picture with no words)' : '') },
     { label: 'Right answer', value: (q) => optionText(q, q.correct) },
     { label: 'Papers', value: (q) => papersOf(q, papers) },

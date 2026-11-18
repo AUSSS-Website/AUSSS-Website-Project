@@ -825,12 +825,13 @@ async function makeAccounts() {
 // `sections`, `passages` and the two `sits_` fields came with the optional
 // sections (20261109120001): how many questions each section has, the texts
 // several questions are read with, and which blocks a paper sits. A question
-// carries its section, its passage's id and its picture's place.
+// carries its section, its passage's id and its picture's place, and since the
+// topics (20261118150001) the name of its topic.
 const PAPER_FIELDS = {
   top: ['state', 'exam', 'attempt', 'now', 'questions', 'passages', 'answers'],
   exam: ['title', 'minutes', 'sections'],
   attempt: ['id', 'started_at', 'deadline_at', 'sits_scope', 'sits_score'],
-  question: ['id', 'body', 'options', 'section', 'passage', 'image'],
+  question: ['id', 'body', 'options', 'section', 'topic', 'passage', 'image'],
   answer: ['q', 'c', 'f'],
 }
 const SAVE_FIELDS = ['state', 'submitted', 'saved', 'deadline_at', 'now', 'sits_scope', 'sits_score']

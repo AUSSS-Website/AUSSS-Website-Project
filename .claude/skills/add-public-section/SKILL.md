@@ -63,7 +63,8 @@ ordered records (a table, as below).
 ## Checking and recording
 
 - [ ] Sample rows in `scripts/portal-sample-walk.mjs` (tables and the public RPC) and the new
-      routes in its list; walk light and dark at 320, 375, 1024 and 1440 px
+      routes in its list; walk light and dark at 320, 375, 820, 1024 and 1440 px (a tablet
+      upright and on its side are always among the widths)
       (`MSYS_NO_PATHCONV=1` in Git Bash for route arguments).
 - [ ] `npm test`; `npm run build` (the pre-render must fall back cleanly before the migration is
       live).

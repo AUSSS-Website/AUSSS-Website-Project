@@ -5,8 +5,10 @@
 // each rule; useSitting.js ties them to the page.
 //
 // The shapes, as rpc/exam_paper and rpc/exam_save use them:
-//   question   { id, body, options: [text, ...], section, passage, image }, in
-//              this taker's order. `section` is 'shared', 'scope' or 'score';
+//   question   { id, body, options: [text, ...], section, topic, passage,
+//              image }, in this taker's order. `section` is 'shared', 'scope'
+//              or 'score'; `topic` is the name of its part of the section,
+//              '' for none;
 //              `passage` is the id of the text it is read with, or null;
 //              `image` is its picture's place in the bucket, or null
 //   sits       which of the two optional blocks this taker answers,
@@ -61,6 +63,20 @@ export function sectionOf(question) {
   return question?.section === 'scope' || question?.section === 'score' ? question.section : 'shared'
 }
 
+// A question's topic: the name of the part of its section it is in, '' when it
+// has none. A section is split into topics, each with as many questions as
+// the officers gave it; a paper keeps a topic's questions together.
+export function topicOf(question) {
+  return typeof question?.topic === 'string' ? question.topic.trim() : ''
+}
+
+// 'A' for the first option a taker is shown, 'B' for the second. The letters
+// follow this taker's own order of the options, which is not the next
+// taker's: they are for reading the paper, not for comparing two papers.
+export function optionLetter(index) {
+  return Number.isInteger(index) && index >= 0 && index < 26 ? String.fromCharCode(65 + index) : ''
+}
+
 // Which blocks a paper sits, made safe to use: both unless told otherwise, and
 // never neither (the database refuses that too).
 export function tidySits(value) {
@@ -108,12 +124,12 @@ export function blockAnswered(questions, answers) {
 //
 // Pages and question numbers both count from 1, as the screen shows them. A
 // page holds up to ten questions, with two exceptions that keep things
-// together: a section starts on a page of its own, and the questions that are
-// read with one passage are never split (a passage with more than ten
-// questions gets a page as long as it needs). A paper with no sections and no
-// passages is plain pages of ten.
+// together: a section starts on a page of its own, so does each topic within
+// it, and the questions that are read with one passage are never split (a
+// passage with more than ten questions gets a page as long as it needs). A
+// paper with no sections, no topics and no passages is plain pages of ten.
 
-// The pages of a list of questions: [{ page, section, from, to, questions }],
+// The pages of a list of questions: [{ page, section, topic, from, to, questions }],
 // where each question carries `n`, its number in this list, and `from` and
 // `to` are the first and last of those. Empty for an empty list.
 export function layoutPages(questions) {
@@ -127,9 +143,10 @@ export function layoutPages(questions) {
     let j = i + 1
     if (passage) while (j < list.length && list[j].passage === passage) j += 1
     const section = sectionOf(list[i])
+    const topic = topicOf(list[i])
     const full = current && current.questions.length > 0 && current.questions.length + (j - i) > PAGE_SIZE
-    if (!current || current.section !== section || full) {
-      current = { page: pages.length + 1, section, from: i + 1, to: i, questions: [] }
+    if (!current || current.section !== section || current.topic !== topic || full) {
+      current = { page: pages.length + 1, section, topic, from: i + 1, to: i, questions: [] }
       pages.push(current)
     }
     for (let k = i; k < j; k += 1) current.questions.push({ ...list[k], n: k + 1 })
@@ -326,15 +343,37 @@ export function flaggedNumbers(questions, answers) {
   return questions.flatMap((q, i) => (answerOf(answers, q.id).f ? [i + 1] : []))
 }
 
-// One row per page: its section, its question numbers `from` to `to`, how many
+// The paper as the review shows it: every question's number, in runs that
+// share a section and a topic, each number with whether it has an answer and
+// whether it is flagged:
+// [{ section, topic, from, to, numbers: [{ n, answered, flagged }] }].
+export function reviewGroups(questions, answers) {
+  const groups = []
+  let current = null
+  ;(Array.isArray(questions) ? questions : []).forEach((q, i) => {
+    const section = sectionOf(q)
+    const topic = topicOf(q)
+    if (!current || current.section !== section || current.topic !== topic) {
+      current = { section, topic, from: i + 1, to: i, numbers: [] }
+      groups.push(current)
+    }
+    const answer = answerOf(answers, q.id)
+    current.numbers.push({ n: i + 1, answered: answer.c !== null, flagged: answer.f })
+    current.to = i + 1
+  })
+  return groups
+}
+
+// One row per page: its section and topic, its question numbers `from` to `to`, how many
 // of them are unanswered and how many are flagged. `pages` are layoutPages of
 // the same questions, for a caller that already has them. A paper with no
 // question still has its one, empty page.
 export function pageSummaries(questions, answers, pages = layoutPages(questions)) {
-  if (pages.length === 0) return [{ page: 1, section: 'shared', from: 1, to: 0, unanswered: 0, flagged: 0 }]
+  if (pages.length === 0) return [{ page: 1, section: 'shared', topic: '', from: 1, to: 0, unanswered: 0, flagged: 0 }]
   return pages.map((p) => ({
     page: p.page,
     section: p.section,
+    topic: p.topic,
     from: p.from,
     to: p.to,
     unanswered: p.questions.filter((q) => answerOf(answers, q.id).c === null).length,
@@ -381,6 +420,7 @@ export function tidyPaper(value) {
       body: String(q.body ?? ''),
       options: q.options.map((o) => String(o ?? '')),
       section: sectionOf(q),
+      topic: topicOf(q),
       passage: known,
       image: textOrNull(q.image),
     })

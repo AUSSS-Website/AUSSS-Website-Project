@@ -1725,8 +1725,11 @@ npm run walk -- --no-shots --strict    # console only; exit 1 on a message of ou
 npm run walk -- --contrast --no-shots  # text contrast (WCAG AA) on every page
 ```
 
-- **Widths and themes.** Without `--widths` it walks 320, 375, 768, 1024, 1440 and 1920 px,
-  each in dark and in light. One width in one theme takes about two minutes for the public
+- **Widths and themes.** Without `--widths` it walks 320, 375, 768, 820, 1024, 1440 and 1920 px,
+  each in dark and in light. 768 and 820 px are a tablet held upright and 1024 px one on its
+  side: a check of one change names its own widths, and always one of the tablet's among
+  them (`375,820,1440` at the least), since a layout that holds on a phone and on a laptop
+  can still break in between. One width in one theme takes about two minutes for the public
   pages, so the full set is about twenty-five; split it over two or three terminals with
   `--themes` and `--widths` when in a hurry.
 - **What it measures on every visit.** Whether the page scrolls sideways, and which
@@ -3658,6 +3661,41 @@ told at once that it was recorded and will be reported, and the officers see "Pr
 Screen once (reported)" beside the leaves and a column in the export. It is the only kind of
 screenshot a page is ever told of, and only on a computer's keyboard: a phone's buttons,
 Windows' snipping shortcut and a Mac's keys tell the page nothing.
+
+**Topics, the lettered options and the review's colours (2026-11-18).** A section (the shared
+questions, the SCOPE block, the SCORE block) is split into topics (migration
+`20261118150001_exam_topics.sql`). A topic is a name on a question, `exam_questions.topic`,
+at most 80 characters and `''` for none; the questions of a section that carry the same name
+are one part of the paper, under that name as its heading, and a topic has as many questions
+as the officers give it. A passage has a topic as it has a section (`exam_passages.topic`),
+and its questions take it. A topic has no mark of its own: marks, ranks and the choice of
+sections are as they were, and an exam with no topic named is exactly the exam it was.
+
+- **Order.** Within a section the topics stand in the order of their first question (the
+  lowest `sort`), in the officers' numbering (`app.exam_question_numbers`) and on every
+  taker's paper. `exam_start` shuffles the questions inside their topic, where it shuffled
+  them inside their section, so a topic's questions are together on every paper.
+- **The portal.** The question's form and the passage's have a Topic field that offers the
+  names the exam already has. The Questions list shows each topic under its heading; a
+  question is dragged within its topic, and **Move up** and **Move down** on a heading move
+  the whole topic (both are the same write of `sort` a drag makes). A question's topic is
+  part of the paper, so it is fixed once the first student has started.
+- **The import.** The spreadsheet has a twelfth column, **Topic** (column L, after Passage),
+  so a file from before the topics still imports as it is. Every row with the same topic in
+  the same section is in that topic, wherever it is in the file; the topics come on the
+  paper in the order they first come in the file. The same passage text under two topics
+  makes two passages. The CSV export and the template carry the column.
+- **The paper.** A topic starts on a page of its own, headed with its name; pages are still
+  ten questions at most. Each option has a letter, A, B, C, by the order that student sees
+  them in. The options are shuffled for each student, so one student's B is not another's,
+  and not the B of the officers' list: the letters are for reading the paper, and a paper
+  in the portal still shows the options in the officers' order.
+- **The review.** Every question is a numbered button that goes to it, green with an answer
+  and red with none, under the name of its section and topic. The colour is not the only
+  sign: a number with no answer has a dashed edge, the line above says which is which with
+  the count of each, and each button's name says it for a screen reader.
+- **Results.** A paper's lines and the question figures show each question's topic, and
+  their exports gain a Topic column when the exam has topics.
 
 **Contracts and the students' preferences (2026-11-18).** An exam can carry the exchange
 contracts the students are matched to (`exam_contracts`, migration

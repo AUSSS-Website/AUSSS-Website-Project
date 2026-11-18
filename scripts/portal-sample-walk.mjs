@@ -8,6 +8,7 @@
 //
 //   npm run walk:portal-sample                      everything (needs npm run dev)
 //   npm run walk:portal-sample -- light 320,375     themes, then widths
+//   npm run walk:portal-sample -- light,dark 375,820,1440 /exam   a quick check: a phone, a tablet, a laptop
 //   npm run walk:portal-sample -- dark 1440 /portal/campaigns
 //
 // The session, the sample rows and the list of screens are in
@@ -32,7 +33,9 @@ import { measureCutOff } from './walk-checks.mjs'
 import { ROUTES as SCREENS, acts, installSample, presideOn } from './portal-sample.mjs'
 
 const themes = (process.argv[2] || 'dark,light').split(',')
-const widths = (process.argv[3] || '320,375,768,1024,1440,1920').split(',').map(Number)
+// Two phones, a tablet upright (768 and 820 px) and on its side (1024 px), a
+// laptop and a wide screen. A check in a hurry still takes one tablet width.
+const widths = (process.argv[3] || '320,375,768,820,1024,1440,1920').split(',').map(Number)
 const only = process.argv[4] || ''
 const base = 'http://localhost:5173'
 const ROUTES = SCREENS.filter((r) => !only || r.startsWith(only))

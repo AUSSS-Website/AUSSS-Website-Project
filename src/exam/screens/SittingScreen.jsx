@@ -16,7 +16,7 @@ import {
   strayTap,
 } from '../examFlow.js'
 import { FlagIcon, focusCls, focusTargetCls, moveFocus, noteScreen, tapLinkCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
-import { answerOf, formatClock } from '../sitting.js'
+import { answerOf, formatClock, optionLetter } from '../sitting.js'
 import { useLeaves } from '../useLeaves.js'
 import { useTimeLeft } from '../useSitting.js'
 import LeftWarning from './LeftWarning.jsx'
@@ -24,7 +24,9 @@ import ReviewScreen from './ReviewScreen.jsx'
 
 // The paper: about ten questions a page, the clock and the save state in a bar
 // that stays at the top, the pages and the review under it. A section starts
-// on a page of its own, and a passage sits above the questions read with it. Tired students sit it
+// on a page of its own, so does each topic within it (the page is headed with
+// the topic's name), and a passage sits above the questions read with it. An
+// option has a letter, A, B, C, by the order this taker sees them in. Tired students sit it
 // for two hours on small phones, so:
 //   - everything tapped is at least 44px tall and the options are whole rows;
 //   - no text is ever cut short, a long option wraps;
@@ -263,6 +265,12 @@ const Question = memo(function Question({ q, total, answer, locked, onChoose, on
                   }}
                   className="peer mt-px h-6 w-6 shrink-0 appearance-none rounded-full border-2 border-soft/60 bg-page checked:border-[7px] checked:border-cta focus:outline-none"
                 />
+                {/* The option's letter, by this taker's order. It has a direction
+                    of its own, so the row still takes its direction from the
+                    option's words (dir="auto" skips it). */}
+                <span dir="ltr" className="w-5 shrink-0 text-base font-semibold leading-snug text-soft">
+                  {optionLetter(i)}
+                </span>
                 <span className="min-w-0 flex-1 whitespace-pre-wrap text-base leading-snug text-ink [overflow-wrap:anywhere]">
                   {text}
                 </span>
@@ -367,7 +375,15 @@ function PaperPage({ sitting, place, headingRef, tapGuard }) {
         <span className="sr-only">
           Page {place.page} of {pageCount}.{' '}
         </span>
-        {row && row.from < row.to ? `Questions ${row.from} to ${row.to}` : `Question ${row ? row.from : 1}`}
+        {/* A page of a topic is headed with the topic, and its numbers under it. */}
+        {row?.topic && (
+          <span dir="auto" className="block [overflow-wrap:anywhere]">
+            {row.topic}
+          </span>
+        )}
+        <span className={row?.topic ? 'mt-1 block font-sans text-base font-medium text-soft' : undefined}>
+          {row && row.from < row.to ? `Questions ${row.from} to ${row.to}` : `Question ${row ? row.from : 1}`}
+        </span>
       </h1>
       <div className="mt-2" {...tapGuard}>
         {questions.map((q) => (

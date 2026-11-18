@@ -75,7 +75,8 @@ const PORTAL_DETAIL = [
 function parseArgs(argv) {
   const opts = {
     base: 'http://localhost:5173',
-    widths: [320, 375, 768, 1024, 1440, 1920],
+    // two phones, a tablet upright (768 and 820 px) and on its side (1024 px), a laptop, a wide screen
+    widths: [320, 375, 768, 820, 1024, 1440, 1920],
     themes: ['dark', 'light'],
     only: '',
     login: false,

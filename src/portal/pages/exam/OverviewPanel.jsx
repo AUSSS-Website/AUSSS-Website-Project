@@ -20,6 +20,7 @@ import {
   resultSummary,
   shareRight,
   tally,
+  topicOf,
 } from '../../examStats.js'
 import { ErrorText, Panel, Spinner, outlineBtnCls } from '../../portalUi.jsx'
 import { Figure } from './AttemptSheet.jsx'
@@ -82,6 +83,11 @@ function QuestionFigures({ question, papers }) {
           Question {questionLabel(question)}
           {SECTION_WORDS[question.section] && (
             <span className="ml-2 normal-case tracking-normal">{SECTION_WORDS[question.section]}</span>
+          )}
+          {topicOf(question) && (
+            <span dir="auto" className="ml-2 normal-case tracking-normal text-accent">
+              {topicOf(question)}
+            </span>
           )}
         </p>
         <p className="text-sm text-soft/70">

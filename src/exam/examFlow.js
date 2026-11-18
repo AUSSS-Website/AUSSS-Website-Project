@@ -464,11 +464,28 @@ export function hashFor(place) {
   return place?.question ? `#q${place.question}` : `#p${place?.page || 1}`
 }
 
+// The name of a part of the paper in the review (a group of reviewGroups in
+// sitting.js): its section, in an exam with sections, and its topic. A part
+// with neither is named by its numbers.
+export function partName(group, inSections) {
+  const parts = [inSections ? sectionName(group.section) : '', group.topic].filter(Boolean)
+  if (parts.length > 0) return parts.join(': ')
+  return group.from < group.to ? `Questions ${group.from} to ${group.to}` : `Question ${group.from}`
+}
+
+// A question's button in the review, named for a screen reader: the colour
+// says the same to the eye.
+export function reviewLabel({ n, answered, flagged }) {
+  return `Go to question ${n}, ${answered ? 'answered' : 'not answered'}${flagged ? ', flagged' : ''}`
+}
+
 // A page button's name for a screen reader, from a row of pageSummaries.
-// A page of one of the two blocks is named with its block.
+// A page of one of the two blocks is named with its block, and a page of a
+// topic with its topic.
 export function pageLabel(row) {
   const answered = row.unanswered === 0 ? 'all answered' : `${row.unanswered} not answered`
   const flagged = row.flagged > 0 ? `, ${row.flagged} flagged` : ''
   const block = row.section === 'scope' || row.section === 'score' ? `${sectionName(row.section)}, ` : ''
-  return `Page ${row.page}, ${block}questions ${row.from} to ${row.to}: ${answered}${flagged}`
+  const topic = row.topic ? `${row.topic}, ` : ''
+  return `Page ${row.page}, ${block}${topic}questions ${row.from} to ${row.to}: ${answered}${flagged}`
 }

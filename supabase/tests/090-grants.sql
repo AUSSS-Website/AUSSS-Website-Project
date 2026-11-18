@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(181);
+select plan(184);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -215,7 +215,11 @@ select ok(has_table_privilege('authenticated', 'public.exam_passages', 'select')
 select ok(not has_any_column_privilege('authenticated', 'public.exam_passages', 'insert, update'), 'authenticated cannot write a passage directly');
 select ok(has_table_privilege('authenticated', 'public.exam_passages', 'delete'), 'authenticated removes a passage (the exam officers, by policy)');
 select ok(not has_column_privilege('authenticated', 'public.exam_questions', 'section', 'update') and not has_column_privilege('authenticated', 'public.exam_questions', 'image_path', 'update'), 'authenticated cannot move a question to another section or change its picture directly');
-select ok(not has_function_privilege('anon', 'public.save_exam_passage(uuid, uuid, text, text, text)', 'execute'), 'anon cannot write a passage');
+select ok(not has_function_privilege('anon', 'public.save_exam_passage(uuid, uuid, text, text, text, text)', 'execute'), 'anon cannot write a passage');
+-- the exam's topics: a question's topic and a passage's are written by their functions only
+select ok(not has_column_privilege('authenticated', 'public.exam_questions', 'topic', 'update'), 'authenticated cannot move a question to another topic directly');
+select ok(not has_column_privilege('authenticated', 'public.exam_passages', 'topic', 'update'), 'authenticated cannot move a passage to another topic directly');
+select ok(not has_function_privilege('authenticated', 'app.tidy_exam_topic(text)', 'execute'), 'only the exam''s own functions tidy a topic''s name');
 select ok(not has_function_privilege('authenticated', 'app.exam_result_rows(uuid, uuid)', 'execute'), 'only the officers'' functions mark the papers');
 -- the exam's contracts and the students' preferences: a contract is read, changed and removed by
 -- the exam officers and added by its function only; a pick is written by the taker's function alone
