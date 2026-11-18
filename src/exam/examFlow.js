@@ -464,11 +464,18 @@ export function hashFor(place) {
   return place?.question ? `#q${place.question}` : `#p${place?.page || 1}`
 }
 
+// The name of one of the two optional blocks as a heading, '' for the
+// questions everybody answers: those are headed by their topic alone and are
+// not called "shared" on the paper.
+export function blockName(section) {
+  return section === 'scope' || section === 'score' ? sectionName(section) : ''
+}
+
 // The name of a part of the paper in the review (a group of reviewGroups in
-// sitting.js): its section, in an exam with sections, and its topic. A part
-// with neither is named by its numbers.
+// sitting.js): its topic, with its block before it when it is in one of the
+// two optional blocks. A part with neither is named by its numbers.
 export function partName(group, inSections) {
-  const parts = [inSections ? sectionName(group.section) : '', group.topic].filter(Boolean)
+  const parts = [inSections ? blockName(group.section) : '', group.topic].filter(Boolean)
   if (parts.length > 0) return parts.join(': ')
   return group.from < group.to ? `Questions ${group.from} to ${group.to}` : `Question ${group.from}`
 }
@@ -477,6 +484,14 @@ export function partName(group, inSections) {
 // says the same to the eye.
 export function reviewLabel({ n, answered, flagged }) {
   return `Go to question ${n}, ${answered ? 'answered' : 'not answered'}${flagged ? ', flagged' : ''}`
+}
+
+// What the button to the next page says: the topic it opens, when that is
+// another topic than this page's. `pages` are rows of pageSummaries.
+export function nextWords(pages, page) {
+  const here = pages?.[page - 1]
+  const next = pages?.[page]
+  return next?.topic && (next.topic !== here?.topic || next.section !== here?.section) ? `Next: ${next.topic}` : 'Next'
 }
 
 // A page button's name for a screen reader, from a row of pageSummaries.

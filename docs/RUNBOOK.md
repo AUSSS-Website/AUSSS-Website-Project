@@ -3685,13 +3685,16 @@ sections are as they were, and an exam with no topic named is exactly the exam i
   the same section is in that topic, wherever it is in the file; the topics come on the
   paper in the order they first come in the file. The same passage text under two topics
   makes two passages. The CSV export and the template carry the column.
-- **The paper.** A topic starts on a page of its own, headed with its name; pages are still
-  ten questions at most. Each option has a letter, A, B, C, by the order that student sees
+- **The paper.** A topic is one page: its name is the page's heading, all its questions
+  follow however many they are, and **Next** opens the next topic and names it ("Next: IQ").
+  Questions with no topic are still in pages of ten. The questions everybody answers are
+  not called "shared" on the paper or in the review: they are headed by their topic alone,
+  and only a page of the SCOPE or SCORE block is named with its block. Each option has a letter, A, B, C, by the order that student sees
   them in. The options are shuffled for each student, so one student's B is not another's,
   and not the B of the officers' list: the letters are for reading the paper, and a paper
   in the portal still shows the options in the officers' order.
 - **The review.** Every question is a numbered button that goes to it, green with an answer
-  and red with none, under the name of its section and topic. The colour is not the only
+  and red with none, under the name of its topic (and of its block, for SCOPE and SCORE). The colour is not the only
   sign: a number with no answer has a dashed edge, the line above says which is which with
   the count of each, and each button's name says it for a screen reader.
 - **Results.** A paper's lines and the question figures show each question's topic, and

@@ -21,6 +21,7 @@ import {
   missingDetail,
   opensInWords,
   opensLine,
+  nextWords,
   pageLabel,
   partName,
   reviewLabel,
@@ -745,11 +746,32 @@ describe('pressing Print Screen', () => {
 describe('the review, by topic', () => {
   it('names a part by its section and its topic', () => {
     expect(partName({ section: 'shared', topic: 'Ethics', from: 2, to: 13 }, false)).toBe('Ethics')
-    expect(partName({ section: 'shared', topic: 'Ethics', from: 2, to: 13 }, true)).toBe('Shared questions: Ethics')
+    // the questions everybody answers are headed by their topic alone, never called shared
+    expect(partName({ section: 'shared', topic: 'Ethics', from: 2, to: 13 }, true)).toBe('Ethics')
+    expect(partName({ section: 'shared', topic: '', from: 1, to: 4 }, true)).toBe('Questions 1 to 4')
+    expect(partName({ section: 'score', topic: 'Ethics', from: 81, to: 90 }, true)).toBe('Research exchange (SCORE): Ethics')
     expect(partName({ section: 'scope', topic: '', from: 81, to: 100 }, true)).toBe('Professional exchange (SCOPE)')
     // a part with neither is named by its numbers
     expect(partName({ section: 'shared', topic: '', from: 1, to: 4 }, false)).toBe('Questions 1 to 4')
     expect(partName({ section: 'shared', topic: '', from: 5, to: 5 }, false)).toBe('Question 5')
+  })
+
+  it('names the next topic on the button that opens it', () => {
+    const pages = [
+      { page: 1, section: 'shared', topic: 'Grammar' },
+      { page: 2, section: 'shared', topic: 'IQ' },
+      { page: 3, section: 'shared', topic: '' },
+      { page: 4, section: 'shared', topic: '' },
+      { page: 5, section: 'scope', topic: 'IQ' },
+      { page: 6, section: 'scope', topic: 'IQ' },
+    ]
+    expect(nextWords(pages, 1)).toBe('Next: IQ')
+    expect(nextWords(pages, 2)).toBe('Next')
+    expect(nextWords(pages, 3)).toBe('Next')
+    expect(nextWords(pages, 4)).toBe('Next: IQ')
+    expect(nextWords(pages, 5)).toBe('Next')
+    expect(nextWords(pages, 6)).toBe('Next')
+    expect(nextWords(undefined, 1)).toBe('Next')
   })
 
   it('says of each number whether it has an answer', () => {

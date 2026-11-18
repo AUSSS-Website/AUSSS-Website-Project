@@ -123,11 +123,13 @@ export function blockAnswered(questions, answers) {
 // ---- pages ----------------------------------------------------------------------
 //
 // Pages and question numbers both count from 1, as the screen shows them. A
-// page holds up to ten questions, with two exceptions that keep things
-// together: a section starts on a page of its own, so does each topic within
-// it, and the questions that are read with one passage are never split (a
-// passage with more than ten questions gets a page as long as it needs). A
-// paper with no sections, no topics and no passages is plain pages of ten.
+// topic is one page: its name is the page's heading, all its questions follow
+// under it however many they are, and the next page is the next topic.
+// Questions with no topic are in pages of up to ten, with two exceptions that
+// keep things together: a section starts on a page of its own, and the
+// questions that are read with one passage are never split (a passage with
+// more than ten questions gets a page as long as it needs). A paper with no
+// sections, no topics and no passages is plain pages of ten.
 
 // The pages of a list of questions: [{ page, section, topic, from, to, questions }],
 // where each question carries `n`, its number in this list, and `from` and
@@ -144,7 +146,8 @@ export function layoutPages(questions) {
     if (passage) while (j < list.length && list[j].passage === passage) j += 1
     const section = sectionOf(list[i])
     const topic = topicOf(list[i])
-    const full = current && current.questions.length > 0 && current.questions.length + (j - i) > PAGE_SIZE
+    // a topic's page is as long as the topic; only questions with no topic are cut into tens
+    const full = topic === '' && current && current.questions.length > 0 && current.questions.length + (j - i) > PAGE_SIZE
     if (!current || current.section !== section || current.topic !== topic || full) {
       current = { page: pages.length + 1, section, topic, from: i + 1, to: i, questions: [] }
       pages.push(current)

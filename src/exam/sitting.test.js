@@ -856,17 +856,19 @@ describe('topics', () => {
     expect(topicOf({ topic: 7 })).toBe('')
   })
 
-  it('starts each topic on a page of its own, however many questions it has', () => {
+  it('gives each topic one page, however many questions it has', () => {
     expect(layoutPages(questions).map((p) => `${p.page}:${p.section}:${p.topic}:${p.from}-${p.to}`)).toEqual([
       '1:shared::1-1',
-      '2:shared:Ethics:2-11',
-      '3:shared:Ethics:12-13',
-      '4:shared:IFMSA:14-14',
-      '5:scope:Ethics:15-15',
+      '2:shared:Ethics:2-13',
+      '3:shared:IFMSA:14-14',
+      '4:scope:Ethics:15-15',
     ])
-    expect(pageSummaries(questions, {}).map((p) => p.topic)).toEqual(['', 'Ethics', 'Ethics', 'IFMSA', 'Ethics'])
+    expect(pageSummaries(questions, {}).map((p) => p.topic)).toEqual(['', 'Ethics', 'IFMSA', 'Ethics'])
     // the same topic's name in another section is another part of the paper
-    expect(pageOfQuestion(layoutPages(questions), 15)).toBe(5)
+    expect(pageOfQuestion(layoutPages(questions), 15)).toBe(4)
+    // questions with no topic are still cut into tens
+    const plain = Array.from({ length: 12 }, (_, i) => q(`n${i + 1}`, 'shared', ''))
+    expect(layoutPages([...plain, q('g1', 'shared', 'Grammar')]).map((p) => `${p.topic}:${p.from}-${p.to}`)).toEqual([':1-10', ':11-12', 'Grammar:13-13'])
   })
 
   it('lists every number for the review by section and topic, answered or not', () => {
