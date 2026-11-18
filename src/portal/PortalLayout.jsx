@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthProvider.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
 import { pressCls } from '../lib/motion.js'
 import { SIGN_IN_PATH } from './constants.js'
+import { useHelpsWithExam } from './examHelping.js'
 import NotificationBell from './NotificationBell.jsx'
 import { Avatar } from './Avatar.jsx'
 import { contentSchemas } from '../content/index.js'
@@ -114,6 +115,9 @@ export default function PortalLayout() {
   const canTriage = isEB || officerOf('scope') || officerOf('score')
   // The exchange exam is set up, and its results read, by the same people.
   const canSetExam = isEB || officerOf('scope') || officerOf('score')
+  // Someone they named a helper for an exam's registered list gets the link
+  // too; the page then shows that list and nothing else.
+  const helpsWithExam = useHelpsWithExam(Boolean(user) && !canSetExam)
   // Site content: the EB edits every part; an officer sees the link when some
   // part names their committee.
   const canEditContent = isEB || contentSchemas.some((s) => s.editors.some((slug) => officerOf(slug)))
@@ -131,7 +135,7 @@ export default function PortalLayout() {
     [
       canEditCommittees && { to: '/portal/committees', label: 'Committees' },
       canEditCommittees && { to: '/portal/events', label: 'Events' },
-      canSetExam && { to: '/portal/exam', label: 'Exam' },
+      (canSetExam || helpsWithExam) && { to: '/portal/exam', label: 'Exam' },
       canEditGallery && { to: '/portal/gallery', label: 'Gallery' },
       canEditMagazine && { to: '/portal/magazine', label: 'Magazine' },
       canEditContent && { to: '/portal/content', label: 'Site content' },

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 import { resizeImage } from '../lib/resizeImage.js'
 import { sortChanges } from './examFile.js'
+import { HELPING_KEY, HELPING_STALE_MS, fetchHelperExams } from './examHelping.js'
 import { refreshIn } from './examStats.js'
 
 // The exchange exam: reads and writes for the people who set it up (the SCOPE
@@ -10,6 +11,11 @@ import { refreshIn } from './examStats.js'
 // and every RPC asks app.is_exam_officer() first. A taker's account reads none
 // of this. The results and the overview have a file of their own
 // (examResultQueries.js).
+//
+// One part can be handed on: the officers name helpers for an exam's
+// registered list (the last section here). A helper reads no exam table. They
+// are told which exams they help with by a function, and the list's own
+// functions let them in for those exams only.
 //
 // Everything set up here sits under one key, ['exams'], and every write ends
 // by reading all of it again, whether it went through or not: a new question
@@ -31,6 +37,8 @@ export const examKeys = {
   registrations: (examId) => ['exams', 'registrations', examId],
   contracts: (examId) => ['exams', 'contracts', examId],
   preferences: (examId) => ['exams', 'preferences', examId],
+  helpers: (examId) => ['exams', 'helpers', examId],
+  helping: () => HELPING_KEY,
 }
 
 // The root of the keys examResultQueries.js keeps the ranking, the papers and
@@ -437,8 +445,10 @@ async function releaseRegistration(id) {
   return unwrap(await supabase.rpc('exam_release_registration', { p_registration: id }))
 }
 
+// Through a function, because a helper cannot touch the table itself. An ID
+// someone else removed a moment ago is no error.
 async function deleteRegistration(id) {
-  unwrap(await supabase.from('exam_registrations').delete().eq('id', id))
+  unwrap(await supabase.rpc('exam_remove_registration', { p_registration: id }))
   return id
 }
 
@@ -449,6 +459,61 @@ export function useRegistrationMutations(examId) {
   const release = useMutation({ mutationFn: releaseRegistration, onSettled: done })
   const remove = useMutation({ mutationFn: deleteRegistration, onSettled: done })
   return { add, release, remove }
+}
+
+// ---- helpers for the registered list ------------------------------------------
+//
+// The officers name helpers for one exam
+// (supabase/migrations/20261118210001_exam_helpers.sql): any account on the
+// website, by the address it signs in with. A helper works on that exam's
+// registered list as an officer does and reaches nothing else of the exam.
+
+// The exam's helpers by name, for the officers:
+// [{ profile_id, full_name, email, created_at }].
+export function useExamHelpers(examId, enabled = true) {
+  return useQuery({
+    queryKey: examKeys.helpers(examId),
+    queryFn: async () => unwrap(await supabase.rpc('exam_helper_list', { p_exam: examId })) || [],
+    enabled: enabled && Boolean(examId),
+  })
+}
+
+// `add` takes the helper's email and answers { profile_id, full_name, email,
+// added }, with `added` false for someone who was a helper already; `remove`
+// takes the helper's profile id.
+export function useHelperMutations(examId) {
+  const qc = useQueryClient()
+  const done = () => qc.invalidateQueries({ queryKey: examKeys.helpers(examId) })
+  const add = useMutation({
+    mutationFn: async (email) => unwrap(await supabase.rpc('exam_add_helper', { p_exam: examId, p_email: email })),
+    onSettled: done,
+  })
+  const remove = useMutation({
+    mutationFn: async (profileId) =>
+      unwrap(await supabase.rpc('exam_remove_helper', { p_exam: examId, p_profile: profileId })),
+    onSettled: done,
+  })
+  return { add, remove }
+}
+
+// The exams the person signed in helps with, newest first, each shaped as
+// the Registered list page takes an exam: { id, title, status, opens_at,
+// closes_at, minutes, term: { label }, registrations, started }. Nothing else
+// of an exam reaches a helper. Empty for someone who helps with none, which is
+// nearly everyone, so the answer is kept for five minutes. While students can
+// start one of the exams it is read again every 30 seconds, as an officer's
+// copy of the exam is.
+export function useHelperExams(enabled = true) {
+  return useQuery({
+    queryKey: examKeys.helping(),
+    queryFn: fetchHelperExams,
+    enabled,
+    staleTime: HELPING_STALE_MS,
+    refetchInterval: (query) => {
+      const waits = (query.state.data || []).map((exam) => refreshIn(exam, Date.now(), LIVE_MS)).filter(Boolean)
+      return waits.length > 0 ? Math.min(...waits) : false
+    },
+  })
 }
 
 // ---- contracts ----------------------------------------------------------------

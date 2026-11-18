@@ -384,6 +384,10 @@ const insightsOf = (slug) => {
 // President's position (under its real key, which is what the Roster page
 // asks about), so that the President's controls are walked too.
 let presiding = false
+// On a "helper" route (the part after # starts with "helper") the session
+// holds no position at all: it is a member the exam officers named a helper
+// for the registered list of the exam being sat, so that page is walked too.
+let helping = false
 const presidentAssignment = { id: 'a2', status: 'active', position: { id: 'p2', key: 'eb.president', title: 'President', short_title: 'President', level: 'eb', can_assign_tasks: true, committee: null }, term: { id: 't1', label: '2026-27', is_current: true } }
 
 const tables = {
@@ -936,6 +940,28 @@ const rpcs = {
   reinstate_roster_member: { status: 'Associate Member' },
   // The exam for its officers. Only ex-1 has a list and papers.
   exam_registration_list: ({ p_exam }) => (p_exam === 'ex-1' ? examList : []),
+  // An ID taken off the list: nothing comes back.
+  exam_remove_registration: null,
+  // The helpers of the registered list, which the officers name by email. The
+  // exam being sat has two; one more is added, and one taken off.
+  exam_helper_list: ({ p_exam }) =>
+    p_exam === 'ex-1'
+      ? [
+          { profile_id: other, full_name: 'Farida Nasser', email: 'farida.nasser@example.com', created_at: iso(2) },
+          { profile_id: '00000000-0000-4000-8000-000000000003', full_name: '', email: 'registration.desk.volunteer@students.example.edu.eg', created_at: iso(1) },
+        ]
+      : [],
+  exam_add_helper: ({ p_email }) => ({ profile_id: '00000000-0000-4000-8000-000000000004', full_name: 'Youssef Adel', email: String(p_email || '').trim().toLowerCase(), added: true }),
+  exam_remove_helper: null,
+  // What a helper is told of the exams they help with: on a "helper" route the
+  // session is such a person's, and at every other time an officer's, who
+  // helps with none.
+  exam_helper_exams: () =>
+    helping
+      ? sampleExams
+          .filter((e) => e.id === 'ex-1')
+          .map((e) => ({ id: e.id, title: e.title, status: e.status, opens_at: e.opens_at, closes_at: e.closes_at, minutes: e.minutes, term: e.term, registrations: e.exam_registrations[0].count, started: e.exam_attempts[0].count > 0 }))
+      : [],
   exam_results: ({ p_exam }) => ({
     questions: sampleQuestions.filter((q) => q.exam_id === p_exam).length,
     sections: sectionsOf(p_exam),
@@ -1056,6 +1082,9 @@ export const ROUTES = [
   // the draft, where every form is open, and last term's, with nothing left to read
   '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=contracts', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
   '/portal/exam/ex-0?tab=results', '/portal/exam/ex-0?tab=overview',
+  // the exam for a helper of its registered list: the exams they help with,
+  // the list itself, and an exam they were not named for
+  '/portal/exam#helper', '/portal/exam/ex-1#helper', '/portal/exam/ex-2#helper-refused',
   // the exam as a student meets it, in the order of a sitting
   '/exam/sample-sign-in', '/exam/callback?error=access_denied', '/exam/sample-none', '/exam/sample-unreached',
   '/exam/sample-details', '/exam/sample-details#not-listed', '/exam/sample-waiting', '/exam/sample-open', '/exam/sample-open#wrong-code', '/exam/sample-closed',
@@ -1199,6 +1228,7 @@ function narrowed(rows, asked) {
 // every read that page makes.
 export function presideOn(route) {
   presiding = route.split('#')[1]?.startsWith('president') ?? false
+  helping = route.split('#')[1]?.startsWith('helper') ?? false
 }
 
 // Gives a browser context the made-up session and answers every Supabase call
@@ -1281,7 +1311,9 @@ export async function installSample(context, theme) {
       }
     }
     // On a "president" route the session holds the President's position too.
-    const stored = table === 'assignments' && presiding ? [...tables.assignments, presidentAssignment] : tables[table] || []
+    // On a "helper" route it holds no position, and reads no exam table.
+    const kept = helping && (table === 'assignments' || table.startsWith('exam')) ? [] : tables[table] || []
+    const stored = table === 'assignments' && presiding ? [...tables.assignments, presidentAssignment] : kept
     const rows = narrowed(stored, url.searchParams)
     if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${rows.length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range' } })
     if ((req.headers().accept || '').includes('vnd.pgrst.object')) return json(rows[0] ?? {})

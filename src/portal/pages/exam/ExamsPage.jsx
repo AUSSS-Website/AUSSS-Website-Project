@@ -4,7 +4,7 @@ import usePageTitle from '../../../hooks/usePageTitle.js'
 import { useAuth } from '../../../auth/AuthProvider.jsx'
 import { errorText } from '../../../lib/errorText.js'
 import { eventWhen } from '../../../lib/eventTime.js'
-import { useExamMutations, useExams } from '../../examQueries.js'
+import { useExamMutations, useExams, useHelperExams } from '../../examQueries.js'
 import { examPhase, readProblem } from '../../examStats.js'
 import { ErrorText, Field, PageHeader, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
 
@@ -13,6 +13,10 @@ import { ErrorText, Field, PageHeader, Panel, Spinner, inputCls, outlineBtnCls, 
 // here and read its results; the database returns the exams to them and to
 // nobody else, so this page only decides what to show. Students never come
 // here: they sit the exam at its own hidden address.
+//
+// Someone the officers named a helper for an exam's registered list comes
+// here too. They see the exams they help with and nothing else: each opens on
+// its registered list alone (ExamPage.jsx).
 //
 // Also here, for every part of the Exam pages: the chip, a few words and
 // counts, the Refresh button, the ids of an exam's tabs, and the classes that
@@ -78,13 +82,32 @@ export function useIsExamOfficer() {
   return isEB || officerOf('scope') || officerOf('score')
 }
 
-export function ExamGate({ children }) {
-  if (useIsExamOfficer()) return children
+const NO_EXAMS = []
+
+// What this person has to do with the exams: `officer` for the people who set
+// them up, and otherwise `helping`, the exams whose registered list they were
+// named a helper for (as examQueries.js shapes them; empty for nearly
+// everyone). `pending` is true while that is still being asked, and `error` is
+// a read of it that failed.
+export function useExamAccess() {
+  const officer = useIsExamOfficer()
+  const helping = useHelperExams(!officer)
+  return {
+    officer,
+    helping: officer ? NO_EXAMS : helping.data || NO_EXAMS,
+    pending: !officer && helping.isPending,
+    error: officer ? null : helping.error,
+  }
+}
+
+// The refusal, for someone who is neither an exam officer nor a helper.
+export function ExamGate() {
   return (
     <Panel>
       <p className="text-sm text-soft/70">
-        The exchange exam is set up by the SCOPE and SCORE officers and the Executive Board. If you think you should
-        have access, ask the webmaster to check your assignment for this term.
+        The exchange exam is set up by the SCOPE and SCORE officers and the Executive Board, and they name the people
+        who help with an exam’s registered list. If you think you should have access, ask one of them, or ask the
+        webmaster to check your assignment for this term.
       </p>
       <Link to="/portal" className={`${tapLinkCls} mt-4 text-sm font-semibold text-accent hover:text-ink`}>
         &larr; Back to your dashboard
@@ -307,18 +330,81 @@ function ExamList() {
   )
 }
 
+// A helper's row: the exam and how long its list is. The questions and the
+// papers are not theirs to count.
+function HelperExamRow({ exam }) {
+  const standing = examStanding(exam)
+  return (
+    <li>
+      <Link
+        to={`/portal/exam/${exam.id}`}
+        className="group flex flex-wrap items-center gap-3 rounded-xl border border-line/10 bg-sunk/40 p-3 transition-colors hover:border-line/30 active:bg-veil/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical/60"
+      >
+        <span className="min-w-0 flex-1 basis-56">
+          <span className="block break-words text-sm font-semibold text-ink">{exam.title}</span>
+          <span className="mt-0.5 block text-xs text-soft/60">
+            {opensWords(exam)}
+            {' · '}
+            {countOf(exam.registrations, 'student ID')} on the list
+          </span>
+        </span>
+        <span className="flex flex-wrap items-center gap-2">
+          {exam.term?.label && <StatusChip>Term {exam.term.label}</StatusChip>}
+          <StatusChip tone={standing.tone}>{standing.label}</StatusChip>
+          <span aria-hidden="true" className={`${outlineBtnCls} group-hover:bg-veil/10`}>
+            Open the list
+          </span>
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+function HelperExamList({ exams }) {
+  return (
+    <Panel title="Registered lists">
+      <p className="mt-2 text-xs text-soft/55">
+        The exchange officers named you a helper for {exams.length === 1 ? 'this exam' : 'these exams'}. You add
+        student IDs to the registered list and look after it; the rest of the exam stays with the officers.
+      </p>
+      <ul className="mt-4 space-y-2">
+        {exams.map((exam) => (
+          <HelperExamRow key={exam.id} exam={exam} />
+        ))}
+      </ul>
+    </Panel>
+  )
+}
+
 export default function ExamsPage() {
   usePageTitle('Exam')
+  const { officer, helping, pending, error } = useExamAccess()
   return (
     <>
       <PageHeader
         eyebrow="Exchange"
         title="Exam"
-        subtitle="The exchange exam: its questions, the students who may sit it, and their results."
+        subtitle={
+          officer || helping.length === 0
+            ? 'The exchange exam: its questions, the students who may sit it, and their results.'
+            : 'The exchange exam: the students who may sit it.'
+        }
       />
-      <ExamGate>
+      {officer ? (
         <ExamList />
-      </ExamGate>
+      ) : pending ? (
+        <div className="flex justify-center">
+          <Spinner />
+        </div>
+      ) : helping.length > 0 ? (
+        <HelperExamList exams={helping} />
+      ) : error ? (
+        <Panel>
+          <ErrorText>{readProblem('check your access to the exams', error)}</ErrorText>
+        </Panel>
+      ) : (
+        <ExamGate />
+      )}
     </>
   )
 }
