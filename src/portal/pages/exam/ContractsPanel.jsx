@@ -139,7 +139,9 @@ function AddPanel({ exam }) {
       setError(errorText(err, 'The contracts could not be added.'))
     }
   }
-  const send = async (list) => setNote(addedContracts(await add.mutateAsync(checkContractList(list))))
+  // Lines that are the same contract were counted together when the list was
+  // read; the note says so when that made the list shorter.
+  const send = async (list) => setNote(addedContracts(await add.mutateAsync(checkContractList(list)), list.lines))
 
   const addOne = (e) => {
     e.preventDefault()
@@ -202,7 +204,7 @@ function AddPanel({ exam }) {
         <Field
           label="Or paste several"
           htmlFor="exam-contracts-paste"
-          hint="One on each line: programme, class, country, then how many contracts there are of it and a note. The number and the note can be left out. Rows copied from a spreadsheet work as they are, with those five columns."
+          hint="One on each line: programme, class, country, then how many contracts there are of it and a note. The number and the note can be left out. Rows copied from a spreadsheet work as they are, with those five columns. Lines that are the same contract (the same programme, class, country and note) are counted together as one contract with that many of it."
         >
           <textarea
             id="exam-contracts-paste"

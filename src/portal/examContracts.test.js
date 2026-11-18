@@ -19,6 +19,7 @@ import {
   problemSentences,
   programmeId,
   studentSections,
+  compactContracts,
 } from './examContracts.js'
 
 const c = (id, programme, cls, country, note = '') => ({ id, programme, class: cls, country, note })
@@ -69,6 +70,7 @@ describe('a pasted list', () => {
         { programme: 'score', class: 'B', country: 'Czech Republic', places: 1, note: '' },
       ],
       problems: [],
+      lines: 2,
     })
   })
   it('reads typed lines at their commas, and keeps a note whole', () => {
@@ -97,8 +99,8 @@ describe('a pasted list', () => {
     ])
   })
   it('reads nothing as no contracts', () => {
-    expect(contractsFromText('')).toEqual({ rows: [], problems: [] })
-    expect(contractsFromGrid(null)).toEqual({ rows: [], problems: [] })
+    expect(contractsFromText('')).toEqual({ rows: [], problems: [], lines: 0 })
+    expect(contractsFromGrid(null)).toEqual({ rows: [], problems: [], lines: 0 })
   })
 })
 
@@ -250,5 +252,59 @@ describe('the export', () => {
     expect(labels).not.toContain('Sections')
     expect(labels.some((l) => l.startsWith('SCORE'))).toBe(false)
     expect(read(preferenceColumns(scopeOnly, false), rows[0])).toMatchObject({ Grade: 70, Rank: 3 })
+  })
+})
+
+describe('the same contract on several lines', () => {
+  it('counts them together as one contract, at the first one’s place', () => {
+    const read = contractsFromGrid([
+      ['scope', 'A', 'Spain'],
+      ['score', 'B', 'Poland', 'Warsaw'],
+      ['SCOPE', 'a', ' spain '],
+      ['scope', 'A', 'Spain', '3'],
+      ['score', 'B', 'Poland', 'warsaw'],
+      ['scope', 'A', 'Italy'],
+    ])
+    expect(read.problems).toEqual([])
+    expect(read.lines).toBe(6)
+    expect(read.rows).toEqual([
+      { programme: 'scope', class: 'A', country: 'Spain', places: 5, note: '' },
+      { programme: 'score', class: 'B', country: 'Poland', places: 2, note: 'Warsaw' },
+      { programme: 'scope', class: 'A', country: 'Italy', places: 1, note: '' },
+    ])
+  })
+
+  it('keeps apart what differs in programme, class, country or note', () => {
+    const rows = [
+      { programme: 'scope', class: 'A', country: 'Spain', places: 1, note: '' },
+      { programme: 'scope', class: 'A', country: 'Spain', places: 1, note: 'Madrid' },
+      { programme: 'scope', class: 'A', country: 'Spain', places: 1, note: 'Seville' },
+      { programme: 'scope', class: 'B', country: 'Spain', places: 1, note: '' },
+      { programme: 'score', class: 'A', country: 'Spain', places: 1, note: '' },
+    ]
+    expect(compactContracts(rows)).toEqual(rows)
+    expect(compactContracts(null)).toEqual([])
+  })
+
+  it('leaves the list it was given as it was', () => {
+    const rows = [
+      { programme: 'scope', class: 'A', country: 'Spain', places: 1, note: '' },
+      { programme: 'scope', class: 'A', country: 'Spain', places: 2, note: '' },
+    ]
+    expect(compactContracts(rows)).toEqual([{ programme: 'scope', class: 'A', country: 'Spain', places: 3, note: '' }])
+    expect(rows[0].places).toBe(1)
+  })
+
+  it('refuses a contract that comes to more than 999', () => {
+    const read = contractsFromGrid([['scope', 'A', 'Spain', '600'], ['scope', 'A', 'Spain', '400']])
+    expect(read.rows[0].places).toBe(1000)
+    expect(() => checkContractList(read)).toThrow('The lines for Spain (SCOPE, Class A) come to 1000 contracts. A contract has between 1 and 999 places.')
+  })
+
+  it('says how many lines became how many contracts', () => {
+    expect(addedContracts(3, 6)).toBe('Added 3 contracts from 6 lines: lines that were the same contract were counted together.')
+    expect(addedContracts(1, 2)).toBe('Added 1 contract from 2 lines: lines that were the same contract were counted together.')
+    expect(addedContracts(3, 3)).toBe('Added 3 contracts.')
+    expect(addedContracts(3)).toBe('Added 3 contracts.')
   })
 })
