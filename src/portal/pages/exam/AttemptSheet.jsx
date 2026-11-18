@@ -4,6 +4,8 @@ import { errorText } from '../../../lib/errorText.js'
 import { eventWhen } from '../../../lib/eventTime.js'
 import ExportButtons from '../../ExportButtons.jsx'
 import { examPictureUrl } from '../../examQueries.js'
+import { CONTRACT_CLASSES, CONTRACT_PROGRAMMES, contractLabel, picksByClass } from '../../examContracts.js'
+import { useExamContracts, usePreferenceList } from '../../examQueries.js'
 import { useDeleteAttempt, useExamSheet } from '../../examResultQueries.js'
 import {
   OUTCOME_LABEL,
@@ -157,6 +159,59 @@ function QuestionRow({ row, passage = null }) {
 
 // `rank` is the person's place in the ranking when the ranking is loaded (the
 // sheet itself does not carry it), and `tied` says another paper shares it.
+// The contracts this student chose before they started, by programme and
+// class, in their order. Nothing is shown for an exam that has no contracts.
+// A programme the student chose nothing in says so: they left its section out
+// before the start, or added it during the exam.
+function Preferences({ examId, attemptId }) {
+  const contracts = useExamContracts(examId)
+  const students = usePreferenceList(examId)
+  const all = Array.isArray(contracts.data) ? contracts.data : []
+  if (all.length === 0) return null
+  const student = (Array.isArray(students.data) ? students.data : []).find((s) => s.attempt_id === attemptId)
+  const mine = picksByClass(all, student?.picks)
+  return (
+    <Panel title="Contract preferences">
+      {students.isPending ? (
+        <div className="mt-4 flex justify-center">
+          <Spinner />
+        </div>
+      ) : !students.data ? (
+        <div className="mt-4">
+          <ErrorText>{readProblem('load the preferences', students.error)}</ErrorText>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-6 sm:grid-cols-2">
+          {CONTRACT_PROGRAMMES.filter((p) => all.some((c) => c.programme === p.id)).map((p) => {
+            const classes = CONTRACT_CLASSES.filter((cls) => mine[p.id][cls].length > 0)
+            return (
+              <section key={p.id} className="min-w-0">
+                <h3 className="text-sm font-semibold text-ink">{p.name}</h3>
+                {classes.length === 0 ? (
+                  <p className="mt-2 text-sm text-soft/60">No contract chosen.</p>
+                ) : (
+                  classes.map((cls) => (
+                    <div key={cls} className="mt-3">
+                      <h4 className="text-2xs font-semibold uppercase tracking-[0.12em] text-soft/55">Class {cls}</h4>
+                      <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-ink">
+                        {mine[p.id][cls].map((contract) => (
+                          <li key={contract.id} className="break-words">
+                            {contractLabel(contract)}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))
+                )}
+              </section>
+            )
+          })}
+        </div>
+      )}
+    </Panel>
+  )
+}
+
 // `programme` is the programme whose ranking the paper was opened from, in an
 // exam with two optional sections: the rank is the paper's place in that one.
 // `backTo` is the ranking's address; `onDeleted` runs once the paper is gone.
@@ -301,6 +356,8 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
           {when && <span>{when} (Cairo time)</span>}
         </p>
       </Panel>
+
+      <Preferences examId={exam.id} attemptId={attemptId} />
 
       <Panel title="Answers">
         <p className="mt-2 text-xs text-soft/55">

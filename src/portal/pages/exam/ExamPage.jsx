@@ -18,13 +18,14 @@ import {
 } from './ExamsPage.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import QuestionsPanel from './QuestionsPanel.jsx'
+import ContractsPanel from './ContractsPanel.jsx'
 import RegisteredPanel from './RegisteredPanel.jsx'
 import ResultsPanel from './ResultsPanel.jsx'
 import OverviewPanel from './OverviewPanel.jsx'
 
-// /portal/exam/:id. One exam in five parts, chosen by ?tab=: setting it up
-// (set-up, questions, the registered list) and reading it (results,
-// overview). Every part takes the same `exam`: the row of public.exams with
+// /portal/exam/:id. One exam in six parts, chosen by ?tab=: setting it up
+// (set-up, questions, the contracts, the registered list) and reading it
+// (results, overview). Every part takes the same `exam`: the row of public.exams with
 // its term, its counts and `started` (examQueries.js). The database decides
 // who may do what; this page asks it for the exam and shows a polite refusal
 // when the answer is nothing.
@@ -32,18 +33,20 @@ import OverviewPanel from './OverviewPanel.jsx'
 const TABS = [
   ['setup', 'Set-up'],
   ['questions', 'Questions'],
+  ['contracts', 'Contracts'],
   ['list', 'Registered list'],
   ['results', 'Results'],
   ['overview', 'Overview'],
 ]
 
-// The three parts with forms stay on the page (hidden) once opened, so a
+// The four parts with forms stay on the page (hidden) once opened, so a
 // half-written question or an unsaved time survives a look at another tab.
 // The two that read results are shown only while their tab is open: they ask
 // the database again every 30 seconds during a sitting.
 const KEPT = [
   ['setup', SetupPanel],
   ['questions', QuestionsPanel],
+  ['contracts', ContractsPanel],
   ['list', RegisteredPanel],
 ]
 

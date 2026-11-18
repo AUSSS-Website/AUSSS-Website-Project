@@ -727,7 +727,48 @@ const door = (phase, more = {}) => ({
 const paperStarted = minutesAgo(20)
 const paperDeadline = minutesAgo(-100)
 const attemptOf = (word, more = {}) => ({ id: `paper-${word}`, started_at: paperStarted, deadline_at: paperDeadline, submitted_at: null, over: false, sits_scope: true, sits_score: word !== 'sample-one-section', ...more })
+// The exam's contracts, as the Contracts tab selects them (ex-1) and as
+// rpc/exam_preferences hands them to a student: three classes in each
+// programme, one with a long name and note, some with several places.
+const sampleContracts = [
+  ['scope', 'A', 'Spain', 3, 'Madrid, in July or August'],
+  ['scope', 'A', 'Italy', 2, ''],
+  ['scope', 'A', 'Germany', 1, 'German at level B1 is asked for'],
+  ['scope', 'B', 'Greece', 2, 'Athens'],
+  ['scope', 'B', 'Bosnia and Herzegovina, with a rather long name for a phone', 1, 'A note that is long enough to wrap onto a second line on a narrow screen'],
+  ['scope', 'B', 'Portugal', 1, ''],
+  ['scope', 'C', 'Tunisia', 4, ''],
+  ['scope', 'C', 'Jordan', 2, ''],
+  ['scope', 'C', 'Morocco', 2, 'Casablanca'],
+  ['scope', 'C', 'Lebanon', 1, ''],
+  ['score', 'A', 'Japan', 1, 'Laboratory work, eight weeks'],
+  ['score', 'A', 'Czechia', 2, ''],
+  ['score', 'B', 'Poland', 2, ''],
+  ['score', 'B', 'Serbia', 1, ''],
+  ['score', 'C', 'Turkey', 3, ''],
+  ['score', 'C', 'Romania', 2, ''],
+].map(([programme, cls, country, places, note], i) => ({ id: `ct-${String(i + 1).padStart(2, '0')}`, exam_id: 'ex-1', programme, class: cls, country, places, note, sort: i + 1, created_at: iso(6) }))
+// The table is made further up, before the contracts are.
+tables.exam_contracts = sampleContracts
+const contractId = (country) => sampleContracts.find((c) => c.country.startsWith(country)).id
+// What the students of ex-1 chose: one paper sits both programmes, one the
+// research one only and one the professional one only, and one student has
+// saved and not started.
+const samplePreferences = [
+  { paper: 'at-001', picks: ['Italy', 'Spain', 'Greece', 'Tunisia', 'Morocco', 'Jordan', 'Japan', 'Poland', 'Turkey'], scope: true, score: true },
+  { paper: 'at-003', picks: ['Czechia', 'Japan', 'Serbia', 'Romania'], scope: false, score: true },
+  { paper: 'at-005', picks: ['Spain', 'Germany', 'Bosnia', 'Greece', 'Lebanon'], scope: true, score: false },
+]
+// A student who has ticked both sections and chosen some contracts.
+const chosenByStudent = ['Italy', 'Spain', 'Greece', 'Tunisia', 'Morocco', 'Japan', 'Poland'].map(contractId)
+const withContracts = (phase, preferences, more = {}) => {
+  const d = door(phase, more)
+  return { ...d, exam: { ...d.exam, contracts: { scope: 10, score: 6 } }, preferences }
+}
 const doors = {
+  // an exam that has contracts: nothing chosen yet, then chosen and saved
+  'sample-contracts': () => withContracts('open', { saved: false, complete: false, scope: null, score: null, picks: 0 }),
+  'sample-chosen': () => withContracts('open', { saved: true, complete: true, scope: true, score: true, picks: chosenByStudent.length }),
   // signed in for the first time: Google gave a name, the rest is to fill in
   'sample-details': () => door('open', { me: { ...student, full_name: 'Sample Student', faculty_year: '', phone: '', student_id: '' }, registration: 'none' }),
   // on the list: before the exam opens, while a student can start, after closing
@@ -890,6 +931,34 @@ const rpcs = {
   }),
   exam_question_stats: ({ p_exam }) => statsOf(p_exam, p_exam === 'ex-1' ? HALL.papers : 0),
   exam_sheet: ({ p_attempt }) => sheetOf(p_attempt),
+  exam_preference_list: ({ p_exam }) =>
+    p_exam !== 'ex-1'
+      ? []
+      : [
+          ...samplePreferences.map(({ paper: id, picks, scope, score }) => {
+            const paper = examPapers.find((x) => x.attempt_id === id)
+            return {
+              registration_id: `rg-${id}`, student_id: paper.student_id, profile_id: paper.profile_id, full_name: paper.full_name, email: paper.email,
+              phone: paper.phone, faculty_year: paper.faculty_year, saved_at: iso(2), chose_scope: scope, chose_score: score,
+              attempt_id: paper.attempt_id, sits_scope: paper.sits_scope, sits_score: paper.sits_score, picks: picks.map(contractId),
+            }
+          }),
+          { registration_id: 'rg-new', student_id: '2023-0999', profile_id: 'pf-new', full_name: 'Sample Student Not Started', email: 'not-started@example.com', phone: '01000000099', faculty_year: 'Year 3', saved_at: iso(0.2), chose_scope: true, chose_score: false, attempt_id: null, sits_scope: null, sits_score: null, picks: ['Spain', 'Tunisia'].map(contractId) },
+        ],
+  import_exam_contracts: ({ p_rows }) => (Array.isArray(p_rows) ? p_rows.length : 0),
+  // The contracts for a student, and what they have saved so far.
+  exam_preferences: ({ p_word }) => {
+    const saved = p_word === 'sample-chosen'
+    return {
+      contracts: sampleContracts.map(({ id, programme, class: cls, country, places, note }) => ({ id, programme, class: cls, country, places, note })),
+      picks: saved ? chosenByStudent : [],
+      scope: saved ? true : null,
+      score: saved ? true : null,
+      saved,
+      started: false,
+    }
+  },
+  exam_save_preferences: ({ p_picks, p_scope, p_score }) => ({ saved: true, complete: true, scope: p_scope ?? null, score: p_score ?? null, picks: Array.isArray(p_picks) ? p_picks.length : 0 }),
   // The exam for a student, by the word in the address.
   exam_door: ({ p_word }) => (p_word === 'sample-unreached' ? DROPPED : doors[p_word]?.() ?? { exam: null }),
   exam_paper: ({ p_word }) => paperOf(p_word),
@@ -969,6 +1038,7 @@ export const ROUTES = [
   // the exchange exam on the portal: the list, the exam being sat in its five
   // parts, a question's right answer being corrected, and one student's paper
   '/portal/exam', '/portal/exam/ex-1?tab=setup', '/portal/exam/ex-1?tab=questions', '/portal/exam/ex-1?tab=questions#correct',
+  '/portal/exam/ex-1?tab=contracts', '/portal/exam/ex-1?tab=contracts#change',
   '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&programme=score', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=results&programme=score&paper=at-002', '/portal/exam/ex-1?tab=overview',
   // the draft, where every form is open, and last term's, with nothing left to read
   '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
@@ -976,6 +1046,7 @@ export const ROUTES = [
   // the exam as a student meets it, in the order of a sitting
   '/exam/sample-sign-in', '/exam/callback?error=access_denied', '/exam/sample-none', '/exam/sample-unreached',
   '/exam/sample-details', '/exam/sample-details#not-listed', '/exam/sample-waiting', '/exam/sample-open', '/exam/sample-open#wrong-code', '/exam/sample-closed',
+  '/exam/sample-contracts', '/exam/sample-contracts#choosing', '/exam/sample-chosen', '/exam/sample-chosen#change',
   '/exam/sample-sitting', '/exam/sample-sitting#p3', '/exam/sample-sitting#p9', '/exam/sample-sitting#review', '/exam/sample-one-section#review', '/exam/sample-hand-in#review', '/exam/sample-elsewhere',
   '/exam/sample-time-up', '/exam/sample-received', '/exam/sample-timed-out',
 ]
@@ -1054,6 +1125,18 @@ export const acts = {
     await page.getByRole('button', { name: 'Undo', exact: true }).waitFor()
   },
   '/portal/exam/ex-1?tab=questions#correct': (page) => page.getByRole('button', { name: 'Correct the answer to question 3', exact: true }).click(),
+  // The form that changes the first contract of the list.
+  '/portal/exam/ex-1?tab=contracts#change': (page) => page.getByRole('button', { name: 'Change Spain', exact: true }).click(),
+  // Both sections ticked, two of Class A chosen (so the third is switched off) and three of Class C.
+  '/exam/sample-contracts#choosing': async (page) => {
+    await page.getByRole('checkbox', { name: /^Professional exchange/ }).check()
+    await page.getByRole('checkbox', { name: /^Research exchange/ }).check()
+    for (const name of ['Italy', 'Spain', 'Tunisia', 'Morocco', 'Jordan', 'Japan']) {
+      await page.getByRole('button', { name: new RegExp(`^${name}`), pressed: false }).click()
+    }
+  },
+  // The saved preferences, opened again from the start card.
+  '/exam/sample-chosen#change': (page) => page.getByRole('button', { name: 'Change my sections and contracts', exact: true }).click(),
   '/portal/exam/ex-2?tab=questions#edit': (page) => page.getByRole('button', { name: 'Edit question 2', exact: true }).click(),
   '/exam/sample-details#not-listed': async (page) => {
     await page.selectOption('#exam-year', 'Year 4')

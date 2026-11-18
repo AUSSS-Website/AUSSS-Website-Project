@@ -2,51 +2,10 @@ import { useState } from 'react'
 import { Field, authInputCls } from '../../portal/portalUi.jsx'
 import { examStart } from '../examApi.js'
 import { hasChoice, opensLine, sectionName, startLine, startProblem } from '../examFlow.js'
-import { ExamCard, Problem, focusCls, tapLinkCls, tapPrimaryCls } from '../examUi.jsx'
+import { ExamCard, Problem, tapLinkCls, tapPrimaryCls } from '../examUi.jsx'
+import { chosenSections, hasContracts, preferencesLine } from '../preferences.js'
 import { BLOCKS } from '../sitting.js'
-
-const questionsIn = (n) => `${n} ${n === 1 ? 'question' : 'questions'}`
-
-// The two optional sections, as tick boxes: whole rows, 48px tall, like the
-// options of a question. Nothing is ticked to begin with, so the choice is
-// the taker's own and never a default they did not see.
-function Sections({ exam, sits, onChange, disabled }) {
-  return (
-    <fieldset className="mb-6 min-w-0">
-      <legend className="w-full text-sm font-semibold text-ink">Which sections will you answer?</legend>
-      <p id="exam-sections-means" className="mt-1 text-sm text-soft/70">
-        Everyone answers the {questionsIn(Number(exam.sections.shared) || 0)} that are shared. Choose one section or both. You can change
-        this during the exam.
-      </p>
-      <div className="mt-3 space-y-2">
-        {BLOCKS.map((block) => {
-          const on = sits[block]
-          return (
-            <label
-              key={block}
-              className={`relative flex min-h-[48px] items-start gap-3 rounded-xl border px-3 py-3 ${
-                disabled ? 'opacity-60' : 'cursor-pointer'
-              } ${on ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-line/15 bg-card'}`}
-            >
-              <input
-                type="checkbox"
-                checked={on}
-                disabled={disabled}
-                aria-describedby="exam-sections-means"
-                onChange={(e) => onChange({ ...sits, [block]: e.target.checked })}
-                className={`mt-px h-6 w-6 shrink-0 rounded-md border-2 border-soft/60 accent-cta ${focusCls}`}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block text-base font-medium leading-snug text-ink">{sectionName(block)}</span>
-                <span className="mt-0.5 block text-sm text-soft/70">{questionsIn(Number(exam.sections[block]) || 0)}</span>
-              </span>
-            </label>
-          )
-        })}
-      </div>
-    </fieldset>
-  )
-}
+import SectionChoice from './SectionChoice.jsx'
 
 // The account holds an ID on the exam's list. What comes next depends on the
 // exam's phase: before it opens (the door is asked again as the time comes),
@@ -57,15 +16,26 @@ function Sections({ exam, sits, onChange, disabled }) {
 // them the taker will answer, above the start code. At least one: the button
 // stays off until one is ticked, and says so.
 //
-//   exam       the door's { title, opens_at, minutes, questions, sections, phase }
-//   onStarted  the database has made the paper; called with the paper's id
-//   onBack     the database's answer is one the door explains: ask it again
-export default function OnTheListScreen({ word, exam, me, notice = '', onEdit, onSignOut, onStarted, onBack }) {
+// An exam that has contracts (hasContracts in preferences.js) has asked both
+// things already, on the screen before this one: the sections were ticked with
+// the contract preferences, and the paper sits those. This card then says what
+// was chosen, with a way back to change it, and asks for the start code only.
+//
+//   exam         the door's { title, opens_at, minutes, questions, sections,
+//                contracts, phase }
+//   preferences  the door's { saved, complete, scope, score, picks }
+//   onChoose     opens the contract preferences again
+//   onStarted    the database has made the paper; called with the paper's id
+//   onBack       the database's answer is one the door explains: ask it again
+export default function OnTheListScreen({ word, exam, me, preferences = null, notice = '', onEdit, onChoose, onSignOut, onStarted, onBack }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
-  const [sits, setSits] = useState({ scope: false, score: false })
+  const [ticked, setTicked] = useState({ scope: false, score: false })
   const choosing = hasChoice(exam)
+  // With contracts, the sections are the ones saved with the preferences.
+  const settled = hasContracts(exam)
+  const sits = settled ? chosenSections(preferences) : ticked
   const chosen = !choosing || sits.scope || sits.score
 
   const start = async (e) => {
@@ -74,7 +44,7 @@ export default function OnTheListScreen({ word, exam, me, notice = '', onEdit, o
     setBusy(true)
     setProblem('')
     try {
-      const answer = await examStart(word, code, choosing ? sits : null)
+      const answer = await examStart(word, code, choosing && !settled ? sits : null)
       if (answer?.ok) {
         onStarted(answer.attempt_id)
         return
@@ -107,16 +77,34 @@ export default function OnTheListScreen({ word, exam, me, notice = '', onEdit, o
         </button>
       </p>
 
+      {settled && exam?.phase !== 'closed' && (
+        <div className="mt-4 border-t border-line/10 pt-5">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Your contract preferences</h2>
+          {choosing && chosen && (
+            <p className="mt-2 text-sm text-ink">
+              You will answer {BLOCKS.filter((block) => sits[block]).map(sectionName).join(' and ')}.
+            </p>
+          )}
+          <p className="mt-2 text-sm text-soft/70">{preferencesLine(preferences)}</p>
+          <p className="mt-1 text-center">
+            <button type="button" onClick={onChoose} disabled={busy} className={tapLinkCls}>
+              {choosing ? 'Change my sections and contracts' : 'Change my contracts'}
+            </button>
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 border-t border-line/10 pt-6">
         {exam?.phase === 'open' ? (
           <form onSubmit={start} noValidate>
-            {choosing && (
-              <Sections
+            {choosing && !settled && (
+              <SectionChoice
                 exam={exam}
                 sits={sits}
                 disabled={busy}
+                means="Choose one section or both. You can change this during the exam."
                 onChange={(next) => {
-                  setSits(next)
+                  setTicked(next)
                   setProblem('')
                 }}
               />
@@ -157,7 +145,7 @@ export default function OnTheListScreen({ word, exam, me, notice = '', onEdit, o
             <p className="text-sm font-semibold text-ink">{opensLine(exam)}</p>
             <p className="mt-2 text-sm text-soft/70">
               Come back to this page then. You will need the start code that is read out in the hall.
-              {choosing && ' You will also choose which sections to answer: professional exchange (SCOPE), research exchange (SCORE), or both.'}
+              {choosing && !settled && ' You will also choose which sections to answer: professional exchange (SCOPE), research exchange (SCORE), or both.'}
             </p>
             <Problem>{notice}</Problem>
           </>

@@ -11,12 +11,14 @@ import { forgetHeldPapers, hasHeldPaper } from './useSitting.js'
 import DetailsScreen from './screens/DetailsScreen.jsx'
 import NothingHereScreen from './screens/NothingHereScreen.jsx'
 import OnTheListScreen from './screens/OnTheListScreen.jsx'
+import PreferencesScreen from './screens/PreferencesScreen.jsx'
 import SignInScreen from './screens/SignInScreen.jsx'
 import UnreachedScreen from './screens/UnreachedScreen.jsx'
 
 // /exam/<word>: the whole of a taker's flow at one address. Who is signed in
 // and what rpc/exam_door answers decide the screen (screenFor in examFlow.js):
-// sign in, nothing here, the details form, on the list, then the sitting.
+// sign in, nothing here, the details form, the contract preferences (in an
+// exam that has contracts), on the list, then the sitting.
 // The exam keeps its own session state here; it has no AuthProvider and no
 // react-query, so nothing of the portal loads for a taker.
 
@@ -126,6 +128,8 @@ function Door({ word }) {
   // paper and the taker starts again, the copy on the phone is of the old one.
   const [startedId, setStartedId] = useState(null)
   const [editing, setEditing] = useState(false)
+  // "Change my contracts" is open, over preferences that are already saved.
+  const [choosing, setChoosing] = useState(false)
   // The sentence of a sitting the database no longer knows.
   const [gone, setGone] = useState('')
   // Bad news from this page itself (a sign-out that did not go through).
@@ -180,18 +184,19 @@ function Door({ word }) {
     setStarted(held)
     setStartedId(null)
     setEditing(false)
+    setChoosing(false)
     setGone('')
     setNotice('')
     setDoor({ status: 'asking' })
     if (!held) ask()
   }, [ask, word, userId])
 
-  const screen = screenFor({ user, door, started, editing, gone })
+  const screen = screenFor({ user, door, started, editing, choosing, gone })
   const data = door.status === 'answered' ? door.data : null
   const exam = data?.exam || null
 
   useEffect(() => {
-    if (screen === 'sitting' || screen === 'listed') was.current.inside = true
+    if (screen === 'sitting' || screen === 'listed' || screen === 'preferences') was.current.inside = true
   }, [screen])
 
   // What is printed across the taker's paper. The door knows their student ID;
@@ -312,6 +317,21 @@ function Door({ word }) {
     [ask],
   )
 
+  // The preferences were saved: the door's copy takes the database's answer at
+  // once, so the start card is next without a wait, and the door is asked
+  // again behind it (the exam may have opened while the taker was choosing).
+  const chose = useCallback(
+    (answer) => {
+      setDoor((now) =>
+        now.status === 'answered' && now.data && answer ? { ...now, data: { ...now.data, preferences: answer } } : now,
+      )
+      setChoosing(false)
+      setGone('')
+      ask({ quiet: true })
+    },
+    [ask],
+  )
+
   if (screen === 'sitting') {
     return (
       <ExamSitting
@@ -365,13 +385,27 @@ function Door({ word }) {
           onSignOut={leave}
         />
       )}
+      {screen === 'preferences' && (
+        <PreferencesScreen
+          word={word}
+          exam={exam}
+          preferences={data.preferences}
+          notice={notice || gone}
+          onSaved={chose}
+          // Only preferences that already stand can be left as they are.
+          onCancel={choosing && data.preferences?.complete === true ? () => setChoosing(false) : undefined}
+          onSignOut={leave}
+        />
+      )}
       {screen === 'listed' && (
         <OnTheListScreen
           word={word}
           exam={exam}
           me={data.me}
+          preferences={data.preferences}
           notice={notice || gone}
           onEdit={() => setEditing(true)}
+          onChoose={() => setChoosing(true)}
           onSignOut={leave}
           onStarted={(id) => {
             setGone('')

@@ -1,5 +1,6 @@
 import { eventWhen } from '../lib/eventTime.js'
 import { STUDY_YEARS } from '../portal/constants.js'
+import { hasContracts } from './preferences.js'
 import { clampPage, pageCount, pageOf, pageOfQuestion, toMs } from './sitting.js'
 
 // What a taker's pages show and say, worked out from what the database
@@ -58,16 +59,20 @@ export function detailField(message) {
 //            rpc/exam_door's answer, or { status: 'failed', error }
 //   started  the taker has started here, or this phone holds their paper
 //   editing  "Edit my details" is open
+//   choosing "Change my preferences" is open
 //   gone     the sentence of a sitting the database no longer knows
 // It answers:
-//   wait       nothing to show yet
-//   sign-in    the sign-in card
-//   unreached  the database did not answer, or cannot make sense of this sitting
-//   nothing    no exam at this address
-//   sitting    the paper, and what follows it (time up, received)
-//   details    the form with the name, year, phone and student ID
-//   listed     on the list: before the exam opens, the start code, or closed
-export function screenFor({ user, door, started = false, editing = false, gone = '' }) {
+//   wait         nothing to show yet
+//   sign-in      the sign-in card
+//   unreached    the database did not answer, or cannot make sense of this sitting
+//   nothing      no exam at this address
+//   sitting      the paper, and what follows it (time up, received)
+//   details      the form with the name, year, phone and student ID
+//   preferences  the contracts to choose from, in an exam that has some: shown
+//                until the choice is what the exam asks for, and again when the
+//                taker opens it. Not once the exam has closed: nobody else starts.
+//   listed       on the list: before the exam opens, the start code, or closed
+export function screenFor({ user, door, started = false, editing = false, choosing = false, gone = '' }) {
   if (user === undefined) return 'wait'
   if (user === null) return 'sign-in'
   if (started) return 'sitting'
@@ -83,6 +88,9 @@ export function screenFor({ user, door, started = false, editing = false, gone =
   // A paper the database lists but will not hand over: say so, do not ask in a loop.
   if (data.attempt) return gone ? 'unreached' : 'sitting'
   if (data.registration !== 'held' || missingDetail(data.me) || editing) return 'details'
+  if (hasContracts(data.exam) && data.exam.phase !== 'closed' && (choosing || data.preferences?.complete !== true)) {
+    return 'preferences'
+  }
   return 'listed'
 }
 
@@ -165,7 +173,7 @@ const LOCKED = 'Too many wrong tries. Wait ten minutes, or ask an invigilator.'
 
 // What to say when rpc/exam_start said no. '' for the answers the door
 // explains better than a sentence here (not_open, closed, details,
-// not_registered): ask the door again.
+// not_registered, preferences): ask the door again.
 export function startProblem(result) {
   if (result?.reason === 'code') {
     const left = Number(result.tries_left)

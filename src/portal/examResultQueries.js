@@ -43,6 +43,18 @@ export function useExamResults(examId, exam = null) {
   })
 }
 
+// The same ranking for a page that only reads it now and then (the Contracts
+// part puts each student's mark and rank beside their preferences): it shares
+// the ranking's copy and never asks again by itself, so a part that stays on
+// the page while another is open sets off no reads.
+export function useExamRanking(examId) {
+  return useQuery({
+    queryKey: examResultKeys.results(examId),
+    queryFn: async () => unwrap(await supabase.rpc('exam_results', { p_exam: examId })),
+    enabled: Boolean(examId),
+  })
+}
+
 // How many times each taker left the exam's page while their paper was
 // running, and how many times they pressed the Print Screen key
 // (exam_attempts.times_left and times_printed, migration

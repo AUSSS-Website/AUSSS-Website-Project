@@ -1,9 +1,10 @@
 import { supabase } from '../lib/supabase.js'
 import { examWord, failureKind } from './sitting.js'
 
-// The takers' side of the exam as the database offers it: the five functions a
-// taker's account may call (supabase/migrations/20261010120001_exchange_exam.sql),
-// the session, and the word to come back to after signing in. The exam's pages
+// The takers' side of the exam as the database offers it: the functions a
+// taker's account may call (supabase/migrations/20261010120001_exchange_exam.sql
+// and, for the contract preferences, 20261118120001_exam_contracts.sql), the
+// session, and the word to come back to after signing in. The exam's pages
 // reach the database only through this file; they hold no AuthProvider and no
 // react-query.
 
@@ -53,15 +54,18 @@ async function call(fn, args, timeout = TIMEOUT_MS) {
   throw new ExamError(kind, kind === 'signed_out' ? SIGNED_OUT : UNREACHED, code)
 }
 
-// ---- the five functions -----------------------------------------------------------
+// ---- the functions ----------------------------------------------------------------
 // `word` is the last part of the address. Each resolves to the function's JSON
 // and rejects with an ExamError.
 
 // What to show: { exam: null }, or { exam: { title, opens_at, closes_at,
-// minutes, questions, sections: { shared, scope, score, choice }, phase:
-// 'before' | 'open' | 'closed' }, me: { full_name, faculty_year, phone,
-// student_id, email }, registration: 'held' | 'none', attempt: null | { id,
-// started_at, deadline_at, submitted_at, over, sits_scope, sits_score }, now }.
+// minutes, questions, sections: { shared, scope, score, choice }, contracts:
+// { scope, score }, phase: 'before' | 'open' | 'closed' }, me: { full_name,
+// faculty_year, phone, student_id, email }, registration: 'held' | 'none',
+// preferences: null | { saved, complete, scope, score, picks }, attempt: null |
+// { id, started_at, deadline_at, submitted_at, over, sits_scope, sits_score },
+// now }. `contracts` and `preferences` are absent from a database that has no
+// contracts yet.
 export function examDoor(word) {
   return call('exam_door', { p_word: word })
 }
@@ -84,10 +88,29 @@ export function examSaveDetails(word, { fullName, facultyYear, phone, studentId 
 // a database from before the sections is asked for nothing it does not know.
 const blocks = (sits) => (sits ? { p_scope: sits.scope === true, p_score: sits.score === true } : {})
 
+// The exam's contracts and the taker's own preferences among them, for an
+// account that holds an ID on the list: { contracts: [{ id, programme, class,
+// country, places, note }], picks: [contract id, ...] in the taker's order, scope,
+// score, saved, started }.
+export function examPreferences(word) {
+  return call('exam_preferences', { p_word: word })
+}
+
+// Saves the taker's preferences, whole: `picks` is the list of contract ids in
+// their order and takes the place of what was saved; `sits` is the sections
+// they will answer, { scope, score }, in an exam that has the choice. Resolves
+// to the door's `preferences`. A list the rules do not allow is an ExamError of
+// kind 'refused', in the database's own sentence.
+export function examSavePreferences(word, picks, sits = null) {
+  return call('exam_save_preferences', { p_word: word, p_picks: picks, ...blocks(sits) })
+}
+
 // Starts the exam with the code read out in the hall: { ok: true, attempt_id },
 // or { ok: false, reason: 'not_registered' | 'details' | 'not_open' | 'closed' |
-// 'not_ready' | 'sections' | 'locked' | 'code', tries_left }. `sits` is the
-// taker's choice of blocks, { scope, score }, in an exam that has one.
+// 'not_ready' | 'preferences' | 'sections' | 'locked' | 'code', tries_left }.
+// `sits` is the taker's choice of blocks, { scope, score }, in an exam that has
+// one and no contracts; with contracts the database takes the choice saved with
+// the preferences.
 export function examStart(word, code, sits = null) {
   return call('exam_start', { p_word: word, p_code: code, ...blocks(sits) })
 }
