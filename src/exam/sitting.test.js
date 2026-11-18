@@ -48,6 +48,9 @@ import {
   visibleQuestions,
   unansweredNumbers,
   waitAgain,
+  optionLetter,
+  reviewGroups,
+  topicOf,
 } from './sitting.js'
 
 // A paper of n questions, q1 to qn, four options each.
@@ -99,14 +102,14 @@ describe('pages of ten', () => {
     held = toggleFlag(held, 'q11')
     held = toggleFlag(held, 'q25')
     expect(pageSummaries(paper(25), held.answers)).toEqual([
-      { page: 1, section: 'shared', from: 1, to: 10, unanswered: 0, flagged: 0 },
-      { page: 2, section: 'shared', from: 11, to: 20, unanswered: 9, flagged: 1 },
-      { page: 3, section: 'shared', from: 21, to: 25, unanswered: 5, flagged: 1 },
+      { page: 1, section: 'shared', topic: '', from: 1, to: 10, unanswered: 0, flagged: 0 },
+      { page: 2, section: 'shared', topic: '', from: 11, to: 20, unanswered: 9, flagged: 1 },
+      { page: 3, section: 'shared', topic: '', from: 21, to: 25, unanswered: 5, flagged: 1 },
     ])
   })
 
   it('gives a paper with no question its one empty page', () => {
-    expect(pageSummaries([], {})).toEqual([{ page: 1, section: 'shared', from: 1, to: 0, unanswered: 0, flagged: 0 }])
+    expect(pageSummaries([], {})).toEqual([{ page: 1, section: 'shared', topic: '', from: 1, to: 0, unanswered: 0, flagged: 0 }])
     expect(pageQuestions([], 1)).toEqual([])
   })
 })
@@ -245,8 +248,8 @@ describe('pages with sections and passages', () => {
     let held = setAnswer(emptyHeld(), 'p1', 0)
     held = toggleFlag(held, 'r3')
     expect(pageSummaries(questions, held.answers).slice(2)).toEqual([
-      { page: 3, section: 'scope', from: 13, to: 14, unanswered: 1, flagged: 0 },
-      { page: 4, section: 'score', from: 15, to: 17, unanswered: 3, flagged: 1 },
+      { page: 3, section: 'scope', topic: '', from: 13, to: 14, unanswered: 1, flagged: 0 },
+      { page: 4, section: 'score', topic: '', from: 15, to: 17, unanswered: 3, flagged: 1 },
     ])
   })
 })
@@ -562,7 +565,7 @@ describe('the paper', () => {
         deadline_at: '2026-11-14T10:00:00+00:00',
         sits: { scope: true, score: true },
       },
-      questions: paper(3).map((q) => ({ ...q, section: 'shared', passage: null, image: null })),
+      questions: paper(3).map((q) => ({ ...q, section: 'shared', topic: '', passage: null, image: null })),
       passages: {},
     })
   })
@@ -833,5 +836,68 @@ describe('when the database does not answer', () => {
     expect(saveStatus({ waiting: 0, choice: true, online: false })).toEqual({ kind: 'offline', count: 0, choice: true })
     expect(saveStatus({ waiting: 2, choice: true, failures: 1 })).toEqual({ kind: 'offline', count: 2, choice: true })
     expect(saveStatus({ waiting: 0, choice: false })).toEqual({ kind: 'saved', count: 0 })
+  })
+})
+
+describe('topics', () => {
+  const q = (id, section, topic) => ({ id, body: id, options: ['a', 'b'], section, topic, passage: null, image: null })
+  const questions = [
+    q('s1', 'shared', ''),
+    ...Array.from({ length: 12 }, (_, i) => q(`e${i + 1}`, 'shared', 'Ethics')),
+    q('i1', 'shared', 'IFMSA'),
+    q('p1', 'scope', 'Ethics'),
+  ]
+
+  it('reads a question’s topic', () => {
+    expect(topicOf({ topic: '  Ethics ' })).toBe('Ethics')
+    expect(topicOf({ topic: '' })).toBe('')
+    expect(topicOf({})).toBe('')
+    expect(topicOf(null)).toBe('')
+    expect(topicOf({ topic: 7 })).toBe('')
+  })
+
+  it('starts each topic on a page of its own, however many questions it has', () => {
+    expect(layoutPages(questions).map((p) => `${p.page}:${p.section}:${p.topic}:${p.from}-${p.to}`)).toEqual([
+      '1:shared::1-1',
+      '2:shared:Ethics:2-11',
+      '3:shared:Ethics:12-13',
+      '4:shared:IFMSA:14-14',
+      '5:scope:Ethics:15-15',
+    ])
+    expect(pageSummaries(questions, {}).map((p) => p.topic)).toEqual(['', 'Ethics', 'Ethics', 'IFMSA', 'Ethics'])
+    // the same topic's name in another section is another part of the paper
+    expect(pageOfQuestion(layoutPages(questions), 15)).toBe(5)
+  })
+
+  it('lists every number for the review by section and topic, answered or not', () => {
+    let held = setAnswer(emptyHeld(), 'e1', 0)
+    held = toggleFlag(held, 'i1')
+    const groups = reviewGroups(questions, held.answers)
+    expect(groups.map((g) => `${g.section}:${g.topic}:${g.from}-${g.to}`)).toEqual([
+      'shared::1-1',
+      'shared:Ethics:2-13',
+      'shared:IFMSA:14-14',
+      'scope:Ethics:15-15',
+    ])
+    expect(groups[1].numbers.slice(0, 2)).toEqual([
+      { n: 2, answered: true, flagged: false },
+      { n: 3, answered: false, flagged: false },
+    ])
+    expect(groups[2].numbers).toEqual([{ n: 14, answered: false, flagged: true }])
+    // a paper with no sections and no topics is one run
+    expect(reviewGroups(paper(3), {}).map((g) => g.numbers.map((x) => x.n))).toEqual([[1, 2, 3]])
+    expect(reviewGroups(null, {})).toEqual([])
+  })
+
+  it('keeps a question’s topic on the paper, and reads a paper from before the topics', () => {
+    const reply = { attempt: { id: 'a1' }, questions: [{ id: 'q1', options: ['a', 'b'], topic: ' Ethics ' }, { id: 'q2', options: ['a', 'b'] }] }
+    expect(tidyPaper(reply).questions.map((x) => x.topic)).toEqual(['Ethics', ''])
+  })
+
+  it('letters the options in the order a taker sees them', () => {
+    expect([0, 1, 2, 5].map(optionLetter)).toEqual(['A', 'B', 'C', 'F'])
+    expect(optionLetter(-1)).toBe('')
+    expect(optionLetter(1.5)).toBe('')
+    expect(optionLetter(null)).toBe('')
   })
 })

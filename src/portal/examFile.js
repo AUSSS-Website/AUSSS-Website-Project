@@ -10,14 +10,17 @@
 //
 // The questions' layout is by position, one question a row:
 //   A Question, B to G Option A to Option F, H Answer, I Keep order,
-//   J Section, K Passage.
+//   J Section, K Passage, L Topic.
 // A first row whose first cell is "Question" is a header. Answer is a letter
 // (A to F), a number (1 to 6) or the right option's exact text; Keep order is
 // "yes" for a question whose options must stay as written, else blank.
 // Section is blank for a question everybody answers, "SCOPE" for the
 // professional exchange's block and "SCORE" for the research exchange's.
 // Passage is the text a question is read with: rows that follow one another
-// with the same passage share it. Pictures do not come in a spreadsheet.
+// with the same passage share it. Topic is the name of the part of its
+// section a question is in, or blank: a section is split into topics, each
+// with as many questions as it is given, and the rows of one topic are the
+// rows that name it. Pictures do not come in a spreadsheet.
 // Nothing is imported unless every row is good: each bad row is named by its
 // number in the sheet, with the reason.
 import { UNREACHED } from '../lib/errorText.js'
@@ -40,12 +43,14 @@ export const MAX_IDS = 5000
 const BODY_MAX = 2000
 const OPTION_MAX = 500
 export const PASSAGE_MAX = 8000
+export const TOPIC_MAX = 80
 const ANSWER_COL = 1 + MAX_OPTIONS
 const KEEP_COL = ANSWER_COL + 1
 const SECTION_COL = KEEP_COL + 1
 const PASSAGE_COL = SECTION_COL + 1
-const LAST_COL = PASSAGE_COL
-const HEADERS = ['Question', ...OPTION_LETTERS.map((l) => `Option ${l}`), 'Answer', 'Keep order', 'Section', 'Passage']
+const TOPIC_COL = PASSAGE_COL + 1
+const LAST_COL = TOPIC_COL
+const HEADERS = ['Question', ...OPTION_LETTERS.map((l) => `Option ${l}`), 'Answer', 'Keep order', 'Section', 'Passage', 'Topic']
 
 // ---- the sections -----------------------------------------------------------
 //
@@ -91,6 +96,65 @@ const chars = (s) => [...s].length
 const UNREADABLE = String.fromCharCode(0xfffd)
 // How two texts are compared when an answer names an option by its words.
 const plain = (s) => cell(s).replace(/\s+/g, ' ').toLowerCase()
+
+// ---- the topics -------------------------------------------------------------
+//
+// A section is split into topics: a topic is a name on a question, and the
+// questions of a section that carry the same name are one part of the paper,
+// under that name as its heading. A topic has as many questions as it is
+// given. A question with no topic is in its section's part with no heading.
+
+// A topic's name as the database keeps it (app.tidy_exam_topic): trimmed, one
+// space wherever there was a run of them, where a no-break space and a
+// zero-width one (U+200B) count as spaces too. '' for none.
+export const tidyTopic = (value) =>
+  String(value ?? '')
+    .replace(new RegExp(`[\\s${String.fromCharCode(0x200b)}]+`, 'g'), ' ')
+    .trim()
+
+// The topics named in a list of questions, each once, in the order they
+// first come. With a `section`, only that section's.
+export function topicNames(questions, section = null) {
+  const names = []
+  for (const q of Array.isArray(questions) ? questions : []) {
+    const topic = tidyTopic(q?.topic)
+    if (!topic || (section && sectionId(q?.section) !== section)) continue
+    if (!names.includes(topic)) names.push(topic)
+  }
+  return names
+}
+
+// A numbered list (numberQuestions) as its parts: the runs of questions that
+// share a section and a topic, [{ section, topic, questions }], in the
+// paper's order.
+export function topicGroups(numbered) {
+  const groups = []
+  for (const q of Array.isArray(numbered) ? numbered : []) {
+    const section = sectionId(q?.section)
+    const topic = tidyTopic(q?.topic)
+    const last = groups[groups.length - 1]
+    if (last && last.section === section && last.topic === topic) last.questions.push(q)
+    else groups.push({ section, topic, questions: [q] })
+  }
+  return groups
+}
+
+// The ids of a numbered list after one of a section's topics has changed
+// places with the one before it (`step` -1) or after it (1): the whole list's
+// new order, for the same write a drag makes. Null when there is nowhere to go.
+export function moveTopic(numbered, section, topic, step) {
+  const groups = topicGroups(numbered)
+  const mine = groups.filter((g) => g.section === section)
+  const at = mine.findIndex((g) => g.topic === topic)
+  const to = at + step
+  if (at === -1 || to < 0 || to >= mine.length) return null
+  const a = groups.indexOf(mine[at])
+  const b = groups.indexOf(mine[to])
+  const next = [...groups]
+  next[a] = groups[b]
+  next[b] = groups[a]
+  return next.flatMap((g) => g.questions.map((q) => q.id))
+}
 
 // 'A' for 0; '' for anything that is not an option's place.
 export function letterOf(index) {
@@ -143,9 +207,10 @@ export function dropOption(options, correct, index) {
 // ---- the questions' order ---------------------------------------------------
 
 // The questions as the paper numbers them (app.exam_question_numbers in the
-// database does the same): the shared ones first, then each block, in the
-// officers' order within a section, with the questions of one passage standing
-// together where the first of them is. Each comes back with `n`, its place in
+// database does the same): the shared ones first, then each block; within a
+// section its topics, in the order of their first question; within a topic
+// the officers' order, with the questions of one passage standing together
+// where the first of them is. Each comes back with `n`, its place in
 // the whole list from 1, and `label`, its number as the paper shows it: the
 // shared questions are 1, 2, ...; each block counts on from the last shared
 // question with its letter (81P ..., 81R ...).
@@ -159,14 +224,28 @@ export function numberQuestions(questions) {
     if (!at) units.set(unit, { sort: q.sort, made })
     else units.set(unit, { sort: Math.min(at.sort, q.sort), made: made < at.made ? made : at.made })
   }
+  // where each topic of each section stands: at the first of its questions
+  const partOf = (q) => `${sectionId(q.section)} ${tidyTopic(q.topic)}`
+  const parts = new Map()
+  for (const q of list) {
+    const at = parts.get(partOf(q))
+    const made = String(q.created_at ?? '')
+    if (!at) parts.set(partOf(q), { sort: q.sort, made })
+    else parts.set(partOf(q), { sort: Math.min(at.sort, q.sort), made: made < at.made ? made : at.made })
+  }
   const text = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
   const ordered = [...list].sort((a, b) => {
     const ua = a.passage_id || a.id
     const ub = b.passage_id || b.id
     const pa = units.get(ua)
     const pb = units.get(ub)
+    const ta = parts.get(partOf(a))
+    const tb = parts.get(partOf(b))
     return (
       SECTION_RANK[sectionId(a.section)] - SECTION_RANK[sectionId(b.section)] ||
+      ta.sort - tb.sort ||
+      text(ta.made, tb.made) ||
+      text(tidyTopic(a.topic), tidyTopic(b.topic)) ||
       pa.sort - pb.sort ||
       text(pa.made, pb.made) ||
       text(ua, ub) ||
@@ -278,7 +357,9 @@ function readQuestion(cells) {
   if (!section) return { problem: 'Section is left blank, or is “SCOPE” or “SCORE”.' }
   const passage = cell(cells[PASSAGE_COL])
   if (chars(passage) > PASSAGE_MAX) return { problem: `The passage is longer than ${PASSAGE_MAX} characters.` }
-  // A question everybody answers, with no passage, is a row as it always was.
+  const topic = tidyTopic(cells[TOPIC_COL])
+  if (chars(topic) > TOPIC_MAX) return { problem: `The topic is longer than ${TOPIC_MAX} characters.` }
+  // A question everybody answers, with no passage and no topic, is a row as it always was.
   return {
     row: {
       body,
@@ -287,6 +368,7 @@ function readQuestion(cells) {
       keep_order: ['yes', 'y', 'true'].includes(keep),
       ...(section === 'shared' ? {} : { section }),
       ...(passage === '' ? {} : { passage }),
+      ...(topic === '' ? {} : { topic }),
     },
   }
 }
@@ -372,8 +454,8 @@ export function answerCell(question) {
 }
 
 // The same layout, as columns for an export: a question from the portal's list
-// ({ body, options, correct, keep_option_order, section, passage_body }) per
-// row, where `passage_body` is the text of the question's passage. A CSV made
+// ({ body, options, correct, keep_option_order, section, passage_body, topic })
+// per row, where `passage_body` is the text of the question's passage. A CSV made
 // from them can be imported into another exam as it is, but for the pictures.
 export const questionColumns = [
   { label: HEADERS[0], value: (q) => q.body },
@@ -382,12 +464,14 @@ export const questionColumns = [
   { label: HEADERS[KEEP_COL], value: (q) => (q.keep_option_order ? 'yes' : '') },
   { label: HEADERS[SECTION_COL], value: (q) => (sectionId(q.section) === 'shared' ? '' : sectionShort(q.section)) },
   { label: HEADERS[PASSAGE_COL], value: (q) => q.passage_body ?? '' },
+  { label: HEADERS[TOPIC_COL], value: (q) => tidyTopic(q.topic) },
 ]
 
 // "Download a template": the header and five made-up questions. Two that
 // everybody answers, one answered by letter and one with its options kept in
-// order; one of the professional exchange's block; and two of the research
-// exchange's that are read with one passage.
+// order, both in one topic; one of the professional exchange's block, in a
+// topic of its own; and two of the research exchange's that are read with
+// one passage, in no topic.
 export function questionTemplateCsv() {
   const abstract =
     'A trial gave 200 adults with high blood pressure either a new tablet or a dummy tablet for twelve weeks. Neither the adults nor their doctors knew who had which.'
@@ -397,12 +481,14 @@ export function questionTemplateCsv() {
       options: ['Vitamin A', 'Vitamin B12', 'Vitamin C', 'Vitamin D'],
       correct: 3,
       keep_option_order: false,
+      topic: 'Basic sciences',
     },
     {
       body: 'Which of these are parts of the small intestine?',
       options: ['The duodenum', 'The jejunum', 'The ileum', 'All of the above'],
       correct: 3,
       keep_option_order: true,
+      topic: 'Basic sciences',
     },
     {
       body: 'Which of these is the first step when you find an adult who has collapsed?',
@@ -410,6 +496,7 @@ export function questionTemplateCsv() {
       correct: 0,
       keep_option_order: false,
       section: 'scope',
+      topic: 'First aid',
     },
     {
       body: 'What kind of study is this?',

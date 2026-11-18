@@ -10,8 +10,10 @@ import {
   OPTION_LETTERS,
   PASSAGE_MAX,
   SECTIONS,
+  TOPIC_MAX,
   dropOption,
   letterOf,
+  moveTopic,
   numberQuestions,
   parseQuestionFile,
   questionColumns,
@@ -22,6 +24,9 @@ import {
   sectionId,
   sectionName,
   sectionShort,
+  tidyTopic,
+  topicGroups,
+  topicNames,
 } from '../../examFile.js'
 import {
   examPictureUrl,
@@ -64,10 +69,18 @@ import { StatusChip, countOf, tapCls, tapReachCls } from './ExamsPage.jsx'
 // exchange (SCORE). It may be read with a passage, a text or a picture that
 // several questions share, and then it is in the passage's section. It may
 // have a picture of its own, and may be a picture with no words.
+//
+// A section is split into topics. A topic is a name on a question (“Ethics”),
+// and a section's questions with the same name are one part of the paper,
+// under that name: as many questions as the officers give it. The list shows
+// each topic under its heading, a question is dragged within its topic, and
+// a topic moves up or down as a whole. A question with no topic is in its
+// section's part with no heading. A passage has a topic as it has a section.
 
 const NO_QUESTIONS = []
 const NO_PASSAGES = []
-const BLANK = { body: '', options: ['', '', '', ''], correct: null, keepOrder: false, section: 'shared', passageId: '', imagePath: null }
+const NO_TOPICS = []
+const BLANK = { body: '', options: ['', '', '', ''], correct: null, keepOrder: false, section: 'shared', topic: '', passageId: '', imagePath: null }
 
 function formFrom(question) {
   if (!question) return BLANK
@@ -77,6 +90,7 @@ function formFrom(question) {
     correct: question.correct,
     keepOrder: Boolean(question.keep_option_order),
     section: sectionId(question.section),
+    topic: tidyTopic(question.topic),
     passageId: question.passage_id || '',
     imagePath: question.image_path || null,
   }
@@ -179,7 +193,7 @@ const legendCls = 'block text-sm font-medium text-ink'
 // The one form for a question: a new one (no `question`; it is added at the
 // end and the form empties for the next) or one being changed (`onDone` closes
 // it). `number` is the question's place in the list.
-function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, onDone }) {
+function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, topics = NO_TOPICS, onDone }) {
   const { save } = useQuestionMutations(exam.id)
   const [form, setForm] = useState(() => formFrom(question))
   const pictures = usePictureCleanup(question?.image_path, Boolean(question))
@@ -205,7 +219,10 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
   // With only the right answer open, everything else is the question as it is
   // stored, whatever was typed into the form before the exam started.
   const work = keyOnly ? { ...formFrom(question), correct: form.correct } : form
-  const dirty = JSON.stringify(work) !== JSON.stringify(formFrom(question))
+  // The form for a new question keeps its section and its topic for the next
+  // one, so those two alone are nothing that could be lost.
+  const clean = question ? formFrom(question) : { ...BLANK, section: work.section, topic: work.topic }
+  const dirty = JSON.stringify(work) !== JSON.stringify(clean)
   // Closing or reloading the tab would lose a question that is half written:
   // the browser asks first.
   useLeaveWarning(dirty || save.isPending)
@@ -281,18 +298,30 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
         options: keyOnly ? question.options : form.options.map((o) => o.trim()),
         correct: work.correct,
         keepOrder: keyOnly ? Boolean(question.keep_option_order) : form.keepOrder,
-        // ... and its section, passage and picture are not sent at all.
+        // ... and its section, topic, passage and picture are not sent at all.
         more: keyOnly
           ? null
-          : { section: passage ? sectionId(passage.section) : form.section, passage_id: passage ? passage.id : null, image_path: form.imagePath },
+          : {
+              section: passage ? sectionId(passage.section) : form.section,
+              topic: tidyTopic(passage ? passage.topic : form.topic),
+              passage_id: passage ? passage.id : null,
+              image_path: form.imagePath,
+            },
       })
       if (!keyOnly) pictures.saved(form.imagePath)
       if (question) {
         close(keyboardIsHere())
         return
       }
-      setForm(BLANK)
-      setNote(passage ? 'Added, beside the other questions of its passage.' : 'Added at the end of its section.')
+      // The next question is most often in the same section and topic.
+      setForm({ ...BLANK, section: form.section, topic: tidyTopic(form.topic) })
+      setNote(
+        passage
+          ? 'Added, beside the other questions of its passage.'
+          : tidyTopic(form.topic)
+            ? 'Added at the end of its topic.'
+            : 'Added at the end of its section.',
+      )
       // Ready for the next question, unless the officer is typing elsewhere.
       if (keyboardIsHere()) bodyRef.current?.focus()
     } catch (err) {
@@ -475,6 +504,32 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
           </select>
         </Field>
         <Field
+          label="Topic"
+          htmlFor={`${prefix}-topic`}
+          hint={
+            passage
+              ? 'A question read with a passage is in the passage’s topic.'
+              : 'Optional. The heading of a part of the section, such as “Ethics”. A topic’s questions stay together on every paper.'
+          }
+        >
+          <input
+            id={`${prefix}-topic`}
+            className={inputCls}
+            value={passage ? tidyTopic(passage.topic) : form.topic}
+            disabled={Boolean(passage)}
+            onChange={(e) => patch({ topic: e.target.value })}
+            maxLength={TOPIC_MAX}
+            list={`${prefix}-topics`}
+            autoComplete="off"
+          />
+          {/* The topics the exam already has, so a name is chosen and not typed a second way. */}
+          <datalist id={`${prefix}-topics`}>
+            {topics.map((topic) => (
+              <option key={topic} value={topic} />
+            ))}
+          </datalist>
+        </Field>
+        <Field
           label="Read with a passage"
           htmlFor={`${prefix}-passage`}
           hint={passages.length === 0 ? 'Add a passage under Passages first.' : 'The passage is shown above its questions, which stay together.'}
@@ -485,9 +540,12 @@ function QuestionForm({ exam, question = null, number, passages = NO_PASSAGES, o
             value={passage ? passage.id : ''}
             disabled={passages.length === 0}
             onChange={(e) => {
-              // The question is in its passage's section from now on, also if the passage is taken off again.
+              // The question is in its passage's section and topic from now on, also if the passage is taken off again.
               const chosen = passages.find((p) => p.id === e.target.value)
-              patch({ passageId: e.target.value, ...(chosen ? { section: sectionId(chosen.section) } : {}) })
+              patch({
+                passageId: e.target.value,
+                ...(chosen ? { section: sectionId(chosen.section), topic: tidyTopic(chosen.topic) } : {}),
+              })
             }}
           >
             <option value="">No passage</option>
@@ -603,11 +661,11 @@ const editButtonId = (questionId) => `q-${questionId}-edit`
 
 // One question as the list shows it, or its form while it is being changed.
 // `removeError` is what the database said when asked to remove this question.
-function QuestionRow({ exam, question, number, passages, passageNumber, handle, editing, onEdit, onDone, onRemove, removing, removeError }) {
+function QuestionRow({ exam, question, number, passages, topics, passageNumber, handle, editing, onEdit, onDone, onRemove, removing, removeError }) {
   if (editing) {
     return (
       <div className="p-4">
-        <QuestionForm exam={exam} question={question} number={number} passages={passages} onDone={onDone} />
+        <QuestionForm exam={exam} question={question} number={number} passages={passages} topics={topics} onDone={onDone} />
       </div>
     )
   }
@@ -734,7 +792,7 @@ function ImportPanel({ exam }) {
     <Panel title="From a spreadsheet">
       <p className="mt-2 text-xs text-soft/55">
         An .xlsx or .csv file with one question on each row, in these columns: Question, Option A to Option F, Answer,
-        Keep order, Section, Passage. Answer is the right option’s letter (A to F), its number (1 to 6) or its exact
+        Keep order, Section, Passage, Topic. Answer is the right option’s letter (A to F), its number (1 to 6) or its exact
         text. Keep order is “yes” for a question whose options must stay as written, and blank otherwise. Leave the
         options a question does not use empty. The questions are added after the ones already here, and nothing is
         imported unless every row is good.
@@ -742,7 +800,10 @@ function ImportPanel({ exam }) {
       <p className="mt-2 text-xs text-soft/55">
         Section is blank for a question everybody answers, “SCOPE” for the professional exchange’s section and “SCORE”
         for the research exchange’s. Passage is the text a question is read with: give the rows that share a passage
-        the same text, one under the other. Pictures do not come in a spreadsheet; add them here afterwards.
+        the same text, one under the other. Topic is the heading of a part of the section, such as “Ethics”, or
+        blank: every row with the same topic is in that part, however many rows that is, and the topics come on the
+        paper in the order they first come in the file. Pictures do not come in a spreadsheet; add them here
+        afterwards.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <input ref={fileRef} type="file" accept=".xlsx,.csv" onChange={onFile} className="hidden" />
@@ -791,6 +852,7 @@ function ImportPanel({ exam }) {
 const pdfColumns = [
   { label: 'Question', value: (q) => `${q.label}. ${q.body || '(A picture with no words)'}` },
   { label: 'Section', value: (q) => sectionName(q.section) },
+  { label: 'Topic', value: (q) => tidyTopic(q.topic) },
   { label: 'Read with this passage', value: (q) => q.passage_body ?? '' },
   { label: 'Picture', value: (q) => (q.image_path ? 'This question has a picture. It is shown in the portal.' : '') },
   ...OPTION_LETTERS.map((letter, i) => ({ label: `Option ${letter}`, value: (q) => q.options[i] ?? '' })),
@@ -803,12 +865,14 @@ const pdfColumns = [
 
 // ---- passages -------------------------------------------------------------------
 
-const BLANK_PASSAGE = { body: '', section: 'shared', imagePath: null }
+const BLANK_PASSAGE = { body: '', section: 'shared', topic: '', imagePath: null }
 
 // The form for a passage: a new one, or one being changed (`onDone` closes it).
-function PassageForm({ exam, passage = null, number, onDone }) {
+function PassageForm({ exam, passage = null, number, topics = NO_TOPICS, onDone }) {
   const { save } = usePassageMutations(exam.id)
-  const from = passage ? { body: passage.body, section: sectionId(passage.section), imagePath: passage.image_path || null } : BLANK_PASSAGE
+  const from = passage
+    ? { body: passage.body, section: sectionId(passage.section), topic: tidyTopic(passage.topic), imagePath: passage.image_path || null }
+    : BLANK_PASSAGE
   const [form, setForm] = useState(from)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
@@ -832,7 +896,13 @@ function PassageForm({ exam, passage = null, number, onDone }) {
     }
     try {
       pictures.sending(form.imagePath)
-      await save.mutateAsync({ id: passage?.id ?? null, body: form.body.trim(), section: form.section, imagePath: form.imagePath })
+      await save.mutateAsync({
+        id: passage?.id ?? null,
+        body: form.body.trim(),
+        section: form.section,
+        topic: tidyTopic(form.topic),
+        imagePath: form.imagePath,
+      })
       pictures.saved(form.imagePath)
       if (passage) {
         onDone?.()
@@ -874,6 +944,22 @@ function PassageForm({ exam, passage = null, number, onDone }) {
           ))}
         </select>
       </Field>
+      <Field label="Topic" htmlFor={`${prefix}-topic`} hint="Optional. Its questions are in this topic too, and follow it if it changes.">
+        <input
+          id={`${prefix}-topic`}
+          className={inputCls}
+          value={form.topic}
+          onChange={(e) => patch({ topic: e.target.value })}
+          maxLength={TOPIC_MAX}
+          list={`${prefix}-topics`}
+          autoComplete="off"
+        />
+        <datalist id={`${prefix}-topics`}>
+          {topics.map((topic) => (
+            <option key={topic} value={topic} />
+          ))}
+        </datalist>
+      </Field>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className={`${primaryBtnCls} ${tapCls}`} disabled={save.isPending || uploading || (Boolean(passage) && !dirty)}>
           {save.isPending ? 'Saving…' : uploading ? 'Uploading the picture…' : passage ? 'Save' : 'Add passage'}
@@ -905,7 +991,7 @@ function PassageForm({ exam, passage = null, number, onDone }) {
 // read with. On a student's paper a passage sits above its questions, which
 // stay together and in the order they have here. Removing a passage leaves
 // its questions in the exam as single questions.
-function PassagesPanel({ exam, passages, questions }) {
+function PassagesPanel({ exam, passages, questions, topics }) {
   const { remove } = usePassageMutations(exam.id)
   const [editing, setEditing] = useState(() => new Set())
   const close = (id) =>
@@ -935,12 +1021,19 @@ function PassagesPanel({ exam, passages, questions }) {
             return (
               <li key={p.id} className="min-w-0 rounded-2xl border border-line/10 bg-sunk/40 p-4">
                 {editing.has(p.id) ? (
-                  <PassageForm exam={exam} passage={p} number={i + 1} onDone={() => close(p.id)} />
+                  <PassageForm exam={exam} passage={p} number={i + 1} topics={topics} onDone={() => close(p.id)} />
                 ) : (
                   <>
                     <p className="text-sm font-semibold text-ink">
                       <span className="mr-1.5 text-soft/55">Passage {i + 1}.</span>
-                      <span className="font-normal text-soft/70">{sectionName(p.section)}</span>
+                      <span className="font-normal text-soft/70">
+                        {sectionName(p.section)}
+                        {tidyTopic(p.topic) && (
+                          <>
+                            , <span dir="auto">{tidyTopic(p.topic)}</span>
+                          </>
+                        )}
+                      </span>
                     </p>
                     {p.body && (
                       <p dir="auto" className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-sm text-soft/85">
@@ -1001,7 +1094,7 @@ function PassagesPanel({ exam, passages, questions }) {
       {!exam.started && (
         <div className="mt-6 border-t border-line/10 pt-4">
           <p className={legendCls}>New passage</p>
-          <PassageForm exam={exam} />
+          <PassageForm exam={exam} topics={topics} />
         </div>
       )}
     </Panel>
@@ -1035,6 +1128,10 @@ export default function QuestionsPanel({ exam }) {
   const numberOf = useMemo(() => new Map(list.map((q) => [q.id, q.label])), [list])
   const counts = useMemo(() => sectionCounts(list), [list])
   const inSections = counts.scope > 0 || counts.score > 0
+  // The list in its parts: each section's topics, in the paper's order.
+  const groups = useMemo(() => topicGroups(list), [list])
+  const topics = useMemo(() => topicNames(list), [list])
+  const inTopics = topics.length > 0
   const passageNumber = useMemo(() => new Map(passageList.map((p, i) => [p.id, i + 1])), [passageList])
   const passageBody = useMemo(() => new Map(passageList.map((p) => [p.id, p.body])), [passageList])
   // For the exports: each question with its passage's text beside it.
@@ -1042,18 +1139,35 @@ export default function QuestionsPanel({ exam }) {
     () => list.map((q) => ({ ...q, passage_body: q.passage_id ? passageBody.get(q.passage_id) ?? '' : '' })),
     [list, passageBody],
   )
-  // A drag moves a question within its section: the other sections' questions
-  // keep their places, and the whole order is saved. A passage's questions
+  // A drag moves a question within its part (its topic, or its section when
+  // the section has no topics): the other parts' questions keep their places,
+  // and the whole order is saved. A passage's questions
   // stand together where the first of them is, so a question dragged out of
   // its passage goes back beside it, and one dropped between two of a
   // passage's lands after them: the list then says so, where the row would
   // otherwise seem to have jumped.
   const [moveNote, setMoveNote] = useState('')
-  const reorderSection = (section, ids) => {
-    const next = SECTIONS.flatMap((s) => (s.id === section ? ids : list.filter((q) => sectionId(q.section) === s.id).map((q) => q.id)))
+  const reorderPart = (ids) => {
+    // the part's rows, in their new order, where the part stood
+    const moved = new Set(ids)
+    let placed = false
+    const next = list.flatMap((q) => {
+      if (!moved.has(q.id)) return [q.id]
+      if (placed) return []
+      placed = true
+      return ids
+    })
     const sorts = new Map(sortChanges(list, next).map((c) => [c.id, c.sort]))
     const lands = numberQuestions(list.map((q) => (sorts.has(q.id) ? { ...q, sort: sorts.get(q.id) } : q))).map((q) => q.id)
     setMoveNote(lands.join() === next.join() ? '' : 'The questions of a passage stay together, so the list put them back beside one another.')
+    reorder.mutate({ questions: list, ids: next })
+  }
+  // A topic changes places with the one above or below it in its section, all
+  // its questions with it: the same write as a drag.
+  const shiftTopic = (section, topic, step) => {
+    const next = moveTopic(list, section, topic, step)
+    if (!next) return
+    setMoveNote('')
     reorder.mutate({ questions: list, ids: next })
   }
 
@@ -1094,20 +1208,23 @@ export default function QuestionsPanel({ exam }) {
       ) : (
         <>
           <Panel title="New question">
-            <QuestionForm exam={exam} passages={passageList} />
+            <QuestionForm exam={exam} passages={passageList} topics={topics} />
           </Panel>
           <ImportPanel exam={exam} />
         </>
       )}
 
-      {(!exam.started || passageList.length > 0) && <PassagesPanel exam={exam} passages={passages} questions={list} />}
+      {(!exam.started || passageList.length > 0) && <PassagesPanel exam={exam} passages={passages} questions={list} topics={topics} />}
 
       <Panel title={list.length > 0 ? `Questions (${list.length})` : 'Questions'}>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
           <p className="min-w-0 basis-full text-xs text-soft/55 sm:flex-1 sm:basis-64">
-            In your order: drag a question by its handle to move it{inSections ? ' within its section' : ''}. Each
-            student gets the questions, and the options of each, in an order of their own
+            In your order: drag a question by its handle to move it
+            {inTopics ? ' within its topic' : inSections ? ' within its section' : ''}. Each student gets the questions, and
+            the options of each, in an order of their own
             {inSections ? ': the shared questions first, then each section' : ''}. A passage’s questions stay together.
+            {inTopics &&
+              ' So do a topic’s: every student gets the topics in the order shown here, with each topic’s questions in an order of their own.'}
             {inSections && <span className="mt-1 block">{sectionsLine(counts)}</span>}
           </p>
           {/* The PDF numbers the questions for reading. The CSV has the columns
@@ -1170,45 +1287,87 @@ export default function QuestionsPanel({ exam }) {
         ) : list.length === 0 ? (
           <p className="mt-4 text-sm text-soft/60">No questions yet. Add one above, or import them from a spreadsheet.</p>
         ) : (
-          // One list for each section that has questions; an exam with no
-          // sections is one list with no heading, as it always was.
+          // One list for each part that has questions: a section's topics, or
+          // the section itself when it has none. An exam with no sections
+          // and no topics is one list with no heading, as it always was.
           SECTIONS.filter((s) => counts[s.id] > 0).map((s) => {
-            const rows = list.filter((q) => sectionId(q.section) === s.id)
+            const parts = groups.filter((g) => g.section === s.id)
+            const split = parts.some((g) => g.topic)
             return (
               <section key={s.id} className={inSections ? 'mt-6' : ''}>
                 {inSections && (
                   <h3 className="text-sm font-semibold text-ink">
-                    {s.name} <span className="font-normal text-soft/60">({rows.length})</span>
+                    {s.name} <span className="font-normal text-soft/60">({counts[s.id]})</span>
                   </h3>
                 )}
-                <SortableList
-                  items={rows}
-                  getId={(q) => q.id}
-                  getLabel={(q) => `question ${numberOf.get(q.id)}`}
-                  onReorder={(ids) => reorderSection(s.id, ids)}
-                  className={`${inSections ? 'mt-3' : 'mt-4'} grid gap-3`}
-                  itemClassName="min-w-0 rounded-2xl border border-line/10 bg-sunk/40"
-                  renderItem={(q, handle) => (
-                    <QuestionRow
-                      exam={exam}
-                      question={q}
-                      number={numberOf.get(q.id)}
-                      passages={passageList}
-                      passageNumber={q.passage_id ? passageNumber.get(q.passage_id) : null}
-                      handle={handle}
-                      editing={editing.has(q.id)}
-                      onEdit={() => openForm(q.id)}
-                      onDone={(takeKeyboard) => closeForm(q.id, takeKeyboard)}
-                      onRemove={() => remove.mutate({ id: q.id, imagePath: q.image_path })}
-                      removing={remove.isPending && remove.variables?.id === q.id}
-                      removeError={
-                        remove.isError && remove.variables?.id === q.id
-                          ? errorText(remove.error, 'The question could not be removed.')
-                          : ''
-                      }
-                    />
-                  )}
-                />
+                {parts.map((part, at) => {
+                  const name = part.topic || 'No topic'
+                  return (
+                    <div key={part.topic} className={split ? 'mt-4' : ''}>
+                      {split && (
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                          <h4 className="min-w-0 text-sm font-semibold text-accent">
+                            <span dir="auto" className="break-words">
+                              {name}
+                            </span>{' '}
+                            <span className="font-normal text-soft/60">({part.questions.length})</span>
+                          </h4>
+                          {parts.length > 1 && (
+                            <span className="inline-flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className={`${outlineBtnCls} ${tapCls}`}
+                                disabled={at === 0 || reorder.isPending}
+                                onClick={() => shiftTopic(s.id, part.topic, -1)}
+                                aria-label={`Move the topic ${name} up`}
+                              >
+                                Move up
+                              </button>
+                              <button
+                                type="button"
+                                className={`${outlineBtnCls} ${tapCls}`}
+                                disabled={at === parts.length - 1 || reorder.isPending}
+                                onClick={() => shiftTopic(s.id, part.topic, 1)}
+                                aria-label={`Move the topic ${name} down`}
+                              >
+                                Move down
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <SortableList
+                        items={part.questions}
+                        getId={(q) => q.id}
+                        getLabel={(q) => `question ${numberOf.get(q.id)}`}
+                        onReorder={reorderPart}
+                        className={`${inSections || split ? 'mt-3' : 'mt-4'} grid gap-3`}
+                        itemClassName="min-w-0 rounded-2xl border border-line/10 bg-sunk/40"
+                        renderItem={(q, handle) => (
+                          <QuestionRow
+                            exam={exam}
+                            question={q}
+                            number={numberOf.get(q.id)}
+                            passages={passageList}
+                            topics={topics}
+                            passageNumber={q.passage_id ? passageNumber.get(q.passage_id) : null}
+                            handle={handle}
+                            editing={editing.has(q.id)}
+                            onEdit={() => openForm(q.id)}
+                            onDone={(takeKeyboard) => closeForm(q.id, takeKeyboard)}
+                            onRemove={() => remove.mutate({ id: q.id, imagePath: q.image_path })}
+                            removing={remove.isPending && remove.variables?.id === q.id}
+                            removeError={
+                              remove.isError && remove.variables?.id === q.id
+                                ? errorText(remove.error, 'The question could not be removed.')
+                                : ''
+                            }
+                          />
+                        )}
+                      />
+                    </div>
+                  )
+                })}
               </section>
             )
           })

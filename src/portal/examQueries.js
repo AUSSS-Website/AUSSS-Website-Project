@@ -153,7 +153,7 @@ export function useExamMutations() {
 // ---- questions --------------------------------------------------------------
 
 const QUESTION_SELECT =
-  'id, exam_id, sort, body, options, keep_option_order, section, passage_id, image_path, created_at, updated_at, exam_key(correct_option)'
+  'id, exam_id, sort, body, options, keep_option_order, section, topic, passage_id, image_path, created_at, updated_at, exam_key(correct_option)'
 
 // A question with its right answer beside it: `correct` is the option's place
 // in `options` as the officers wrote them, from 0 (null if it has no key).
@@ -186,9 +186,9 @@ export function useExamQuestions(examId) {
 
 // Adds a question at the end (no `id`) or changes one; the question and its
 // key are written together. `correct` is the right option's place, from 0.
-// `more` is { section, passage_id, image_path } with any of the three; a key
-// that is not there leaves that part of the question as it is, and no `more`
-// leaves all three (as when only the right answer is corrected). Answers with
+// `more` is { section, topic, passage_id, image_path } with any of the four; a
+// key that is not there leaves that part of the question as it is, and no `more`
+// leaves all four (as when only the right answer is corrected). Answers with
 // the question's id.
 async function saveQuestion({ examId, id = null, body, options, correct, keepOrder = false, more = null }) {
   return unwrap(
@@ -285,7 +285,7 @@ export function useQuestionMutations(examId) {
 
 // ---- passages ---------------------------------------------------------------
 
-const PASSAGE_SELECT = 'id, exam_id, section, body, image_path, created_at, updated_at'
+const PASSAGE_SELECT = 'id, exam_id, section, topic, body, image_path, created_at, updated_at'
 
 // The exam's passages, oldest first: the texts and pictures several questions
 // are read with.
@@ -304,8 +304,8 @@ export function useExamPassages(examId) {
 }
 
 // Adds a passage (no `id`) or changes one. Its questions follow it to a new
-// section. Answers with the passage's id.
-async function savePassage({ examId, id = null, body, section, imagePath = null }) {
+// section and a new topic. Answers with the passage's id.
+async function savePassage({ examId, id = null, body, section, topic = '', imagePath = null }) {
   return unwrap(
     await supabase.rpc('save_exam_passage', {
       p_exam: examId,
@@ -313,6 +313,7 @@ async function savePassage({ examId, id = null, body, section, imagePath = null 
       p_body: body,
       p_section: section,
       p_image: imagePath,
+      p_topic: topic,
     }),
   )
 }

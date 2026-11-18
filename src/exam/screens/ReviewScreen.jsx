@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { ConfirmButton } from '../../portal/portalUi.jsx'
-import { DOUBLE_TAP_MS, handInWait, handInWords, leaveOutWords, sectionName } from '../examFlow.js'
-import { Problem, focusCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
+import { DOUBLE_TAP_MS, handInWait, handInWords, leaveOutWords, partName, reviewLabel, sectionName } from '../examFlow.js'
+import { FlagIcon, Problem, focusCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
 import { BLOCKS } from '../sitting.js'
 
 // The last step of the paper, inside the sitting's frame (the clock and the
-// save state stay in view): how many questions are answered, the unanswered
-// and the flagged ones as buttons that go to the question, and the hand-in.
+// save state stay in view): how many questions are answered, every question
+// as a button that goes to it (green with an answer, red with none), the
+// flagged ones again on their own, and the hand-in.
 //
 // Handing in ends the exam for good, so it takes two taps on the portal's
 // ConfirmButton ("Hand in", then "Hand in for good"), and the second tap
@@ -41,6 +42,64 @@ function Numbers({ title, numbers, none, go }) {
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+// Every question of the paper as a button that goes to it: green when it has
+// an answer, red when it has none. The colour is not the only sign, for a
+// taker who cannot tell the two apart: a number with no answer has a dashed
+// edge, the line above the numbers says which is which and how many there
+// are of each, and each button's name says it for a screen reader. In a
+// paper with sections or topics the numbers stand under the name of their
+// part. A flagged question carries its flag in the corner.
+const answeredCls = 'border-ok/60 bg-ok/20'
+const unansweredCls = 'border-dashed border-danger bg-danger/15'
+const swatchCls = 'h-4 w-4 shrink-0 rounded border'
+
+function Answers({ sitting, go }) {
+  const { groups, sections, answered, total } = sitting
+  const inSections = sections.scope > 0 || sections.score > 0
+  const named = groups.length > 1
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Your answers</h2>
+      <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-soft">
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className={`${swatchCls} ${answeredCls}`} />
+          Green: answered ({answered})
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className={`${swatchCls} ${unansweredCls}`} />
+          Red: not answered ({total - answered})
+        </span>
+      </p>
+      {groups.map((group) => (
+        <div key={group.from} className="mt-5">
+          {named && (
+            <h3 dir="auto" className="text-sm font-semibold text-ink [overflow-wrap:anywhere]">
+              {partName(group, inSections)}
+            </h3>
+          )}
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {group.numbers.map((number) => (
+              <li key={number.n}>
+                <button
+                  type="button"
+                  aria-label={reviewLabel(number)}
+                  onClick={() => go({ view: 'page', question: number.n })}
+                  className={`relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border px-2 text-sm font-semibold text-ink active:brightness-90 ${focusCls} ${
+                    number.answered ? answeredCls : unansweredCls
+                  }`}
+                >
+                  {number.n}
+                  {number.flagged && <FlagIcon filled className="absolute right-0.5 top-0.5 h-3 w-3 text-warn" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </section>
   )
 }
@@ -167,7 +226,7 @@ export default function ReviewScreen({ sitting, go, headingRef, headingCls }) {
 
       {sitting.sections.choice && <Sections sitting={sitting} />}
 
-      <Numbers title="Not answered" numbers={unanswered} none="Every question has an answer." go={go} />
+      <Answers sitting={sitting} go={go} />
       <Numbers title="Flagged" numbers={flagged} none="No question is flagged." go={go} />
 
       <section className="mt-8 rounded-2xl border border-line/10 bg-card p-5">

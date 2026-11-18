@@ -123,14 +123,17 @@ const examQuestions = [
 // ex-0): the first eight are shared, with the fourth and fifth read with one
 // passage and the eighth carrying a picture; then two of the professional
 // exchange's section, the first a picture question read with a passage that is
-// itself a picture; then two of the research exchange's. A shorter exam (ex-2)
-// has no sections.
+// itself a picture; then two of the research exchange's. The shared questions
+// are in three topics and the professional section's two in one; the research
+// section has none. A shorter exam (ex-2) has no sections and no topics.
 const partOf = (examId, i, n) => {
-  if (n < examQuestions.length) return { section: 'shared', passage_id: null, image_path: null }
+  if (n < examQuestions.length) return { section: 'shared', topic: '', passage_id: null, image_path: null }
   const section = i >= n - 2 ? 'score' : i >= n - 4 ? 'scope' : 'shared'
   const passage = i === 3 || i === 4 ? 'pa-1' : i === 8 ? 'pa-2' : null
+  const topic = i < 3 ? 'Emergency care' : i < 5 ? 'Fluids and glucose' : i < 8 ? 'General knowledge' : i < 10 ? 'Clinical skills' : ''
   return {
     section,
+    topic,
     passage_id: passage ? `${examId}-${passage}` : null,
     image_path: i === 7 || i === 8 ? `${examId}/${String(i).padStart(2, '0').repeat(16)}.jpg` : null,
   }
@@ -141,8 +144,8 @@ const questionsOf = (examId, list) =>
 const sampleQuestions = [...questionsOf('ex-1', examQuestions), ...questionsOf('ex-2', examQuestions.slice(1, 4)), ...questionsOf('ex-0', examQuestions)]
 // Rows of exam_passages: a text two shared questions are read with, and a picture for one of the professional section's.
 const passagesOf = (examId) => [
-  { id: `${examId}-pa-1`, exam_id: examId, section: 'shared', body: 'A 58-year-old man comes to the clinic after three days of vomiting and diarrhoea. He has drunk little, feels faint when he stands, and has passed urine once since yesterday. He takes a tablet for his blood sugar and injects insulin at night.', image_path: null, created_at: iso(4), updated_at: iso(2) },
-  { id: `${examId}-pa-2`, exam_id: examId, section: 'scope', body: '', image_path: `${examId}/${'cd'.repeat(16)}.jpg`, created_at: iso(3.5), updated_at: iso(2) },
+  { id: `${examId}-pa-1`, exam_id: examId, section: 'shared', topic: 'Fluids and glucose', body: 'A 58-year-old man comes to the clinic after three days of vomiting and diarrhoea. He has drunk little, feels faint when he stands, and has passed urine once since yesterday. He takes a tablet for his blood sugar and injects insulin at night.', image_path: null, created_at: iso(4), updated_at: iso(2) },
+  { id: `${examId}-pa-2`, exam_id: examId, section: 'scope', topic: 'Clinical skills', body: '', image_path: `${examId}/${'cd'.repeat(16)}.jpg`, created_at: iso(3.5), updated_at: iso(2) },
 ]
 const samplePassages = [...passagesOf('ex-1'), ...passagesOf('ex-0')]
 // How the sections of an exam stand, as its results name them, and each question's number as the paper shows it.
@@ -677,7 +680,7 @@ const statsOf = (examId, papers) => {
       const counts = weights.map((w) => Math.floor(((answered - right) * w) / sum))
       counts[weights.findIndex((w) => w > 0)] += answered - right - counts.reduce((a, b) => a + b, 0)
       counts[correct] = right
-      return { question_id: q.id, n: i + 1, label: labelOf(q, i, mine), section: q.section, passage: q.passage_id, image: q.image_path, body: q.body, options: q.options, correct, sat, answered, right, counts }
+      return { question_id: q.id, n: i + 1, label: labelOf(q, i, mine), section: q.section, topic: q.topic, passage: q.passage_id, image: q.image_path, body: q.body, options: q.options, correct, sat, answered, right, counts }
     }),
   }
 }
@@ -699,7 +702,7 @@ const sheetOf = (attemptId) => {
       // A section this paper left out holds one answer from before it was left out.
       const chosen = !counted ? (i % 2 === 0 ? correct : null) : place < attempt.score ? correct : place < attempt.answered ? (correct + 1) % q.options.length : null
       const answeredAt = chosen === null ? null : new Date(Date.parse(attempt.started_at) + (place + 1) * 4 * 6e4).toISOString()
-      return { n: i + 1, label: labelOf(q, i, questions), question_id: q.id, section: q.section, passage: q.passage_id, image: q.image_path, body: q.body, options: q.options, correct, chosen, flagged: place % 5 === 3 || place === questions.length - 1, answered_at: answeredAt, counted }
+      return { n: i + 1, label: labelOf(q, i, questions), question_id: q.id, section: q.section, topic: q.topic, passage: q.passage_id, image: q.image_path, body: q.body, options: q.options, correct, chosen, flagged: place % 5 === 3 || place === questions.length - 1, answered_at: answeredAt, counted }
     }),
   }
 }
@@ -789,7 +792,9 @@ const doors = {
 }
 // rpc/exam_paper. A hundred and twenty questions in "this student's order" (the
 // dozen above, round and round): eighty shared, then twenty of the professional
-// exchange's section and twenty of the research exchange's. Questions 21 to 24
+// exchange's section and twenty of the research exchange's. The shared ones
+// are in four topics of twenty and the professional section's in two of ten;
+// the research section has no topics. Questions 21 to 24
 // are read with one passage and 81 and 82 with a passage that is a picture;
 // questions 3 and 83 have a picture of their own, and 83 has no words. 34 are
 // reached: most answered, a few skipped, a few flagged. At sample-time-up the
@@ -810,6 +815,7 @@ const paperOf = (word) => {
       body: n === 83 ? '' : q.body,
       options: q.options,
       section: n > 100 ? 'score' : n > 80 ? 'scope' : 'shared',
+      topic: n > 100 ? '' : n > 90 ? 'Emergencies' : n > 80 ? 'Clinical skills' : n > 60 ? 'Ethics' : n > 40 ? 'Exchange conditions' : n > 20 ? 'Clinical cases' : 'IFMSA and the exchanges',
       passage: n >= 21 && n <= 24 ? 'pp-1' : n === 81 || n === 82 ? 'pp-2' : null,
       image: n === 3 || n === 83 ? `paper/${String(n).padStart(2, '0').repeat(16)}.jpg` : null,
     }

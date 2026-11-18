@@ -29,9 +29,13 @@ import {
   sectionShort,
   sortChanges,
   tidyId,
+  moveTopic,
+  tidyTopic,
+  topicGroups,
+  topicNames,
 } from './examFile.js'
 
-const HEADER = ['Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F', 'Answer', 'Keep order', 'Section', 'Passage']
+const HEADER = ['Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F', 'Answer', 'Keep order', 'Section', 'Passage', 'Topic']
 // One row of the sheet: the question, its options, the answer, keep order.
 const line = (body, options, answer, keep = '') => [body, ...options, ...Array(6 - options.length).fill(''), answer, keep]
 
@@ -206,7 +210,7 @@ describe('the questions spreadsheet', () => {
       'Some characters in this file cannot be read, because it was not saved as UTF-8. Save it as “CSV UTF-8” or as an Excel workbook (.xlsx) and import that.',
     ])
     // a mark in a column the import never reads does not matter
-    const beyond = [...line('Which?', ['Yes', 'No'], 'A'), '', '', 'a note�']
+    const beyond = [...line('Which?', ['Yes', 'No'], 'A'), '', '', '', 'a note�']
     expect(questionsFromGrid([beyond]).problems).toEqual([])
   })
 })
@@ -220,8 +224,9 @@ describe('the template and the export', () => {
     expect(rows).toHaveLength(5)
     expect(rows[0]).toMatchObject({ correct: 3, keep_order: false })
     expect(rows[1]).toMatchObject({ options: ['The duodenum', 'The jejunum', 'The ileum', 'All of the above'], correct: 3, keep_order: true })
-    // the two everybody answers carry no section and no passage, as before the sections
-    expect(Object.keys(rows[0]).sort()).toEqual(['body', 'correct', 'keep_order', 'options'])
+    // the two everybody answers carry no section and no passage, and are in one topic
+    expect(Object.keys(rows[0]).sort()).toEqual(['body', 'correct', 'keep_order', 'options', 'topic'])
+    expect(rows.map((r) => r.topic ?? '')).toEqual(['Basic sciences', 'Basic sciences', 'First aid', '', ''])
     // one of the professional block, and two of the research block read with one passage
     expect(rows.map((r) => r.section ?? 'shared')).toEqual(['shared', 'shared', 'scope', 'score', 'score'])
     expect(rows[2].passage).toBeUndefined()
@@ -652,5 +657,75 @@ describe('the paper’s numbering', () => {
     const questions = [q('b', 2), q('a', 1)]
     numberQuestions(questions)
     expect(questions.map((x) => x.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('the topics', () => {
+  const q = (id, sort, topic = '', section = 'shared') => ({ id, sort, topic, section, created_at: '' })
+  const list = [q('a', 1, 'Ethics'), q('b', 2), q('c', 3, 'IFMSA'), q('d', 4, 'Ethics'), q('e', 5, 'Ethics', 'scope'), q('f', 6)]
+
+  it('reads a row’s topic', () => {
+    const row = (topic) => [...line('Which?', ['Yes', 'No'], 'A'), '', '', topic]
+    expect(questionsFromGrid([row('  Exchange   conditions ')]).rows[0].topic).toBe('Exchange conditions')
+    expect(questionsFromGrid([row('')]).rows[0].topic).toBeUndefined()
+    expect(questionsFromGrid([row('x'.repeat(80))]).problems).toEqual([])
+    expect(questionsFromGrid([row('x'.repeat(81))]).problems).toEqual(['Row 1: The topic is longer than 80 characters.'])
+    // a row with only a topic is not a blank row: it is a question with no text
+    expect(questionsFromGrid([['', '', '', '', '', '', '', '', '', '', '', 'Ethics']]).problems).toEqual(['Row 1: A question needs its text.'])
+    expect(tidyTopic(null)).toBe('')
+    // pasted from a document: a no-break space, a zero-width space, a byte order mark
+    const nbsp = String.fromCharCode(0xa0)
+    expect(tidyTopic(`${nbsp}Exchange${nbsp}${String.fromCharCode(0x200b)} conditions${String.fromCharCode(0xfeff)}`)).toBe('Exchange conditions')
+  })
+
+  it('an exported list with topics comes back in with them', () => {
+    const questions = [
+      { body: 'One', options: ['Yes', 'No'], correct: 0, keep_option_order: false, section: 'shared', topic: 'Ethics' },
+      { body: 'Two', options: ['Yes', 'No'], correct: 1, keep_option_order: false, section: 'score', topic: 'Study design', passage_body: 'An abstract.' },
+      { body: 'Three', options: ['Yes', 'No'], correct: 1, keep_option_order: false, section: 'shared', topic: '' },
+    ]
+    const { rows, problems } = questionsFromGrid(parseCsv(toCsv(questionColumns, questions)))
+    expect(problems).toEqual([])
+    expect(rows).toEqual([
+      { body: 'One', options: ['Yes', 'No'], correct: 0, keep_order: false, topic: 'Ethics' },
+      { body: 'Two', options: ['Yes', 'No'], correct: 1, keep_order: false, section: 'score', passage: 'An abstract.', topic: 'Study design' },
+      { body: 'Three', options: ['Yes', 'No'], correct: 1, keep_order: false },
+    ])
+  })
+
+  it('numbers a section topic by topic, the topics in the order of their first question', () => {
+    expect(numberQuestions(list).map((x) => `${x.id}=${x.label}`)).toEqual(['a=1', 'd=2', 'b=3', 'f=4', 'c=5', 'e=6P'])
+    expect(topicGroups(numberQuestions(list)).map((g) => `${g.section}:${g.topic}:${g.questions.map((x) => x.id).join('')}`)).toEqual([
+      'shared:Ethics:ad',
+      'shared::bf',
+      'shared:IFMSA:c',
+      'scope:Ethics:e',
+    ])
+    expect(topicGroups(undefined)).toEqual([])
+    expect(topicNames(list)).toEqual(['Ethics', 'IFMSA'])
+    expect(topicNames(list, 'scope')).toEqual(['Ethics'])
+    expect(topicNames(null)).toEqual([])
+  })
+
+  it('a passage’s questions stay together inside their topic', () => {
+    const inPassage = (id, sort) => ({ ...q(id, sort, 'Ethics'), passage_id: 'p' })
+    const mixed = [inPassage('x', 1), q('y', 2, 'Ethics'), inPassage('z', 3), q('w', 4, 'IFMSA')]
+    expect(numberQuestions(mixed).map((x) => x.id)).toEqual(['x', 'z', 'y', 'w'])
+  })
+
+  it('moves a topic past its neighbour, all its questions with it', () => {
+    const numbered = numberQuestions(list)
+    const next = moveTopic(numbered, 'shared', 'IFMSA', -1)
+    expect(next).toEqual(['a', 'd', 'c', 'b', 'f', 'e'])
+    // saved as a drag is, the list then reads in that order
+    const sorts = new Map(sortChanges(numbered, next).map((c) => [c.id, c.sort]))
+    const saved = numbered.map((x) => ({ ...x, sort: sorts.has(x.id) ? sorts.get(x.id) : x.sort }))
+    expect(numberQuestions(saved).map((x) => x.id)).toEqual(next)
+    expect(moveTopic(numbered, 'shared', '', 1)).toEqual(['a', 'd', 'c', 'b', 'f', 'e'])
+    // nowhere to go: the first up, the last down, a section's only topic, a topic that is not there
+    expect(moveTopic(numbered, 'shared', 'Ethics', -1)).toBeNull()
+    expect(moveTopic(numbered, 'shared', 'IFMSA', 1)).toBeNull()
+    expect(moveTopic(numbered, 'scope', 'Ethics', 1)).toBeNull()
+    expect(moveTopic(numbered, 'shared', 'Nope', 1)).toBeNull()
   })
 })

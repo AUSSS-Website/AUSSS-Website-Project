@@ -34,6 +34,7 @@ import {
   timeUp,
   toMs,
   toggleFlag,
+  reviewGroups,
   unansweredNumbers,
   visibleQuestions,
   waitAgain,
@@ -970,7 +971,7 @@ const LOADING = Object.freeze({
 //   status, why, problem   see createSitting; `over` is status === 'over'
 //   exam, attempt          { title, minutes, sections }, { id, started_at, deadline_at, sits }
 //   questions              the questions this taker sits, in the paper's order:
-//                          [{ id, body, options, section, passage, image }]
+//                          [{ id, body, options, section, topic, passage, image }]
 //   allQuestions           every question of the paper, a block left out too
 //   passages               { [passage id]: { body, image } }
 //   sections               { shared, scope, score, choice }: how many questions
@@ -980,6 +981,8 @@ const LOADING = Object.freeze({
 //   answers                { [question id]: { c, f } }; read one with answerOf
 //   total, answered        how many questions the taker sits, how many have an answer
 //   unanswered, flagged    question numbers (from 1) for the review
+//   groups                 reviewGroups: every number by section and topic,
+//                          answered or not
 //   layout                 layoutPages of `questions`
 //   pageCount, pages       pageSummaries: one row per page for its button
 //   questionsOn(page)      the questions of a page (from 1), each with its `n`
@@ -1033,6 +1036,7 @@ export function useSitting({ word, userId, attemptId = null }) {
       answered: answeredCount(questions, answers),
       unanswered: unansweredNumbers(questions, answers),
       flagged: flaggedNumbers(questions, answers),
+      groups: reviewGroups(questions, answers),
       pageCount: Math.max(1, layout.length),
       pages: pageSummaries(questions, answers, layout),
       blockAnswered: blockAnswered(allQuestions, answers),

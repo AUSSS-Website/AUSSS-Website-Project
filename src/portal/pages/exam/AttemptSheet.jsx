@@ -18,6 +18,8 @@ import {
   readProblem,
   rowOutcome,
   sheetColumns,
+  hasTopics,
+  topicOf,
   sheetCounts,
   sheetMarks,
   sheetSections,
@@ -90,6 +92,11 @@ function QuestionRow({ row, passage = null }) {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-soft/55">
           Question {questionLabel(row)}
           {SECTION_WORDS[row.section] && <span className="ml-2 normal-case tracking-normal">{SECTION_WORDS[row.section]}</span>}
+          {topicOf(row) && (
+            <span dir="auto" className="ml-2 normal-case tracking-normal text-accent">
+              {topicOf(row)}
+            </span>
+          )}
         </p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">
           <span className={OUTCOME_CLS[outcome]}>{OUTCOME_LABEL[outcome]}</span>
@@ -320,7 +327,7 @@ export default function AttemptSheet({ exam, attemptId, rank = null, tied = fals
               FILTER_NOTE[active] || ''
             }`.trim()}
             filename={exportName(exam.title, 'paper', a.student_id)}
-            columns={sheetColumns(inSections)}
+            columns={sheetColumns(inSections, hasTopics(rows))}
             rows={shown}
             summary={sheetSummary(a, rows.length, rows)}
             csv={false}

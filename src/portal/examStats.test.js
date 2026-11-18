@@ -40,6 +40,7 @@ import {
   tally,
   withLeaves,
   typedCell,
+  hasTopics,
 } from './examStats.js'
 
 // A row of rpc/exam_results.
@@ -822,5 +823,20 @@ describe('leaving the exam page', () => {
     const column = resultColumns(100).find((c) => c.label === 'Left the page (times)')
     expect(column.value({ left: 2 })).toBe(2)
     expect(column.value({})).toBe(0)
+  })
+})
+
+describe('topics in the officers’ exports', () => {
+  it('adds a Topic column only where a question has a topic', () => {
+    expect(sheetColumns().map((c) => c.label)).not.toContain('Topic')
+    const topic = sheetColumns(false, true).find((c) => c.label === 'Topic')
+    expect(topic.value({ topic: ' Ethics ' })).toBe('Ethics')
+    expect(topic.value({})).toBe('')
+    expect(hasTopics([{ topic: '' }, { topic: ' Ethics ' }])).toBe(true)
+    expect(hasTopics([{}, { topic: '  ' }])).toBe(false)
+    expect(hasTopics(undefined)).toBe(false)
+    const stats = { attempts: 1, questions: [{ topic: 'Ethics', options: ['a', 'b'], counts: [1, 0] }] }
+    expect(questionColumns(stats).find((c) => c.label === 'Topic').value(stats.questions[0])).toBe('Ethics')
+    expect(questionColumns({ attempts: 1, questions: [{ options: ['a'] }] }).map((c) => c.label)).not.toContain('Topic')
   })
 })

@@ -21,7 +21,7 @@ TODO: The name, the window in which a student can start, the length of a paper (
 
 ## Questions
 
-TODO: Writing them, their order, the right answer, and correcting an answer once papers are in.
+TODO: Writing them, their order, the right answer, and correcting an answer once papers are in. The sections and their topics: naming a topic on a question, moving a topic up or down, and the Topic column of the spreadsheet.
 
 ![](shot:exam-questions)
 
@@ -57,7 +57,7 @@ TODO: How each question was answered, to find the ones that misled.
 
 ## What a student sees
 
-TODO: In order: signing in, their details, their contract preferences (in an exam that has contracts), the wait and the start code, the paper, the review, and the two ways it ends.
+TODO: In order: signing in, their details, their contract preferences (in an exam that has contracts), the wait and the start code, the paper (each topic under its heading, the options lettered A, B, C in that student's own order), the review (every question green with an answer and red with none), and the two ways it ends.
 
 ![](shot:exam-student-signin)
 

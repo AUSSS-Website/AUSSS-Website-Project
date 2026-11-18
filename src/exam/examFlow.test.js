@@ -22,6 +22,8 @@ import {
   opensInWords,
   opensLine,
   pageLabel,
+  partName,
+  reviewLabel,
   placeFromHash,
   printWords,
   questionsFor,
@@ -737,5 +739,30 @@ describe('pressing Print Screen', () => {
     expect(printWords(1).body).toMatch(/recorded and will be reported/)
     expect(printWords(1).body).not.toMatch(/warning/)
     expect(printWords(3).body).toMatch(/recorded 3 times/)
+  })
+})
+
+describe('the review, by topic', () => {
+  it('names a part by its section and its topic', () => {
+    expect(partName({ section: 'shared', topic: 'Ethics', from: 2, to: 13 }, false)).toBe('Ethics')
+    expect(partName({ section: 'shared', topic: 'Ethics', from: 2, to: 13 }, true)).toBe('Shared questions: Ethics')
+    expect(partName({ section: 'scope', topic: '', from: 81, to: 100 }, true)).toBe('Professional exchange (SCOPE)')
+    // a part with neither is named by its numbers
+    expect(partName({ section: 'shared', topic: '', from: 1, to: 4 }, false)).toBe('Questions 1 to 4')
+    expect(partName({ section: 'shared', topic: '', from: 5, to: 5 }, false)).toBe('Question 5')
+  })
+
+  it('says of each number whether it has an answer', () => {
+    expect(reviewLabel({ n: 7, answered: true, flagged: false })).toBe('Go to question 7, answered')
+    expect(reviewLabel({ n: 8, answered: false, flagged: true })).toBe('Go to question 8, not answered, flagged')
+  })
+
+  it('names a topic’s page with its topic', () => {
+    expect(pageLabel({ page: 2, section: 'shared', topic: 'Ethics', from: 11, to: 20, unanswered: 0, flagged: 0 })).toBe(
+      'Page 2, Ethics, questions 11 to 20: all answered',
+    )
+    expect(pageLabel({ page: 9, section: 'scope', topic: 'Ethics', from: 81, to: 90, unanswered: 2, flagged: 0 })).toBe(
+      'Page 9, Professional exchange (SCOPE), Ethics, questions 81 to 90: 2 not answered',
+    )
   })
 })

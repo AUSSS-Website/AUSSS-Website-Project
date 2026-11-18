@@ -642,7 +642,7 @@ select is(
 select is(
   (select array_agg(distinct pg_temp.keys(q)::text)
    from jsonb_array_elements(public.exam_paper('pgtap-exam') -> 'questions') as q),
-  array['{body,id,image,options,passage,section}'],
+  array['{body,id,image,options,passage,section,topic}'],
   'a question on the paper is its text, its picture, its passage, its section and its options: no right answer, no officers'' order'
 );
 select is(
@@ -994,7 +994,7 @@ select is(
   (select array[s -> 'attempt' ->> 'full_name', s -> 'attempt' ->> 'score', s -> 'attempt' ->> 'state',
                 (s -> 'attempt' ? 'rank')::text, pg_temp.keys(s)::text, pg_temp.keys(s -> 'rows' -> 0)::text]
    from (select public.exam_sheet((select id from public.exam_attempts where profile_id = tests.user_id('amal@pgtap.test'))) as s) x),
-  array['amal taker', '3', 'handed_in', 'false', '{attempt,passages,rows}', '{answered_at,body,chosen,correct,counted,flagged,image,label,n,options,passage,question_id,section}'],
+  array['amal taker', '3', 'handed_in', 'false', '{attempt,passages,rows}', '{answered_at,body,chosen,correct,counted,flagged,image,label,n,options,passage,question_id,section,topic}'],
   'the sheet carries the taker''s details and marks as the results do, without a rank'
 );
 select is(
@@ -1007,7 +1007,7 @@ select is(
 );
 select is(
   pg_temp.keys(public.exam_question_stats((select id from pgtap_exam)) -> 'questions' -> 0),
-  array['answered', 'body', 'correct', 'counts', 'image', 'label', 'n', 'options', 'passage', 'question_id', 'right', 'sat', 'section'],
+  array['answered', 'body', 'correct', 'counts', 'image', 'label', 'n', 'options', 'passage', 'question_id', 'right', 'sat', 'section', 'topic'],
   'each question''s figures come with its text, its options and its right answer'
 );
 select lives_ok(
