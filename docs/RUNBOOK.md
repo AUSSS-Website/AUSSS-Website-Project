@@ -3713,9 +3713,14 @@ paragraphs below speak of a contract being required, this paragraph is the rule.
 for every single contract. Lines with the same programme, class, country and note (both
 with no note counts as the same; capitals do not matter) are counted together as one
 contract with that many of it, at the first line's place, and the page says how many
-lines became how many contracts (`compactContracts` in `src/portal/examContracts.js`). The
-counting is within the list being added: a contract already in the exam is not added to,
-so adding the same list twice makes each contract twice. A sum over 999 is refused.
+lines became how many contracts (`compactContracts` in `src/portal/examContracts.js`). A
+contract the exam already has is added to as well: `rpc/import_exam_contracts` (migration
+`20261118190001_exam_contracts_top_up.sql`) adds a row's number to the contract with the
+same programme, class, country and note and makes no second one, also for a contract
+students have already chosen. So adding the same list twice doubles each contract's
+number; it does not list each twice. A sum over 999 is refused. To start a list again,
+**Remove all contracts** on the Contracts tab removes every contract of the exam and the
+students' choices among them, after a second click; it is there until the exam starts.
 
 **Contracts and the students' preferences (2026-11-18).** An exam can carry the exchange
 contracts the students are matched to (`exam_contracts`, migration

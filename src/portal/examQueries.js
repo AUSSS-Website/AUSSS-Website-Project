@@ -491,7 +491,8 @@ export function usePreferenceList(examId, exam = null) {
 }
 
 // `rows` as examContracts.js makes them: [{ programme, class, country, places, note }].
-// All of them or none; answers with how many were added.
+// All of them or none. A row that is a contract the exam already has adds its
+// number to that one; answers with how many new contracts were made.
 async function addContracts({ examId, rows }) {
   return unwrap(await supabase.rpc('import_exam_contracts', { p_exam: examId, p_rows: rows }))
 }
@@ -506,11 +507,19 @@ async function deleteContract(id) {
   return id
 }
 
+// Every contract of an exam at once, and with them the students' choices
+// among them. The database refuses once the exam has started.
+async function deleteAllContracts(examId) {
+  unwrap(await supabase.from('exam_contracts').delete().eq('exam_id', examId))
+  return examId
+}
+
 export function useContractMutations(examId) {
   const qc = useQueryClient()
   const done = () => refreshExamData(qc)
   const add = useMutation({ mutationFn: (rows) => addContracts({ examId, rows }), onSettled: done })
   const update = useMutation({ mutationFn: updateContract, onSettled: done })
   const remove = useMutation({ mutationFn: deleteContract, onSettled: done })
-  return { add, update, remove }
+  const removeAll = useMutation({ mutationFn: () => deleteAllContracts(examId), onSettled: done })
+  return { add, update, remove, removeAll }
 }

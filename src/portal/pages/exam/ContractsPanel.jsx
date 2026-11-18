@@ -16,6 +16,7 @@ import {
   contractsFromText,
   demandOf,
   demandWords,
+  removeAllWords,
   placesIn,
   preferenceColumns,
   preferenceRows,
@@ -140,8 +141,12 @@ function AddPanel({ exam }) {
     }
   }
   // Lines that are the same contract were counted together when the list was
-  // read; the note says so when that made the list shorter.
-  const send = async (list) => setNote(addedContracts(await add.mutateAsync(checkContractList(list)), list.lines))
+  // read, and a contract the exam already has is added to, not made again:
+  // the note says which of those happened.
+  const send = async (list) => {
+    const rows = checkContractList(list)
+    setNote(addedContracts(await add.mutateAsync(rows), rows.length, list.lines ?? rows.length))
+  }
 
   const addOne = (e) => {
     e.preventDefault()
@@ -204,7 +209,7 @@ function AddPanel({ exam }) {
         <Field
           label="Or paste several"
           htmlFor="exam-contracts-paste"
-          hint="One on each line: programme, class, country, then how many contracts there are of it and a note. The number and the note can be left out. Rows copied from a spreadsheet work as they are, with those five columns. Lines that are the same contract (the same programme, class, country and note) are counted together as one contract with that many of it."
+          hint="One on each line: programme, class, country, then how many contracts there are of it and a note. The number and the note can be left out. Rows copied from a spreadsheet work as they are, with those five columns. Lines that are the same contract (the same programme, class, country and note) are counted together as one contract with that many of it, and a contract this exam already has is added to."
         >
           <textarea
             id="exam-contracts-paste"
@@ -246,6 +251,36 @@ function AddPanel({ exam }) {
         </div>
       )}
     </Panel>
+  )
+}
+
+// Every contract of the exam removed at once, to start a list again. It asks
+// twice, and says before the second click what goes with the contracts: the
+// choices of the students who have chosen among them. Not offered once the
+// exam has started, when the database refuses it.
+function RemoveAll({ exam, contracts, students }) {
+  const { removeAll } = useContractMutations(exam.id)
+  return (
+    <div className="mt-4 rounded-xl border border-line/10 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p id="exam-contracts-remove-all" className="min-w-0 flex-1 basis-56 text-xs text-soft/65">
+          {removeAllWords(contracts, students)} It cannot be undone.
+        </p>
+        <ConfirmButton
+          label="Remove all contracts"
+          confirmLabel="Click again to remove them all"
+          busyLabel="Removing…"
+          onConfirm={() => removeAll.mutate()}
+          busy={removeAll.isPending}
+          className={`${outlineBtnCls} ${tapCls}`}
+        />
+      </div>
+      {removeAll.isError && (
+        <div className="mt-2">
+          <ErrorText>{errorText(removeAll.error, 'The contracts could not be removed.')}</ErrorText>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -421,6 +456,7 @@ export default function ContractsPanel({ exam }) {
                 <ErrorText>{readProblem('refresh the contracts', contracts.error)}</ErrorText>
               </div>
             )}
+            {rows.length > 0 && !exam.started && <RemoveAll exam={exam} contracts={rows} students={students} />}
             {rows.length === 0 ? (
               <p className="mt-4 text-sm text-soft/60">
                 No contracts yet. An exam with no contracts asks its students for no preferences.
