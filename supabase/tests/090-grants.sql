@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(184);
+select plan(192);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -208,6 +208,16 @@ select ok(has_function_privilege('authenticated', 'public.exam_door(text)', 'exe
 select ok(not has_function_privilege('anon', 'app.is_exam_officer()', 'execute'), 'anon cannot ask who is an exam officer');
 select ok(not has_function_privilege('authenticated', 'app.exam_by_word(text)', 'execute'), 'only the exam''s own functions look an exam up by its word');
 select ok(not has_function_privilege('authenticated', 'app.clear_exam_rows(uuid)', 'execute'), 'only the rollover clears a term''s list, papers and answers');
+-- the helpers of an exam's registered list: the officers read who helps; naming, removing and
+-- everything a helper does go through the functions
+select ok(not has_any_column_privilege('anon', 'public.exam_helpers', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_helpers', 'delete, truncate, trigger'), 'anon holds nothing on exam_helpers');
+select ok(has_table_privilege('authenticated', 'public.exam_helpers', 'select'), 'authenticated reads exam_helpers (RLS narrows it to the exam officers)');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_helpers', 'insert, update') and not has_table_privilege('authenticated', 'public.exam_helpers', 'delete'), 'authenticated cannot name or remove a helper directly');
+select ok(not has_function_privilege('anon', 'public.exam_add_helper(uuid, text)', 'execute') and not has_function_privilege('anon', 'public.exam_remove_helper(uuid, uuid)', 'execute'), 'anon cannot name or remove a helper');
+select ok(not has_function_privilege('anon', 'public.exam_helper_list(uuid)', 'execute'), 'anon cannot read who helps');
+select ok(not has_function_privilege('anon', 'public.exam_helper_exams()', 'execute'), 'anon cannot ask which exams it helps with');
+select ok(not has_function_privilege('anon', 'public.exam_remove_registration(uuid)', 'execute'), 'anon cannot take an ID off the list');
+select ok(not has_function_privilege('authenticated', 'app.can_edit_exam_list(uuid)', 'execute') and not has_function_privilege('authenticated', 'app.is_exam_helper(uuid)', 'execute'), 'only the list''s own functions ask who may work on it');
 -- the exam's sections, passages and pictures: a passage is read and removed by the exam officers
 -- and written by its function only; a question's section, passage and picture likewise
 select ok(not has_any_column_privilege('anon', 'public.exam_passages', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_passages', 'delete, truncate, trigger'), 'anon holds nothing on exam_passages');

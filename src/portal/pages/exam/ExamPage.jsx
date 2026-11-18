@@ -14,7 +14,7 @@ import {
   opensWords,
   tapCls,
   tapLinkCls,
-  useIsExamOfficer,
+  useExamAccess,
 } from './ExamsPage.jsx'
 import SetupPanel from './SetupPanel.jsx'
 import QuestionsPanel from './QuestionsPanel.jsx'
@@ -29,6 +29,10 @@ import OverviewPanel from './OverviewPanel.jsx'
 // its term, its counts and `started` (examQueries.js). The database decides
 // who may do what; this page asks it for the exam and shows a polite refusal
 // when the answer is nothing.
+//
+// A helper of the exam's registered list (named by the officers on that part)
+// gets the registered list and nothing else: no tabs, and no read of the exam
+// itself, which the database would refuse them.
 
 const TABS = [
   ['setup', 'Set-up'],
@@ -157,13 +161,57 @@ function ExamView({ exam, refreshError }) {
   )
 }
 
+// The page of someone who helps with this exam's registered list. `exam` is
+// what the database tells a helper of it (examQueries.js): enough for the
+// header and for the list to know when to read itself again.
+function HelperView({ exam }) {
+  const standing = examStanding(exam)
+  return (
+    <>
+      <PageHeader
+        eyebrow={
+          <Link to="/portal/exam" className={`${tapLinkCls} transition-colors hover:text-ink`}>
+            &larr; Exam
+          </Link>
+        }
+        title={exam.title}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            <StatusChip tone={standing.tone}>{standing.label}</StatusChip>
+            {exam.term?.label && <StatusChip>Term {exam.term.label}</StatusChip>}
+            <StatusChip tone="accent">Registered list</StatusChip>
+            <span>{opensWords(exam)}</span>
+          </span>
+        }
+      />
+      <RegisteredPanel exam={exam} />
+    </>
+  )
+}
+
 export default function ExamPage() {
   const { id } = useParams()
-  const allowed = useIsExamOfficer()
+  const { officer: allowed, helping, pending, error: accessError } = useExamAccess()
   const exam = useExam(id, allowed)
-  usePageTitle(exam.data ? exam.data.title : 'Exam')
+  const helped = allowed ? null : helping.find((row) => row.id === id)
+  usePageTitle((exam.data || helped)?.title || 'Exam')
 
-  if (!allowed) return <ExamGate />
+  if (!allowed) {
+    if (pending) return <PageLoading />
+    // A key per exam, as below.
+    if (helped) return <HelperView key={helped.id} exam={helped} />
+    if (accessError) {
+      return (
+        <Panel>
+          <ErrorText>{readProblem('check your access to this exam', accessError)}</ErrorText>
+          <Link to="/portal/exam" className={backLinkCls}>
+            &larr; Exam
+          </Link>
+        </Panel>
+      )
+    }
+    return <ExamGate />
+  }
   if (exam.isPending) return <PageLoading />
   // Only a first read that failed takes the page's place. Once the exam is
   // here, a later read that fails (every save ends with one, and the page asks

@@ -3,10 +3,10 @@ import useLeaveWarning from '../../../hooks/useLeaveWarning.js'
 import { errorText } from '../../../lib/errorText.js'
 import ExportButtons from '../../ExportButtons.jsx'
 import { MAX_IDS, addedSentence, doubtSentence, doubtfulIds, idsFromText, parseIdFile, tidyId } from '../../examFile.js'
-import { useRegistrationMutations, useRegistrations } from '../../examQueries.js'
+import { useExamHelpers, useHelperMutations, useRegistrationMutations, useRegistrations } from '../../examQueries.js'
 import { examPhase, readProblem, typedCell } from '../../examStats.js'
 import { ConfirmButton, ErrorText, Field, Panel, Spinner, inputCls, outlineBtnCls, primaryBtnCls } from '../../portalUi.jsx'
-import { RefreshButton, StatusChip, confirmReachCls, countOf, tapCls, whenInCairo } from './ExamsPage.jsx'
+import { RefreshButton, StatusChip, confirmReachCls, countOf, tapCls, useIsExamOfficer, whenInCairo } from './ExamsPage.jsx'
 
 // The Registered list part of /portal/exam/:id. The student IDs that may sit
 // the exam: adding them by pasting or from a file (examFile.js reads both),
@@ -15,6 +15,10 @@ import { RefreshButton, StatusChip, confirmReachCls, countOf, tapCls, whenInCair
 // the row from examQueries.js. Registration itself happens outside the site;
 // no student can read this list, and the database tells each one only whether
 // their own ID is on it.
+//
+// The officers can name helpers for this list (the Helpers panel, which only
+// they see). A helper gets this same page for that exam, with an
+// `exam` that holds only what the page reads: id, title, status, the times.
 
 const NO_ROWS = []
 const PAGE_SIZE = 100
@@ -255,7 +259,139 @@ function Row({ row, onRelease, onRemove, acting, error }) {
   )
 }
 
+// The officers' part of the page: who else may work on this list. A helper is
+// any account on the website, named by the address it signs in with; they get
+// this exam's registered list and nothing else of it. Helpers never see this
+// panel, and the database would refuse them what it asks.
+function HelpersPanel({ exam }) {
+  const helpers = useExamHelpers(exam.id)
+  const { add, remove } = useHelperMutations(exam.id)
+  const [email, setEmail] = useState('')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  // The helper being taken off, by profile id, and what the database said
+  // when it refused: { id, text }.
+  const [removing, setRemoving] = useState('')
+  const [refused, setRefused] = useState(null)
+  const boxRef = useRef(null)
+  const rows = helpers.data || NO_ROWS
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setNote('')
+    setError('')
+    if (!email.trim()) {
+      setError('Type the address the helper signs in with.')
+      boxRef.current?.focus()
+      return
+    }
+    try {
+      const helper = await add.mutateAsync(email.trim())
+      const who = helper.full_name || helper.email
+      setNote(helper.added ? `${who} can now work on this list.` : `${who} is a helper already.`)
+      setEmail('')
+    } catch (err) {
+      setError(errorText(err, 'The helper could not be added.'))
+    }
+  }
+
+  const takeOff = async (helper) => {
+    setRefused(null)
+    setNote('')
+    setRemoving(helper.profile_id)
+    try {
+      await remove.mutateAsync(helper.profile_id)
+    } catch (err) {
+      setRefused({ id: helper.profile_id, text: errorText(err, 'That did not work.') })
+    } finally {
+      setRemoving('')
+    }
+  }
+
+  return (
+    <Panel title="Helpers">
+      <p className="mt-2 text-xs text-soft/55">
+        Someone helping at the registration desk can add IDs to this list while you do. A helper is anyone with an
+        account on the website: they sign in to the portal once, and you add them here by the address they signed in
+        with. They then find this exam under Exam in the portal, where they see this list and can add to it, release
+        an ID and remove one, as you can. They see nothing else of the exam: not its questions, its start code or its
+        results. Helpers are taken off when the term ends.
+      </p>
+      <form onSubmit={submit} className="mt-4 space-y-3">
+        <Field label="Helper’s email" htmlFor="exam-helper-email">
+          <input
+            id="exam-helper-email"
+            ref={boxRef}
+            type="email"
+            className={`${inputCls} ${tapCls} max-w-sm`}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setNote('')
+              setError('')
+            }}
+            autoCapitalize="none"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Field>
+        <button type="submit" className={`${outlineBtnCls} ${tapCls}`} disabled={add.isPending}>
+          {add.isPending ? 'Adding…' : 'Add helper'}
+        </button>
+        <p role="status" className={note ? 'text-sm text-ok' : 'sr-only'}>
+          {note}
+        </p>
+        <ErrorText>{error}</ErrorText>
+      </form>
+
+      {helpers.isPending ? (
+        <div className="mt-6 flex justify-center">
+          <Spinner />
+        </div>
+      ) : !helpers.data ? (
+        <div className="mt-4">
+          <ErrorText>{readProblem('load the helpers', helpers.error)}</ErrorText>
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-sm text-soft/60">No helpers yet. Only the exam officers can work on this list.</p>
+      ) : (
+        <ul className="mt-4 space-y-2">
+          {rows.map((helper) => (
+            <li
+              key={helper.profile_id}
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-line/10 bg-sunk/40 p-3"
+            >
+              <div className="min-w-0 flex-1 basis-56">
+                <p className="break-words text-sm font-semibold text-ink">{helper.full_name || 'No name yet'}</p>
+                <p className="mt-0.5 break-all text-xs text-soft/65">{helper.email}</p>
+              </div>
+              <span className={confirmReachCls}>
+                <ConfirmButton
+                  variant="text"
+                  label="Remove"
+                  ariaLabel={`Remove ${helper.full_name || helper.email} from the helpers`}
+                  confirmLabel="Click again to remove"
+                  busyLabel="Removing…"
+                  onConfirm={() => takeOff(helper)}
+                  busy={removing === helper.profile_id}
+                  disabled={Boolean(removing)}
+                />
+              </span>
+              {refused?.id === helper.profile_id && (
+                <div className="basis-full">
+                  <ErrorText>{refused.text}</ErrorText>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
 export default function RegisteredPanel({ exam }) {
+  const officer = useIsExamOfficer()
   const registrations = useRegistrations(exam.id, exam)
   const { release, remove } = useRegistrationMutations(exam.id)
   const [q, setQ] = useState('')
@@ -322,6 +458,9 @@ export default function RegisteredPanel({ exam }) {
   return (
     <div className="space-y-8">
       <AddPanel exam={exam} />
+
+      {/* Above the list, which can be a hundred rows long. */}
+      {officer && <HelpersPanel exam={exam} />}
 
       <Panel title="The list">
         <p className="mt-2 text-xs text-soft/55">
