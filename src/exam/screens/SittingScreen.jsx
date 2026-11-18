@@ -8,11 +8,12 @@ import {
   clockNotice,
   clockTone,
   connectionNote,
+  blockName,
   hashFor,
+  nextWords,
   pageLabel,
   placeFromHash,
   saveWords,
-  sectionName,
   strayTap,
 } from '../examFlow.js'
 import { FlagIcon, focusCls, focusTargetCls, moveFocus, noteScreen, tapLinkCls, tapOutlineCls, tapPrimaryCls } from '../examUi.jsx'
@@ -22,10 +23,12 @@ import { useTimeLeft } from '../useSitting.js'
 import LeftWarning from './LeftWarning.jsx'
 import ReviewScreen from './ReviewScreen.jsx'
 
-// The paper: about ten questions a page, the clock and the save state in a bar
-// that stays at the top, the pages and the review under it. A section starts
-// on a page of its own, so does each topic within it (the page is headed with
-// the topic's name), and a passage sits above the questions read with it. An
+// The paper: a topic a page (its name is the heading, all its questions under
+// it, and Next opens the next topic), or about ten questions a page where the
+// questions have no topic; the clock and the save state in a bar that stays
+// at the top, the pages and the review under it. The questions everybody
+// answers are not called "shared" here: only a page of one of the two
+// optional blocks is named with its block. A passage sits above the questions read with it. An
 // option has a letter, A, B, C, by the order this taker sees them in. Tired students sit it
 // for two hours on small phones, so:
 //   - everything tapped is at least 44px tall and the options are whole rows;
@@ -364,13 +367,11 @@ function PaperPage({ sitting, place, headingRef, tapGuard }) {
     })
     return ends
   }, [questions, passages])
-  // An exam in sections names the section of every page, the shared one too.
-  const inSections = sections.scope > 0 || sections.score > 0
+  // An exam in sections names the block of a page that is in one of the two.
+  const block = (sections.scope > 0 || sections.score > 0) && row ? blockName(row.section) : ''
   return (
     <>
-      {inSections && row && (
-        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">{sectionName(row.section)}</p>
-      )}
+      {block && <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">{block}</p>}
       <h1 ref={headingRef} tabIndex={-1} className={headingCls}>
         <span className="sr-only">
           Page {place.page} of {pageCount}.{' '}
@@ -429,8 +430,10 @@ function PageNav({ place, pages, go }) {
           {onReview ? 'Back to the questions' : 'Previous'}
         </button>
         {!onReview && place.page < last && (
-          <button type="button" onClick={() => go({ view: 'page', page: place.page + 1 })} className={`${tapPrimaryCls} flex-1`}>
-            Next
+          <button type="button" onClick={() => go({ view: 'page', page: place.page + 1 })} className={`${tapPrimaryCls} min-w-0 flex-1`}>
+            <span dir="auto" className="[overflow-wrap:anywhere]">
+              {nextWords(pages, place.page)}
+            </span>
           </button>
         )}
         {!onReview && place.page >= last && (
