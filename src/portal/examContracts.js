@@ -81,7 +81,9 @@ const HEADINGS = /^(programme|program|committee|class|country|contract|note|note
 // over, and so is a first row of headings. Answers { rows, problems }: `rows`
 // are the contracts as the database takes them, and `problems` one sentence
 // for each row that is not a contract, with its line as the officer counts
-// them. Nothing should be sent while there is a problem.
+// them. Nothing should be sent while there is a problem. Lines that are the
+// same contract are counted together (compactContracts), and `lines` is how
+// many lines of contracts were read before that.
 export function contractsFromGrid(grid) {
   const rows = []
   const problems = []
@@ -99,7 +101,26 @@ export function contractsFromGrid(grid) {
     if (fault) problems.push(`Line ${i + 1}: ${fault}`)
     else rows.push(tidyContract(contract))
   })
-  return { rows, problems }
+  return { rows: compactContracts(rows), problems, lines: rows.length }
+}
+
+// A list in which the same contract comes more than once, made into one
+// contract for each: the officers' sheets often have a line for every single
+// contract, so three lines of "SCOPE, A, Spain" are three contracts of that
+// one, not three things to choose between. Two lines are the same contract
+// when they have the same programme, class, country and note (both with none
+// counts as the same), whatever the capitals. The contract keeps the place and
+// the spelling of its first line, and its number is the sum of the lines'
+// numbers. The list given is left as it was.
+export function compactContracts(rows) {
+  const byKey = new Map()
+  for (const row of list(rows)) {
+    const key = [row.programme, row.class, tidy(row.country).toLowerCase(), tidy(row.note).toLowerCase()].join('\n')
+    const found = byKey.get(key)
+    if (found) found.places += Number(row.places) || 1
+    else byKey.set(key, { ...row, places: Number(row.places) || 1 })
+  }
+  return [...byKey.values()]
 }
 
 // A pasted list: one contract a line. Cells copied from a spreadsheet come
@@ -123,15 +144,25 @@ export function problemSentences(problems, show = 5) {
 export function checkContractList({ rows, problems }) {
   if (list(problems).length > 0) throw refusal(problemSentences(problems).join(' '))
   if (list(rows).length === 0) throw refusal('There are no contracts in that.')
+  // lines counted together can come to more than one contract may have
+  const over = rows.find((row) => row.places > PLACES_MAX)
+  if (over) {
+    const programme = CONTRACT_PROGRAMMES.find((p) => p.id === over.programme)?.short ?? ''
+    throw refusal(
+      `The lines for ${over.country} (${programme}, Class ${over.class}) come to ${over.places} contracts. A contract has between 1 and ${PLACES_MAX} places.`,
+    )
+  }
   if (rows.length > MAX_CONTRACTS) {
     throw refusal(`Add at most ${MAX_CONTRACTS} contracts at a time. This list has ${rows.length}: add it in parts.`)
   }
   return rows
 }
 
-// 'Added 12 contracts.'
-export function addedContracts(n) {
-  return `Added ${n} ${n === 1 ? 'contract' : 'contracts'}.`
+// 'Added 12 contracts.' When the list had more lines than that, because lines
+// that were the same contract were counted together, it says so.
+export function addedContracts(n, lines = n) {
+  const added = `Added ${n} ${n === 1 ? 'contract' : 'contracts'}`
+  return lines > n ? `${added} from ${lines} lines: lines that were the same contract were counted together.` : `${added}.`
 }
 
 // ---- the list on the page --------------------------------------------------------

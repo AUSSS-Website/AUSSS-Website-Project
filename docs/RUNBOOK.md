@@ -3709,6 +3709,14 @@ but saving with no contract chosen is enough, and the page says so above its Sav
 The limits (two of Class A, two of Class B in each programme) are unchanged. Where the
 paragraphs below speak of a contract being required, this paragraph is the rule.
 
+**The same contract on several lines (2026-11-18).** A pasted list or a file often has a line
+for every single contract. Lines with the same programme, class, country and note (both
+with no note counts as the same; capitals do not matter) are counted together as one
+contract with that many of it, at the first line's place, and the page says how many
+lines became how many contracts (`compactContracts` in `src/portal/examContracts.js`). The
+counting is within the list being added: a contract already in the exam is not added to,
+so adding the same list twice makes each contract twice. A sum over 999 is refused.
+
 **Contracts and the students' preferences (2026-11-18).** An exam can carry the exchange
 contracts the students are matched to (`exam_contracts`, migration
 `20261118120001_exam_contracts.sql`): each has a programme (SCOPE or SCORE), a class (A, B or
