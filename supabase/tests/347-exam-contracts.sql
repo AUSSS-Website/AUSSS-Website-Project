@@ -180,10 +180,10 @@ select throws_ok(
   '22023', 'Choose contracts only from the sections you will answer.',
   'a contract of a programme whose section is not chosen is refused'
 );
-select throws_ok(
-  $$ select public.exam_save_preferences('contracts-exam', pg_temp.picks('contracts-exam', array['Spain']), true, true) $$,
-  '22023', 'Choose at least one contract for the research exchange (SCORE).',
-  'a chosen programme needs at least one contract'
+select is(
+  public.exam_save_preferences('contracts-exam', pg_temp.picks('contracts-exam', array['Spain']), true, true),
+  '{"saved": true, "complete": true, "scope": true, "score": true, "picks": 1}'::jsonb,
+  'a chosen programme may be left with no contract: a student can sit without preferences in it'
 );
 select throws_ok(
   $$ select public.exam_save_preferences('contracts-exam', pg_temp.picks('contracts-exam', array['Spain']) || '["not-a-contract"]'::jsonb, true, false) $$,
@@ -347,10 +347,10 @@ select is(
   '{"ok": false, "reason": "preferences"}'::jsonb,
   'once it has contracts, the start waits for the preferences'
 );
-select throws_ok(
-  $$ select public.exam_save_preferences('flat-exam', '[]'::jsonb) $$,
-  '22023', 'Choose at least one contract.',
-  'at least one contract must be chosen'
+select is(
+  public.exam_save_preferences('flat-exam', '[]'::jsonb),
+  '{"saved": true, "complete": true, "scope": null, "score": null, "picks": 0}'::jsonb,
+  'no contract at all can be saved, and the exam would then start: a student can sit without preferences'
 );
 select is(
   public.exam_save_preferences('flat-exam', pg_temp.picks('flat-exam', array['Japan'])),

@@ -159,18 +159,10 @@ describe('preferencesProblem', () => {
       'Choose at least one section.',
     )
   })
-  it('asks for a contract in each ticked programme that has some', () => {
-    expect(preferencesProblem({ contracts, picks: ['es'], sits: both, choice: true })).toBe(
-      'Choose at least one contract for the research exchange (SCORE).',
-    )
-    expect(preferencesProblem({ contracts, picks: ['de'], sits: both, choice: true })).toBe(
-      'Choose at least one contract for the professional exchange (SCOPE).',
-    )
-  })
-  it('does not count a pick in a section that is no longer ticked', () => {
-    expect(preferencesProblem({ contracts, picks: ['de'], sits: { scope: true, score: false }, choice: true })).toBe(
-      'Choose at least one contract for the professional exchange (SCOPE).',
-    )
+  it('asks for no contract: a student can sit without preferences', () => {
+    expect(preferencesProblem({ contracts, picks: ['es'], sits: both, choice: true })).toBe('')
+    expect(preferencesProblem({ contracts, picks: [], sits: both, choice: true })).toBe('')
+    expect(preferencesProblem({ contracts, picks: ['de'], sits: { scope: true, score: false }, choice: true })).toBe('')
   })
   it('asks nothing of a ticked programme that has no contract', () => {
     const scopeOnly = contracts.filter((x) => x.programme === 'scope')
@@ -179,8 +171,8 @@ describe('preferencesProblem', () => {
   it('passes a full choice', () => {
     expect(preferencesProblem({ contracts, picks: ['es', 'de'], sits: both, choice: true })).toBe('')
   })
-  it('asks for one contract of any programme in an exam with no choice', () => {
-    expect(preferencesProblem({ contracts, picks: [], sits: null, choice: false })).toBe('Choose at least one contract.')
+  it('asks for nothing in an exam with no choice', () => {
+    expect(preferencesProblem({ contracts, picks: [], sits: null, choice: false })).toBe('')
     expect(preferencesProblem({ contracts, picks: ['pl'], sits: null, choice: false })).toBe('')
   })
 })
@@ -211,6 +203,7 @@ describe('the words', () => {
   it('sums the saved preferences up on the start card', () => {
     expect(preferencesLine({ picks: 5 })).toBe('You have chosen 5 contracts. You can change them until you start the exam.')
     expect(preferencesLine({ picks: 1 })).toBe('You have chosen 1 contract. You can change it until you start the exam.')
+    expect(preferencesLine({ picks: 0 })).toBe('You have chosen no contract. You can choose some until you start the exam.')
   })
   it('reads the sections chosen with the preferences', () => {
     expect(chosenSections({ scope: true, score: null })).toEqual({ scope: true, score: false })

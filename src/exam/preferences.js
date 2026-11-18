@@ -134,21 +134,14 @@ export function keptPicks(contracts, picks, programmes) {
   return kept
 }
 
-// A programme's name inside a sentence.
-const PROGRAMME_WORDS = { scope: 'the professional exchange (SCOPE)', score: 'the research exchange (SCORE)' }
-
 // What is wrong with the preferences as they stand, in the database's own
-// sentences, or '' when they can be saved.
+// sentence, or '' when they can be saved. A student can sit without
+// preferences, so no contract is ever asked for: only, in an exam with two
+// optional sections, a section, since the paper sits the ones ticked here.
 //   choice  the exam has two optional sections
 //   sits    the sections ticked, { scope, score }
-export function preferencesProblem({ contracts, picks, sits, choice }) {
-  if (choice && !(sits?.scope || sits?.score)) return 'Choose at least one section.'
-  const offered = offeredProgrammes(contracts, sits, choice)
-  const kept = keptPicks(contracts, picks, offered)
-  if (!choice) return kept.length === 0 ? 'Choose at least one contract.' : ''
-  const byId = new Map(list(contracts).map((c) => [c.id, c]))
-  const empty = offered.find((block) => !kept.some((id) => byId.get(id)?.programme === block))
-  return empty ? `Choose at least one contract for ${PROGRAMME_WORDS[empty]}.` : ''
+export function preferencesProblem({ sits, choice }) {
+  return choice && !(sits?.scope || sits?.score) ? 'Choose at least one section.' : ''
 }
 
 // ---- the words ----------------------------------------------------------------
@@ -196,6 +189,7 @@ export function pickNote(contracts, picks, id) {
 //   preferences  the door's { saved, complete, scope, score, picks }
 export function preferencesLine(preferences) {
   const n = num(preferences?.picks)
+  if (n === 0) return 'You have chosen no contract. You can choose some until you start the exam.'
   return `You have chosen ${n} ${n === 1 ? 'contract' : 'contracts'}. You can change ${n === 1 ? 'it' : 'them'} until you start the exam.`
 }
 
