@@ -158,11 +158,32 @@ export function checkContractList({ rows, problems }) {
   return rows
 }
 
-// 'Added 12 contracts.' When the list had more lines than that, because lines
-// that were the same contract were counted together, it says so.
-export function addedContracts(n, lines = n) {
-  const added = `Added ${n} ${n === 1 ? 'contract' : 'contracts'}`
-  return lines > n ? `${added} from ${lines} lines: lines that were the same contract were counted together.` : `${added}.`
+// What a list did, in words. `made` is how many new contracts the database
+// made of it (rpc/import_exam_contracts answers with that), `sent` how many
+// contracts the list held, and `lines` how many lines it had before the lines
+// that were the same contract were counted together. A contract of the list
+// that the exam already had was added to, not made again.
+//   'Added 12 contracts.'
+//   'Added 3 contracts. Added to 2 contracts already in the list. Lines that
+//    were the same contract were counted together.'
+export function addedContracts(made, sent = made, lines = sent) {
+  const count = (n) => `${n} ${n === 1 ? 'contract' : 'contracts'}`
+  const topped = Math.max(0, sent - made)
+  const parts = []
+  if (made > 0 || topped === 0) parts.push(`Added ${count(made)}.`)
+  if (topped > 0) parts.push(`Added to ${count(topped)} already in the list.`)
+  if (lines > sent) parts.push('Lines that were the same contract were counted together.')
+  return parts.join(' ')
+}
+
+// What removing every contract takes with it, said before the second click:
+// `students` are the rows of the preferences' list.
+export function removeAllWords(contracts, students) {
+  const n = list(contracts).length
+  const chose = list(students).filter((s) => list(s?.picks).length > 0).length
+  const all = n === 1 ? 'the one contract' : `all ${n} contracts`
+  if (chose === 0) return `This removes ${all} of this exam.`
+  return `This removes ${all} of this exam, and with them the choices of the ${chose === 1 ? 'one student who has' : `${chose} students who have`} chosen among them.`
 }
 
 // ---- the list on the page --------------------------------------------------------

@@ -751,8 +751,15 @@ const sampleContracts = [
   ['score', 'C', 'Turkey', 3, ''],
   ['score', 'C', 'Romania', 2, ''],
 ].map(([programme, cls, country, places, note], i) => ({ id: `ct-${String(i + 1).padStart(2, '0')}`, exam_id: 'ex-1', programme, class: cls, country, places, note, sort: i + 1, created_at: iso(6) }))
+// The draft exam (ex-2) has three, so its Contracts tab shows what an exam
+// that has not started offers: removing a contract, and removing them all.
+const draftContracts = [
+  ['scope', 'A', 'Spain', 5, ''],
+  ['scope', 'B', 'Greece', 2, 'Athens'],
+  ['score', 'A', 'Japan', 1, ''],
+].map(([programme, cls, country, places, note], i) => ({ id: `cd-${i + 1}`, exam_id: 'ex-2', programme, class: cls, country, places, note, sort: i + 1, created_at: iso(6) }))
 // The table is made further up, before the contracts are.
-tables.exam_contracts = sampleContracts
+tables.exam_contracts = [...sampleContracts, ...draftContracts]
 const contractId = (country) => sampleContracts.find((c) => c.country.startsWith(country)).id
 // What the students of ex-1 chose: one paper sits both programmes, one the
 // research one only and one the professional one only, and one student has
@@ -951,7 +958,7 @@ const rpcs = {
           }),
           { registration_id: 'rg-new', student_id: '2023-0999', profile_id: 'pf-new', full_name: 'Sample Student Not Started', email: 'not-started@example.com', phone: '01000000099', faculty_year: 'Year 3', saved_at: iso(0.2), chose_scope: true, chose_score: false, attempt_id: null, sits_scope: null, sits_score: null, picks: ['Spain', 'Tunisia'].map(contractId) },
         ],
-  import_exam_contracts: ({ p_rows }) => (Array.isArray(p_rows) ? p_rows.length : 0),
+  import_exam_contracts: ({ p_rows }) => (Array.isArray(p_rows) ? p_rows.length : 0), // new contracts made; the sample adds to none
   // The contracts for a student, and what they have saved so far.
   exam_preferences: ({ p_word }) => {
     const saved = p_word === 'sample-chosen'
@@ -1047,7 +1054,7 @@ export const ROUTES = [
   '/portal/exam/ex-1?tab=contracts', '/portal/exam/ex-1?tab=contracts#change',
   '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&programme=score', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=results&programme=score&paper=at-002', '/portal/exam/ex-1?tab=overview',
   // the draft, where every form is open, and last term's, with nothing left to read
-  '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
+  '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=contracts', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
   '/portal/exam/ex-0?tab=results', '/portal/exam/ex-0?tab=overview',
   // the exam as a student meets it, in the order of a sitting
   '/exam/sample-sign-in', '/exam/callback?error=access_denied', '/exam/sample-none', '/exam/sample-unreached',

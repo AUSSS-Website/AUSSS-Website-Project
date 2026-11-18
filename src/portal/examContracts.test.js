@@ -20,6 +20,7 @@ import {
   programmeId,
   studentSections,
   compactContracts,
+  removeAllWords,
 } from './examContracts.js'
 
 const c = (id, programme, cls, country, note = '') => ({ id, programme, class: cls, country, note })
@@ -302,9 +303,29 @@ describe('the same contract on several lines', () => {
   })
 
   it('says how many lines became how many contracts', () => {
-    expect(addedContracts(3, 6)).toBe('Added 3 contracts from 6 lines: lines that were the same contract were counted together.')
-    expect(addedContracts(1, 2)).toBe('Added 1 contract from 2 lines: lines that were the same contract were counted together.')
-    expect(addedContracts(3, 3)).toBe('Added 3 contracts.')
+    expect(addedContracts(3, 3, 6)).toBe('Added 3 contracts. Lines that were the same contract were counted together.')
+    expect(addedContracts(3, 3, 3)).toBe('Added 3 contracts.')
     expect(addedContracts(3)).toBe('Added 3 contracts.')
+  })
+
+  it('says when a list added to contracts the exam already had', () => {
+    expect(addedContracts(3, 5)).toBe('Added 3 contracts. Added to 2 contracts already in the list.')
+    expect(addedContracts(0, 1)).toBe('Added to 1 contract already in the list.')
+    expect(addedContracts(1, 4, 9)).toBe(
+      'Added 1 contract. Added to 3 contracts already in the list. Lines that were the same contract were counted together.',
+    )
+    expect(addedContracts(0, 0)).toBe('Added 0 contracts.')
+  })
+
+  it('says what removing every contract takes with it', () => {
+    const three = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+    expect(removeAllWords(three, [])).toBe('This removes all 3 contracts of this exam.')
+    expect(removeAllWords([{ id: 'a' }], null)).toBe('This removes the one contract of this exam.')
+    expect(removeAllWords(three, [{ picks: ['a'] }, { picks: [] }])).toBe(
+      'This removes all 3 contracts of this exam, and with them the choices of the one student who has chosen among them.',
+    )
+    expect(removeAllWords(three, [{ picks: ['a'] }, { picks: ['b', 'c'] }])).toBe(
+      'This removes all 3 contracts of this exam, and with them the choices of the 2 students who have chosen among them.',
+    )
   })
 })
