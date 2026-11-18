@@ -3700,6 +3700,15 @@ sections are as they were, and an exam with no topic named is exactly the exam i
 - **Results.** A paper's lines and the question figures show each question's topic, and
   their exports gain a Topic column when the exam has topics.
 
+**A student can sit without preferences (2026-11-18, later the same day).** The first build
+asked for at least one contract in each programme a student ticked (or one of any programme
+in an exam without the choice). The exchange team dropped that: migration
+`20261118180001_exam_preferences_optional.sql`. A student still passes the preferences step
+once before the start code, since that is where the sections of their paper are ticked,
+but saving with no contract chosen is enough, and the page says so above its Save button.
+The limits (two of Class A, two of Class B in each programme) are unchanged. Where the
+paragraphs below speak of a contract being required, this paragraph is the rule.
+
 **Contracts and the students' preferences (2026-11-18).** An exam can carry the exchange
 contracts the students are matched to (`exam_contracts`, migration
 `20261118120001_exam_contracts.sql`): each has a programme (SCOPE or SCORE), a class (A, B or
@@ -3715,9 +3724,9 @@ the start code (`src/exam/screens/PreferencesScreen.jsx`, `rpc/exam_preferences`
 - in each programme, at most two contracts of Class A, at most two of Class B, any number of
   Class C, all in the student's own order;
 - in an exam with two optional sections the student first ticks the sections they will answer
-  and chooses only among those programmes' contracts, at least one in each. Their paper then
+  and chooses only among those programmes' contracts. Their paper then
   sits exactly those sections at its start: `rpc/exam_start` takes them from the saved
-  preferences. In an exam without the choice every contract is offered and one is enough;
+  preferences. In an exam without the choice every contract is offered;
 - they can be given as soon as the student holds an ID on the list, also before the exam
   opens, and changed until the student starts. Once the paper exists they are fixed. The exam
   does not start without them (`reason: 'preferences'`, which costs no try of the start code).

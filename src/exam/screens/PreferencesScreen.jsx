@@ -269,7 +269,11 @@ export default function PreferencesScreen({ word, exam, preferences, notice = ''
 
           <Problem>{problem || notice}</Problem>
 
-          <button type="submit" disabled={busy} className={`${tapPrimaryCls} mt-6 w-full`}>
+          {/* Nobody has to choose: said here, so a student with no wish does not hunt for one. */}
+          <p className="mt-6 text-sm text-soft/80">
+            Choosing is optional. You can save with no contract chosen and still sit the exam.
+          </p>
+          <button type="submit" disabled={busy} className={`${tapPrimaryCls} mt-3 w-full`}>
             {busy ? 'Saving…' : 'Save my preferences'}
           </button>
         </form>
