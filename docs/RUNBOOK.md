@@ -3659,6 +3659,45 @@ Screen once (reported)" beside the leaves and a column in the export. It is the 
 screenshot a page is ever told of, and only on a computer's keyboard: a phone's buttons,
 Windows' snipping shortcut and a Mac's keys tell the page nothing.
 
+**Contracts and the students' preferences (2026-11-18).** An exam can carry the exchange
+contracts the students are matched to (`exam_contracts`, migration
+`20261118120001_exam_contracts.sql`): each has a programme (SCOPE or SCORE), a class (A, B or
+C), a country, how many contracts there are of it, and a note. The officers add them on the
+exam's **Contracts** tab, one at a time, by pasting rows from a spreadsheet (programme, class,
+country, number, note; the number and the note may be left out) or from an .xlsx or .csv file.
+A list is added whole or not at all, and a bad row is named by its line.
+
+A student gives their preferences at the exam's own address, after their details and before
+the start code (`src/exam/screens/PreferencesScreen.jsx`, `rpc/exam_preferences`,
+`rpc/exam_save_preferences`). The rules, which the database checks on every save:
+
+- in each programme, at most two contracts of Class A, at most two of Class B, any number of
+  Class C, all in the student's own order;
+- in an exam with two optional sections the student first ticks the sections they will answer
+  and chooses only among those programmes' contracts, at least one in each. Their paper then
+  sits exactly those sections at its start: `rpc/exam_start` takes them from the saved
+  preferences. In an exam without the choice every contract is offered and one is enough;
+- they can be given as soon as the student holds an ID on the list, also before the exam
+  opens, and changed until the student starts. Once the paper exists they are fixed. The exam
+  does not start without them (`reason: 'preferences'`, which costs no try of the start code).
+
+An exam with no contracts asks for nothing and behaves exactly as before.
+
+What the officers can change, and when: before the first student starts, anything; removing
+a contract takes it off the lists of the students who chose it, and a contract somebody has
+chosen keeps its programme and class (remove it and add it again to change them). Once the
+exam has started, contracts are neither added nor removed; a country, the number of contracts
+and a note can still be corrected. Releasing an ID from an account clears that account's
+preferences.
+
+Reading them: the Contracts tab shows how many students chose each contract and how many put
+it first in its class, and exports one row for each student with their mark and rank beside
+their first and second choice in Class A and Class B and their Class C choices in order. A
+student's paper in Results shows the same choices. A section can still be left out or added
+during the paper; a student who adds one there has no choices in it, and the export shows
+that as empty cells. The picks are deleted with the registered list when the term ends; the
+contracts stay with the exam, as its questions do.
+
 ## 31. The website guide
 
 One PDF that explains every public page and every part of the portal, with a picture of

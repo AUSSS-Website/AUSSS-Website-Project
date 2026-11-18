@@ -361,8 +361,8 @@ select is(
 select is(
   (select pg_temp.keys(d) || pg_temp.keys(d -> 'exam') || pg_temp.keys(d -> 'me')
    from (select public.exam_door('pgtap-exam') as d) x),
-  array['attempt', 'exam', 'me', 'now', 'registration',
-        'closes_at', 'minutes', 'opens_at', 'phase', 'questions', 'sections', 'title',
+  array['attempt', 'exam', 'me', 'now', 'preferences', 'registration',
+        'closes_at', 'contracts', 'minutes', 'opens_at', 'phase', 'questions', 'sections', 'title',
         'email', 'faculty_year', 'full_name', 'phone', 'student_id'],
   'the door says nothing else: no start code, no key'
 );

@@ -3,7 +3,7 @@
 -- assert the intended grant set directly rather than trusting the local stack's stricter
 -- defaults. Any new table must be added here alongside its grants.
 begin;
-select plan(168);
+select plan(181);
 
 -- anon: read-only reference data and settings, public columns of calls, nothing else
 select ok(has_table_privilege('anon', 'public.committees', 'select'), 'anon reads committees');
@@ -217,6 +217,21 @@ select ok(has_table_privilege('authenticated', 'public.exam_passages', 'delete')
 select ok(not has_column_privilege('authenticated', 'public.exam_questions', 'section', 'update') and not has_column_privilege('authenticated', 'public.exam_questions', 'image_path', 'update'), 'authenticated cannot move a question to another section or change its picture directly');
 select ok(not has_function_privilege('anon', 'public.save_exam_passage(uuid, uuid, text, text, text)', 'execute'), 'anon cannot write a passage');
 select ok(not has_function_privilege('authenticated', 'app.exam_result_rows(uuid, uuid)', 'execute'), 'only the officers'' functions mark the papers');
+-- the exam's contracts and the students' preferences: a contract is read, changed and removed by
+-- the exam officers and added by its function only; a pick is written by the taker's function alone
+select ok(not has_any_column_privilege('anon', 'public.exam_contracts', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_contracts', 'delete, truncate, trigger'), 'anon holds nothing on exam_contracts');
+select ok(not has_any_column_privilege('anon', 'public.exam_contract_picks', 'select, insert, update, references') and not has_table_privilege('anon', 'public.exam_contract_picks', 'delete, truncate, trigger'), 'anon holds nothing on exam_contract_picks');
+select ok(has_table_privilege('authenticated', 'public.exam_contracts', 'select'), 'authenticated reads exam_contracts (RLS narrows it to the exam officers)');
+select ok(has_column_privilege('authenticated', 'public.exam_contracts', 'country', 'update') and has_column_privilege('authenticated', 'public.exam_contracts', 'places', 'update'), 'authenticated corrects a contract''s country and its number of places');
+select ok(not has_column_privilege('authenticated', 'public.exam_contracts', 'exam_id', 'update'), 'authenticated cannot move a contract to another exam');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_contracts', 'insert'), 'a contract is added through the function only');
+select ok(has_table_privilege('authenticated', 'public.exam_contracts', 'delete'), 'authenticated removes a contract (the exam officers, by policy)');
+select ok(not has_any_column_privilege('authenticated', 'public.exam_contract_picks', 'insert, update') and not has_table_privilege('authenticated', 'public.exam_contract_picks', 'delete'), 'authenticated cannot write a pick directly');
+select ok(not has_function_privilege('anon', 'public.exam_preferences(text)', 'execute'), 'anon cannot read an exam''s contracts');
+select ok(not has_function_privilege('anon', 'public.exam_save_preferences(text, jsonb, boolean, boolean)', 'execute'), 'anon cannot save preferences');
+select ok(not has_function_privilege('anon', 'public.import_exam_contracts(uuid, jsonb)', 'execute'), 'anon cannot add contracts');
+select ok(not has_function_privilege('anon', 'public.exam_preference_list(uuid)', 'execute'), 'anon cannot read the students'' preferences');
+select ok(not has_function_privilege('authenticated', 'app.exam_preferences_ok(uuid, uuid, boolean, boolean)', 'execute'), 'only the exam''s own functions judge a student''s preferences');
 
 select * from finish();
 rollback;

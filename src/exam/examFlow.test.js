@@ -131,6 +131,47 @@ describe('which screen', () => {
       expect(screenFor({ user, door: answered({ exam: { ...exam, phase } }) })).toBe('listed')
     }
   })
+
+  describe('in an exam that has contracts', () => {
+    const withContracts = { ...exam, contracts: { scope: 6, score: 4 } }
+    const prefs = (complete) => ({ saved: complete, complete, scope: true, score: false, picks: complete ? 3 : 0 })
+
+    it('asks for the preferences after the details and before the start code', () => {
+      expect(screenFor({ user, door: answered({ exam: withContracts, preferences: prefs(false) }) })).toBe('preferences')
+      // a database that says nothing of them is taken as "not given"
+      expect(screenFor({ user, door: answered({ exam: withContracts }) })).toBe('preferences')
+      // also before the exam opens, so they can be given at home
+      expect(screenFor({ user, door: answered({ exam: { ...withContracts, phase: 'before' }, preferences: prefs(false) }) })).toBe('preferences')
+    })
+
+    it('asks for the details first', () => {
+      expect(screenFor({ user, door: answered({ exam: withContracts, registration: 'none', preferences: null }) })).toBe('details')
+      expect(screenFor({ user, door: answered({ exam: withContracts, preferences: prefs(false) }), editing: true })).toBe('details')
+    })
+
+    it('goes on to the list once they are given, and back when the taker opens them', () => {
+      const door = answered({ exam: withContracts, preferences: prefs(true) })
+      expect(screenFor({ user, door })).toBe('listed')
+      expect(screenFor({ user, door, choosing: true })).toBe('preferences')
+    })
+
+    it('asks nothing once the exam has closed: nobody else starts', () => {
+      const door = answered({ exam: { ...withContracts, phase: 'closed' }, preferences: prefs(false) })
+      expect(screenFor({ user, door })).toBe('listed')
+      expect(screenFor({ user, door, choosing: true })).toBe('listed')
+    })
+
+    it('shows the paper whatever the preferences say', () => {
+      const door = answered({ exam: withContracts, preferences: prefs(false), attempt: { id: 'a1', over: false } })
+      expect(screenFor({ user, door })).toBe('sitting')
+    })
+  })
+
+  it('asks for no preferences in an exam with no contracts', () => {
+    const door = answered({ exam: { ...exam, contracts: { scope: 0, score: 0 } }, preferences: { saved: false, complete: true, scope: null, score: null, picks: 0 } })
+    expect(screenFor({ user, door })).toBe('listed')
+    expect(screenFor({ user, door, choosing: true })).toBe('listed')
+  })
 })
 
 describe('the four details', () => {

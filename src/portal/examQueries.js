@@ -29,6 +29,8 @@ export const examKeys = {
   questions: (examId) => ['exams', 'questions', examId],
   passages: (examId) => ['exams', 'passages', examId],
   registrations: (examId) => ['exams', 'registrations', examId],
+  contracts: (examId) => ['exams', 'contracts', examId],
+  preferences: (examId) => ['exams', 'preferences', examId],
 }
 
 // The root of the keys examResultQueries.js keeps the ranking, the papers and
@@ -446,4 +448,68 @@ export function useRegistrationMutations(examId) {
   const release = useMutation({ mutationFn: releaseRegistration, onSettled: done })
   const remove = useMutation({ mutationFn: deleteRegistration, onSettled: done })
   return { add, release, remove }
+}
+
+// ---- contracts ----------------------------------------------------------------
+//
+// The exchange contracts a student chooses among before they start
+// (supabase/migrations/20261118120001_exam_contracts.sql). The officers add
+// them through a function, one or many at a time and all or nothing, and
+// change or remove one directly; the database tidies and refuses.
+
+const CONTRACT_SELECT = 'id, exam_id, programme, class, country, places, note, sort, created_at'
+
+// The exam's contracts in the officers' order.
+async function fetchContracts(examId) {
+  return (
+    unwrap(
+      await supabase.from('exam_contracts').select(CONTRACT_SELECT).eq('exam_id', examId).order('sort').order('created_at').order('id'),
+    ) || []
+  )
+}
+
+export function useExamContracts(examId) {
+  return useQuery({
+    queryKey: examKeys.contracts(examId),
+    queryFn: () => fetchContracts(examId),
+    enabled: Boolean(examId),
+  })
+}
+
+// Every student who has saved preferences or has a paper, each with the ids
+// of the contracts they chose, in their order (rpc/exam_preference_list).
+// `exam` is the exam's row: while students can start, the list is read again
+// every 30 seconds, as the registered list is.
+export function usePreferenceList(examId, exam = null) {
+  return useQuery({
+    queryKey: examKeys.preferences(examId),
+    queryFn: async () => unwrap(await supabase.rpc('exam_preference_list', { p_exam: examId })) || [],
+    enabled: Boolean(examId),
+    refetchInterval: () => refreshIn(exam, Date.now(), LIVE_MS),
+  })
+}
+
+// `rows` as examContracts.js makes them: [{ programme, class, country, places, note }].
+// All of them or none; answers with how many were added.
+async function addContracts({ examId, rows }) {
+  return unwrap(await supabase.rpc('import_exam_contracts', { p_exam: examId, p_rows: rows }))
+}
+
+// `patch` holds columns of public.exam_contracts: programme, class, country, places, note.
+async function updateContract({ id, patch }) {
+  return unwrap(await supabase.from('exam_contracts').update(patch).eq('id', id).select(CONTRACT_SELECT).single())
+}
+
+async function deleteContract(id) {
+  unwrap(await supabase.from('exam_contracts').delete().eq('id', id))
+  return id
+}
+
+export function useContractMutations(examId) {
+  const qc = useQueryClient()
+  const done = () => refreshExamData(qc)
+  const add = useMutation({ mutationFn: (rows) => addContracts({ examId, rows }), onSettled: done })
+  const update = useMutation({ mutationFn: updateContract, onSettled: done })
+  const remove = useMutation({ mutationFn: deleteContract, onSettled: done })
+  return { add, update, remove }
 }

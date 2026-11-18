@@ -27,6 +27,14 @@ TODO: Writing them, their order, the right answer, and correcting an answer once
 
 ![](shot:exam-question-edit)
 
+## Contracts
+
+TODO: The exchange contracts by programme and class, adding them one at a time or from a spreadsheet, what can change once students have chosen, and the export of every student's preferences beside their rank.
+
+![](shot:exam-contracts)
+
+![](shot:exam-contract-change)
+
 ## The registered list
 
 TODO: The student IDs allowed to sit, how each is claimed by an account, and releasing one.
@@ -49,13 +57,17 @@ TODO: How each question was answered, to find the ones that misled.
 
 ## What a student sees
 
-TODO: In order: signing in, their details, the wait and the start code, the paper, the review, and the two ways it ends.
+TODO: In order: signing in, their details, their contract preferences (in an exam that has contracts), the wait and the start code, the paper, the review, and the two ways it ends.
 
 ![](shot:exam-student-signin)
 
 ![](shot:exam-student-details)
 
 ![](shot:exam-student-not-listed)
+
+![](shot:exam-student-contracts)
+
+![](shot:exam-student-chosen)
 
 ![](shot:exam-student-open)
 
