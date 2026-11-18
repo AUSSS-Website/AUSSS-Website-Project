@@ -841,16 +841,19 @@ const sectionsOf = (value) =>
 const extra = (object, allowed) => Object.keys(object ?? {}).filter((key) => !allowed.includes(key))
 
 // Nothing a taker is sent may name the key, a grade or the officers' order.
-// SCORE is also the name of an exchange programme, and two fields carry it
+// SCORE is also the name of an exchange programme, and four fields carry it
 // with no grade in them: `sits_score` (whether the paper sits the research
-// exchange's block) and the count of that block's questions inside `sections`.
+// exchange's block), the count of that block's questions inside `sections`,
+// the count of that programme's contracts inside `contracts`, and whether the
+// taker ticked its section inside `preferences` (20261118120001).
+const PROGRAMME_COUNTS = ['sections', 'contracts', 'preferences']
 function noHints(t, name, value) {
   const found = new Set()
   const walk = (node, inside = '') => {
     if (Array.isArray(node)) node.forEach((inner) => walk(inner, inside))
     else if (node && typeof node === 'object') {
       for (const [key, inner] of Object.entries(node)) {
-        const aProgramme = key === 'sits_score' || (inside === 'sections' && key === 'score')
+        const aProgramme = key === 'sits_score' || (PROGRAMME_COUNTS.includes(inside) && key === 'score')
         if (!aProgramme && /correct|score|grade|rank|right|mark|key|order/i.test(key)) found.add(key)
         walk(inner, key)
       }
