@@ -16,6 +16,7 @@ import {
   papersOf,
   percent,
   programmeRows,
+  totalRows,
   programmesOf,
   questionColumns,
   questionLabel,
@@ -700,6 +701,42 @@ describe('the two programmes', () => {
     const summary = Object.fromEntries(resultSummary(programmeRows(papers, scope), 120, scope))
     expect(summary['Papers that sit SCOPE']).toBe(2)
     expect(summary['Average SCOPE mark']).toBe('86.5 of 100')
+  })
+
+  it('list everyone who took the exam, each out of the questions their own paper sits', () => {
+    const rows = totalRows(papers, programmesOf(sections))
+    // nobody is left out, and the database's order and ranks are kept
+    expect(rows.map((r) => [r.attempt_id, r.rank, r.score])).toEqual([['a1', 1, 95], ['a2', 2, 88], ['a3', 3, 80]])
+    expect(rows.map((r) => r.of)).toEqual([120, 100, 100])
+    expect(rows[0].marks).toEqual([
+      { id: 'scope', short: 'SCOPE', mark: 85, of: 100 },
+      { id: 'score', short: 'SCORE', mark: 80, of: 100 },
+    ])
+    expect(rows[1].marks).toEqual([{ id: 'scope', short: 'SCOPE', mark: 88, of: 100 }])
+    expect(totalRows(undefined, programmesOf(sections))).toEqual([])
+  })
+
+  it('give the export of everyone the total mark and each programme’s mark', () => {
+    const programmes = programmesOf(sections)
+    const columns = resultColumns(120, null, programmes)
+    expect(columns.map((c) => c.label).slice(0, 10)).toEqual([
+      'Rank', 'Name', 'Student ID', 'Year',
+      'Total mark', 'Questions sat', 'SCOPE mark (of 100)', 'SCORE mark (of 100)', 'Sections', 'Answered',
+    ])
+    const [, scopeOnly] = totalRows(papers, programmes)
+    const cells = Object.fromEntries(columns.map((c) => [c.label, c.value(scopeOnly)]))
+    expect(cells['Total mark']).toBe(88)
+    expect(cells['Questions sat']).toBe(100)
+    expect(cells['SCOPE mark (of 100)']).toBe(88)
+    // a programme the paper does not sit is an empty cell, not a mark of 0
+    expect(cells['SCORE mark (of 100)']).toBe('')
+    expect(cells.Sections).toBe('SCOPE only')
+  })
+
+  it('head the export of everyone with every paper, and an average that names no number of questions', () => {
+    const summary = Object.fromEntries(resultSummary(totalRows(papers, programmesOf(sections)), 120, null, true))
+    expect(summary.Papers).toBe(3)
+    expect(summary['Average total mark']).toBe('87.7')
   })
 })
 

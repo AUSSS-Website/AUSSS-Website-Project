@@ -10,6 +10,7 @@ import {
   leftReported,
   leftWords,
   programmeRows,
+  totalRows,
   readProblem,
   resultColumns,
   resultSummary,
@@ -78,11 +79,17 @@ function Row({ row, questions, to, tied, programme = null }) {
           {/* From a tablet up each figure has a width of its own, so they line
               up down the list. */}
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft/70">
-            <span className={programme ? 'sm:w-40' : 'sm:w-24'}>
-              <span className="text-base font-semibold tabular-nums text-ink">{row.score ?? 0}</span> of {questions}
+            <span className={programme ? 'sm:w-40' : row.marks?.length > 0 ? 'sm:w-56' : 'sm:w-24'}>
+              <span className="text-base font-semibold tabular-nums text-ink">{row.score ?? 0}</span> of {row.of ?? questions}
               {programme && (
                 <span className="block tabular-nums text-soft/60">
                   {row.shared} shared + {row.block} section
+                </span>
+              )}
+              {/* In the list of everyone: the mark in each programme the paper sits. */}
+              {row.marks?.length > 0 && (
+                <span className="block tabular-nums text-soft/60">
+                  {row.marks.map((m) => `${m.short} ${m.mark ?? 0} of ${m.of}`).join(' · ')}
                 </span>
               )}
             </span>
@@ -120,12 +127,16 @@ export default function ResultsPanel({ exam }) {
 
   // In an exam with two optional sections the ranking is one programme's at a
   // time: only the papers that sit it, by that programme's mark.
-  const [programme, setProgramme, programmes] = useProgramme(results.data?.sections)
+  // After the programmes comes Total: everyone who took the exam in one list.
+  const [programme, setProgramme, programmes, everyone] = useProgramme(results.data?.sections, true)
   // Each paper with how many times its taker left the exam's page.
   const papers = results.data?.attempts
   const leaves = useExamLeaves(exam.id, anySitting(papers))
   const everyPaper = useMemo(() => withLeaves(papers, leaves.data), [papers, leaves.data])
-  const attempts = useMemo(() => (everyPaper ? programmeRows(everyPaper, programme) : everyPaper), [everyPaper, programme])
+  const attempts = useMemo(() => {
+    if (!everyPaper) return everyPaper
+    return everyone ? totalRows(everyPaper, programmes) : programmeRows(everyPaper, programme)
+  }, [everyPaper, programme, programmes, everyone])
   const questions = programme ? programme.of : results.data?.questions ?? 0
   // How many papers sit each programme, for the switch.
   const paperCounts = useMemo(
@@ -134,14 +145,17 @@ export default function ResultsPanel({ exam }) {
   )
   // Another programme is another list: it starts at its first page, however
   // the programme changed (the switch, the browser's back button, the address).
-  const programmeId = programme?.id ?? ''
+  const programmeId = everyone ? 'total' : programme?.id ?? ''
   useEffect(() => {
     setPage(0)
   }, [programmeId])
   const found = useMemo(() => searchResults(attempts, term), [attempts, term])
   const counts = useMemo(() => tally(attempts), [attempts])
   const shared = useMemo(() => sharedRanks(attempts), [attempts])
-  const columns = useMemo(() => resultColumns(questions, programme), [questions, programme])
+  const columns = useMemo(
+    () => resultColumns(questions, programme, everyone ? programmes : null),
+    [questions, programme, programmes, everyone],
+  )
 
   // Back from a paper: the row it was opened from, in view and in focus again.
   // After a delete that row has gone (useDeleteAttempt takes it out of the
@@ -217,6 +231,8 @@ export default function ResultsPanel({ exam }) {
         programmes={programmes}
         programme={programme}
         counts={everyPaper ? paperCounts : null}
+        total={programmes.length > 0 ? everyone : null}
+        totalCount={everyPaper ? everyPaper.length : null}
         onChange={setProgramme}
       />
 
@@ -241,16 +257,18 @@ export default function ResultsPanel({ exam }) {
         <RefreshButton busy={results.isFetching} onClick={() => results.refetch()} />
         <span className="ml-auto">
           <ExportButtons
-            title={programme ? `${programme.short} results: ${exam.title}` : `Results: ${exam.title}`}
+            title={programme ? `${programme.short} results: ${exam.title}` : everyone ? `Total results: ${exam.title}` : `Results: ${exam.title}`}
             subtitle={`${
-              programme ? `The ${programme.name} ranking: the papers that sit its section, by the ${programme.short} mark` : 'The ranking by grade'
-            }, out of ${questions} ${questions === 1 ? 'question' : 'questions'}${
-              typed ? `, matching “${typed}”` : ''
-            }. Grades as counted when this file was made.`}
-            filename={exportName(exam.title, programme ? `${programme.id}-results` : 'results')}
+              programme
+                ? `The ${programme.name} ranking: the papers that sit its section, by the ${programme.short} mark, out of ${questions} ${questions === 1 ? 'question' : 'questions'}`
+                : everyone
+                  ? 'Everyone who took the exam, by every question their paper sits. A paper that sits both sections has more questions than one that sits one'
+                  : `The ranking by grade, out of ${questions} ${questions === 1 ? 'question' : 'questions'}`
+            }${typed ? `, matching “${typed}”` : ''}. Grades as counted when this file was made.`}
+            filename={exportName(exam.title, programme ? `${programme.id}-results` : everyone ? 'total-results' : 'results')}
             columns={columns}
             rows={found.rows}
-            summary={resultSummary(found.rows, questions, programme)}
+            summary={resultSummary(found.rows, questions, programme, everyone)}
             landscape
             className={`${outlineBtnCls} ${tapCls}`}
           />

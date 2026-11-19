@@ -1078,7 +1078,7 @@ export const ROUTES = [
   // parts, a question's right answer being corrected, and one student's paper
   '/portal/exam', '/portal/exam/ex-1?tab=setup', '/portal/exam/ex-1?tab=questions', '/portal/exam/ex-1?tab=questions#correct',
   '/portal/exam/ex-1?tab=contracts', '/portal/exam/ex-1?tab=contracts#change',
-  '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&programme=score', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=results&programme=score&paper=at-002', '/portal/exam/ex-1?tab=overview',
+  '/portal/exam/ex-1?tab=list', '/portal/exam/ex-1?tab=results', '/portal/exam/ex-1?tab=results&programme=score', '/portal/exam/ex-1?tab=results&programme=total', '/portal/exam/ex-1?tab=results&programme=total&paper=at-005', '/portal/exam/ex-1?tab=results&paper=at-005', '/portal/exam/ex-1?tab=results&programme=score&paper=at-002', '/portal/exam/ex-1?tab=overview',
   // the draft, where every form is open, and last term's, with nothing left to read
   '/portal/exam/ex-2?tab=setup', '/portal/exam/ex-2?tab=contracts', '/portal/exam/ex-2?tab=questions', '/portal/exam/ex-2?tab=questions#edit', '/portal/exam/ex-2?tab=list',
   '/portal/exam/ex-0?tab=results', '/portal/exam/ex-0?tab=overview',

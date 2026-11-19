@@ -190,6 +190,23 @@ export function programmeRows(attempts, programme) {
     )
 }
 
+// Everyone who took an exam with the two optional sections, as one list: the
+// rows as the database ranks them (by every question a paper sits, `score` and
+// `rank`), each with how many questions that is (`of`) and its mark in each
+// programme it sits (`marks`). A paper that sits both sections has more
+// questions than one that sits one, which is why each row carries its own `of`.
+export function totalRows(attempts, programmes) {
+  const all = list(programmes)
+  return list(attempts).map((r) => {
+    const sat = all.filter((p) => r?.[`sits_${p.id}`] === true)
+    return {
+      ...r,
+      of: num(all[0]?.sharedOf) + sat.reduce((sum, p) => sum + num(p.blockOf), 0),
+      marks: sat.map((p) => ({ id: p.id, short: p.short, mark: isNum(r[`total_${p.id}`]) ? r[`total_${p.id}`] : null, of: p.of })),
+    }
+  })
+}
+
 // What a paper sits, in words: '' in an exam without the choice.
 export function sitsWords(row) {
   if (row?.sits_scope && row?.sits_score) return 'SCOPE and SCORE'
@@ -435,7 +452,9 @@ export function typedCell(v) {
 // programmeRows) the grade is the programme's mark, with its two parts and
 // which sections the paper sits beside it.
 // `left` is how many times the taker left the exam's page (withLeaves).
-export function resultColumns(questions, programme = null) {
+// `everyone` is the exam's programmes when the list is the total one (rows
+// from totalRows): the total mark, and each programme's mark beside it.
+export function resultColumns(questions, programme = null, everyone = null) {
   const marks = programme
     ? [
         { label: `${programme.short} mark (of ${programme.of})`, value: (r) => r.score },
@@ -443,7 +462,17 @@ export function resultColumns(questions, programme = null) {
         { label: `${programme.block} (of ${programme.blockOf})`, value: (r) => r.block },
         { label: 'Sections', value: (r) => sitsWords(r) },
       ]
-    : [{ label: `Grade (of ${num(questions)})`, value: (r) => r.score }]
+    : list(everyone).length > 0
+      ? [
+          { label: 'Total mark', value: (r) => r.score },
+          { label: 'Questions sat', value: (r) => r.of },
+          ...list(everyone).map((p) => ({
+            label: `${p.short} mark (of ${p.of})`,
+            value: (r) => list(r.marks).find((m) => m.id === p.id)?.mark ?? '',
+          })),
+          { label: 'Sections', value: (r) => sitsWords(r) },
+        ]
+      : [{ label: `Grade (of ${num(questions)})`, value: (r) => r.score }]
   return [
     { label: 'Rank', value: (r) => r.rank },
     { label: 'Name', value: (r) => typedCell(r.full_name) },
@@ -493,10 +522,22 @@ export function leftReported(times, printed = 0) {
 // The lines printed above a list of papers: how many, and the averages. For
 // one programme's ranking the papers are the ones that sit it, and the average
 // is of the programme's mark.
-export function resultSummary(attempts, questions, programme = null) {
+// `everyone` says the list is the total one, where papers are not all out of
+// the same number of questions, so the average names no number.
+export function resultSummary(attempts, questions, programme = null, everyone = false) {
   const t = tally(attempts)
   const avg = averages(attempts)
   const of = programme ? programme.of : num(questions)
+  if (everyone && !programme) {
+    return [
+      ['Papers', t.started],
+      ['Handed in', t.handedIn],
+      ['Time ran out', t.timedOut],
+      ['Still sitting', t.sitting],
+      ['Average total mark', avg.grade == null ? 'No finished paper yet' : oneDecimal(avg.grade)],
+      ['Average time', avg.seconds == null ? 'No finished paper yet' : durationWords(avg.seconds)],
+    ]
+  }
   return [
     [programme ? `Papers that sit ${programme.short}` : 'Papers', t.started],
     ['Handed in', t.handedIn],
